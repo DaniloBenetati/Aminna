@@ -41,20 +41,38 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
     // --- CATEGORY SETTINGS STATES ---
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryDRE, setNewCategoryDRE] = useState<ExpenseCategory['dreClass']>('EXPENSE_ADM');
+    const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
 
-    const handleAddCategory = (e: React.FormEvent) => {
+    const handleSaveCategory = (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCategoryName.trim() || !setExpenseCategories) return;
 
-        const newCat: ExpenseCategory = {
-            id: `cat-${Date.now()}`,
-            name: newCategoryName,
-            dreClass: newCategoryDRE,
-            isSystem: false
-        };
-
-        setExpenseCategories(prev => [...prev, newCat]);
+        if (editingCategory) {
+            setExpenseCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: newCategoryName, dreClass: newCategoryDRE } : c));
+            setEditingCategory(null);
+        } else {
+            const newCat: ExpenseCategory = {
+                id: `cat-${Date.now()}`,
+                name: newCategoryName,
+                dreClass: newCategoryDRE,
+                isSystem: false
+            };
+            setExpenseCategories(prev => [...prev, newCat]);
+        }
         setNewCategoryName('');
+        setNewCategoryDRE('EXPENSE_ADM');
+    };
+
+    const handleEditCategory = (cat: ExpenseCategory) => {
+        setEditingCategory(cat);
+        setNewCategoryName(cat.name);
+        setNewCategoryDRE(cat.dreClass);
+    };
+
+    const handleCancelEditCategory = () => {
+        setEditingCategory(null);
+        setNewCategoryName('');
+        setNewCategoryDRE('EXPENSE_ADM');
     };
 
     const handleDeleteCategory = (id: string) => {
@@ -187,9 +205,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
                                             </div>
                                         </div>
 
-                                        <form onSubmit={handleAddCategory} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-700 mb-8">
+                                        <form onSubmit={handleSaveCategory} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-700 mb-8">
                                             <div className="flex-1 w-full">
-                                                <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nome da Categoria</label>
+                                                <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                                                    {editingCategory ? 'Editar Categoria' : 'Nome da Categoria'}
+                                                </label>
                                                 <input
                                                     value={newCategoryName}
                                                     onChange={e => setNewCategoryName(e.target.value)}
@@ -212,8 +232,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
                                                     <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                                 </div>
                                             </div>
+                                            {editingCategory && (
+                                                <button type="button" onClick={handleCancelEditCategory} className="px-4 py-3 bg-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-300 transition-colors h-[48px]">
+                                                    Cancelar
+                                                </button>
+                                            )}
                                             <button disabled={!newCategoryName} type="submit" className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full md:w-auto h-[48px]">
-                                                Adicionar
+                                                {editingCategory ? 'Salvar' : 'Adicionar'}
                                             </button>
                                         </form>
 
@@ -228,12 +253,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
                                                             {cats.map(cat => (
                                                                 <li key={cat.id} className="flex items-center justify-between text-sm group">
                                                                     <span className="font-bold text-slate-700 dark:text-slate-300">{cat.name}</span>
-                                                                    {!cat.isSystem && (
-                                                                        <button onClick={() => handleDeleteCategory(cat.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">
+                                                                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        <button onClick={() => handleEditCategory(cat)} className="p-1.5 text-slate-300 hover:text-indigo-600 transition-colors">
+                                                                            <Edit3 size={14} />
+                                                                        </button>
+                                                                        <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-slate-300 hover:text-rose-500 transition-colors">
                                                                             <Trash2 size={14} />
                                                                         </button>
-                                                                    )}
-                                                                    {cat.isSystem && <span className="text-[9px] uppercase font-bold text-slate-300 select-none">Padrão</span>}
+                                                                    </div>
                                                                 </li>
                                                             ))}
                                                         </ul>
@@ -335,7 +362,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
                             </div>
 
                             <div className="grid gap-8">
-                                {DOCUMENTATION_DATA.map((section, idx) => (
+                                {DOCUMENTATION_DATA.sections.map((section, idx) => (
                                     <section key={idx} className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                                         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800">
                                             <BookOpen size={24} className="text-indigo-600" />

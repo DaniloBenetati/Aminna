@@ -36,20 +36,20 @@ const App: React.FC = () => {
   const [pantryLogs, setPantryLogs] = useState<PantryLog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([
-    { id: 'cat-rent', name: 'Aluguel', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-energy', name: 'Energia', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-water', name: 'Água', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-net', name: 'Internet / Telefone', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-sys', name: 'Sistemas / Software', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-clean', name: 'Limpeza', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-maint', name: 'Manutenção', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-pers', name: 'Pessoal (Salários)', dreClass: 'EXPENSE_ADM', isSystem: true },
-    { id: 'cat-mkt', name: 'Marketing / Ads', dreClass: 'EXPENSE_SALES', isSystem: true },
-    { id: 'cat-comm', name: 'Comissões de Venda', dreClass: 'EXPENSE_SALES', isSystem: true },
-    { id: 'cat-bank', name: 'Tarifas Bancárias', dreClass: 'EXPENSE_FIN', isSystem: true },
-    { id: 'cat-tax', name: 'Impostos (Simples/DAS)', dreClass: 'TAX', isSystem: true },
-    { id: 'cat-mat', name: 'Materiais (Uso Técnico)', dreClass: 'COSTS', isSystem: true },
-    { id: 'cat-prod', name: 'Compra de Produtos (Revenda)', dreClass: 'COSTS', isSystem: true },
+    { id: 'cat-rent', name: 'Aluguel', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-energy', name: 'Energia', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-water', name: 'Água', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-net', name: 'Internet / Telefone', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-sys', name: 'Sistemas / Software', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-clean', name: 'Limpeza', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-maint', name: 'Manutenção', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-pers', name: 'Pessoal (Salários)', dreClass: 'EXPENSE_ADM', isSystem: false },
+    { id: 'cat-mkt', name: 'Marketing / Ads', dreClass: 'EXPENSE_SALES', isSystem: false },
+    { id: 'cat-comm', name: 'Comissões de Venda', dreClass: 'EXPENSE_SALES', isSystem: false },
+    { id: 'cat-bank', name: 'Tarifas Bancárias', dreClass: 'EXPENSE_FIN', isSystem: false },
+    { id: 'cat-tax', name: 'Impostos (Simples/DAS)', dreClass: 'TAX', isSystem: false },
+    { id: 'cat-mat', name: 'Materiais (Uso Técnico)', dreClass: 'COSTS', isSystem: false },
+    { id: 'cat-prod', name: 'Compra de Produtos (Revenda)', dreClass: 'COSTS', isSystem: false },
   ]);
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
