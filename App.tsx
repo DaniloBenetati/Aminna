@@ -17,25 +17,27 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
 
-  // GLOBAL STATE: Shared between components to ensure data consistency
-  const [customers, setCustomers] = useState<Customer[]>(CUSTOMERS);
-  const [appointments, setAppointments] = useState<Appointment[]>(APPOINTMENTS);
-  const [sales, setSales] = useState<Sale[]>(SALES);
-  const [stock, setStock] = useState<StockItem[]>(STOCK);
-  const [services, setServices] = useState<Service[]>(SERVICES);
-  const [campaigns, setCampaigns] = useState<Campaign[]>(CAMPAIGNS);
-  const [pantryItems, setPantryItems] = useState<PantryItem[]>(PANTRY_ITEMS);
-  const [pantryLogs, setPantryLogs] = useState<PantryLog[]>(PANTRY_LOGS);
-  const [leads, setLeads] = useState<Lead[]>(LEADS);
+  // GLOBAL STATE: Initialized empty, populated from Supabase
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [stock, setStock] = useState<StockItem[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
+  const [pantryLogs, setPantryLogs] = useState<PantryLog[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   useEffect(() => {
     // Check current session
@@ -52,6 +54,121 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch Data on Authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchData();
+    }
+  }, [isAuthenticated]);
+
+  const fetchData = async () => {
+    setIsLoadingData(true);
+    try {
+      // 1. Providers - (Note: Providers are not in global state in App.tsx originally? 
+      // Wait, they were imported as PROVIDERS constant but not in state passed to children?
+      // Checking Dashboard props... Dashboard takes services, sales, etc.
+      // Professionals component takes appointments...
+      // Ah, PROVIDERS constant was imported directly in components too?
+      // Let's check imports. Yes, 'constants.ts' was widely used.
+      // We might need to pass providers down or refactor components to fetching too.
+      // For now, let's focus on the state variables present in App.tsx)
+
+      // 2. Services
+      const { data: servicesData } = await supabase.from('services').select('*');
+      if (servicesData) {
+        setServices(servicesData.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          durationMinutes: s.duration_minutes,
+          requiredSpecialty: s.required_specialty,
+          active: s.active
+        })));
+      }
+
+      // 3. Stock
+      const { data: stockData } = await supabase.from('stock_items').select('*');
+      if (stockData) {
+        setStock(stockData.map((s: any) => ({
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          category: s.category,
+          group: s.group,
+          subGroup: s.sub_group,
+          quantity: s.quantity,
+          minQuantity: s.min_quantity,
+          unit: s.unit,
+          costPrice: s.cost_price,
+          price: s.sale_price,
+          usageHistory: [] // Todo fetch logs
+        })));
+      }
+
+      // 4. Pantry
+      const { data: pantryData } = await supabase.from('pantry_items').select('*');
+      if (pantryData) {
+        setPantryItems(pantryData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          unit: p.unit,
+          category: p.category,
+          quantity: p.quantity,
+          minQuantity: p.min_quantity,
+          costPrice: p.cost_price,
+          referencePrice: p.reference_price
+        })));
+      }
+
+      // 5. Campaigns
+      const { data: campaignsData } = await supabase.from('campaigns').select('*');
+      if (campaignsData) {
+        setCampaigns(campaignsData.map((c: any) => ({
+          id: c.id,
+          partnerId: c.partner_id,
+          name: c.name,
+          couponCode: c.coupon_code,
+          discountType: c.discount_type,
+          discountValue: c.discount_value,
+          startDate: c.start_date,
+          endDate: c.end_date,
+          useCount: c.use_count,
+          maxUses: c.max_uses,
+          totalRevenueGenerated: c.total_revenue_generated
+        })));
+      }
+
+      // 6. Customers
+      const { data: customersData } = await supabase.from('customers').select('*');
+      if (customersData) {
+        setCustomers(customersData.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          birthDate: c.birth_date,
+          registrationDate: c.registration_date,
+          lastVisit: c.last_visit,
+          totalSpent: c.total_spent,
+          status: c.status,
+          assignedProviderId: c.assigned_provider_id,
+          preferences: c.preferences,
+          history: [], // TODO fetch history
+          acquisitionChannel: c.acquisition_channel
+        })));
+      }
+
+      // 7. Appointments
+      // Fetching appointments logic would go here.
+      // For 'Fresh Start', it will be empty.
+
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -141,10 +258,11 @@ const App: React.FC = () => {
     }
   };
 
-  if (isLoadingAuth) {
+  if (isLoadingAuth || (isAuthenticated && isLoadingData && services.length === 0)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 flex-col gap-4">
         <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        {isAuthenticated && <p className="text-xs font-bold text-slate-400 animate-pulse">Carregando seus dados...</p>}
       </div>
     );
   }
