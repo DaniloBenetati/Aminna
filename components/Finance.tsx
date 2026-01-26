@@ -33,24 +33,24 @@ const generateMockExpenses = (): Expense[] => {
 
     [0, 1].forEach(offset => {
         expenses.push(
-            { id: `fix-rent-${offset}`, description: 'Aluguel do Espaço', category: 'Despesa Fixa', subcategory: 'Aluguel', amount: 3500.00, date: getDate(5, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Transferência' },
-            { id: `fix-net-${offset}`, description: 'Internet Fibra', category: 'Despesa Fixa', subcategory: 'Infraestrutura', amount: 120.00, date: getDate(10, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Boleto' },
-            { id: `fix-soft-${offset}`, description: 'Sistema de Gestão (SaaS)', category: 'Despesa Fixa', subcategory: 'Software', amount: 199.90, date: getDate(1, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Cartão' },
-            { id: `fix-acc-${offset}`, description: 'Contabilidade Mensal', category: 'Despesa Fixa', subcategory: 'Serviços Terceiros', amount: 600.00, date: getDate(20, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Boleto' },
-            { id: `fix-energy-${offset}`, description: 'Energia Elétrica', category: 'Despesa Fixa', subcategory: 'Infraestrutura', amount: 450.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
-            { id: `fix-water-${offset}`, description: 'Água / Saneamento', category: 'Despesa Fixa', subcategory: 'Infraestrutura', amount: 180.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
-            { id: `fix-clean-${offset}-1`, description: 'Faxina Semanal', category: 'Manutenção', subcategory: 'Limpeza', amount: 150.00, date: getDate(7, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-2`, description: 'Faxina Semanal', category: 'Manutenção', subcategory: 'Limpeza', amount: 150.00, date: getDate(14, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-3`, description: 'Faxina Semanal', category: 'Manutenção', subcategory: 'Limpeza', amount: 150.00, date: getDate(21, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-4`, description: 'Faxina Semanal', category: 'Manutenção', subcategory: 'Limpeza', amount: 150.00, date: getDate(28, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' }
+            { id: `fix-rent-${offset}`, description: 'Aluguel do Espaço', category: 'Aluguel', subcategory: 'Predial', dreClass: 'EXPENSE_ADM', amount: 3500.00, date: getDate(5, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Transferência' },
+            { id: `fix-net-${offset}`, description: 'Internet Fibra', category: 'Infraestrutura', subcategory: 'Internet', dreClass: 'EXPENSE_ADM', amount: 120.00, date: getDate(10, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Boleto' },
+            { id: `fix-soft-${offset}`, description: 'Sistema de Gestão (SaaS)', category: 'Software', subcategory: 'Licenças', dreClass: 'EXPENSE_ADM', amount: 199.90, date: getDate(1, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Cartão' },
+            { id: `fix-acc-${offset}`, description: 'Contabilidade Mensal', category: 'Serviços Terceiros', subcategory: 'Contábil', dreClass: 'EXPENSE_ADM', amount: 600.00, date: getDate(20, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Boleto' },
+            { id: `fix-energy-${offset}`, description: 'Energia Elétrica', category: 'Infraestrutura', subcategory: 'Energia', dreClass: 'EXPENSE_ADM', amount: 450.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
+            { id: `fix-water-${offset}`, description: 'Água / Saneamento', category: 'Infraestrutura', subcategory: 'Água', dreClass: 'EXPENSE_ADM', amount: 180.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
+            { id: `fix-clean-${offset}-1`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(7, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
+            { id: `fix-clean-${offset}-2`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(14, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
+            { id: `fix-clean-${offset}-3`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(21, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' },
+            { id: `fix-clean-${offset}-4`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(28, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' }
         );
     });
 
     expenses.push(
-        { id: 'var-mat-1', description: 'Reposição Esmaltes', category: 'Despesa Variável', subcategory: 'Materiais', amount: 450.00, date: getDate(3), status: 'Pago', paymentMethod: 'Cartão' },
-        { id: 'var-mkt-1', description: 'Impulsionar Instagram', category: 'Marketing', subcategory: 'Ads', amount: 300.00, date: getDate(12), status: 'Pago', paymentMethod: 'Cartão' },
-        { id: 'var-coffee', description: 'Cápsulas de Café/Água', category: 'Despesa Variável', subcategory: 'Copa/Cozinha', amount: 180.00, date: getDate(8), status: 'Pago', paymentMethod: 'Dinheiro' },
-        { id: 'var-maint', description: 'Conserto Ar Condicionado', category: 'Manutenção', subcategory: 'Reparos', amount: 250.00, date: getDate(18), status: 'Pendente', paymentMethod: 'Pix' }
+        { id: 'var-mat-1', description: 'Reposição Esmaltes', category: 'Materiais', subcategory: 'Esmaltes', dreClass: 'COSTS', amount: 450.00, date: getDate(3), status: 'Pago', paymentMethod: 'Cartão' },
+        { id: 'var-mkt-1', description: 'Impulsionar Instagram', category: 'Marketing', subcategory: 'Ads', dreClass: 'EXPENSE_SALES', amount: 300.00, date: getDate(12), status: 'Pago', paymentMethod: 'Cartão' },
+        { id: 'var-coffee', description: 'Cápsulas de Café/Água', category: 'Copa/Cozinha', subcategory: 'Consumo', dreClass: 'EXPENSE_ADM', amount: 180.00, date: getDate(8), status: 'Pago', paymentMethod: 'Dinheiro' },
+        { id: 'var-maint', description: 'Conserto Ar Condicionado', category: 'Manutenção', subcategory: 'Reparos', dreClass: 'EXPENSE_ADM', amount: 250.00, date: getDate(18), status: 'Pendente', paymentMethod: 'Pix' }
     );
 
     return expenses;
@@ -346,8 +346,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
         const grossRevenue = revenueServices + revenueProducts;
 
         // 2. (-) Deduções
-        // Estimativa de 6% (Simples Nacional médio) + taxas de cartão (aprox) se não houver detalhamento
-        const deductions = grossRevenue * 0.06;
+        // Auto-calc from settings (approx 6%) PLUS any manual deductions logged
+        const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
+        const autoDeductions = grossRevenue * 0.06;
+        const deductions = autoDeductions + manualDeductions;
 
         // 3. (=) Receita Líquida
         const netRevenue = grossRevenue - deductions;
@@ -364,31 +366,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
             return acc + (s.quantity * (stockItem?.costPrice || 0));
         }, 0);
 
-        const totalCOGS = commissions + productCOGS;
+        const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
+        const totalCOGS = commissions + productCOGS + manualCosts;
 
         // 5. (=) Lucro Bruto
         const grossProfit = netRevenue - totalCOGS;
 
-        // 6. (-) Despesas Operacionais (Classificadas)
+        // 6. (=) Despesas Operacionais - Aggregated by dreClass
+        const expensesVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES');
+        const expensesAdm = exps.filter(e => e.dreClass === 'EXPENSE_ADM');
+        const expensesFin = exps.filter(e => e.dreClass === 'EXPENSE_FIN');
 
-        // Categorizing expenses based on new structure request
-        // 'Despesas com Vendas': Marketing, Ads, Comissões de venda (se houver, alem da tecnica)
-        // 'Despesas Administrativas': Aluguel, Software, Energia, Salários Fixos, Limpeza
-        // 'Despesas Financeiras': Juros, Tarifas
-
-        const expensesWithVendas = exps.filter(e => e.category === 'Marketing' || e.category === 'Despesas com Vendas');
-        const expensesAdm = exps.filter(e =>
-            e.category === 'Despesa Fixa' ||
-            e.category === 'Manutenção' ||
-            e.category === 'Pessoal' ||
-            e.category === 'Despesas Administrativas'
-        );
-        // Any 'Despesa Variável' that isn't COGS usually goes to Adm or Vendas. Let's assume generic variable is ADM for now unless spec'd.
-        const expensesGenericVar = exps.filter(e => e.category === 'Despesa Variável');
-        const expensesFin = exps.filter(e => e.category === 'Despesas Financeiras' || e.category === 'Tarifas');
-
-        const amountVendas = expensesWithVendas.reduce((acc, e) => acc + e.amount, 0);
-        const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0) + expensesGenericVar.reduce((acc, e) => acc + e.amount, 0);
+        const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
+        const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0);
         const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0);
 
         const totalOpExpenses = amountVendas + amountAdm + amountFin;
@@ -397,42 +387,30 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
         const resultBeforeTaxes = grossProfit - totalOpExpenses;
 
         // 8. (-) Provisões IRPJ e CSLL
-        // Se Lucro Real/Presumido. No Simples já estaria na dedução inicial. 
-        // Assumindo que O "Deduções" lá em cima foi impostos sobre nota.
-        // Se for Lucro Presumido, IRPJ/CSLL incide sobre faturamento.
-        // Se for Simples, é ZERO aqui (tudo na linha 2).
-        // VAMOS ASSUMIR ZERO POR ENQUANTO ou um valor manual se houver categoria 'Impostos de Renda'.
-        const irpjCsll = exps.filter(e => e.category === 'IRPJ/CSLL' || e.subcategory === 'IRPJ/CSLL').reduce((acc, e) => acc + e.amount, 0);
+        const irpjCsll = exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
 
         // 9. (=) Resultado Líquido
         const netResult = resultBeforeTaxes - irpjCsll;
 
         return {
-            grossRevenue,
-            revenueServices,
-            revenueProducts,
+            grossRevenue, revenueServices, revenueProducts,
             deductions,
             netRevenue,
-            commissions,
-            productCOGS,
-            totalCOGS,
+            commissions, productCOGS, totalCOGS,
             grossProfit,
-            amountVendas,
-            amountAdm,
-            amountFin,
-            totalOpExpenses,
+            amountVendas, amountAdm, amountFin, totalOpExpenses,
             resultBeforeTaxes,
             irpjCsll,
             netResult,
-            breakdownVendas: expensesWithVendas,
-            breakdownAdm: [...expensesAdm, ...expensesGenericVar],
+            breakdownVendas: expensesVendas,
+            breakdownAdm: expensesAdm,
             breakdownFin: expensesFin
         };
     }, [appointments, sales, expenses, startDate, endDate]);
 
     const handleOpenModal = (expense?: Expense) => {
         if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); setIsCustomCategory(!categories.includes(expense.category)); }
-        else { setEditingExpenseId(null); setExpenseForm({ description: '', amount: 0, category: 'Despesa Variável', subcategory: '', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); setIsCustomCategory(false); }
+        else { setEditingExpenseId(null); setExpenseForm({ description: '', amount: 0, category: 'Despesa Variável', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); setIsCustomCategory(false); }
         setIsModalOpen(true);
     };
 

@@ -172,15 +172,15 @@ export interface Appointment {
   appliedCoupon?: string;
   discountAmount?: number;
   paymentMethod?: string; // Added field
-  
+
   // Lista de produtos vinculados especificamente ao serviço principal
   mainServiceProducts?: string[];
 
   // Novos campos para suporte a multi-serviços agrupados
-  additionalServices?: { 
-    serviceId: string; 
-    providerId: string; 
-    isCourtesy: boolean; 
+  additionalServices?: {
+    serviceId: string;
+    providerId: string;
+    isCourtesy: boolean;
     discount: number;
     bookedPrice?: number; // Snapshot for extras
     commissionRateSnapshot?: number; // Snapshot for extras commission
@@ -228,8 +228,9 @@ export interface Campaign {
 export interface Expense {
   id: string;
   description: string;
-  category: string; // Changed from union type to string to allow custom categories
-  subcategory?: string; // New field
+  category: string; // User defined category (ex: Aluguel, Marketing)
+  subcategory?: string; // User defined subcategory
+  dreClass: 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION'; // Fixed DRE mapping
   amount: number;
   date: string;
   status: 'Pago' | 'Pendente';
