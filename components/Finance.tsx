@@ -665,7 +665,35 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
                         <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50"><h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3><button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"><Plus size={12} /> Lançar Despesa</button></div>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm"><thead><tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700"><th className="px-6 py-4">Data</th><th className="px-6 py-4">Descrição</th><th className="px-6 py-4">Categoria</th><th className="px-6 py-4 Status">Status</th><th className="px-6 py-4 text-right">Valor</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-zinc-800">{expenses.map(exp => (<tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors"><td className="px-6 py-4 text-xs font-bold font-mono">{new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td><td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td><td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{exp.category}</td><td className="px-6 py-4"><button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border transition-all ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-amber-50 text-amber-800 border-amber-100 animate-pulse'}`}>{exp.status}</button></td><td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td></tr>))}</tbody></table>
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
+                                        <th className="px-6 py-4">Data</th>
+                                        <th className="px-6 py-4">Descrição</th>
+                                        <th className="px-6 py-4">Categoria</th>
+                                        <th className="px-6 py-4 text-center">Status</th>
+                                        <th className="px-6 py-4 text-right">Valor</th>
+                                        <th className="px-6 py-4 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                    {expenses.map(exp => (
+                                        <tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
+                                            <td className="px-6 py-4 text-xs font-bold font-mono">{new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                            <td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td>
+                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{exp.category}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border transition-all ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-amber-50 text-amber-800 border-amber-100 animate-pulse'}`}>{exp.status}</button>
+                                            </td>
+                                            <td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td>
+                                            <td className="px-6 py-4 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => handleOpenModal(exp)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                                <button onClick={() => { if (confirm('Excluir esta despesa?')) setExpenses(prev => prev.filter(e => e.id !== exp.id)) }} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

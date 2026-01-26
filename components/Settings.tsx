@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { DOCUMENTATION_DATA } from './DocumentationData';
 import {
     // Add Tag to the imports from lucide-react
     Settings, BookOpen, LayoutDashboard, Calendar, Users, DollarSign,
@@ -93,6 +94,37 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
     };
 
     const handlePrintDocumentation = () => {
+        const renderSection = (section: any) => {
+            let html = `<div class="section"><h2>${section.title}</h2>`;
+            if (section.content) html += `<p>${section.content}</p>`;
+
+            if (section.subsections) {
+                section.subsections.forEach((sub: any) => {
+                    html += `<h3>${sub.title}</h3>`;
+                    if (sub.subtitle) html += `<p><strong>${sub.subtitle}</strong></p>`;
+                    if (sub.description) html += `<p>${sub.description}</p>`;
+                    if (sub.items) {
+                        html += `<ul>${sub.items.map((i: any) => `<li><strong>${i.label}:</strong> ${i.text}</li>`).join('')}</ul>`;
+                    }
+                    if (sub.customContent) html += sub.customContent;
+                    if (sub.tags) {
+                        html += `<div>${sub.tags.map((t: string) => `<span class="tech-tag">${t}</span>`).join('')}</div>`;
+                    }
+                    if (sub.hasDiagram) {
+                        html += `<div style="border:1px dashed #ccc; padding:10px; margin:10px 0; text-align:center; color:#666; font-style:italic;">[Diagrama: ${sub.diagramType}]</div>`;
+                    }
+                });
+            }
+            if (section.hasDiagram) {
+                html += `<div style="border:1px dashed #ccc; padding:10px; margin:10px 0; text-align:center; color:#666; font-style:italic;">[Diagrama: ${section.diagramType}]</div>`;
+            }
+            if (section.analysis) {
+                html += `<ul>${section.analysis.map((i: any) => `<li><strong>${i.label}:</strong> ${i.text}</li>`).join('')}</ul>`;
+            }
+            html += `</div>`;
+            return html;
+        };
+
         const printContent = `
             <html>
             <head>
@@ -121,75 +153,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                 </div>
 
                 <div class="section">
-                    <h1>Documentação Técnica e Operacional</h1>
-                    <p>Este documento detalha as regras de negócio, módulos funcionais e tecnologias empregadas no sistema.</p>
-                </div>
-
-                <div class="section">
-                    <h2>1. Módulos do Sistema</h2>
-                    <h3>📊 Dashboard</h3>
-                    <ul><li>KPIs e Gráficos de performance em tempo real.</li><li>Acesso rápido às funções vitais.</li></ul>
-
-                    <h3>📅 Agenda</h3>
-                    <ul><li>Gestão completa de horários e profissionais.</li><li>Controle de status (Pendente, Confirmado, Concluído).</li></ul>
-
-                    <h3>👥 Clientes & CRM</h3>
-                    <ul><li>Histórico completo de atendimentos e produtos.</li><li>Funil de vendas (Leads) e identificação de risco de churn.</li></ul>
-                    
-                    <h3>💰 Financeiro & DRE</h3>
-                    <ul><li>Controle de Fluxo de Caixa rigoroso.</li><li>DRE Gerencial (Receita -> Custos -> Lucro).</li></ul>
-
-                    <h3>📦 Estoque & Copa</h3>
-                    <ul><li>Controle de insumos (Uso Interno) e Revenda.</li><li>Gestão de itens de cortesia (Copa).</li></ul>
-                </div>
-
-                <div class="section">
-                    <h2>2. Regras de Negócio por Módulo</h2>
-                    
-                    <h3>🤝 Parcerias</h3>
-                    <ul>
-                        <li><strong>Influenciadores:</strong> Custos de permuta computados como CAC (Marketing).</li>
-                        <li><strong>Cupons:</strong> Códigos únicos rastreáveis para cálculo de ROI.</li>
-                    </ul>
-
-                    <h3>📊 Financeiro</h3>
-                    <ul>
-                        <li><strong>Caixa Fechado:</strong> Imutabilidade de dados após fechamento diário.</li>
-                        <li><strong>Categorização:</strong> Obrigatoriedade de classificar todas as despesas para DRE.</li>
-                    </ul>
-
-                    <h3>🛒 Vendas (POS)</h3>
-                    <ul>
-                        <li><strong>Baixa Automática:</strong> Vendas baixam estoque de revenda imediatamente.</li>
-                        <li><strong>Comissões Mistas:</strong> Taxas diferenciadas para serviços vs. produtos.</li>
-                    </ul>
-
-                    <h3>✨ Serviços</h3>
-                    <ul>
-                        <li><strong>Duração Dinâmica:</strong> Bloqueio inteligente da agenda baseado na duração do serviço.</li>
-                    </ul>
-                </div>
-
-                <div class="section">
-                    <h2>3. Stack Tecnológico</h2>
-                    <p>Tecnologias modernas utilizadas para alta performance e segurança.</p>
-                    
-                    <h3>Frontend (Interface)</h3>
-                    <div>
-                        <span class="tech-tag">React + Vite</span>
-                        <span class="tech-tag">TypeScript</span>
-                        <span class="tech-tag">TailwindCSS</span>
-                        <span class="tech-tag">Lucide Icons</span>
-                        <span class="tech-tag">Recharts</span>
-                    </div>
-
-                    <h3>Backend & Dados</h3>
-                    <div>
-                        <span class="tech-tag">Supabase</span>
-                        <span class="tech-tag">PostgreSQL</span>
-                        <span class="tech-tag">Row Level Security (RLS)</span>
+                    <h1>${DOCUMENTATION_DATA.title}</h1>
+                    <p>${DOCUMENTATION_DATA.description}</p>
+                    <div style="background:#fff7ed; color:#9a3412; padding:10px; border-left:4px solid #f97316; font-size:0.9em; margin:20px 0;">
+                        <strong>NOTA:</strong> ${DOCUMENTATION_DATA.note}
                     </div>
                 </div>
+
+                ${DOCUMENTATION_DATA.sections.map(section => renderSection(section)).join('')}
 
                 <div class="footer">
                     Documento gerado automaticamente em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}.
@@ -239,7 +210,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                         <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-8 shadow-sm">
                             <div className="prose dark:prose-invert max-w-none">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h1 className="text-2xl font-black uppercase text-indigo-600 dark:text-indigo-400 m-0">Documentação do Sistema</h1>
+                                    <h1 className="text-2xl font-black uppercase text-indigo-600 dark:text-indigo-400 m-0">{DOCUMENTATION_DATA.title}</h1>
                                     <button
                                         onClick={handlePrintDocumentation}
                                         className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-2"
@@ -247,187 +218,65 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate }) => {
                                         <Printer size={16} /> Imprimir / PDF
                                     </button>
                                 </div>
+                                <p className="text-slate-600 dark:text-slate-400">{DOCUMENTATION_DATA.description}</p>
+                                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border-l-4 border-amber-500 text-amber-800 dark:text-amber-200 text-sm my-6">
+                                    <strong>NOTA:</strong> {DOCUMENTATION_DATA.note}
+                                </div>
 
                                 <div className="space-y-8">
-                                    <section>
-                                        <h3 className="text-xl font-black uppercase flex items-center gap-3 mb-6 text-slate-800 dark:text-slate-200 border-b border-indigo-100 dark:border-zinc-800 pb-2">
-                                            <LayoutDashboard size={24} className="text-indigo-600" />
-                                            Módulos Operacionais
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Calendar className="text-indigo-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Agenda (Completa e Diária)</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Gestão total do tempo. Visualize a agenda mensal ou foque no operacional do dia ("Agenda Diária") para realizar check-in/out. Suporta agendamentos com múltiplos serviços e profissionais simultâneos.
-                                                </p>
-                                            </div>
+                                    {DOCUMENTATION_DATA.sections.map((section, idx) => (
+                                        <section key={idx} className="border-t border-slate-100 dark:border-zinc-800 pt-8 first:border-none first:pt-0">
+                                            <h2 className="text-lg font-black uppercase text-slate-800 dark:text-white mb-4 bg-slate-100 dark:bg-zinc-800 p-2 rounded-lg inline-block">{section.title}</h2>
+                                            {section.content && <p className="mb-4 text-slate-600 dark:text-slate-400 text-sm">{section.content}</p>}
 
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Contact className="text-pink-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Clientes</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Base completa com histórico de visitas, preferências e restrições. O sistema identifica automaticamente clientes VIP ou em Risco de Churn.
-                                                </p>
-                                            </div>
+                                            {section.subsections && (
+                                                <div className="grid gap-6">
+                                                    {section.subsections.map((sub, sIdx) => (
+                                                        <div key={sIdx} className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                            <h3 className="text-base font-black text-indigo-600 dark:text-indigo-400 mb-2 flex items-center gap-2">
+                                                                {sub.title}
+                                                            </h3>
+                                                            {sub.subtitle && <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-2">{sub.subtitle}</p>}
+                                                            {sub.description && <p className="text-sm text-slate-700 dark:text-slate-300 mb-4">{sub.description}</p>}
 
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Users className="text-blue-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">CRM (Leads)</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Funil de vendas para potenciais clientes. Acompanhe desde o primeiro contato (Instagram/WhatsApp) até a conversão em cliente real.
-                                                </p>
-                                            </div>
+                                                            {sub.items && (
+                                                                <ul className="space-y-2 mt-2">
+                                                                    {sub.items.map((item, iIdx) => (
+                                                                        <li key={iIdx} className="text-xs text-slate-600 dark:text-slate-400">
+                                                                            <strong className="text-slate-900 dark:text-white uppercase text-[10px] tracking-wider">{item.label}:</strong> {item.text}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            )}
 
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Coffee className="text-amber-600" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Copa & Consumo</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Controle de itens servidos como cortesia (café, água) e consumo interno da equipe. Gera custo operacional auditável sem cobrar do cliente.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </section>
+                                                            {sub.customContent && <div dangerouslySetInnerHTML={{ __html: sub.customContent }} />}
 
-                                    <section>
-                                        <h3 className="text-xl font-black uppercase flex items-center gap-3 mb-6 text-slate-800 dark:text-slate-200 border-b border-indigo-100 dark:border-zinc-800 pb-2">
-                                            <Briefcase size={24} className="text-indigo-600" />
-                                            Gestão e Backoffice
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Package className="text-emerald-600" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Estoque</strong>
+                                                            {sub.tags && (
+                                                                <div className="flex flex-wrap gap-2 mt-4">
+                                                                    {sub.tags.map(tag => (
+                                                                        <span key={tag} className="px-2 py-1 bg-indigo-100/50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded text-[10px] font-bold uppercase">{tag}</span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Controle híbrido de produtos: "Uso Interno" (consumo profissional) e "Venda" (home care). Alertas de reposição automáticos.
-                                                </p>
-                                            </div>
+                                            )}
 
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <BarChart3 className="text-violet-600" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Financeiro & DRE</strong>
+                                            {section.analysis && (
+                                                <div className="mt-4 bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                    <h4 className="font-bold text-sm mb-2">Análise de Relacionamentos</h4>
+                                                    <ul className="space-y-2">
+                                                        {section.analysis.map((item, aIdx) => (
+                                                            <li key={aIdx} className="text-xs text-slate-600 dark:text-slate-400">
+                                                                <strong className="text-slate-900 dark:text-white">{item.label}:</strong> {item.text}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
                                                 </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Fluxo de caixa rigoroso e DRE estruturada: Receita Bruta ➔ Líquida ➔ Lucro Bruto ➔ Resultado Operacional ➔ Lucro Líquido.
-                                                </p>
-                                            </div>
-
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <DollarSign className="text-green-600" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Fechamentos</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Cálculo automatizado de comissões. O sistema usa o "snapshot" da taxa no momento do agendamento para garantir precisão histórica no pagamento.
-                                                </p>
-                                            </div>
-
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Handshake className="text-orange-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Parcerias</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Gestão de influenciadores e parceiros locais. Crie campanhas e cupons para medir exatamente o retorno sobre o investimento (ROI).
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section>
-                                        <h3 className="text-xl font-black uppercase flex items-center gap-3 mb-6 text-slate-800 dark:text-slate-200 border-b border-indigo-100 dark:border-zinc-800 pb-2">
-                                            <Settings size={24} className="text-indigo-600" />
-                                            Configurações
-                                        </h3>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Sparkles className="text-cyan-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Serviços</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Cadastro do menu de serviços, preços, durações e especialidades técnicas exigidas para execução.
-                                                </p>
-                                            </div>
-
-                                            <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-[2rem] border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-colors">
-                                                <div className="flex items-center gap-3 mb-2">
-                                                    <Briefcase className="text-slate-500" size={20} />
-                                                    <strong className="block text-base font-black text-slate-900 dark:text-white uppercase">Profissionais</strong>
-                                                </div>
-                                                <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                    Cadastro da equipe, definição de comissões individuais, especialidades e dados bancários para pagamento.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </section>
-
-                                    <section>
-                                        <h3 className="text-lg font-black uppercase flex items-center gap-2 mb-4">
-                                            <Settings size={20} className="text-slate-400" />
-                                            Regras de Negócio
-                                        </h3>
-                                        <ul className="space-y-4">
-                                            <li className="flex gap-4 items-start p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-                                                <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg text-indigo-600 dark:text-indigo-300 shrink-0">
-                                                    <Briefcase size={16} />
-                                                </div>
-                                                <div>
-                                                    <strong className="block text-xs font-black uppercase text-indigo-900 dark:text-indigo-300 mb-1">Comissões (Snapshot)</strong>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                        A taxa de comissão é gravada no momento do agendamento. Alterações no perfil do profissional só valem para agendamentos futuros.
-                                                    </p>
-                                                </div>
-                                            </li>
-                                            <li className="flex gap-4 items-start p-4 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-2xl border border-emerald-100 dark:border-emerald-800">
-                                                <div className="p-2 bg-emerald-100 dark:bg-emerald-800 rounded-lg text-emerald-600 dark:text-emerald-300 shrink-0">
-                                                    <Sparkles size={16} />
-                                                </div>
-                                                <div>
-                                                    <strong className="block text-xs font-black uppercase text-emerald-900 dark:text-emerald-300 mb-1">Multiserviços</strong>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                        Agendamentos podem conter múltiplos serviços com diferentes profissionais executando simultaneamente.
-                                                    </p>
-                                                </div>
-                                            </li>
-                                            <li className="flex gap-4 items-start p-4 bg-amber-50/50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-800">
-                                                <div className="p-2 bg-amber-100 dark:bg-amber-800 rounded-lg text-amber-600 dark:text-amber-300 shrink-0">
-                                                    <Coffee size={16} />
-                                                </div>
-                                                <div>
-                                                    <strong className="block text-xs font-black uppercase text-amber-900 dark:text-amber-300 mb-1">Copa e Consumo</strong>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                        Itens consumidos por clientes são cortesia (Custo Atendimento). Itens da equipe são Custo Administrativo.
-                                                    </p>
-                                                </div>
-                                            </li>
-                                            <li className="flex gap-4 items-start p-4 bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-700">
-                                                <div className="p-2 bg-slate-100 dark:bg-zinc-700 rounded-lg text-slate-600 dark:text-slate-300 shrink-0">
-                                                    <BarChart3 size={16} />
-                                                </div>
-                                                <div>
-                                                    <strong className="block text-xs font-black uppercase text-slate-900 dark:text-white mb-1">Estrutura DRE</strong>
-                                                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                        1. Receita Bruta (-) Deduções (=) Receita Líquida<br />
-                                                        (-) CMV/CPV (=) Lucro Bruto<br />
-                                                        (-) Despesas (Vendas/Adm/Fin) (=) Resultado Antes IRPJ<br />
-                                                        (-) IRPJ/CSLL (=) Resultado Líquido
-                                                    </p>
-                                                </div>
-                                            </li>
-                                        </ul>
-                                    </section>
+                                            )}
+                                        </section>
+                                    ))}
                                 </div>
                             </div>
                         </div>
