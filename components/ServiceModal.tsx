@@ -1,0 +1,1055 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User } from 'lucide-react';
+import { STOCK, PROVIDERS } from '../constants';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign } from '../types';
+
+interface ServiceLine {
+  id: string;
+  serviceId: string;
+  providerId: string;
+  products: string[]; 
+  currentSearchTerm: string; 
+  discount: number;
+  isCourtesy: boolean;
+  showProductResults: boolean;
+  rating: number;
+  feedback: string;
+  isEditingInCheckout?: boolean;
+  unitPrice: number; 
+}
+
+interface ServiceModalProps {
+  appointment: Appointment;
+  allAppointments: Appointment[];
+  customer: Customer;
+  onClose: () => void;
+  onUpdateAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
+  onUpdateCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
+  onSelectAppointment?: (appointment: Appointment) => void;
+  services: Service[];
+  campaigns: Campaign[];
+  source?: 'AGENDA' | 'DAILY';
+}
+
+export const ServiceModal: React.FC<ServiceModalProps> = ({
+  appointment,
+  allAppointments,
+  customer,
+  onClose,
+  onUpdateAppointments,
+  onUpdateCustomers,
+  onSelectAppointment,
+  services,
+  campaigns,
+  source = 'DAILY'
+}) => {
+  const [status, setStatus] = useState<Appointment['status']>(appointment.status);
+  const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
+  const [lines, setLines] = useState<ServiceLine[]>([]);
+  const [appliedCoupon, setAppliedCoupon] = useState<string>(appointment.appliedCoupon || '');
+  
+  const [appointmentTime, setAppointmentTime] = useState(appointment.time);
+  const [appointmentDate, setAppointmentDate] = useState(appointment.date);
+
+  const [couponCode, setCouponCode] = useState(appointment.appliedCoupon || '');
+  const [appliedCampaign, setAppliedCampaign] = useState<Campaign | null>(() => {
+      return campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null;
+  });
+  
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+
+  const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
+      if (appointment.status === 'Concluído') return 'HISTORY';
+      if (appointment.status === 'Em Andamento' && source === 'DAILY') return 'CHECKOUT';
+      return 'VIEW';
+  });
+
+  const futureAppointments = useMemo(() => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    
+    return allAppointments
+        .filter(a => {
+            if (a.id === appointment.id) return false; 
+            if (a.customerId !== customer.id) return false;
+            if (a.status === 'Cancelado') return false;
+            if (a.status === 'Concluído') return false;
+            return a.date >= todayStr;
+        })
+        .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  }, [allAppointments, customer.id, appointment.id]);
+
+  useEffect(() => {
+    setStatus(appointment.status);
+    setAppointmentTime(appointment.time);
+    setAppointmentDate(appointment.date);
+    setAppliedCoupon(appointment.appliedCoupon || '');
+    setCouponCode(appointment.appliedCoupon || '');
+    setAppliedCampaign(campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null);
+    setIsCancelling(false);
+    setCancellationReason('');
+    
+    if (appointment.status === 'Concluído') setMode('HISTORY');
+    else if (appointment.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
+    else setMode('VIEW');
+
+    const mainService = services.find(s => s.id === appointment.serviceId);
+    const initialLines: ServiceLine[] = [{
+      id: 'main',
+      serviceId: appointment.serviceId,
+      providerId: appointment.providerId,
+      products: appointment.mainServiceProducts || [],
+      currentSearchTerm: '',
+      discount: appointment.discountAmount || 0,
+      isCourtesy: appointment.isCourtesy || false,
+      showProductResults: false,
+      rating: 5,
+      feedback: '',
+      unitPrice: appointment.bookedPrice || mainService?.price || 0
+    }];
+
+    if (appointment.additionalServices) {
+      appointment.additionalServices.forEach((extra, idx) => {
+        initialLines.push({
+          id: `extra-${idx}`,
+          serviceId: extra.serviceId,
+          providerId: extra.providerId,
+          products: extra.products || [],
+          currentSearchTerm: '',
+          discount: extra.discount,
+          isCourtesy: extra.isCourtesy,
+          showProductResults: false,
+          rating: 5,
+          feedback: '',
+          unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0
+        });
+      });
+    }
+    setLines(initialLines);
+  }, [appointment, services, campaigns, source]);
+
+  const totalValue = useMemo(() => {
+    let total = 0;
+    lines.forEach(line => {
+      if (!line.isCourtesy) {
+        total += line.unitPrice - (line.discount || 0);
+      }
+    });
+    
+    if (appliedCampaign) {
+        if (appliedCampaign.discountType === 'FIXED') total -= appliedCampaign.discountValue;
+        else total -= total * (appliedCampaign.discountValue / 100);
+    }
+    return Math.max(0, total);
+  }, [lines, appliedCampaign]);
+
+  const totalBeforeCoupon = useMemo(() => {
+    return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : (line.unitPrice - line.discount)), 0);
+  }, [lines]);
+
+  const couponDiscountAmount = useMemo(() => {
+      if (!appliedCampaign) return 0;
+      if (appliedCampaign.discountType === 'PERCENTAGE') {
+          return totalBeforeCoupon * (appliedCampaign.discountValue / 100);
+      }
+      return appliedCampaign.discountValue;
+  }, [totalBeforeCoupon, appliedCampaign]);
+
+  const restrictionData = useMemo(() => {
+      const restrictedLine = lines.find(line => customer.restrictedProviderIds?.includes(line.providerId));
+      
+      if (restrictedLine) {
+          const provider = PROVIDERS.find(p => p.id === restrictedLine.providerId);
+          const reasonEntry = customer.history
+              .filter(h => h.type === 'RESTRICTION' && h.providerId === restrictedLine.providerId)
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          return {
+              isRestricted: true,
+              providerName: provider?.name || 'Profissional',
+              reason: reasonEntry?.details || 'Motivo não registrado.'
+          };
+      }
+      return { isRestricted: false, providerName: '', reason: '' };
+  }, [lines, customer]);
+
+  const handleApplyCoupon = () => {
+      const campaign = campaigns.find(c => c.couponCode === couponCode.toUpperCase());
+      if (campaign) {
+          if (campaign.useCount >= campaign.maxUses) {
+              alert('Este cupom atingiu o limite máximo de usos.');
+              return;
+          }
+          setAppliedCampaign(campaign);
+      } else {
+          alert('Cupom inválido ou expirado.');
+          setAppliedCampaign(null);
+      }
+  };
+
+  const handleRemoveCoupon = () => {
+      setAppliedCampaign(null);
+      setCouponCode('');
+  };
+
+  const handleStartService = () => {
+    if (restrictionData.isRestricted) return;
+
+    const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+    const extras = lines.slice(1).map(l => ({ 
+      serviceId: l.serviceId, 
+      providerId: l.providerId, 
+      isCourtesy: l.isCourtesy, 
+      discount: l.discount,
+      bookedPrice: l.unitPrice, 
+      products: l.products
+    }));
+
+    onUpdateAppointments(prev => prev.map(a => 
+      a.id === appointment.id ? { 
+        ...a, 
+        status: 'Em Andamento', 
+        time: appointmentTime,
+        date: appointmentDate,
+        combinedServiceNames: combinedNames,
+        bookedPrice: lines[0].unitPrice, 
+        mainServiceProducts: lines[0].products,
+        additionalServices: extras,
+        appliedCoupon: appliedCampaign?.couponCode,
+        discountAmount: couponDiscountAmount
+      } : a
+    ));
+    onClose();
+  };
+
+  const handleFinishService = () => {
+    if (restrictionData.isRestricted) return;
+
+    const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+    const allProductsUsed = lines.flatMap(l => l.products);
+
+    const extras = lines.slice(1).map(l => ({ 
+      serviceId: l.serviceId, 
+      providerId: l.providerId, 
+      isCourtesy: l.isCourtesy, 
+      discount: l.discount,
+      bookedPrice: l.unitPrice,
+      products: l.products
+    }));
+
+    const dischargeDate = new Date().toISOString().split('T')[0];
+
+    onUpdateAppointments(prev => prev.map(a => 
+      a.id === appointment.id ? { 
+        ...a, 
+        status: 'Concluído', 
+        pricePaid: totalValue,
+        paymentDate: dischargeDate,
+        paymentMethod: paymentMethod,
+        productsUsed: allProductsUsed,
+        combinedServiceNames: combinedNames,
+        bookedPrice: lines[0].unitPrice,
+        mainServiceProducts: lines[0].products,
+        additionalServices: extras,
+        appliedCoupon: appliedCampaign?.couponCode,
+        discountAmount: couponDiscountAmount
+      } : a
+    ));
+
+    onUpdateCustomers(prev => prev.map(c => {
+      if (c.id === customer.id) {
+        const newEntries: CustomerHistoryItem[] = lines.map(line => {
+            const s = services.find(srv => srv.id === line.serviceId);
+            return {
+                id: `${Date.now()}-${line.id}`,
+                date: dischargeDate,
+                type: 'VISIT',
+                description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
+                details: `Pagamento: ${paymentMethod}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
+                rating: line.rating,
+                feedback: line.feedback,
+                providerId: line.providerId,
+                productsUsed: line.products
+            };
+        });
+
+        return {
+          ...c,
+          lastVisit: dischargeDate,
+          totalSpent: c.totalSpent + totalValue,
+          history: [...newEntries, ...c.history]
+        };
+      }
+      return c;
+    }));
+    onClose();
+  };
+
+  const handleSave = () => {
+    if (restrictionData.isRestricted) return;
+
+    const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+    const extras = lines.slice(1).map(l => ({ 
+      serviceId: l.serviceId, 
+      providerId: l.providerId, 
+      isCourtesy: l.isCourtesy, 
+      discount: l.discount,
+      bookedPrice: l.unitPrice, 
+      products: l.products
+    }));
+
+    onUpdateAppointments(prev => prev.map(a => 
+        a.id === appointment.id ? { 
+          ...a, 
+          time: appointmentTime,
+          date: appointmentDate,
+          status: status, 
+          combinedServiceNames: combinedNames,
+          serviceId: lines[0].serviceId,
+          providerId: lines[0].providerId,
+          bookedPrice: lines[0].unitPrice, 
+          mainServiceProducts: lines[0].products,
+          additionalServices: extras,
+          appliedCoupon: appliedCampaign?.couponCode,
+          discountAmount: couponDiscountAmount
+        } : a
+    ));
+    onClose();
+  };
+
+  const handleConfirmCancellation = () => {
+      if (!cancellationReason.trim()) {
+          alert('Por favor, informe a justificativa do cancelamento.');
+          return;
+      }
+
+      onUpdateAppointments(prev => prev.map(a => 
+          a.id === appointment.id ? { ...a, status: 'Cancelado' } : a
+      ));
+
+      onUpdateCustomers(prev => prev.map(c => {
+          if (c.id === customer.id) {
+              const cancelEntry: CustomerHistoryItem = {
+                  id: `cancel-${Date.now()}`,
+                  date: new Date().toISOString().split('T')[0],
+                  type: 'CANCELLATION',
+                  description: 'AGENDAMENTO CANCELADO',
+                  details: `Motivo: ${cancellationReason}`,
+                  providerId: appointment.providerId
+              };
+              return { ...c, history: [cancelEntry, ...c.history] };
+          }
+          return c;
+      }));
+
+      onClose();
+  };
+
+  const toggleFutureStatus = (id: string, currentStatus: string) => {
+      const newStatus = currentStatus === 'Confirmado' ? 'Pendente' : 'Confirmado';
+      onUpdateAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as any } : a));
+  };
+
+  const addServiceLine = () => {
+    setLines([...lines, { 
+      id: Date.now().toString(), 
+      serviceId: services[0].id, 
+      providerId: PROVIDERS.filter(p => p.active)[0].id, 
+      products: [],
+      currentSearchTerm: '',
+      discount: 0,
+      isCourtesy: false,
+      showProductResults: false,
+      rating: 5,
+      feedback: '',
+      unitPrice: services[0].price
+    }]);
+  };
+
+  const removeServiceLine = (id: string) => {
+    if (lines.length > 1) {
+      setLines(lines.filter(l => l.id !== id));
+    }
+  };
+
+  const updateLine = (id: string, field: keyof ServiceLine, value: any) => {
+    setLines(prev => prev.map(l => {
+        if (l.id === id) {
+            const updated = { ...l, [field]: value };
+            if (field === 'serviceId') {
+                const newService = services.find(s => s.id === value);
+                updated.unitPrice = newService?.price || 0;
+            }
+            return updated;
+        }
+        return l;
+    }));
+  };
+
+  const addProductToLine = (lineId: string, productName: string) => {
+    setLines(prev => prev.map(l => {
+      if (l.id === lineId && !l.products.includes(productName)) {
+        return { ...l, products: [...l.products, productName], currentSearchTerm: '', showProductResults: false, isEditingInCheckout: false };
+      }
+      return l;
+    }));
+  };
+
+  const removeProductFromLine = (lineId: string, indexToRemove: number) => {
+      setLines(prev => prev.map(l => {
+          if (l.id === lineId) {
+              return { ...l, products: l.products.filter((_, i) => i !== indexToRemove) };
+          }
+          return l;
+      }));
+  };
+
+  const activeProviders = PROVIDERS.filter(p => p.active);
+  const internalStock = STOCK.filter(p => p.category === 'Uso Interno');
+  const hasRestriction = !!customer.preferences?.restrictions;
+
+  const isAgendaMode = source === 'AGENDA';
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
+        
+        {/* Header */}
+        <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
+          <div>
+            <h3 className="font-black text-lg uppercase tracking-tight flex items-center gap-2">
+              <Sparkles size={18} className="text-indigo-400" /> 
+              {mode === 'HISTORY' ? 'Detalhes do Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
+            </h3>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{customer.name}</p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:text-indigo-400 transition-colors"><X size={24} /></button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
+          
+          {/* PROVIDER RESTRICTION WARNING */}
+          {restrictionData.isRestricted && (
+            <div className="bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 p-4 rounded-2xl flex items-start gap-4 animate-bounce-short">
+               <div className="bg-rose-600 p-2 rounded-xl text-white flex-shrink-0">
+                  <Ban size={24} />
+               </div>
+               <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">Ação Bloqueada</p>
+                  <p className="text-sm font-black text-rose-950 dark:text-rose-300 uppercase leading-tight mb-2">Restrição de Profissional: {restrictionData.providerName}</p>
+                  <div className="text-[11px] font-bold text-rose-900 dark:text-rose-200 leading-tight bg-white dark:bg-black/20 p-2 rounded-lg border border-rose-100 dark:border-rose-800/50">
+                    {restrictionData.reason}
+                  </div>
+                  <p className="text-[10px] font-black text-rose-700 dark:text-rose-400 mt-2 uppercase">Por favor, selecione outra profissional para prosseguir.</p>
+               </div>
+            </div>
+          )}
+
+          {/* GENERAL HEALTH RESTRICTION WARNING */}
+          {hasRestriction && !restrictionData.isRestricted && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex items-start gap-4">
+               <div className="bg-amber-500 p-2 rounded-xl text-white flex-shrink-0">
+                  <AlertOctagon size={24} />
+               </div>
+               <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest leading-none mb-1">Aviso Importante</p>
+                  <p className="text-sm font-black text-amber-950 dark:text-amber-300 uppercase leading-tight mb-1">Restrição de Saúde / Preferência</p>
+                  <p className="text-[11px] font-bold text-amber-900 dark:text-amber-200 leading-tight">
+                    {customer.preferences?.restrictions}
+                  </p>
+               </div>
+            </div>
+          )}
+
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
+            <div className="min-w-0 flex-1 w-full">
+              <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
+              <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
+                  {isAgendaMode && (
+                      <button 
+                          onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
+                          className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                      >
+                          {status}
+                      </button>
+                  )}
+              </div>
+            </div>
+            {mode !== 'HISTORY' && (
+                <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data</span>
+                        <input 
+                            type="date" 
+                            className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[130px]"
+                            value={appointmentDate}
+                            onChange={e => setAppointmentDate(e.target.value)}
+                        />
+                    </div>
+                    <div className="flex flex-col items-end">
+                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Horário</span>
+                        <input 
+                            type="time" 
+                            className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
+                            value={appointmentTime}
+                            onChange={e => setAppointmentTime(e.target.value)}
+                        />
+                    </div>
+                </div>
+            )}
+            {mode === 'HISTORY' && (
+                <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
+                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
+                    <span className="text-sm font-black text-slate-950 dark:text-white">{appointment.paymentDate ? new Date(appointment.paymentDate + 'T12:00:00').toLocaleDateString('pt-BR') : new Date(appointment.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                </div>
+            )}
+          </div>
+
+          {mode === 'VIEW' && (
+            <div className="space-y-5 animate-in fade-in duration-200">
+              <div className="flex justify-between items-center px-1">
+                  <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
+                  <button 
+                      type="button" onClick={addServiceLine}
+                      className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                  >
+                      <Plus size={14} /> ADICIONAR EXTRA
+                  </button>
+              </div>
+              
+              <div className="space-y-3">
+                  {lines.map((line) => (
+                      <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
+                          {lines.length > 1 && (
+                              <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
+                          )}
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="space-y-0.5">
+                                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
+                                  <select 
+                                      className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                      value={line.serviceId}
+                                      onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
+                                  >
+                                      {services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
+                                  </select>
+                              </div>
+
+                              <div className="space-y-0.5 relative">
+                                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                  <div className="relative">
+                                      <Search size={12} className="absolute left-3 top-3 text-slate-400" />
+                                      <input 
+                                          type="text"
+                                          className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                          placeholder="Adicionar produto..."
+                                          value={line.currentSearchTerm}
+                                          onFocus={() => updateLine(line.id, 'showProductResults', true)}
+                                          onChange={e => {
+                                              updateLine(line.id, 'currentSearchTerm', e.target.value);
+                                              updateLine(line.id, 'showProductResults', true);
+                                          }}
+                                      />
+                                      {line.showProductResults && (
+                                          <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
+                                              {STOCK.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                  <button 
+                                                      key={p.id} type="button"
+                                                      onClick={() => {
+                                                          addProductToLine(line.id, `[${p.code}] ${p.name}`);
+                                                      }}
+                                                      className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[10px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
+                                                  >
+                                                      <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
+                                                  </button>
+                                              ))}
+                                          </div>
+                                      )}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                      {line.products.map((prod, idx) => (
+                                          <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
+                                              {prod}
+                                              <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
+                                                  <X size={10} />
+                                              </button>
+                                          </span>
+                                      ))}
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                              <div className="flex flex-col">
+                                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                  <select 
+                                      className={`bg-transparent border-none text-[11px] font-black p-1 outline-none ${
+                                          customer.restrictedProviderIds?.includes(line.providerId)
+                                          ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
+                                          : 'text-slate-950 dark:text-white'
+                                      }`}
+                                      value={line.providerId}
+                                      onChange={e => updateLine(line.id, 'providerId', e.target.value)}
+                                  >
+                                      {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
+                                  </select>
+                              </div>
+                              
+                              <div className="flex flex-col">
+                                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
+                                  <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
+                              </div>
+
+                              <div className="flex flex-col">
+                                  <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
+                                  <input 
+                                      type="number"
+                                      className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
+                                      value={line.discount}
+                                      onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
+                                  />
+                              </div>
+                              <button 
+                                  type="button"
+                                  onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                  className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                              >
+                                  <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                  <div className="flex justify-between items-center px-1 mb-4">
+                      <div>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
+                        <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
+                      </div>
+                  </div>
+                  
+                  <div className="flex flex-col gap-2">
+                      {isAgendaMode ? (
+                          <>
+                            {isCancelling ? (
+                                <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
+                                    <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                                        <AlertTriangle size={12} /> Cancelamento de Agendamento
+                                    </h4>
+                                    <textarea 
+                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                        placeholder="Motivo obrigatório para o histórico..."
+                                        value={cancellationReason}
+                                        onChange={e => setCancellationReason(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-2">
+                                        <button 
+                                            type="button"
+                                            onClick={() => setIsCancelling(false)}
+                                            className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                        >
+                                            Voltar
+                                        </button>
+                                        <button 
+                                            type="button"
+                                            onClick={handleConfirmCancellation}
+                                            className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
+                                        >
+                                            Confirmar Cancelamento
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex gap-2 w-full">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setIsCancelling(true)}
+                                        className="flex-1 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                    >
+                                        <XCircle size={16} /> CANCELAR
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        onClick={handleSave}
+                                        disabled={restrictionData.isRestricted}
+                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                    >
+                                        {restrictionData.isRestricted ? <Ban size={16} /> : <Save size={16} />}
+                                        {restrictionData.isRestricted ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES'}
+                                    </button>
+                                </div>
+                            )}
+                          </>
+                      ) : (
+                          (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
+                            <button 
+                                type="button"
+                                onClick={handleStartService}
+                                disabled={restrictionData.isRestricted}
+                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                            >
+                                {restrictionData.isRestricted ? <Ban size={16} /> : 'INICIAR ATENDIMENTO'}
+                            </button>
+                          ) : (
+                            <button 
+                                type="button"
+                                onClick={() => setMode('CHECKOUT')} 
+                                disabled={restrictionData.isRestricted}
+                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                            >
+                                {restrictionData.isRestricted ? 'BLOQUEADO' : 'IR PARA PAGAMENTO'}
+                            </button>
+                          )
+                      )}
+                  </div>
+              </div>
+
+              {futureAppointments.length > 0 && (
+                  <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800 rounded-2xl p-4 mt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                          <Calendar size={14} className="text-indigo-600 dark:text-indigo-400" />
+                          <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Agendamentos Futuros de {customer.name.split(' ')[0]}</span>
+                      </div>
+                      <div className="space-y-1.5">
+                          {futureAppointments.slice(0, 5).map(app => {
+                              const s = services.find(serv => serv.id === app.serviceId);
+                              return (
+                                  <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-2.5 rounded-xl border border-indigo-50 dark:border-indigo-900/50">
+                                      <div 
+                                        className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
+                                        onClick={() => onSelectAppointment && onSelectAppointment(app)}
+                                        title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
+                                      >
+                                          <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] mr-2">
+                                              • {new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'})} {app.time} -
+                                          </span>
+                                          <span className={`text-indigo-900 dark:text-indigo-300 uppercase font-black ${onSelectAppointment ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-200 group-hover:underline transition-all' : ''}`}>
+                                              {app.combinedServiceNames || s?.name}
+                                          </span>
+                                          {onSelectAppointment && (
+                                              <ArrowRight size={10} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                          )}
+                                      </div>
+                                      
+                                      <button 
+                                          type="button"
+                                          onClick={() => toggleFutureStatus(app.id, app.status)}
+                                          className={`w-1.5 h-5 rounded-full transition-all active:scale-90 ml-2 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'bg-amber-400'}`}
+                                          title={app.status === 'Confirmado' ? 'Confirmado - Clique para alterar' : 'Pendente - Clique para confirmar'}
+                                      ></button>
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+              )}
+            </div>
+          )}
+
+          {mode === 'CHECKOUT' && (
+            <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
+               <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
+                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
+                    <div className="text-right">
+                        {appliedCampaign && (
+                            <span className="block text-[10px] font-bold text-rose-500 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
+                        )}
+                        <span className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</span>
+                    </div>
+               </div>
+
+               {!isAgendaMode && (
+                   <div className="px-1">
+                       <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 flex items-center gap-1.5"><Tag size={12}/> Cupom / Parceria</h4>
+                       <div className="flex gap-2">
+                           <input 
+                               type="text"
+                               placeholder="Código do cupom"
+                               className="flex-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-xs font-black uppercase outline-none focus:border-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400"
+                               value={couponCode}
+                               onChange={(e) => setCouponCode(e.target.value)}
+                               disabled={!!appliedCampaign}
+                           />
+                           {appliedCampaign ? (
+                               <button onClick={handleRemoveCoupon} className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-4 rounded-xl font-black text-xs uppercase flex items-center gap-1 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
+                                   <X size={14} /> Remover
+                               </button>
+                           ) : (
+                               <button onClick={handleApplyCoupon} className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 rounded-xl font-black text-xs uppercase hover:bg-black dark:hover:bg-slate-200 transition-colors">
+                                   Aplicar
+                               </button>
+                           )}
+                       </div>
+                       {appliedCampaign && (
+                           <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-400 text-[10px] font-black uppercase">
+                               <Check size={12} /> 
+                               Cupom {appliedCampaign.couponCode} applied: 
+                               {appliedCampaign.discountType === 'PERCENTAGE' ? ` ${appliedCampaign.discountValue}% OFF` : ` R$ ${appliedCampaign.discountValue} OFF`}
+                           </div>
+                       )}
+                   </div>
+               )}
+
+               <div className="space-y-3 px-1">
+                    <div className="flex justify-between items-center">
+                        <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                            <Sparkles size={12}/> Serviços & Avaliação
+                        </h4>
+                        <button 
+                            type="button" onClick={addServiceLine}
+                            className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                        >
+                            <Plus size={10} /> Adicionar
+                        </button>
+                    </div>
+                    
+                    <div className="space-y-2">
+                        {lines.map((line) => {
+                            const srv = services.find(s => s.id === line.serviceId);
+                            const prv = PROVIDERS.find(p => p.id === line.providerId);
+                            
+                            return (
+                                <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
+                                    {lines.length > 1 && (
+                                        <button 
+                                            onClick={() => removeServiceLine(line.id)}
+                                            className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors p-1"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    )}
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-start">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-none mb-1">{prv?.name}</p>
+                                                <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase truncate">{srv?.name}</h4>
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                {[1, 2, 3, 4, 5].map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        type="button"
+                                                        onClick={() => updateLine(line.id, 'rating', s)}
+                                                        className="transition-transform active:scale-125"
+                                                    >
+                                                        <Star 
+                                                            size={18} 
+                                                            className={s <= line.rating ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-800"} 
+                                                        />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto Manual</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="number"
+                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
+                                                        value={line.discount}
+                                                        onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
+                                                        placeholder="0.00"
+                                                    />
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                                        className={`p-2 rounded-xl border transition-colors ${line.isCourtesy ? 'bg-slate-900 dark:bg-white text-white dark:text-black border-slate-900 dark:border-white' : 'bg-white dark:bg-zinc-800 text-slate-300 border-slate-200 dark:border-zinc-700'}`}
+                                                        title="Cortesia"
+                                                    >
+                                                        <Check size={12} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Feedback Opcional</label>
+                                                <input 
+                                                    type="text"
+                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-bold text-slate-900 dark:text-white outline-none"
+                                                    placeholder="Elogios ou observações..."
+                                                    value={line.feedback}
+                                                    onChange={e => updateLine(line.id, 'feedback', e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* NOVO: MATERIAIS UTILIZADOS NO CHECKOUT */}
+                                        <div className="space-y-1 relative pt-2 border-t border-slate-50 dark:border-zinc-800/50">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                            <div className="relative">
+                                                <Search size={12} className="absolute left-3 top-3 text-slate-400" />
+                                                <input 
+                                                    type="text"
+                                                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400"
+                                                    placeholder="Adicionar material..."
+                                                    value={line.currentSearchTerm}
+                                                    onFocus={() => updateLine(line.id, 'showProductResults', true)}
+                                                    onChange={e => {
+                                                        updateLine(line.id, 'currentSearchTerm', e.target.value);
+                                                        updateLine(line.id, 'showProductResults', true);
+                                                    }}
+                                                />
+                                                {line.showProductResults && (
+                                                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
+                                                        {STOCK.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                            <button 
+                                                                key={p.id} type="button"
+                                                                onClick={() => addProductToLine(line.id, `[${p.code}] ${p.name}`)}
+                                                                className="w-full text-left p-2 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[9px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
+                                                            >
+                                                                <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-wrap gap-1 mt-2">
+                                                {line.products.map((prod, idx) => (
+                                                    <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">
+                                                        {prod}
+                                                        <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
+                                                            <X size={10} />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+               </div>
+
+               <div className="space-y-3 px-1">
+                  <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Forma de Recebimento</label>
+                  <div className="flex gap-2">
+                    {[
+                        { id: 'Pix', icon: Smartphone },
+                        { id: 'Cartão', icon: CreditCard },
+                        { id: 'Dinheiro', icon: Wallet }
+                    ].map(method => (
+                        <button 
+                            key={method.id}
+                            type="button"
+                            onClick={() => setPaymentMethod(method.id as any)}
+                            className={`flex-1 py-3 px-2 rounded-2xl border-2 transition-all flex items-center justify-center gap-2 ${paymentMethod === method.id ? 'border-slate-950 dark:border-white bg-slate-950 dark:bg-white text-white dark:text-black' : 'bg-white dark:bg-zinc-800 border-slate-100 dark:border-zinc-700 text-slate-400'}`}
+                        >
+                            <method.icon size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-tight">{method.id}</span>
+                        </button>
+                    ))}
+                  </div>
+               </div>
+
+               <div className="pt-2 flex flex-col gap-3">
+                  <button 
+                    type="button"
+                    onClick={handleFinishService}
+                    disabled={restrictionData.isRestricted}
+                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                  >
+                    {restrictionData.isRestricted ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                  </button>
+                  <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
+               </div>
+            </div>
+          )}
+
+          {mode === 'HISTORY' && (
+            <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
+               <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                        <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
+                        <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">Atendimento Finalizado</span>
+                    </div>
+                    <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {appointment.pricePaid?.toFixed(2) || '0.00'}</span>
+               </div>
+
+               <div className="space-y-3">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Detalhamento dos Serviços</h4>
+                  <div className="space-y-2">
+                    {lines.map((line, idx) => {
+                      const srv = services.find(s => s.id === line.serviceId);
+                      const prv = PROVIDERS.find(p => p.id === line.providerId);
+                      return (
+                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                <Sparkles size={16} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{srv?.name}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className="text-[9px] font-bold text-slate-500 uppercase">Prof: {prv?.name}</p>
+                                {line.rating > 0 && (
+                                    <div className="flex gap-0.5 ml-1">
+                                        {[...Array(5)].map((_, i) => (
+                                            <Star key={i} size={8} className={i < line.rating ? "fill-amber-400 text-amber-400" : "text-slate-100 dark:text-zinc-800"} />
+                                        ))}
+                                    </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                             <p className="text-xs font-black text-slate-900 dark:text-white">R$ {line.unitPrice.toFixed(2)}</p>
+                             {line.discount > 0 && <p className="text-[8px] font-bold text-rose-500 uppercase">- R$ {line.discount.toFixed(2)} DESC</p>}
+                             {line.isCourtesy && <span className="text-[8px] font-black bg-slate-900 text-white dark:bg-white dark:text-black px-1 rounded">CORTESIA</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                  <div>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
+                    <div className="flex items-center gap-2">
+                       <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                       <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                    </div>
+                  </div>
+                  {appliedCampaign && (
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Cupom Aplicado</p>
+                      <div className="flex items-center gap-2">
+                        <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                        <span className="text-[9px] font-bold text-slate-400">(-R$ {appointment.discountAmount?.toFixed(2)})</span>
+                      </div>
+                    </div>
+                  )}
+                  {appointment.productsUsed && appointment.productsUsed.length > 0 && (
+                    <div className="md:col-span-2 pt-2 border-t border-slate-200 dark:border-zinc-700 mt-1">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Produtos de Uso Interno</p>
+                       <div className="flex flex-wrap gap-1.5">
+                          {appointment.productsUsed.map((p, i) => (
+                             <span key={i} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase">{p}</span>
+                          ))}
+                       </div>
+                    </div>
+                  )}
+               </div>
+               
+               <div className="pt-2">
+                  <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+                    Fechar Histórico
+                  </button>
+               </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
