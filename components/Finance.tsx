@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { PROVIDERS, CUSTOMERS, STOCK } from '../constants';
-import { Service, FinancialTransaction, Expense, Appointment, Sale, StockItem } from '../types';
+import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory } from '../types';
 
 const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -214,7 +214,7 @@ interface FinanceProps {
     sales: Sale[];
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales }) => {
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories }) => {
     const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'PETTY_CASH' | 'DAILY' | 'DRE'>('DETAILED');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dateRef, setDateRef] = useState(new Date());
@@ -262,9 +262,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
     const [expenses, setExpenses] = useState<Expense[]>(generateMockExpenses());
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-    const [categories, setCategories] = useState(['Despesa Fixa', 'Despesa Variável', 'Pessoal', 'Marketing', 'Manutenção', 'Despesas com Vendas', 'Despesas Administrativas', 'Despesas Financeiras', 'IRPJ/CSLL', 'Sangria/Retirada']);
+    // Removed local categories state
+    // const [categories, setCategories] = ... -> REMOVED
     const [isCustomCategory, setIsCustomCategory] = useState(false);
-    const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({ description: '', amount: 0, category: 'Despesa Variável', subcategory: '', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
+    const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
     const [physicalCash, setPhysicalCash] = useState<string>('');
     const [closingObservation, setClosingObservation] = useState('');
     const [closerName, setCloserName] = useState('Gerente / Recepção');
@@ -409,15 +410,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
     }, [appointments, sales, expenses, startDate, endDate]);
 
     const handleOpenModal = (expense?: Expense) => {
-        if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); setIsCustomCategory(!categories.includes(expense.category)); }
-        else { setEditingExpenseId(null); setExpenseForm({ description: '', amount: 0, category: 'Despesa Variável', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); setIsCustomCategory(false); }
+        if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); }
+        else { setEditingExpenseId(null); setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); }
         setIsModalOpen(true);
     };
 
     const handleSaveExpense = (e: React.FormEvent) => {
         e.preventDefault();
         if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
-        if (isCustomCategory && !categories.includes(expenseForm.category)) setCategories(prev => [...prev, expenseForm.category!]);
+        // Logic to add to categories removed as it's now in Settings
         if (editingExpenseId) setExpenses(prev => prev.map(ex => ex.id === editingExpenseId ? { ...ex, ...expenseForm } as Expense : ex));
         else setExpenses(prev => [...prev, { ...expenseForm, id: `exp-${Date.now()}` } as Expense]);
         setIsModalOpen(false);
@@ -868,41 +869,43 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales 
                 )}
             </div>
 
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
-                        <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
-                            <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
-                            <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+            {
+                isModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                            <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
+                                <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Descrição do Gasto</label>
+                                    <input type="text" placeholder="Ex: Conta de Luz" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Valor (R$)</label>
+                                        <input type="number" step="0.01" placeholder="0.00" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: parseFloat(e.target.value) || 0 })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
+                                        <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
+                                    <select className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none" value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}>
+                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                                <div className="pt-2">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Salvar Despesa</button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Descrição do Gasto</label>
-                                <input type="text" placeholder="Ex: Conta de Luz" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Valor (R$)</label>
-                                    <input type="number" step="0.01" placeholder="0.00" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: parseFloat(e.target.value) || 0 })} />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
-                                    <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
-                                <select className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none" value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}>
-                                    {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                            </div>
-                            <div className="pt-2">
-                                <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Salvar Despesa</button>
-                            </div>
-                        </form>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

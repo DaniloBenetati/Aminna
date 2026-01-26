@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, ExpenseCategory } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -35,6 +35,22 @@ const App: React.FC = () => {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [pantryLogs, setPantryLogs] = useState<PantryLog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([
+    { id: 'cat-rent', name: 'Aluguel', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-energy', name: 'Energia', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-water', name: 'Água', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-net', name: 'Internet / Telefone', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-sys', name: 'Sistemas / Software', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-clean', name: 'Limpeza', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-maint', name: 'Manutenção', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-pers', name: 'Pessoal (Salários)', dreClass: 'EXPENSE_ADM', isSystem: true },
+    { id: 'cat-mkt', name: 'Marketing / Ads', dreClass: 'EXPENSE_SALES', isSystem: true },
+    { id: 'cat-comm', name: 'Comissões de Venda', dreClass: 'EXPENSE_SALES', isSystem: true },
+    { id: 'cat-bank', name: 'Tarifas Bancárias', dreClass: 'EXPENSE_FIN', isSystem: true },
+    { id: 'cat-tax', name: 'Impostos (Simples/DAS)', dreClass: 'TAX', isSystem: true },
+    { id: 'cat-mat', name: 'Materiais (Uso Técnico)', dreClass: 'COSTS', isSystem: true },
+    { id: 'cat-prod', name: 'Compra de Produtos (Revenda)', dreClass: 'COSTS', isSystem: true },
+  ]);
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -205,7 +221,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} />;
       case ViewState.ESTOQUE:
@@ -252,7 +268,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.SETTINGS:
-        return <SettingsPage onNavigate={setCurrentView} />;
+        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
       default:
         return <div className="p-10 text-center text-slate-500">Módulo em desenvolvimento...</div>;
     }

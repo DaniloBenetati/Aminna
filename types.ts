@@ -237,6 +237,13 @@ export interface Expense {
   paymentMethod: 'Boleto' | 'Pix' | 'Transferência' | 'Cartão' | 'Dinheiro';
 }
 
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  dreClass: 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION';
+  isSystem?: boolean; // If true, cannot be deleted (e.g. basic categories)
+}
+
 export interface FinancialTransaction {
   id: string;
   date: string;
