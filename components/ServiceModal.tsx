@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket } from 'lucide-react';
-import { STOCK, PROVIDERS } from '../constants';
-import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting } from '../types';
+import { STOCK } from '../constants';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider } from '../types';
 import { supabase } from '../services/supabase';
 
 interface ServiceLine {
@@ -32,6 +32,7 @@ interface ServiceModalProps {
     campaigns: Campaign[];
     source?: 'AGENDA' | 'DAILY';
     paymentSettings: PaymentSetting[];
+    providers: Provider[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -45,7 +46,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     services,
     campaigns,
     source = 'DAILY',
-    paymentSettings
+    paymentSettings,
+    providers
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -164,7 +166,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const restrictedLine = lines.find(line => customer.restrictedProviderIds?.includes(line.providerId));
 
         if (restrictedLine) {
-            const provider = PROVIDERS.find(p => p.id === restrictedLine.providerId);
+            const provider = providers.find(p => p.id === restrictedLine.providerId);
             const reasonEntry = customer.history
                 .filter(h => h.type === 'RESTRICTION' && h.providerId === restrictedLine.providerId)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
@@ -491,7 +493,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setLines([...lines, {
             id: Date.now().toString(),
             serviceId: services[0].id,
-            providerId: PROVIDERS.filter(p => p.active)[0].id,
+            providerId: providers.filter(p => p.active)[0].id,
             products: [],
             currentSearchTerm: '',
             discount: 0,
@@ -541,7 +543,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }));
     };
 
-    const activeProviders = PROVIDERS.filter(p => p.active);
+    const activeProviders = providers.filter(p => p.active);
     const internalStock = STOCK.filter(p => p.category === 'Uso Interno');
     const hasRestriction = !!customer.preferences?.restrictions;
 
@@ -947,7 +949,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="space-y-2">
                                     {lines.map((line) => {
                                         const srv = services.find(s => s.id === line.serviceId);
-                                        const prv = PROVIDERS.find(p => p.id === line.providerId);
+                                        const prv = providers.find(p => p.id === line.providerId);
 
                                         return (
                                             <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
@@ -1107,7 +1109,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="space-y-2">
                                     {lines.map((line, idx) => {
                                         const srv = services.find(s => s.id === line.serviceId);
-                                        const prv = PROVIDERS.find(p => p.id === line.providerId);
+                                        const prv = providers.find(p => p.id === line.providerId);
                                         return (
                                             <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
                                                 <div className="flex items-center gap-3">

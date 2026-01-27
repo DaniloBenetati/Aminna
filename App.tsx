@@ -331,9 +331,9 @@ const App: React.FC = () => {
       case ViewState.FINANCEIRO:
         return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} />;
       case ViewState.FECHAMENTOS:
-        return <Closures services={services} appointments={appointments} />;
+        return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:
-        return <Inventory stock={stock} setStock={setStock} />;
+        return <Inventory stock={stock} setStock={setStock} providers={providers} />;
       case ViewState.VENDAS:
         return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} />;
       case ViewState.AGENDA:
@@ -377,6 +377,7 @@ const App: React.FC = () => {
             setPantryLogs={setPantryLogs}
             appointments={appointments}
             customers={customers}
+            providers={providers}
           />
         );
       case ViewState.SETTINGS:

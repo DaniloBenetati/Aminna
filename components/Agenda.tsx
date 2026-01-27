@@ -6,7 +6,6 @@ import {
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange
 } from 'lucide-react';
 import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting } from '../types';
-import { PROVIDERS } from '../constants';
 import { ServiceModal } from './ServiceModal';
 
 interface AgendaProps {
@@ -19,10 +18,11 @@ interface AgendaProps {
     leads: Lead[];
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
     paymentSettings: PaymentSetting[];
+    providers: Provider[];
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -92,7 +92,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
     }, [timeView, dateRef, customRange]);
 
-    const activeProviders = useMemo(() => PROVIDERS.filter(p => p.active), []);
+    const activeProviders = useMemo(() => providers.filter(p => p.active), [providers]);
 
     // Filter Appointments for the GRID (Always shows dateRef day or start of custom range)
     const gridDateStr = timeView === 'custom' ? customRange.start : formatDate(dateRef);
@@ -120,25 +120,25 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
-        let message = `Olá, *${customer.name.split(' ')[0]}*! ✨\nPassando para falar sobre seus atendimentos na *Aminna*:\n`;
+        let message = `Olá, * ${customer.name.split(' ')[0]}* ! ✨\nPassando para falar sobre seus atendimentos na * Aminna *: \n`;
         let currentDayGroup = '';
 
         sortedApps.forEach(a => {
             const appDateBr = new Date(a.date + 'T12:00:00').toLocaleDateString('pt-BR');
             if (appDateBr !== currentDayGroup) {
-                message += `\n📅 *${appDateBr}*\n`;
+                message += `\n📅 * ${appDateBr}*\n`;
                 currentDayGroup = appDateBr;
             }
             const srv = services.find(s => s.id === a.serviceId);
-            const p = PROVIDERS.find(prov => prov.id === a.providerId);
+            const p = providers.find(prov => prov.id === a.providerId);
             const providerName = p ? p.name.split(' ')[0] : 'Equipe';
             const statusLabel = a.status === 'Confirmado' ? '✅ Confirmado' : '⏳ Pendente';
-            message += `📍 *${a.time}* - ${a.combinedServiceNames || srv?.name} (Prof. ${providerName})\n   _${statusLabel}_\n`;
+            message += `📍 * ${a.time}* - ${a.combinedServiceNames || srv?.name} (Prof.${providerName}) \n   _${statusLabel} _\n`;
         });
 
         const hasPending = sortedApps.some(a => a.status === 'Pendente');
         if (hasPending) {
-            message += `\nPodemos confirmar os pendentes? 🥰`;
+            message += `\nPodemos confirmar os pendentes ? 🥰`;
         } else {
             message += `\nEstá tudo certo! Nos vemos em breve. 🥰`;
         }
@@ -254,7 +254,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         // VALIDATION: Check if provider is restricted
         if (draftAppointment.providerId && customer.restrictedProviderIds?.includes(draftAppointment.providerId)) {
-            const restrictedProvider = PROVIDERS.find(p => p.id === draftAppointment.providerId);
+            const restrictedProvider = providers.find(p => p.id === draftAppointment.providerId);
             const providerName = restrictedProvider?.name || 'Profissional';
 
             // Find reason in history (most recent restriction for this provider)
@@ -622,6 +622,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     campaigns={campaigns}
                     source="AGENDA"
                     paymentSettings={paymentSettings}
+                    providers={providers}
                 />
             )}
         </div>
