@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { 
-  Calendar as CalendarIcon, Search, MessageCircle, 
+import {
+  Calendar as CalendarIcon, Search, MessageCircle,
   ChevronLeft, ChevronRight, AlertTriangle, Clock
 } from 'lucide-react';
-import { Appointment, Customer, Service, Campaign } from '../types';
+import { Appointment, Customer, Service, Campaign, PaymentSetting } from '../types';
 import { ServiceModal } from './ServiceModal';
 
 interface DailyAppointmentsProps {
@@ -14,10 +14,11 @@ interface DailyAppointmentsProps {
   setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
   services: Service[];
   campaigns: Campaign[];
+  paymentSettings: PaymentSetting[];
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns }) => {
-  const [selectedDate, setSelectedDate] = useState(new Date()); 
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings }) => {
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAppointmentForService, setSelectedAppointmentForService] = useState<Appointment | null>(null);
@@ -111,14 +112,14 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
 
       <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-hide pt-2">
         <div className="relative mb-2">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-                type="text" 
-                placeholder="Pesquisar cliente..." 
-                className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 rounded-[1.5rem] outline-none font-black text-sm focus:border-slate-300 dark:focus:border-zinc-600 transition-all text-slate-950 dark:text-white placeholder:text-slate-400"
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-            />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input
+            type="text"
+            placeholder="Pesquisar cliente..."
+            className="w-full pl-11 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 rounded-[1.5rem] outline-none font-black text-sm focus:border-slate-300 dark:focus:border-zinc-600 transition-all text-slate-950 dark:text-white placeholder:text-slate-400"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+          />
         </div>
 
         {filteredAppointments.length > 0 ? filteredAppointments.map(appt => {
@@ -132,28 +133,28 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           const isLate = (appt.status === 'Confirmado' || appt.status === 'Pendente') && now > appointmentDateTime;
 
           return (
-            <div 
-              key={appt.id} 
-              onClick={() => setSelectedAppointmentForService(appt)} 
+            <div
+              key={appt.id}
+              onClick={() => setSelectedAppointmentForService(appt)}
               className={`group p-4 rounded-[1.5rem] border shadow-sm transition-all cursor-pointer flex items-center justify-between gap-4 
-                ${isLate 
-                  ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900 hover:border-rose-300 dark:hover:border-rose-700' 
+                ${isLate
+                  ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900 hover:border-rose-300 dark:hover:border-rose-700'
                   : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600'
                 } active:scale-[0.98]`}
             >
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className={`flex-shrink-0 w-16 text-center py-2.5 rounded-2xl border font-mono 
                   ${isLate ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white border-slate-200 dark:border-zinc-700'}`}>
-                    <span className="text-[12px] font-black">{appt.time}</span>
+                  <span className="text-[12px] font-black">{appt.time}</span>
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <h4 className={`font-black text-sm truncate uppercase tracking-tight ${isLate ? 'text-rose-900 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{customer?.name}</h4>
                     {hasRestriction && <AlertTriangle size={14} className="text-amber-500" />}
                     {isLate && (
-                        <span className="flex items-center gap-1 text-[8px] font-black bg-rose-200 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 px-1.5 py-0.5 rounded-md uppercase animate-pulse">
-                            <Clock size={10} /> Atrasado
-                        </span>
+                      <span className="flex items-center gap-1 text-[8px] font-black bg-rose-200 dark:bg-rose-900/50 text-rose-800 dark:text-rose-300 px-1.5 py-0.5 rounded-md uppercase animate-pulse">
+                        <Clock size={10} /> Atrasado
+                      </span>
                     )}
                   </div>
                   <div className={`text-[10px] font-bold uppercase truncate max-w-full ${isLate ? 'text-rose-700/70 dark:text-rose-400/70' : 'text-slate-500 dark:text-slate-400'}`}>
@@ -161,13 +162,13 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 flex-shrink-0">
                 <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full border whitespace-nowrap ${getStatusStyle(appt.status)}`}>
                   {appt.status}
                 </span>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); handleSendWhatsApp(appt); }} 
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleSendWhatsApp(appt); }}
                   className={`p-2 rounded-xl transition-colors border ${isLate ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 border-transparent hover:border-rose-200' : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-transparent hover:border-emerald-100 dark:hover:border-emerald-800'}`}
                 >
                   <MessageCircle size={20} />
@@ -181,9 +182,9 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
       </div>
 
       {selectedAppointmentForService && (
-        <ServiceModal 
+        <ServiceModal
           appointment={selectedAppointmentForService}
-          allAppointments={appointments} 
+          allAppointments={appointments}
           customer={customers.find(c => c.id === selectedAppointmentForService.customerId)!}
           onClose={() => setSelectedAppointmentForService(null)}
           onUpdateAppointments={setAppointments}
@@ -192,6 +193,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           services={services}
           campaigns={campaigns}
           source="DAILY" // Explicitly setting source to DAILY
+          paymentSettings={paymentSettings}
         />
       )}
     </div>

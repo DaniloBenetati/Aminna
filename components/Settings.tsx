@@ -6,24 +6,27 @@ import {
     Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
     X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer
 } from 'lucide-react';
-import { ViewState, ExpenseCategory } from '../types';
+import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting } from '../types';
 
 interface SettingsPageProps {
     onNavigate: (view: ViewState) => void;
     expenseCategories?: ExpenseCategory[];
     setExpenseCategories?: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
+    paymentSettings?: PaymentSetting[];
+    setPaymentSettings?: React.Dispatch<React.SetStateAction<PaymentSetting[]>>;
+    commissionSettings?: CommissionSetting[];
+    setCommissionSettings?: React.Dispatch<React.SetStateAction<CommissionSetting[]>>;
 }
 
-interface PaymentSetting {
-    id: string;
-    method: string;
-    iconName: 'Smartphone' | 'CreditCard' | 'Landmark' | 'Wallet' | 'Banknote' | 'Ticket';
-    fee: number;
-    days: number;
-    color: string;
-}
-
-export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseCategories = [], setExpenseCategories }) => {
+export const SettingsPage: React.FC<SettingsPageProps> = ({
+    onNavigate,
+    expenseCategories = [],
+    setExpenseCategories,
+    paymentSettings = [],
+    setPaymentSettings,
+    commissionSettings = [],
+    setCommissionSettings
+}) => {
     const [activeTab, setActiveTab] = useState<'MANUAL' | 'GENERAL'>('GENERAL');
     const [subTab, setSubTab] = useState<'FINANCE' | 'SYSTEM' | 'UNIT' | 'CATEGORIES'>('FINANCE');
     const [selectedModule, setSelectedModule] = useState<any>(null);
@@ -31,12 +34,36 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
     // --- PAYMENT SETTINGS STATES ---
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [editingPayment, setEditingPayment] = useState<PaymentSetting | null>(null);
-    const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([
-        { id: 'pix', method: 'Pix', iconName: 'Smartphone', fee: 0, days: 0, color: 'text-emerald-500' },
-        { id: 'credit_vista', method: 'Cartão de Crédito (À Vista)', iconName: 'CreditCard', fee: 3.49, days: 30, color: 'text-indigo-500' },
-        { id: 'debit', method: 'Cartão de Débito', iconName: 'Landmark', fee: 1.25, days: 1, color: 'text-blue-500' },
-        { id: 'cash', method: 'Dinheiro', iconName: 'Wallet', fee: 0, days: 0, color: 'text-amber-500' },
-    ]);
+
+    // --- COMMISSION SETTINGS STATES ---
+    const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false);
+    const [editingCommission, setEditingCommission] = useState<CommissionSetting | null>(null);
+
+    const handleOpenCommissionModal = (comm: CommissionSetting) => {
+        setEditingCommission(comm);
+        setIsCommissionModalOpen(true);
+    };
+
+    const handleSaveCommission = (e: React.FormEvent) => {
+        e.preventDefault();
+        const form = e.target as HTMLFormElement;
+
+        let endDayValue: number | 'last' = parseInt((form.elements.namedItem('endDay') as HTMLSelectElement).value);
+        if ((form.elements.namedItem('endDay') as HTMLSelectElement).value === 'last') {
+            endDayValue = 'last';
+        }
+
+        const data: Partial<CommissionSetting> = {
+            startDay: parseInt((form.elements.namedItem('startDay') as HTMLSelectElement).value),
+            endDay: endDayValue,
+            paymentDay: parseInt((form.elements.namedItem('paymentDay') as HTMLSelectElement).value)
+        };
+
+        if (!setCommissionSettings || !editingCommission) return;
+
+        setCommissionSettings(prev => prev.map(c => c.id === editingCommission.id ? { ...c, ...data } : c));
+        setIsCommissionModalOpen(false);
+    };
 
     // --- CATEGORY SETTINGS STATES ---
     const [newCategoryName, setNewCategoryName] = useState('');
@@ -107,6 +134,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
             iconName: (form.elements.namedItem('iconName') as HTMLSelectElement).value as any,
         };
 
+        if (!setPaymentSettings) return;
+
         if (editingPayment) {
             setPaymentSettings(prev => prev.map(p => p.id === editingPayment.id ? { ...p, ...data } : p));
         } else {
@@ -121,6 +150,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
     };
 
     const handleDeletePayment = (id: string) => {
+        if (!setPaymentSettings) return;
         if (confirm('Deseja realmente excluir esta regra de pagamento?')) {
             setPaymentSettings(prev => prev.filter(p => p.id !== id));
         }
@@ -335,6 +365,51 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
                                             );
                                         })}
                                     </div>
+
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
+                                        <div className="max-w-xl text-center md:text-left">
+                                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
+                                                <Handshake className="text-emerald-500" /> Configuração de Repasses
+                                            </h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                Defina os períodos de apuração e as datas de pagamento das comissões aos profissionais.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {commissionSettings.map((comm) => (
+                                            <div key={comm.id} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
+                                                <div className="flex items-center justify-between mb-6">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-zinc-800 text-emerald-500">
+                                                            <Calendar size={24} />
+                                                        </div>
+                                                        <div>
+                                                            <h4 className="font-black text-base text-slate-950 dark:text-white uppercase tracking-tight">Período {comm.id}</h4>
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Configuração Ativa</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => handleOpenCommissionModal(comm)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors"><Edit3 size={16} /></button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Apuração</label>
+                                                        <p className="text-base font-black text-slate-950 dark:text-white">
+                                                            Dia {comm.startDay} ao {comm.endDay === 'last' ? 'Fim' : `Dia ${comm.endDay}`}
+                                                        </p>
+                                                    </div>
+                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Pagamento</label>
+                                                        <p className="text-base font-black text-emerald-600 dark:text-emerald-400">Dia {comm.paymentDay}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 
@@ -412,79 +487,145 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ onNavigate, expenseC
             </main>
 
             {/* PAYMENT RULE MODAL */}
-            {isPaymentModalOpen && (
-                <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
-                        <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
-                            <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
-                                <Landmark size={20} className="text-indigo-400" />
-                                {editingPayment ? 'Editar Regra' : 'Novo Método'}
-                            </h3>
-                            <button onClick={() => setIsPaymentModalOpen(false)} className="p-1 hover:text-indigo-400 transition-colors"><X size={24} /></button>
+            {
+                isPaymentModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                            <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
+                                    <Landmark size={20} className="text-indigo-400" />
+                                    {editingPayment ? 'Editar Regra' : 'Novo Método'}
+                                </h3>
+                                <button onClick={() => setIsPaymentModalOpen(false)} className="p-1 hover:text-indigo-400 transition-colors"><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSavePayment} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Nome do Método</label>
+                                    <input name="method" required defaultValue={editingPayment?.method} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none focus:border-indigo-600" placeholder="Ex: Cartão Master 12x" />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Ícone Visual</label>
+                                        <div className="relative">
+                                            <select name="iconName" defaultValue={editingPayment?.iconName || 'CreditCard'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                <option value="Smartphone">Pix / Celular</option>
+                                                <option value="CreditCard">Cartão</option>
+                                                <option value="Landmark">Banco / TED</option>
+                                                <option value="Wallet">Carteira / Dinheiro</option>
+                                                <option value="Banknote">Cédulas</option>
+                                                <option value="Ticket">Voucher / Cupom</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Liquidação (Dias)</label>
+                                        <div className="relative">
+                                            <select name="days" defaultValue={editingPayment?.days || 0} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                <option value={0}>D+0 (Imediato)</option>
+                                                <option value={1}>D+1 (1 Dia)</option>
+                                                <option value={2}>D+2 (2 Dias)</option>
+                                                <option value={7}>D+7 (Semanal)</option>
+                                                <option value={15}>D+15 (Quinzenal)</option>
+                                                <option value={30}>D+30 (Mensal)</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border-2 border-indigo-100 dark:border-indigo-800">
+                                    <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-2 ml-1 text-center">Taxa Administrativa (%)</label>
+                                    <div className="relative max-w-[200px] mx-auto">
+                                        <input
+                                            name="fee"
+                                            type="number"
+                                            step="0.01"
+                                            required
+                                            defaultValue={editingPayment?.fee || 0}
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 rounded-2xl p-4 text-2xl font-black text-center outline-none text-indigo-950 dark:text-indigo-300"
+                                        />
+                                        <Percent size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400" />
+                                    </div>
+                                    <p className="text-[9px] text-indigo-400 font-bold text-center mt-3 uppercase tracking-tighter">* Esta taxa será deduzida automaticamente do faturamento bruto nos relatórios.</p>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                                    <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                        <Save size={18} /> Salvar Regra
+                                    </button>
+                                </div>
+                            </form>
                         </div>
-                        <form onSubmit={handleSavePayment} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Nome do Método</label>
-                                <input name="method" required defaultValue={editingPayment?.method} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none focus:border-indigo-600" placeholder="Ex: Cartão Master 12x" />
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Ícone Visual</label>
-                                    <div className="relative">
-                                        <select name="iconName" defaultValue={editingPayment?.iconName || 'CreditCard'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
-                                            <option value="Smartphone">Pix / Celular</option>
-                                            <option value="CreditCard">Cartão</option>
-                                            <option value="Landmark">Banco / TED</option>
-                                            <option value="Wallet">Carteira / Dinheiro</option>
-                                            <option value="Banknote">Cédulas</option>
-                                            <option value="Ticket">Voucher / Cupom</option>
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+
+                        {/* COMMISSION RULE MODAL */}
+                        {
+                            isCommissionModalOpen && editingCommission && (
+                                <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                                        <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
+                                            <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
+                                                <Handshake size={20} className="text-emerald-400" />
+                                                Editar Período {editingCommission.id}
+                                            </h3>
+                                            <button onClick={() => setIsCommissionModalOpen(false)} className="p-1 hover:text-emerald-400 transition-colors"><X size={24} /></button>
+                                        </div>
+                                        <form onSubmit={handleSaveCommission} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Início</label>
+                                                    <div className="relative">
+                                                        <select name="startDay" defaultValue={editingCommission.startDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                                <option key={d} value={d}>Dia {d}</option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Fim</label>
+                                                    <div className="relative">
+                                                        <select name="endDay" defaultValue={editingCommission.endDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                                <option key={d} value={d}>Dia {d}</option>
+                                                            ))}
+                                                            <option value="last">Último Dia</option>
+                                                        </select>
+                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-[2rem] border-2 border-emerald-100 dark:border-emerald-800">
+                                                <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 ml-1 text-center">Dia do Pagamento</label>
+                                                <div className="relative max-w-[200px] mx-auto">
+                                                    <div className="relative">
+                                                        <select name="paymentDay" defaultValue={editingCommission.paymentDay} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 rounded-2xl p-4 text-xl font-black text-center outline-none text-emerald-950 dark:text-emerald-300 appearance-none">
+                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                                <option key={d} value={d}>Dia {d}</option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <p className="text-[9px] text-emerald-400 font-bold text-center mt-3 uppercase tracking-tighter">* Data limite para realizar os pagamentos deste período.</p>
+                                            </div>
+
+                                            <div className="flex gap-3 pt-2">
+                                                <button type="button" onClick={() => setIsCommissionModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                                                <button type="submit" className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                                    <Save size={18} /> Salvar Alterações
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Liquidação (Dias)</label>
-                                    <div className="relative">
-                                        <select name="days" defaultValue={editingPayment?.days || 0} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
-                                            <option value={0}>D+0 (Imediato)</option>
-                                            <option value={1}>D+1 (1 Dia)</option>
-                                            <option value={2}>D+2 (2 Dias)</option>
-                                            <option value={7}>D+7 (Semanal)</option>
-                                            <option value={15}>D+15 (Quinzenal)</option>
-                                            <option value={30}>D+30 (Mensal)</option>
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border-2 border-indigo-100 dark:border-indigo-800">
-                                <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-2 ml-1 text-center">Taxa Administrativa (%)</label>
-                                <div className="relative max-w-[200px] mx-auto">
-                                    <input
-                                        name="fee"
-                                        type="number"
-                                        step="0.01"
-                                        required
-                                        defaultValue={editingPayment?.fee || 0}
-                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 rounded-2xl p-4 text-2xl font-black text-center outline-none text-indigo-950 dark:text-indigo-300"
-                                    />
-                                    <Percent size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400" />
-                                </div>
-                                <p className="text-[9px] text-indigo-400 font-bold text-center mt-3 uppercase tracking-tighter">* Esta taxa será deduzida automaticamente do faturamento bruto nos relatórios.</p>
-                            </div>
-
-                            <div className="flex gap-3 pt-2">
-                                <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-                                    <Save size={18} /> Salvar Regra
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+                            )
+                        }
+                    </div >
+                );
 };

@@ -14,64 +14,46 @@ const prevMonth = String(prevMonthVal).padStart(2, '0');
 // day: The day of the month (1-31). 
 // Use day=0 for TODAY relative to execution
 const getDynamicDate = (day: number, monthOffset: number = 0) => {
-    let d;
-    if (day === 0) {
-        d = new Date(); // Today
-    } else {
-        d = new Date(now.getFullYear(), now.getMonth() + monthOffset, day);
-    }
-    return d.toISOString().split('T')[0];
+  let d;
+  if (day === 0) {
+    d = new Date(); // Today
+  } else {
+    d = new Date(now.getFullYear(), now.getMonth() + monthOffset, day);
+  }
+  return d.toISOString().split('T')[0];
 };
 
 // --- DATA GENERATION HELPERS ---
 const generateProviders = (): Provider[] => {
   const baseProviders = [
-    { 
+    {
       id: 'p1', name: 'Ana Silva', specialty: 'Manicure Clássica', specialties: ['Mão Simples', 'Pé Simples', 'Blindagem de Diamante', 'Francesinha (Adicional)'], commissionRate: 0.6, commissionHistory: [],
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', phone: '(11) 99999-1001', birthDate: `1990-${currentMonth}-15`, pixKey: 'ana.silva@email.com', active: true,
       workDays: [1, 2, 3, 4, 5, 6] // Seg-Sab
     },
-    { 
+    {
       id: 'p2', name: 'Carla Souza', specialty: 'Nail Art', specialties: ['Mão Simples', 'Pé Simples', 'Nail Art (por unha)', 'Alongamento Fibra de Vidro', 'Manutenção Fibra', 'Esmaltação em Gel'], commissionRate: 0.65, commissionHistory: [],
       avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', phone: '(11) 99999-1002', birthDate: '1992-08-20', pixKey: '11999991002', active: true,
       workDays: [2, 3, 4, 5, 6] // Ter-Sab
     },
-    { 
+    {
       id: 'p3', name: 'Beatriz Costa', specialty: 'Podologia', specialties: ['Pé Simples', 'Spa dos Pés Completo', 'Plástica dos Pés'], commissionRate: 0.7, commissionHistory: [],
       avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d', phone: '(11) 99999-1003', birthDate: `1988-${currentMonth}-28`, pixKey: 'beatriz.costa@cpf.com', active: true,
       workDays: [1, 3, 5] // Seg, Qua, Sex
     },
-    { 
+    {
       id: 'p4', name: 'Fernanda Lima', specialty: 'Alongamento', specialties: ['Mão Simples', 'Alongamento Fibra de Vidro', 'Manutenção Fibra', 'Esmaltação em Gel', 'Banho de Gel', 'Remoção de Alongamento'], commissionRate: 0.65, commissionHistory: [],
       avatar: 'https://i.pravatar.cc/150?u=a04258114e29026708c', phone: '(11) 99999-1004', birthDate: '1995-12-10', pixKey: 'fernanda.lima@email.com', active: true,
       workDays: [4, 5, 6] // Qui, Sex, Sab
     },
-    { 
+    {
       id: 'p5', name: 'Juliana Mendes', specialty: 'SPA dos Pés', specialties: ['Mão Simples', 'Pé Simples', 'Spa dos Pés Completo', 'Plástica dos Pés'], commissionRate: 0.6, commissionHistory: [],
       avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', phone: '(11) 99999-1005', birthDate: `1993-${nextMonth}-14`, pixKey: '11999991005', active: true,
       workDays: [1, 2, 3, 4, 5, 6]
     }
   ];
 
-  // Generate more providers to test scroll/zoom
-  const specialties = ['Mão Simples', 'Pé Simples', 'Esmaltação em Gel'];
-  for (let i = 6; i <= 20; i++) {
-    baseProviders.push({
-      id: `p${i}`,
-      name: `Pro ${i} Silva`,
-      specialty: 'Manicure',
-      specialties: ['Mão Simples', 'Pé Simples'], // Default fallback
-      commissionRate: 0.5,
-      commissionHistory: [],
-      avatar: `https://i.pravatar.cc/150?u=${200 + i}`,
-      phone: `(11) 99999-20${String(i).padStart(2, '0')}`,
-      birthDate: `1995-${String((i % 12) + 1).padStart(2, '0')}-10`,
-      pixKey: `119999920${String(i).padStart(2, '0')}`,
-      active: true,
-      workDays: [1, 2, 3, 4, 5, 6]
-    });
-  }
-
+  // No extra providers generated
   return baseProviders;
 };
 
@@ -148,10 +130,10 @@ export const LEADS: Lead[] = [
 const generateAppointments = (): Appointment[] => {
   const appointments: Appointment[] = [];
   const now = new Date();
-  
+
   // Helper to get YYYY-MM-DD
   const getDateStr = (d: Date) => d.toISOString().split('T')[0];
-  
+
   const addDays = (d: Date, days: number) => {
     const newD = new Date(d);
     newD.setDate(d.getDate() + days);
@@ -173,7 +155,7 @@ const generateAppointments = (): Appointment[] => {
 
   // --- STRESS TEST DATA (TODAY) ---
   // ~15 diverse transactions for rigorous cash testing
-  
+
   // 1. Dinheiro - Valor Exato
   appointments.push({ id: 'stress-1', customerId: 'c1', providerId: 'p1', serviceId: 's1', date: todayStr, time: '08:00', status: 'Concluído', pricePaid: 45.00, bookedPrice: 45.00, commissionRateSnapshot: 0.6 });
   // 2. Pix - Valor Alto (Alongamento)
@@ -207,40 +189,40 @@ const generateAppointments = (): Appointment[] => {
 
   // --- REQUESTED EXTRA 20 APPOINTMENTS FOR TODAY (MIXED STATUS) ---
   for (let i = 0; i < 20; i++) {
-      const hour = Math.floor(Math.random() * (19 - 8 + 1)) + 8; // 8h to 19h
-      const minutes = Math.random() > 0.5 ? '00' : '30';
-      const randomCustomer = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
-      const randomProvider = PROVIDERS[Math.floor(Math.random() * 5)]; // First 5 active providers
-      const randomService = SERVICES[Math.floor(Math.random() * SERVICES.length)];
-      const randomStatus = Math.random() > 0.5 ? 'Confirmado' : 'Pendente';
+    const hour = Math.floor(Math.random() * (19 - 8 + 1)) + 8; // 8h to 19h
+    const minutes = Math.random() > 0.5 ? '00' : '30';
+    const randomCustomer = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
+    const randomProvider = PROVIDERS[Math.floor(Math.random() * 5)]; // First 5 active providers
+    const randomService = SERVICES[Math.floor(Math.random() * SERVICES.length)];
+    const randomStatus = Math.random() > 0.5 ? 'Confirmado' : 'Pendente';
 
-      appointments.push({
-          id: `extra-today-${i}`,
-          customerId: randomCustomer.id,
-          providerId: randomProvider.id,
-          serviceId: randomService.id,
-          date: todayStr,
-          time: `${String(hour).padStart(2,'0')}:${minutes}`,
-          status: randomStatus,
-          bookedPrice: randomService.price,
-          commissionRateSnapshot: randomProvider.commissionRate,
-          // Add coupon randomly
-          appliedCoupon: Math.random() > 0.8 ? 'LAURA10' : undefined
-      });
+    appointments.push({
+      id: `extra-today-${i}`,
+      customerId: randomCustomer.id,
+      providerId: randomProvider.id,
+      serviceId: randomService.id,
+      date: todayStr,
+      time: `${String(hour).padStart(2, '0')}:${minutes}`,
+      status: randomStatus,
+      bookedPrice: randomService.price,
+      commissionRateSnapshot: randomProvider.commissionRate,
+      // Add coupon randomly
+      appliedCoupon: Math.random() > 0.8 ? 'LAURA10' : undefined
+    });
   }
 
   // --- HISTORY & FUTURE (Existing Logic) ---
   // 3. GENERATE HISTORY (Past 30 days)
   for (let i = 30; i > 0; i--) {
     const dateStr = getDateStr(addDays(now, -i));
-    const dailyCount = Math.floor(Math.random() * 5) + 2; 
-    
+    const dailyCount = Math.floor(Math.random() * 5) + 2;
+
     for (let j = 0; j < dailyCount; j++) {
       const prov = PROVIDERS[Math.floor(Math.random() * PROVIDERS.length)];
       const serv = SERVICES[Math.floor(Math.random() * SERVICES.length)];
       const cust = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
       const hour = 9 + Math.floor(Math.random() * 10);
-      
+
       appointments.push({
         id: `past-${i}-${j}`,
         customerId: cust.id,
@@ -261,15 +243,15 @@ const generateAppointments = (): Appointment[] => {
   for (let i = 1; i <= 30; i++) {
     const dateStr = getDateStr(addDays(now, i));
     const dayOfWeek = addDays(now, i).getDay();
-    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6; 
+    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
     const dailyCount = isWeekend ? Math.floor(Math.random() * 6) + 4 : Math.floor(Math.random() * 4) + 1;
-    
+
     for (let j = 0; j < dailyCount; j++) {
       const prov = PROVIDERS[Math.floor(Math.random() * PROVIDERS.length)];
       const serv = SERVICES[Math.floor(Math.random() * SERVICES.length)];
       const cust = CUSTOMERS[Math.floor(Math.random() * CUSTOMERS.length)];
       const hour = 9 + Math.floor(Math.random() * 10);
-      
+
       appointments.push({
         id: `fut-${i}-${j}`,
         customerId: cust.id,
@@ -292,26 +274,26 @@ export const APPOINTMENTS: Appointment[] = generateAppointments();
 
 // --- STOCK & SALES ---
 export const STOCK: StockItem[] = [
-  { 
+  {
     id: 'st1', code: 'PROD001', name: 'Esmalte Vermelho Royal', category: 'Uso Interno', group: 'Cosméticos', subGroup: 'Esmaltes', quantity: 12, minQuantity: 5, unit: 'frasco', costPrice: 8.50,
     priceHistory: [], usageHistory: [{ id: 'log1', date: getDynamicDate(1), quantity: 2, type: 'USO_INTERNO', providerId: 'p1', note: 'Movimentado' }]
   },
-  { 
+  {
     id: 'st2', code: 'MAT002', name: 'Algodão Premium 500g', category: 'Uso Interno', group: 'Descartáveis', subGroup: 'Algodão', quantity: 4, minQuantity: 10, unit: 'pacote', costPrice: 15.90,
     priceHistory: [], usageHistory: [{ id: 'log3', date: getDynamicDate(2), quantity: 10, type: 'AJUSTE_ENTRADA', note: 'Compra Mensal' }]
   },
-  { 
+  {
     id: 'st3', code: 'MAT003', name: 'Acetona 1L', category: 'Uso Interno', group: 'Químicos', subGroup: 'Removedores', quantity: 8, minQuantity: 5, unit: 'litro', costPrice: 22.00, priceHistory: [], usageHistory: []
   },
-  { 
+  {
     id: 'st4', code: 'VEND004', name: 'Creme Hidratante Mãos', category: 'Venda', group: 'Cosméticos', subGroup: 'Cremes', quantity: 15, minQuantity: 5, unit: 'unidade', costPrice: 18.00, price: 45.90,
     priceHistory: [], usageHistory: []
   },
-  { 
+  {
     id: 'st5', code: 'VEND005', name: 'Óleo de Cutícula', category: 'Venda', group: 'Cosméticos', subGroup: 'Óleos', quantity: 8, minQuantity: 10, unit: 'unidade', costPrice: 12.50, price: 29.90,
     priceHistory: [], usageHistory: []
   },
-  { 
+  {
     id: 'st6', code: 'ROUPA001', name: 'Camiseta Logo Aminna P', category: 'Venda', group: 'Roupas', subGroup: 'Camisetas', quantity: 5, minQuantity: 2, unit: 'unidade', costPrice: 25.00, price: 59.90,
     priceHistory: [], usageHistory: []
   }

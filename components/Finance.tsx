@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { PROVIDERS, CUSTOMERS, STOCK } from '../constants';
-import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory } from '../types';
+import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting } from '../types';
 
 const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -212,9 +212,12 @@ interface FinanceProps {
     services: Service[];
     appointments: Appointment[];
     sales: Sale[];
+    expenseCategories: ExpenseCategory[];
+    setExpenseCategories?: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
+    paymentSettings: PaymentSetting[];
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories }) => {
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings }) => {
     const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'PETTY_CASH' | 'DAILY' | 'DRE'>('DETAILED');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dateRef, setDateRef] = useState(new Date());
@@ -259,11 +262,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         return dateRef.getFullYear().toString();
     };
 
-    const [expenses, setExpenses] = useState<Expense[]>(generateMockExpenses());
+    const [expenses, setExpenses] = useState<Expense[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     // Removed local categories state
     // const [categories, setCategories] = ... -> REMOVED
+    const [recurrenceMonths, setRecurrenceMonths] = useState(1);
     const [isCustomCategory, setIsCustomCategory] = useState(false);
     const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
     const [physicalCash, setPhysicalCash] = useState<string>('');
@@ -410,17 +414,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     }, [appointments, sales, expenses, startDate, endDate]);
 
     const handleOpenModal = (expense?: Expense) => {
-        if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); }
-        else { setEditingExpenseId(null); setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); }
+        if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); setRecurrenceMonths(1); }
+        else { setEditingExpenseId(null); setRecurrenceMonths(1); setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); }
         setIsModalOpen(true);
     };
 
     const handleSaveExpense = (e: React.FormEvent) => {
         e.preventDefault();
         if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
-        // Logic to add to categories removed as it's now in Settings
-        if (editingExpenseId) setExpenses(prev => prev.map(ex => ex.id === editingExpenseId ? { ...ex, ...expenseForm } as Expense : ex));
-        else setExpenses(prev => [...prev, { ...expenseForm, id: `exp-${Date.now()}` } as Expense]);
+
+        if (editingExpenseId) {
+            setExpenses(prev => prev.map(ex => ex.id === editingExpenseId ? { ...ex, ...expenseForm } as Expense : ex));
+        } else {
+            const newExpenses: Expense[] = [];
+            let currentDate = new Date(expenseForm.date!);
+
+            for (let i = 0; i < recurrenceMonths; i++) {
+                newExpenses.push({
+                    ...expenseForm,
+                    description: recurrenceMonths > 1 ? `${expenseForm.description} (${i + 1}/${recurrenceMonths})` : expenseForm.description!,
+                    date: currentDate.toISOString().split('T')[0],
+                    id: `exp-${Date.now()}-${i}`
+                } as Expense);
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+            setExpenses(prev => [...prev, ...newExpenses]);
+        }
         setIsModalOpen(false);
     };
 
@@ -892,14 +911,56 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
                                     </div>
                                 </div>
+
+                                {/* Recurrence Field (Only for new expenses) */}
+                                {!editingExpenseId && (
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Recorrência (Mensal)</label>
+                                        <div className="relative">
+                                            <select
+                                                value={recurrenceMonths}
+                                                onChange={e => setRecurrenceMonths(parseInt(e.target.value))}
+                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                            >
+                                                <option value={1}>Não repetir (Único)</option>
+                                                <option value={2}>Repetir por 2 meses</option>
+                                                <option value={3}>Repetir por 3 meses</option>
+                                                <option value={4}>Repetir por 4 meses</option>
+                                                <option value={5}>Repetir por 5 meses</option>
+                                                <option value={6}>Repetir por 6 meses</option>
+                                                <option value={12}>Repetir por 12 meses (Anual)</option>
+                                                <option value={24}>Repetir por 24 meses</option>
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs font-bold uppercase">Meses</div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
-                                    <select className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none" value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}>
-                                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <select
+                                            value={expenseForm.category}
+                                            onChange={e => {
+                                                const selectedCat = expenseCategories.find(c => c.name === e.target.value);
+                                                setExpenseForm({
+                                                    ...expenseForm,
+                                                    category: e.target.value,
+                                                    dreClass: selectedCat?.dreClass || expenseForm.dreClass
+                                                });
+                                            }}
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                        >
+                                            <option value="" disabled>Selecione...</option>
+                                            {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                        </select>
+                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
                                 </div>
                                 <div className="pt-2">
-                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Salvar Despesa</button>
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                        {recurrenceMonths > 1 ? `Lançar ${recurrenceMonths}x Despesas` : 'Salvar Despesa'}
+                                    </button>
                                 </div>
                             </form>
                         </div>

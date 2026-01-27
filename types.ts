@@ -283,3 +283,19 @@ export interface PantryLog {
   costAtMoment: number; // Custo de compra no momento
   referenceAtMoment: number; // Valor ref no momento
 }
+
+export interface PaymentSetting {
+  id: string;
+  method: string;
+  iconName: 'Smartphone' | 'CreditCard' | 'Landmark' | 'Wallet' | 'Banknote' | 'Ticket';
+  fee: number;
+  days: number;
+  color: string;
+}
+
+export interface CommissionSetting {
+  id: string; // '1' or '2' for the two periods
+  startDay: number;
+  endDay: number | 'last'; // 'last' means last day of month
+  paymentDay: number;
+}

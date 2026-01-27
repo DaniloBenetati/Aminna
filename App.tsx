@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, ExpenseCategory } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, ExpenseCategory, PaymentSetting, CommissionSetting } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -51,6 +51,19 @@ const App: React.FC = () => {
     { id: 'cat-mat', name: 'Materiais (Uso Técnico)', dreClass: 'COSTS', isSystem: false },
     { id: 'cat-prod', name: 'Compra de Produtos (Revenda)', dreClass: 'COSTS', isSystem: false },
   ]);
+
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([
+    { id: 'pix', method: 'Pix', iconName: 'Smartphone', fee: 0, days: 0, color: 'text-emerald-500' },
+    { id: 'credit_vista', method: 'Cartão de Crédito (À Vista)', iconName: 'CreditCard', fee: 3.49, days: 30, color: 'text-indigo-500' },
+    { id: 'debit', method: 'Cartão de Débito', iconName: 'Landmark', fee: 1.25, days: 1, color: 'text-blue-500' },
+    { id: 'cash', method: 'Dinheiro', iconName: 'Wallet', fee: 0, days: 0, color: 'text-amber-500' },
+  ]);
+
+  const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([
+    { id: '1', startDay: 1, endDay: 15, paymentDay: 20 },
+    { id: '2', startDay: 16, endDay: 'last', paymentDay: 5 }
+  ]);
+
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -221,13 +234,13 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} />;
       case ViewState.ESTOQUE:
         return <Inventory stock={stock} setStock={setStock} />;
       case ViewState.VENDAS:
-        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} />;
+        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} />;
       case ViewState.AGENDA:
         return (
           <Agenda
@@ -239,6 +252,7 @@ const App: React.FC = () => {
             campaigns={campaigns}
             leads={leads}
             setLeads={setLeads}
+            paymentSettings={paymentSettings}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -250,6 +264,7 @@ const App: React.FC = () => {
             setAppointments={setAppointments}
             services={services}
             campaigns={campaigns}
+            paymentSettings={paymentSettings}
           />
         );
       case ViewState.SERVICOS:
@@ -268,7 +283,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.SETTINGS:
-        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} />;
+        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} />;
       default:
         return <div className="p-10 text-center text-slate-500">Módulo em desenvolvimento...</div>;
     }
