@@ -559,73 +559,76 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
                             </form>
                         </div>
+                    </div>
+                )
+            }
 
 
-                        {/* COMMISSION RULE MODAL */}
-                        {
-                            isCommissionModalOpen && editingCommission && (
-                                <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
-                                        <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
-                                            <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
-                                                <Handshake size={20} className="text-emerald-400" />
-                                                Editar Período {editingCommission.id}
-                                            </h3>
-                                            <button onClick={() => setIsCommissionModalOpen(false)} className="p-1 hover:text-emerald-400 transition-colors"><X size={24} /></button>
+            {/* COMMISSION RULE MODAL */}
+            {
+                isCommissionModalOpen && editingCommission && (
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                            <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
+                                    <Handshake size={20} className="text-emerald-400" />
+                                    Editar Período {editingCommission.id}
+                                </h3>
+                                <button onClick={() => setIsCommissionModalOpen(false)} className="p-1 hover:text-emerald-400 transition-colors"><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSaveCommission} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Início</label>
+                                        <div className="relative">
+                                            <select name="startDay" defaultValue={editingCommission.startDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                    <option key={d} value={d}>Dia {d}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         </div>
-                                        <form onSubmit={handleSaveCommission} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Início</label>
-                                                    <div className="relative">
-                                                        <select name="startDay" defaultValue={editingCommission.startDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
-                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                                                <option key={d} value={d}>Dia {d}</option>
-                                                            ))}
-                                                        </select>
-                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Fim</label>
-                                                    <div className="relative">
-                                                        <select name="endDay" defaultValue={editingCommission.endDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
-                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                                                <option key={d} value={d}>Dia {d}</option>
-                                                            ))}
-                                                            <option value="last">Último Dia</option>
-                                                        </select>
-                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-[2rem] border-2 border-emerald-100 dark:border-emerald-800">
-                                                <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 ml-1 text-center">Dia do Pagamento</label>
-                                                <div className="relative max-w-[200px] mx-auto">
-                                                    <div className="relative">
-                                                        <select name="paymentDay" defaultValue={editingCommission.paymentDay} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 rounded-2xl p-4 text-xl font-black text-center outline-none text-emerald-950 dark:text-emerald-300 appearance-none">
-                                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
-                                                                <option key={d} value={d}>Dia {d}</option>
-                                                            ))}
-                                                        </select>
-                                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
-                                                    </div>
-                                                </div>
-                                                <p className="text-[9px] text-emerald-400 font-bold text-center mt-3 uppercase tracking-tighter">* Data limite para realizar os pagamentos deste período.</p>
-                                            </div>
-
-                                            <div className="flex gap-3 pt-2">
-                                                <button type="button" onClick={() => setIsCommissionModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                                <button type="submit" className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-                                                    <Save size={18} /> Salvar Alterações
-                                                </button>
-                                            </div>
-                                        </form>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Fim</label>
+                                        <div className="relative">
+                                            <select name="endDay" defaultValue={editingCommission.endDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                    <option key={d} value={d}>Dia {d}</option>
+                                                ))}
+                                                <option value="last">Último Dia</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                 </div>
-                            )
-                        }
-                    </div >
-                );
+
+                                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-[2rem] border-2 border-emerald-100 dark:border-emerald-800">
+                                    <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 ml-1 text-center">Dia do Pagamento</label>
+                                    <div className="relative max-w-[200px] mx-auto">
+                                        <div className="relative">
+                                            <select name="paymentDay" defaultValue={editingCommission.paymentDay} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 rounded-2xl p-4 text-xl font-black text-center outline-none text-emerald-950 dark:text-emerald-300 appearance-none">
+                                                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                                                    <option key={d} value={d}>Dia {d}</option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <p className="text-[9px] text-emerald-400 font-bold text-center mt-3 uppercase tracking-tighter">* Data limite para realizar os pagamentos deste período.</p>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <button type="button" onClick={() => setIsCommissionModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                                    <button type="submit" className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                        <Save size={18} /> Salvar Alterações
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+        </div>
+    );
 };

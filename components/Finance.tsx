@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
     DollarSign, Download, FileText, Filter, Calendar,
     TrendingUp, Users, Wallet, Printer, ArrowUpCircle,
@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { PROVIDERS, CUSTOMERS, STOCK } from '../constants';
-import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting } from '../types';
+import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting } from '../types';
+import { supabase } from '../services/supabase';
 
 const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -21,39 +22,8 @@ const toLocalDateStr = (date: Date) => {
 
 // --- MOCK DATA GENERATOR FOR OPERATIONAL EXPENSES ---
 const generateMockExpenses = (): Expense[] => {
-    const expenses: Expense[] = [];
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
-
-    const getDate = (day: number, monthOffset: number = 0) => {
-        const d = new Date(currentYear, currentMonth + monthOffset, day);
-        return d.toISOString().split('T')[0];
-    };
-
-    [0, 1].forEach(offset => {
-        expenses.push(
-            { id: `fix-rent-${offset}`, description: 'Aluguel do Espaço', category: 'Aluguel', subcategory: 'Predial', dreClass: 'EXPENSE_ADM', amount: 3500.00, date: getDate(5, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Transferência' },
-            { id: `fix-net-${offset}`, description: 'Internet Fibra', category: 'Infraestrutura', subcategory: 'Internet', dreClass: 'EXPENSE_ADM', amount: 120.00, date: getDate(10, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Boleto' },
-            { id: `fix-soft-${offset}`, description: 'Sistema de Gestão (SaaS)', category: 'Software', subcategory: 'Licenças', dreClass: 'EXPENSE_ADM', amount: 199.90, date: getDate(1, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Cartão' },
-            { id: `fix-acc-${offset}`, description: 'Contabilidade Mensal', category: 'Serviços Terceiros', subcategory: 'Contábil', dreClass: 'EXPENSE_ADM', amount: 600.00, date: getDate(20, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Boleto' },
-            { id: `fix-energy-${offset}`, description: 'Energia Elétrica', category: 'Infraestrutura', subcategory: 'Energia', dreClass: 'EXPENSE_ADM', amount: 450.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
-            { id: `fix-water-${offset}`, description: 'Água / Saneamento', category: 'Infraestrutura', subcategory: 'Água', dreClass: 'EXPENSE_ADM', amount: 180.00, date: getDate(15, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Pix' },
-            { id: `fix-clean-${offset}-1`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(7, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-2`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(14, offset), status: offset === 0 ? 'Pago' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-3`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(21, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' },
-            { id: `fix-clean-${offset}-4`, description: 'Faxina Semanal', category: 'Limpeza', subcategory: 'Serviços', dreClass: 'EXPENSE_ADM', amount: 150.00, date: getDate(28, offset), status: offset === 0 ? 'Pendente' : 'Pendente', paymentMethod: 'Dinheiro' }
-        );
-    });
-
-    expenses.push(
-        { id: 'var-mat-1', description: 'Reposição Esmaltes', category: 'Materiais', subcategory: 'Esmaltes', dreClass: 'COSTS', amount: 450.00, date: getDate(3), status: 'Pago', paymentMethod: 'Cartão' },
-        { id: 'var-mkt-1', description: 'Impulsionar Instagram', category: 'Marketing', subcategory: 'Ads', dreClass: 'EXPENSE_SALES', amount: 300.00, date: getDate(12), status: 'Pago', paymentMethod: 'Cartão' },
-        { id: 'var-coffee', description: 'Cápsulas de Café/Água', category: 'Copa/Cozinha', subcategory: 'Consumo', dreClass: 'EXPENSE_ADM', amount: 180.00, date: getDate(8), status: 'Pago', paymentMethod: 'Dinheiro' },
-        { id: 'var-maint', description: 'Conserto Ar Condicionado', category: 'Manutenção', subcategory: 'Reparos', dreClass: 'EXPENSE_ADM', amount: 250.00, date: getDate(18), status: 'Pendente', paymentMethod: 'Pix' }
-    );
-
-    return expenses;
+    // Return empty array to start fresh as requested by user
+    return [];
 };
 
 // --- DAILY CLOSE COMPONENT ---
@@ -146,6 +116,10 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     <div class="row"><span>FÍSICO (GAVETA):</span> <span>R$ ${physicalCashNum.toFixed(2)}</span></div>
                     <div class="diff-box">DIFERENÇA: R$ ${cashDifference.toFixed(2)}${hasDifference ? '<br/>(QUEBRA/SOBRA)' : '<br/>(CAIXA BATIDO)'}</div>
                 </div>
+                <div class="section">
+                    <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">ASSINATURA:</div>
+                    <div style="margin-top:20px; border-top:1px solid #000; padding-top:5px; width:100%; text-align:center; font-size:10px;">${closerName}</div>
+                </div>
                 <script>window.onload = () => { window.print(); window.close(); }</script>
             </body>
             </html>
@@ -215,100 +189,206 @@ interface FinanceProps {
     expenseCategories: ExpenseCategory[];
     setExpenseCategories?: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
     paymentSettings: PaymentSetting[];
+    commissionSettings?: CommissionSetting[];
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings }) => {
-    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'PETTY_CASH' | 'DAILY' | 'DRE'>('DETAILED');
-    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
-    const [dateRef, setDateRef] = useState(new Date());
-    const [customRange, setCustomRange] = useState({
-        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-        end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString().split('T')[0]
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings }) => {
+    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE'>('DAILY');
+    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
+    const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 8) + '01');
+    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+
+    // Fetch Expenses from Supabase
+    useEffect(() => {
+        const fetchExpenses = async () => {
+            const { data } = await supabase.from('expenses').select('*');
+            if (data) {
+                setExpenses(data.map((e: any) => ({
+                    id: e.id,
+                    description: e.description,
+                    category: e.category,
+                    subcategory: e.subcategory,
+                    dreClass: e.dre_class,
+                    amount: e.amount,
+                    date: e.date,
+                    status: e.status,
+                    paymentMethod: e.payment_method
+                })));
+            }
+        };
+        fetchExpenses();
+    }, []);
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+    const [recurrenceMonths, setRecurrenceMonths] = useState(1);
+    const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({
+        description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix'
     });
 
-    // Drill Down State for DRE
-    const [expandedSections, setExpandedSections] = useState<string[]>(['gross']);
+    // Daily Close States
+    const [physicalCash, setPhysicalCash] = useState('');
+    const [closingObservation, setClosingObservation] = useState('');
+    const [closerName, setCloserName] = useState('');
 
-    const toggleSection = (id: string) => {
-        setExpandedSections(prev =>
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
-    };
+    // Date Navigation & View States
+    const [dateRef, setDateRef] = useState(new Date());
+    const [expandedSections, setExpandedSections] = useState<string[]>(['gross', 'cogs', 'exp-vendas', 'exp-adm', 'exp-fin']);
 
-    const { startDate, endDate } = useMemo(() => {
-        let start = new Date();
-        let end = new Date();
-        if (timeView === 'day') { start = new Date(dateRef); end = new Date(dateRef); }
-        else if (timeView === 'month') { start = new Date(dateRef.getFullYear(), dateRef.getMonth(), 1); end = new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0); }
-        else if (timeView === 'year') { start = new Date(dateRef.getFullYear(), 0, 1); end = new Date(dateRef.getFullYear(), 11, 31); }
-        else if (timeView === 'custom') return { startDate: customRange.start, endDate: customRange.end };
-        return { startDate: start.toISOString().split('T')[0], endDate: end.toISOString().split('T')[0] };
-    }, [timeView, dateRef, customRange]);
-
-    const navigateDate = (direction: 'prev' | 'next') => {
-        if (timeView === 'custom') return;
-        const newDate = new Date(dateRef);
-        const modifier = direction === 'next' ? 1 : -1;
-        if (timeView === 'day') newDate.setDate(dateRef.getDate() + modifier);
-        else if (timeView === 'month') newDate.setMonth(dateRef.getMonth() + modifier);
-        else if (timeView === 'year') newDate.setFullYear(dateRef.getFullYear() + modifier);
-        setDateRef(newDate);
+    const toggleSection = (section: string) => {
+        setExpandedSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]);
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Período Personalizado";
-        if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
+        if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        return dateRef.getFullYear().toString();
+        if (timeView === 'year') return dateRef.getFullYear().toString();
+        return 'Período Personalizado';
     };
 
-    const [expenses, setExpenses] = useState<Expense[]>([]);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
-    // Removed local categories state
-    // const [categories, setCategories] = ... -> REMOVED
-    const [recurrenceMonths, setRecurrenceMonths] = useState(1);
-    const [isCustomCategory, setIsCustomCategory] = useState(false);
-    const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
-    const [physicalCash, setPhysicalCash] = useState<string>('');
-    const [closingObservation, setClosingObservation] = useState('');
-    const [closerName, setCloserName] = useState('Gerente / Recepção');
+    const navigateDate = (direction: 'next' | 'prev') => {
+        const newDate = new Date(dateRef);
+        const modifier = direction === 'next' ? 1 : -1;
+
+        if (timeView === 'day') newDate.setDate(newDate.getDate() + modifier);
+        else if (timeView === 'month') newDate.setMonth(newDate.getMonth() + modifier);
+        else if (timeView === 'year') newDate.setFullYear(newDate.getFullYear() + modifier);
+
+        setDateRef(newDate);
+    };
+
+    // Update startDate and endDate when timeView or dateRef changes
+    React.useEffect(() => {
+        if (timeView === 'custom') return;
+
+        const start = new Date(dateRef);
+        const end = new Date(dateRef);
+
+        if (timeView === 'day') {
+            // Start and end are the same
+        } else if (timeView === 'month') {
+            start.setDate(1);
+            end.setMonth(end.getMonth() + 1);
+            end.setDate(0);
+        } else if (timeView === 'year') {
+            start.setMonth(0, 1);
+            end.setMonth(11, 31);
+        }
+
+        setStartDate(toLocalDateStr(start));
+        setEndDate(toLocalDateStr(end));
+    }, [timeView, dateRef]);
 
     const transactions: FinancialTransaction[] = useMemo(() => {
         const allTrans: FinancialTransaction[] = [];
-        const todayStr = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = toLocalDateStr(today);
+
+        // Helper to find commission payment date
+        const getCommissionDate = (dateStr: string) => {
+            if (!commissionSettings || commissionSettings.length === 0) return dateStr;
+            const date = new Date(dateStr + 'T12:00:00');
+            const day = date.getDate();
+            const month = date.getMonth();
+            const year = date.getFullYear();
+
+            const setting = commissionSettings.find(s => {
+                if (s.endDay === 'last') return day >= s.startDay;
+                return day >= s.startDay && day <= (s.endDay as number);
+            });
+
+            if (!setting) return dateStr;
+
+            let targetMonth = month;
+            let targetYear = year;
+
+            if (setting.paymentDay < setting.startDay) {
+                targetMonth++;
+                if (targetMonth > 11) { targetMonth = 0; targetYear++; }
+            }
+
+            const targetDate = new Date(targetYear, targetMonth, setting.paymentDay);
+            return toLocalDateStr(targetDate);
+        };
+
+        const getPaymentDetails = (methodName: string) => {
+            const method = paymentSettings.find(p => p.method === methodName);
+            return {
+                fee: method ? method.fee : 0,
+                days: method ? method.days : 0
+            };
+        };
+
+        const addDays = (dateStr: string, days: number) => {
+            const d = new Date(dateStr + 'T12:00:00');
+            d.setDate(d.getDate() + days);
+            return toLocalDateStr(d);
+        };
 
         appointments.forEach(app => {
             if (app.status === 'Cancelado') return;
             const service = services.find(s => s.id === app.serviceId);
             const customer = CUSTOMERS.find(c => c.id === app.customerId);
             const provider = PROVIDERS.find(p => p.id === app.providerId);
-            const price = app.pricePaid || app.bookedPrice || service?.price || 0;
-            const transactionDate = (app.status === 'Concluído' && app.paymentDate) ? app.paymentDate : app.date;
+            const rawPrice = app.pricePaid || app.bookedPrice || service?.price || 0;
+
+            // Payment Logic
+            const paymentMethodName = app.paymentMethod || 'Pix';
+            const { fee, days } = getPaymentDetails(paymentMethodName);
+
+            const netAmount = rawPrice * (1 - (fee / 100));
+
+            // Date Logic
+            // If concluded, use paymentDate (D+0 reference), else use scheduled date
+            const baseDate = (app.status === 'Concluído' && app.paymentDate) ? app.paymentDate : app.date;
+            const settlementDate = addDays(baseDate, days);
+
+            // Status Logic
+            // If concluded -> check if settlement date has passed (Pago) or is future (Previsto)
+            // If not concluded -> Previsto (or Atrasado if appointment date passed? Sticking to Previsto for simplicity in flow)
+            let status: 'Pago' | 'Previsto' | 'Atrasado' = 'Previsto';
+            if (app.status === 'Concluído') {
+                status = settlementDate <= todayStr ? 'Pago' : 'Previsto';
+            } else if (app.date < todayStr) {
+                status = 'Atrasado';
+            }
 
             allTrans.push({
                 id: `app-${app.id}`,
-                date: transactionDate,
+                date: settlementDate,
                 type: 'RECEITA',
                 category: 'Serviço',
                 description: `${service?.name || 'Serviço'} - ${customer?.name}`,
-                amount: price,
-                status: app.status === 'Concluído' ? 'Pago' : (app.date < todayStr ? 'Atrasado' : 'Previsto'),
-                paymentMethod: app.paymentMethod || 'Pix',
+                amount: netAmount,
+                status: status,
+                paymentMethod: paymentMethodName,
                 origin: 'Serviço',
                 customerOrProviderName: customer?.name || 'Cliente'
             });
 
             if (provider) {
                 const rate = app.commissionRateSnapshot ?? provider.commissionRate;
+                // Commission is on NET value
+                const commissionLiquidBase = rawPrice * (1 - (fee / 100));
+                const commissionAmount = commissionLiquidBase * rate;
+
+                // Commission date based on SETTLEMENT date of the service? 
+                // Or based on Service Date? Usually based on when money is received or service done.
+                // Requirement: "Repasse" logic separate. Kept 'baseDate' (service date) for commission calculation cycle start?
+                // User said: "money received first, then commission paid bi-weekly".
+                // So commission cycle reference is likely the service date.
+                const commissionDate = getCommissionDate(baseDate);
+
                 allTrans.push({
                     id: `comm-${app.id}`,
-                    date: transactionDate,
+                    date: commissionDate,
                     type: 'DESPESA',
                     category: 'Comissão',
                     description: `Repasse - ${provider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%)`,
-                    amount: price * rate,
-                    status: app.status === 'Concluído' ? (app.date < todayStr ? 'Pago' : 'Pendente') : 'Previsto',
+                    amount: commissionAmount,
+                    status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                     paymentMethod: 'Transferência',
                     origin: 'Outro',
                     customerOrProviderName: provider.name
@@ -316,16 +396,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }
         });
 
+
         sales.forEach(sale => {
+            const paymentMethodName = sale.paymentMethod || 'Dinheiro';
+            const { fee, days } = getPaymentDetails(paymentMethodName);
+            const netAmount = sale.totalPrice * (1 - (fee / 100));
+            const settlementDate = addDays(sale.date, days);
+
+            const status = settlementDate <= todayStr ? 'Pago' : 'Previsto';
+
             allTrans.push({
                 id: `sale-${sale.id}`,
-                date: sale.date,
+                date: settlementDate,
                 type: 'RECEITA',
                 category: 'Produto',
                 description: 'Venda de Produto',
-                amount: sale.totalPrice,
-                status: 'Pago',
-                paymentMethod: sale.paymentMethod || 'Dinheiro',
+                amount: netAmount,
+                status: status,
+                paymentMethod: paymentMethodName,
                 origin: 'Produto',
                 customerOrProviderName: 'Cliente Balcão'
             });
@@ -336,7 +424,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         });
 
         return allTrans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    }, [services, expenses, appointments, sales]);
+    }, [services, expenses, appointments, sales, paymentSettings, commissionSettings]);
 
     const filteredTransactions = useMemo(() => transactions.filter(t => t.date >= startDate && t.date <= endDate), [transactions, startDate, endDate]);
 
@@ -419,38 +507,92 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         setIsModalOpen(true);
     };
 
-    const handleSaveExpense = (e: React.FormEvent) => {
+    const fetchExpenses = async () => {
+        const { data } = await supabase.from('expenses').select('*');
+        if (data) {
+            setExpenses(data.map((e: any) => ({
+                id: e.id,
+                description: e.description,
+                category: e.category,
+                subcategory: e.subcategory,
+                dreClass: e.dre_class,
+                amount: e.amount,
+                date: e.date,
+                status: e.status,
+                paymentMethod: e.payment_method
+            })));
+        }
+    };
+
+    const handleSaveExpense = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
 
-        if (editingExpenseId) {
-            setExpenses(prev => prev.map(ex => ex.id === editingExpenseId ? { ...ex, ...expenseForm } as Expense : ex));
-        } else {
-            const newExpenses: Expense[] = [];
-            let currentDate = new Date(expenseForm.date!);
+        const expenseData = {
+            description: expenseForm.description,
+            amount: expenseForm.amount,
+            category: expenseForm.category,
+            subcategory: expenseForm.subcategory,
+            dre_class: expenseForm.dreClass, // Mapping to snake_case column
+            date: expenseForm.date,
+            status: expenseForm.status,
+            payment_method: expenseForm.paymentMethod || 'Pix'
+        };
 
-            for (let i = 0; i < recurrenceMonths; i++) {
-                newExpenses.push({
-                    ...expenseForm,
-                    description: recurrenceMonths > 1 ? `${expenseForm.description} (${i + 1}/${recurrenceMonths})` : expenseForm.description!,
-                    date: currentDate.toISOString().split('T')[0],
-                    id: `exp-${Date.now()}-${i}`
-                } as Expense);
-                currentDate.setMonth(currentDate.getMonth() + 1);
+        try {
+            if (editingExpenseId) {
+                const { error } = await supabase.from('expenses').update(expenseData).eq('id', editingExpenseId);
+                if (error) throw error;
+            } else {
+                const newExpenses = [];
+                let currentDate = new Date(expenseForm.date!);
+
+                for (let i = 0; i < recurrenceMonths; i++) {
+                    newExpenses.push({
+                        ...expenseData,
+                        description: recurrenceMonths > 1 ? `${expenseForm.description} (${i + 1}/${recurrenceMonths})` : expenseForm.description,
+                        date: currentDate.toISOString().split('T')[0]
+                    });
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+                const { error } = await supabase.from('expenses').insert(newExpenses);
+                if (error) throw error;
             }
-            setExpenses(prev => [...prev, ...newExpenses]);
+            await fetchExpenses(); // Refresh list
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error saving expense:', error);
+            alert('Erro ao salvar despesa. Tente novamente.');
         }
-        setIsModalOpen(false);
     };
 
-    const toggleExpenseStatus = (id: string) => {
-        setExpenses(prev => prev.map(exp => {
-            if (exp.id === id) {
-                const newStatus = exp.status === 'Pago' ? 'Pendente' : 'Pago';
-                return { ...exp, status: newStatus, date: newStatus === 'Pago' ? toLocalDateStr(new Date()) : exp.date };
-            }
-            return exp;
-        }));
+    const toggleExpenseStatus = async (id: string) => {
+        const expense = expenses.find(e => e.id === id);
+        if (!expense) return;
+
+        const newStatus = expense.status === 'Pago' ? 'Pendente' : 'Pago';
+        const newDate = newStatus === 'Pago' ? toLocalDateStr(new Date()) : expense.date;
+
+        try {
+            const { error } = await supabase.from('expenses').update({ status: newStatus, date: newDate }).eq('id', id);
+            if (error) throw error;
+
+            // Optimistic update or refresh
+            setExpenses(prev => prev.map(exp => exp.id === id ? { ...exp, status: newStatus, date: newDate } : exp));
+        } catch (error) {
+            console.error('Error updating status:', error);
+        }
+    };
+
+    const handleDeleteExpense = async (id: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta despesa?')) return;
+        try {
+            const { error } = await supabase.from('expenses').delete().eq('id', id);
+            if (error) throw error;
+            setExpenses(prev => prev.filter(e => e.id !== id));
+        } catch (error) {
+            console.error('Error deleting expense:', error);
+        }
     };
 
     const handlePrintDRE = () => {
@@ -686,7 +828,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             <td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td>
                                             <td className="px-6 py-4 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                 <button onClick={() => handleOpenModal(exp)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                                <button onClick={() => { if (confirm('Excluir esta despesa?')) setExpenses(prev => prev.filter(e => e.id !== exp.id)) }} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
                                             </td>
                                         </tr>
                                     ))}

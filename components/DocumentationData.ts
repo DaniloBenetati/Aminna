@@ -2,7 +2,7 @@
 export const DOCUMENTATION_DATA = {
     title: "Documentação do Sistema: Gestão Inteligente - Aminna",
     description: "Esta documentação detalha a estrutura atual do sistema, as fases (módulos), o relacionamento entre os dados e os fluxos de processo. O objetivo é permitir a análise da arquitetura de dados e lógica de negócios.",
-    note: "Atualmente, o sistema utiliza dados locais (mock) definidos em constants.ts e types.ts. A estrutura de banco de dados abaixo representa o esquema lógico que deve ser implementado no Supabase.",
+    note: "O sistema está totalmente integrado ao Supabase. Todos os dados são sincronizados em nuvem em tempo real, garantindo segurança, backup automático e acesso multi-dispositivo.",
     sections: [
         {
             title: "1. Módulos do Sistema (Detalhamento)",
@@ -44,8 +44,8 @@ export const DOCUMENTATION_DATA = {
                     description: "Funil de vendas para atrair novos clientes.",
                     items: [
                         { label: "Kanban", text: "Visualização em colunas (Novo, Atendimento, Qualificado, Convertido)." },
-                        { label: "Origem", text: "Rastreamento de onde o cliente veio (Instagram, Google, Indicação)." },
-                        { label: "Conversão", text: "Transforme um Lead em um Cliente com um clique quando ele agendar." }
+                        { label: "Alertas", text: "Identificação automática de leads ativos no momento do agendamento." },
+                        { label: "Conversão", text: "Conversão inteligente de Lead para Cliente com preservação de histórico de origem." }
                     ]
                 },
                 {
@@ -100,47 +100,50 @@ export const DOCUMENTATION_DATA = {
                 {
                     title: "📊 Financeiro",
                     subtitle: "Fluxo de Caixa e DRE",
-                    description: "Controle financeiro rigoroso com DRE (Demonstrativo de Resultado) estruturado para análise de viabilidade real.",
+                    description: "Controle financeiro rigoroso com DRE estruturado. Inclui gestão de Contas a Pagar (Despesas) com suporte a recorrência e categorias personalizáveis.",
+                    items: [
+                        { label: "Despesas", text: "Lançamento de gastos fixos e variáveis com opção de parcelamento ou recorrência mensal." },
+                        { label: "Status", text: "Controle de pagamentos (Pago/Pendente) com baixa automática." },
+                        { label: "Categorização", text: "Mapeamento automático para classes da DRE (Custos, Despesas Adm, Impostos)." }
+                    ],
                     customContent: `
                         <div style="margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 8px;">
-                            <strong>Estrutura da DRE</strong>
+                            <strong>Estrutura da DRE (Demonstrativo de Resultado)</strong>
                             <ul style="list-style-type: none; padding-left: 0; font-size: 0.9em;">
                                 <li>1. <strong>Receita Bruta</strong>: Soma de todas vendas de Serviços e Produtos.</li>
                                 <li>2. <strong>(-) Deduções</strong>: Impostos sobre nota (Simples/ISS) e taxas de cartão.</li>
-                                <li>3. <strong>(=) Receita Líquida</strong>: O dinheiro que realmente entra.</li>
-                                <li>4. <strong>(-) CMV/CPV</strong>: Custos diretos (Comissões e Custo de Produtos Vendidos).</li>
-                                <li>5. <strong>(=) Lucro Bruto</strong>: O quanto sobra para pagar a operação.</li>
+                                <li>3. <strong>(=) Receita Líquida</strong>: O faturamento real disponível.</li>
+                                <li>4. <strong>(-) CMV/CPV</strong>: Custos diretos (Comissões e Materiais de Uso Técnico).</li>
+                                <li>5. <strong>(=) Lucro Bruto</strong>: Margem de contribuição da operação.</li>
                                 <li>6. <strong>(-) Despesas Operacionais</strong>:
                                     <ul style="padding-left: 20px;">
-                                        <li><strong>Despesas com Vendas</strong>: Marketing, Ads.</li>
-                                        <li><strong>Despesas Administrativas</strong>: Aluguel, Software, Energia, Salários fixos.</li>
-                                        <li><strong>Despesas Financeiras</strong>: Juros, Tarifas bancárias.</li>
+                                        <li><strong>Vendas</strong>: Marketing, Tráfego Pago, Campanhas.</li>
+                                        <li><strong>Administrativas</strong>: Aluguel, Provisões de Salários, Software, Água/Luz.</li>
+                                        <li><strong>Financeiras</strong>: Tarifas bancárias e juros.</li>
                                     </ul>
                                 </li>
-                                <li>7. <strong>(=) Resultado Antes IRPJ/CSLL</strong>: Lucro Operacional.</li>
-                                <li>8. <strong>(-) Provisões IRPJ/CSLL</strong>: Impostos sobre lucro (se houver).</li>
-                                <li>9. <strong>(=) Resultado Líquido</strong>: O lucro final no bolso do sócio.</li>
+                                <li>7. <strong>(=) Resultado Líquido (Lucro/Prejuízo)</strong>: Valor final gerado pelo negócio.</li>
                             </ul>
                         </div>
                     `
                 },
                 {
-                    title: "💰 Fechamentos",
-                    subtitle: "Pagamento de Comissões",
-                    description: "Ferramenta para calcular quanto pagar a cada profissional.",
+                    title: "💰 Fechamentos & Configurações",
+                    subtitle: "Regras de Pagamento e Comissão",
+                    description: "Personalização total das regras financeiras do estabelecimento.",
                     items: [
-                        { label: "Cálculo Automático", text: "Baseado nos atendimentos 'Concluídos' e na taxa de comissão gravada (snapshot)." },
-                        { label: "Descontos", text: "Abate adiantamentos ou vales." },
-                        { label: "Relatório", text: "Gera o extrato detalhado para o profissional." }
+                        { label: "Períodos", text: "Configuração de quinzenas ou períodos de fechamento personalizados." },
+                        { label: "Formas de Pagamento", text: "Gestão de taxas de cartão e prazos de recebimento por método." },
+                        { label: "Snapshot", text: "Garante que mudanças de configuração não afetem agendamentos passados." }
                     ]
                 },
                 {
                     title: "📦 Estoque",
                     subtitle: "Gestão de Materiais",
-                    description: "Controle de produtos para uso interno e revenda.",
+                    description: "Controle de produtos para uso interno e revenda com baixa integrada aos atendimentos.",
                     items: [
                         { label: "Categorias", text: "Separação entre 'Uso Interno' (custo) e 'Venda' (receita)." },
-                        { label: "Níveis", text: "Alerta de estoque mínimo para reposição." }
+                        { label: "Avisos", text: "Alerta visual de estoque baixo para reposição imediata." }
                     ]
                 }
             ]

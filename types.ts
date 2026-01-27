@@ -31,6 +31,8 @@ export interface Lead {
   lostReason?: string;
   value?: number; // Valor estimado da oportunidade
   serviceInterest?: string; // Serviço de interesse
+  temperature?: 'quente' | 'frio' | 'morno';
+  tags?: string[];
 }
 
 export interface CommissionHistoryItem {
@@ -147,12 +149,11 @@ export interface Sale {
   id: string;
   date: string;
   customerId: string;
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  paymentMethod?: 'Dinheiro' | 'Pix' | 'Cartão';
+  totalAmount: number;
+  paymentMethod: string;
+  items: any[]; // List of { productId, quantity, unitPrice, name } or service details
 }
+
 
 export interface Appointment {
   id: string;

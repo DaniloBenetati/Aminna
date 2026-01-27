@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket } from 'lucide-react';
 import { STOCK, PROVIDERS } from '../constants';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting } from '../types';
+import { supabase } from '../services/supabase';
 
 interface ServiceLine {
     id: string;
@@ -196,7 +197,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setCouponCode('');
     };
 
-    const handleStartService = () => {
+    const handleStartService = async () => {
         if (restrictionData.isRestricted) return;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -209,32 +210,52 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             products: l.products
         }));
 
-        onUpdateAppointments(prev => {
-            const exists = prev.find(a => a.id === appointment.id);
-            const updatedAppt = {
-                ...appointment, // Use appointment as base if new
-                ...(exists || {}), // Override with existing if found (though appointment prop should be fresh enough)
-                status: 'Em Andamento',
-                time: appointmentTime,
-                date: appointmentDate,
-                combinedServiceNames: combinedNames,
-                bookedPrice: lines[0].unitPrice,
-                mainServiceProducts: lines[0].products,
-                additionalServices: extras,
-                appliedCoupon: appliedCampaign?.couponCode,
-                discountAmount: couponDiscountAmount
-            } as Appointment;
+        const updatedData = {
+            status: 'Em Andamento',
+            time: appointmentTime,
+            date: appointmentDate,
+            combined_service_names: combinedNames,
+            booked_price: lines[0].unitPrice,
+            main_service_products: lines[0].products,
+            additional_services: extras,
+            applied_coupon: appliedCampaign?.couponCode,
+            discount_amount: couponDiscountAmount
+        };
 
-            if (exists) {
-                return prev.map(a => a.id === appointment.id ? updatedAppt : a);
-            } else {
-                return [...prev, updatedAppt];
-            }
-        });
-        onClose();
+        try {
+            const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (error) throw error;
+
+            onUpdateAppointments(prev => {
+                const exists = prev.find(a => a.id === appointment.id);
+                const updatedAppt = {
+                    ...appointment,
+                    ...(exists || {}),
+                    status: 'Em Andamento',
+                    time: appointmentTime,
+                    date: appointmentDate,
+                    combinedServiceNames: combinedNames,
+                    bookedPrice: lines[0].unitPrice,
+                    mainServiceProducts: lines[0].products,
+                    additionalServices: extras,
+                    appliedCoupon: appliedCampaign?.couponCode,
+                    discountAmount: couponDiscountAmount
+                } as Appointment;
+
+                if (exists) {
+                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                } else {
+                    return [...prev, updatedAppt];
+                }
+            });
+            onClose();
+        } catch (error) {
+            console.error('Error starting service:', error);
+            alert('Erro ao iniciar atendimento no banco de dados.');
+        }
     };
 
-    const handleFinishService = () => {
+    const handleFinishService = async () => {
         if (restrictionData.isRestricted) return;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -251,61 +272,115 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         const dischargeDate = new Date().toISOString().split('T')[0];
 
-        onUpdateAppointments(prev => {
-            const exists = prev.find(a => a.id === appointment.id);
-            const updatedAppt = {
-                ...appointment,
-                ...(exists || {}),
-                status: 'Concluído',
-                pricePaid: totalValue,
-                paymentDate: dischargeDate,
-                paymentMethod: paymentMethod,
-                productsUsed: allProductsUsed,
-                combinedServiceNames: combinedNames,
-                bookedPrice: lines[0].unitPrice,
-                mainServiceProducts: lines[0].products,
-                additionalServices: extras,
-                appliedCoupon: appliedCampaign?.couponCode,
-                discountAmount: couponDiscountAmount
-            } as Appointment;
+        const updatedData = {
+            status: 'Concluído',
+            price_paid: totalValue,
+            payment_date: dischargeDate,
+            payment_method: paymentMethod,
+            products_used: allProductsUsed,
+            combined_service_names: combinedNames,
+            booked_price: lines[0].unitPrice,
+            main_service_products: lines[0].products,
+            additional_services: extras,
+            applied_coupon: appliedCampaign?.couponCode,
+            discount_amount: couponDiscountAmount
+        };
 
-            if (exists) {
-                return prev.map(a => a.id === appointment.id ? updatedAppt : a);
-            } else {
-                return [...prev, updatedAppt];
-            }
-        });
+        const saleData = {
+            customer_id: customer.id,
+            total_amount: totalValue,
+            date: dischargeDate,
+            payment_method: paymentMethod,
+            items: lines.map(l => ({
+                serviceId: l.serviceId,
+                name: services.find(s => s.id === l.serviceId)?.name,
+                unitPrice: l.unitPrice,
+                discount: l.discount,
+                isCourtesy: l.isCourtesy,
+                providerId: l.providerId
+            }))
+        };
 
-        onUpdateCustomers(prev => prev.map(c => {
-            if (c.id === customer.id) {
-                const newEntries: CustomerHistoryItem[] = lines.map(line => {
-                    const s = services.find(srv => srv.id === line.serviceId);
+        try {
+            // 1. Update Appointment
+            const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (apptError) throw apptError;
+
+            // 2. Create Sale Record
+            const { error: saleError } = await supabase.from('sales').insert(saleData);
+            if (saleError) throw saleError;
+
+            // 3. Update Customer History (handled locally for now, assuming App.tsx will refetch on next load)
+            // But we should also update DB history if that's where it's stored. 
+            // Currently App.tsx fetches history from 'customers' table? 
+            // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan, 
+            // but the UI uses it. Let's assume we update the customer's totals in DB.
+            const { error: custError } = await supabase.from('customers').update({
+                last_visit: dischargeDate,
+                total_spent: customer.totalSpent + totalValue
+            }).eq('id', customer.id);
+            if (custError) throw custError;
+
+            onUpdateAppointments(prev => {
+                const exists = prev.find(a => a.id === appointment.id);
+                const updatedAppt = {
+                    ...appointment,
+                    ...(exists || {}),
+                    status: 'Concluído',
+                    pricePaid: totalValue,
+                    paymentDate: dischargeDate,
+                    paymentMethod: paymentMethod,
+                    productsUsed: allProductsUsed,
+                    combinedServiceNames: combinedNames,
+                    bookedPrice: lines[0].unitPrice,
+                    mainServiceProducts: lines[0].products,
+                    additionalServices: extras,
+                    appliedCoupon: appliedCampaign?.couponCode,
+                    discountAmount: couponDiscountAmount
+                } as Appointment;
+
+                if (exists) {
+                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                } else {
+                    return [...prev, updatedAppt];
+                }
+            });
+
+            onUpdateCustomers(prev => prev.map(c => {
+                if (c.id === customer.id) {
+                    const newEntries: CustomerHistoryItem[] = lines.map(line => {
+                        const s = services.find(srv => srv.id === line.serviceId);
+                        return {
+                            id: `${Date.now()}-${line.id}`,
+                            date: dischargeDate,
+                            type: 'VISIT',
+                            description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
+                            details: `Pagamento: ${paymentMethod}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
+                            rating: line.rating,
+                            feedback: line.feedback,
+                            providerId: line.providerId,
+                            productsUsed: line.products
+                        };
+                    });
+
                     return {
-                        id: `${Date.now()}-${line.id}`,
-                        date: dischargeDate,
-                        type: 'VISIT',
-                        description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
-                        details: `Pagamento: ${paymentMethod}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
-                        rating: line.rating,
-                        feedback: line.feedback,
-                        providerId: line.providerId,
-                        productsUsed: line.products
+                        ...c,
+                        lastVisit: dischargeDate,
+                        totalSpent: c.totalSpent + totalValue,
+                        history: [...newEntries, ...c.history]
                     };
-                });
+                }
+                return c;
+            }));
 
-                return {
-                    ...c,
-                    lastVisit: dischargeDate,
-                    totalSpent: c.totalSpent + totalValue,
-                    history: [...newEntries, ...c.history]
-                };
-            }
-            return c;
-        }));
-        onClose();
+            onClose();
+        } catch (error) {
+            console.error('Error finishing service:', error);
+            alert('Erro ao finalizar atendimento no banco de dados.');
+        }
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (restrictionData.isRestricted) return;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -318,59 +393,93 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             products: l.products
         }));
 
-        onUpdateAppointments(prev => {
-            const exists = prev.find(a => a.id === appointment.id);
-            const updatedAppt = {
-                ...appointment,
-                ...(exists || {}),
-                time: appointmentTime,
-                date: appointmentDate,
-                status: status,
-                combinedServiceNames: combinedNames,
-                serviceId: lines[0].serviceId,
-                providerId: lines[0].providerId,
-                bookedPrice: lines[0].unitPrice,
-                mainServiceProducts: lines[0].products,
-                additionalServices: extras,
-                appliedCoupon: appliedCampaign?.couponCode,
-                discountAmount: couponDiscountAmount
-            } as Appointment;
+        const updatedData = {
+            time: appointmentTime,
+            date: appointmentDate,
+            status: status,
+            combined_service_names: combinedNames,
+            service_id: lines[0].serviceId,
+            provider_id: lines[0].providerId,
+            booked_price: lines[0].unitPrice,
+            main_service_products: lines[0].products,
+            additional_services: extras,
+            applied_coupon: appliedCampaign?.couponCode,
+            discount_amount: couponDiscountAmount
+        };
 
-            if (exists) {
-                return prev.map(a => a.id === appointment.id ? updatedAppt : a);
-            } else {
-                return [...prev, updatedAppt];
-            }
-        });
-        onClose();
+        try {
+            const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (error) throw error;
+
+            onUpdateAppointments(prev => {
+                const exists = prev.find(a => a.id === appointment.id);
+                const updatedAppt = {
+                    ...appointment,
+                    ...(exists || {}),
+                    time: appointmentTime,
+                    date: appointmentDate,
+                    status: status,
+                    combinedServiceNames: combinedNames,
+                    serviceId: lines[0].serviceId,
+                    providerId: lines[0].providerId,
+                    bookedPrice: lines[0].unitPrice,
+                    mainServiceProducts: lines[0].products,
+                    additionalServices: extras,
+                    appliedCoupon: appliedCampaign?.couponCode,
+                    discountAmount: couponDiscountAmount
+                } as Appointment;
+
+                if (exists) {
+                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                } else {
+                    return [...prev, updatedAppt];
+                }
+            });
+            onClose();
+        } catch (error) {
+            console.error('Error saving appointment:', error);
+            alert('Erro ao salvar alterações no banco de dados.');
+        }
     };
 
-    const handleConfirmCancellation = () => {
+    const handleConfirmCancellation = async () => {
         if (!cancellationReason.trim()) {
             alert('Por favor, informe a justificativa do cancelamento.');
             return;
         }
 
-        onUpdateAppointments(prev => prev.map(a =>
-            a.id === appointment.id ? { ...a, status: 'Cancelado' } : a
-        ));
+        try {
+            // 1. Update Appointment Status
+            const { error: apptError } = await supabase.from('appointments').update({ status: 'Cancelado' }).eq('id', appointment.id);
+            if (apptError) throw apptError;
 
-        onUpdateCustomers(prev => prev.map(c => {
-            if (c.id === customer.id) {
-                const cancelEntry: CustomerHistoryItem = {
-                    id: `cancel-${Date.now()}`,
-                    date: new Date().toISOString().split('T')[0],
-                    type: 'CANCELLATION',
-                    description: 'AGENDAMENTO CANCELADO',
-                    details: `Motivo: ${cancellationReason}`,
-                    providerId: appointment.providerId
-                };
-                return { ...c, history: [cancelEntry, ...c.history] };
-            }
-            return c;
-        }));
+            // 2. Add Cancellation entry to client is not currently supported in DB schema via a separate table, 
+            // but we update the customer locally. In a real scenario, we'd have a customer_history table.
 
-        onClose();
+            onUpdateAppointments(prev => prev.map(a =>
+                a.id === appointment.id ? { ...a, status: 'Cancelado' } : a
+            ));
+
+            onUpdateCustomers(prev => prev.map(c => {
+                if (c.id === customer.id) {
+                    const cancelEntry: CustomerHistoryItem = {
+                        id: `cancel-${Date.now()}`,
+                        date: new Date().toISOString().split('T')[0],
+                        type: 'CANCELLATION',
+                        description: 'AGENDAMENTO CANCELADO',
+                        details: `Motivo: ${cancellationReason}`,
+                        providerId: appointment.providerId
+                    };
+                    return { ...c, history: [cancelEntry, ...c.history] };
+                }
+                return c;
+            }));
+
+            onClose();
+        } catch (error) {
+            console.error('Error cancelling appointment:', error);
+            alert('Erro ao cancelar agendamento no banco de dados.');
+        }
     };
 
     const toggleFutureStatus = (id: string, currentStatus: string) => {
@@ -956,27 +1065,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                             <div className="space-y-3 px-1">
                                 <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Forma de Recebimento</label>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                    {paymentSettings.map(pay => {
-                                        const Icon = pay.iconName === 'Smartphone' ? Smartphone :
-                                            pay.iconName === 'CreditCard' ? CreditCard :
-                                                pay.iconName === 'Landmark' ? Landmark :
-                                                    pay.iconName === 'Banknote' ? Banknote :
-                                                        pay.iconName === 'Ticket' ? Ticket : Wallet;
-
-                                        return (
-                                            <button
-                                                key={pay.id}
-                                                type="button"
-                                                onClick={() => setPaymentMethod(pay.method)}
-                                                className={`p-4 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all active:scale-95 ${paymentMethod === pay.method ? `bg-slate-900 dark:bg-white text-white dark:text-black border-slate-900 dark:border-white shadow-lg` : 'bg-transparent border-slate-200 dark:border-zinc-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 dark:hover:border-zinc-600'}`}
-                                            >
-                                                <Icon size={18} />
-                                                <span className="text-[10px] font-black uppercase">{pay.method}</span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
+                                <select
+                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                    value={paymentMethod}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                >
+                                    {paymentSettings.map(pay => (
+                                        <option key={pay.id} value={pay.method}>
+                                            {pay.method}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="pt-2 flex flex-col gap-3">

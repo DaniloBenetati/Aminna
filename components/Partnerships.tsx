@@ -5,14 +5,15 @@ import { PARTNERS as INITIAL_PARTNERS } from '../constants';
 import { Partner, Campaign } from '../types';
 
 interface PartnershipsProps {
+  partners: Partner[];
+  setPartners: React.Dispatch<React.SetStateAction<Partner[]>>;
   campaigns: Campaign[];
   setCampaigns: React.Dispatch<React.SetStateAction<Campaign[]>>;
 }
 
-export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampaigns }) => {
-  const [partners, setPartners] = useState<Partner[]>(INITIAL_PARTNERS);
+export const Partnerships: React.FC<PartnershipsProps> = ({ partners, setPartners, campaigns, setCampaigns }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Drill Down State for Mobile
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
 
@@ -98,8 +99,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
     setExpandedCampaignId(expandedCampaignId === id ? null : id);
   };
 
-  const filteredPartners = partners.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+  const filteredPartners = partners.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.socialMedia.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -112,14 +113,14 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
           <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de influenciadores e campanhas</p>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
-          <button 
-            onClick={() => handleOpenCampaignModal()} 
+          <button
+            onClick={() => handleOpenCampaignModal()}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-indigo-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
           >
             <Tag size={16} /> Nova Campanha
           </button>
-          <button 
-            onClick={() => handleOpenPartnerModal()} 
+          <button
+            onClick={() => handleOpenPartnerModal()}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
           >
             <Plus size={16} /> Novo Parceiro
@@ -161,9 +162,9 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
             <h3 className="font-black text-slate-800 dark:text-white uppercase text-[10px] tracking-widest flex items-center gap-2"><Users size={16} /> Parceiros Cadastrados</h3>
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" size={14} />
-              <input 
-                type="text" 
-                placeholder="Buscar parceiro..." 
+              <input
+                type="text"
+                placeholder="Buscar parceiro..."
                 className="w-full sm:w-48 pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all placeholder:text-slate-500 dark:placeholder:text-slate-400"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
@@ -181,28 +182,28 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                     <p className="font-black text-slate-950 dark:text-white text-sm leading-tight truncate">{p.name}</p>
                     <p className="text-[11px] text-indigo-800 dark:text-indigo-400 font-black mb-1 truncate">{p.socialMedia}</p>
                     <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
-                        <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border whitespace-nowrap ${p.partnershipType === 'PERMUTA' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-800' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'}`}>
-                            {p.partnershipType}
-                        </span>
-                        <span className="text-[8px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full whitespace-nowrap bg-slate-50 dark:bg-zinc-800">{p.category}</span>
+                      <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border whitespace-nowrap ${p.partnershipType === 'PERMUTA' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-800 dark:text-purple-400 border-purple-200 dark:border-purple-800' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'}`}>
+                        {p.partnershipType}
+                      </span>
+                      <span className="text-[8px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-tighter border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full whitespace-nowrap bg-slate-50 dark:bg-zinc-800">{p.category}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button 
-                        onClick={() => togglePartnerStatus(p.id)}
-                        className={`p-2 rounded-xl transition-all ${p.active ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800'}`}
-                        title={p.active ? "Desativar" : "Ativar"}
-                    >
-                        {p.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                    </button>
-                    <button 
-                        onClick={() => handleOpenPartnerModal(p)}
-                        className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-800 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
-                        title="Editar"
-                    >
-                        <Edit2 size={18} />
-                    </button>
+                  <button
+                    onClick={() => togglePartnerStatus(p.id)}
+                    className={`p-2 rounded-xl transition-all ${p.active ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-800'}`}
+                    title={p.active ? "Desativar" : "Ativar"}
+                  >
+                    {p.active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                  </button>
+                  <button
+                    onClick={() => handleOpenPartnerModal(p)}
+                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-800 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
+                    title="Editar"
+                  >
+                    <Edit2 size={18} />
+                  </button>
                 </div>
               </div>
             ))}
@@ -222,8 +223,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
               const isExpanded = expandedCampaignId === c.id;
 
               return (
-                <div 
-                  key={c.id} 
+                <div
+                  key={c.id}
                   onClick={() => toggleCampaignExpand(c.id)}
                   className={`p-4 rounded-3xl transition-all flex flex-col gap-3 group relative cursor-pointer ${isExpanded ? 'bg-slate-50 dark:bg-zinc-800 ring-1 ring-slate-200 dark:ring-zinc-700' : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
                 >
@@ -236,32 +237,32 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                       <p className="text-[10px] text-slate-600 dark:text-slate-400 font-black uppercase tracking-wider truncate">{partner?.name || 'Desconhecido'}</p>
                     </div>
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                        <div className={`px-3 py-1 rounded-xl font-mono font-black text-xs border ${isFull ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}>
+                      <div className={`px-3 py-1 rounded-xl font-mono font-black text-xs border ${isFull ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800'}`}>
                         {c.couponCode}
-                        </div>
-                        <button 
-                            onClick={() => handleOpenCampaignModal(c)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-800 dark:hover:text-white transition-colors"
-                        >
-                            <Edit2 size={16} />
-                        </button>
+                      </div>
+                      <button
+                        onClick={() => handleOpenCampaignModal(c)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-800 dark:hover:text-white transition-colors"
+                      >
+                        <Edit2 size={16} />
+                      </button>
                     </div>
                   </div>
-                  
+
                   {/* Stats Grid - Controlled by Drill Down on Mobile */}
                   <div className={`grid grid-cols-3 gap-2 overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-40 opacity-100 mt-1' : 'max-h-0 opacity-0 md:max-h-40 md:opacity-100 md:mt-0'}`}>
-                      <div className="bg-white dark:bg-zinc-900 md:bg-slate-50 dark:md:bg-zinc-800 p-2 rounded-2xl border border-slate-200 dark:border-zinc-700 shadow-sm md:shadow-none">
-                        <p className="text-[8px] font-black text-slate-600 dark:text-slate-400 uppercase leading-none mb-1">Utilizados</p>
-                        <p className={`text-xs font-black ${isFull ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{c.useCount} <span className="text-[8px] text-slate-500">/ {c.maxUses}</span></p>
-                      </div>
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 shadow-sm md:shadow-none">
-                        <p className="text-[8px] font-black text-indigo-700 dark:text-indigo-400 uppercase leading-none mb-1">Desconto</p>
-                        <p className="text-xs font-black text-indigo-900 dark:text-indigo-300">{c.discountValue}{c.discountType === 'PERCENTAGE' ? '%' : 'R$'}</p>
-                      </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-2xl border border-emerald-100 dark:border-emerald-800 shadow-sm md:shadow-none">
-                        <p className="text-[8px] font-black text-emerald-700 dark:text-emerald-400 uppercase leading-none mb-1">Receita</p>
-                        <p className="text-xs font-black text-emerald-900 dark:text-emerald-300">R${c.totalRevenueGenerated.toFixed(0)}</p>
-                      </div>
+                    <div className="bg-white dark:bg-zinc-900 md:bg-slate-50 dark:md:bg-zinc-800 p-2 rounded-2xl border border-slate-200 dark:border-zinc-700 shadow-sm md:shadow-none">
+                      <p className="text-[8px] font-black text-slate-600 dark:text-slate-400 uppercase leading-none mb-1">Utilizados</p>
+                      <p className={`text-xs font-black ${isFull ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{c.useCount} <span className="text-[8px] text-slate-500">/ {c.maxUses}</span></p>
+                    </div>
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 shadow-sm md:shadow-none">
+                      <p className="text-[8px] font-black text-indigo-700 dark:text-indigo-400 uppercase leading-none mb-1">Desconto</p>
+                      <p className="text-xs font-black text-indigo-900 dark:text-indigo-300">{c.discountValue}{c.discountType === 'PERCENTAGE' ? '%' : 'R$'}</p>
+                    </div>
+                    <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-2xl border border-emerald-100 dark:border-emerald-800 shadow-sm md:shadow-none">
+                      <p className="text-[8px] font-black text-emerald-700 dark:text-emerald-400 uppercase leading-none mb-1">Receita</p>
+                      <p className="text-xs font-black text-emerald-900 dark:text-emerald-300">R${c.totalRevenueGenerated.toFixed(0)}</p>
+                    </div>
                   </div>
                 </div>
               );
@@ -290,15 +291,15 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                 <div>
                   <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest mb-1.5">Instagram / Rede Social</label>
                   <div className="relative">
-                      <Smartphone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
-                      <input name="socialMedia" required defaultValue={editingPartner?.socialMedia || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="@perfil" />
+                    <Smartphone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                    <input name="socialMedia" required defaultValue={editingPartner?.socialMedia || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="@perfil" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest mb-1.5">CPF / CNPJ</label>
                   <div className="relative">
-                      <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
-                      <input name="document" defaultValue={editingPartner?.document || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="000.000.000-00" />
+                    <FileText size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                    <input name="document" defaultValue={editingPartner?.document || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="000.000.000-00" />
                   </div>
                 </div>
               </div>
@@ -311,15 +312,15 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                 <div>
                   <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest mb-1.5">E-mail</label>
                   <div className="relative">
-                      <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
-                      <input name="email" type="email" defaultValue={editingPartner?.email || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="contato@parceiro.com" />
+                    <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                    <input name="email" type="email" defaultValue={editingPartner?.email || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="contato@parceiro.com" />
                   </div>
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest mb-1.5">Endereço de Correspondência</label>
                   <div className="relative">
-                      <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
-                      <input name="address" defaultValue={editingPartner?.address || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="Rua, Número, Bairro - Cidade" />
+                    <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                    <input name="address" defaultValue={editingPartner?.address || ''} className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="Rua, Número, Bairro - Cidade" />
                   </div>
                 </div>
               </div>
@@ -344,8 +345,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                 <div className="md:col-span-2">
                   <label className="block text-[10px] font-black text-black dark:text-white uppercase tracking-widest mb-1.5">Chave Pix para Repasses</label>
                   <div className="relative">
-                      <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
-                      <input name="pixKey" defaultValue={editingPartner?.pixKey || ''} className="w-full pl-11 pr-4 py-4 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="CPF, Celular ou Email" />
+                    <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                    <input name="pixKey" defaultValue={editingPartner?.pixKey || ''} className="w-full pl-11 pr-4 py-4 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-500" placeholder="CPF, Celular ou Email" />
                   </div>
                 </div>
                 <div className="md:col-span-2">
@@ -355,8 +356,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
               </div>
 
               <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                  <button type="submit" className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all">Salvar Parceiro</button>
+                <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                <button type="submit" className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all">Salvar Parceiro</button>
               </div>
             </form>
           </div>
@@ -408,12 +409,12 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ campaigns, setCampai
                   <input name="maxUses" type="number" required defaultValue={editingCampaign?.maxUses || 100} min="1" className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-300 dark:border-emerald-700 rounded-2xl p-4 text-lg font-black text-slate-950 dark:text-white outline-none" placeholder="100" />
                 </div>
               </div>
-              
+
               <div className="flex gap-3 pt-4 pb-4">
-                  <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-widest">Descartar</button>
-                  <button type="submit" className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
-                      {editingCampaign ? 'Atualizar Cupom' : 'Ativar Campanha'}
-                  </button>
+                <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-600 dark:text-slate-400 font-black uppercase text-[10px] tracking-widest">Descartar</button>
+                <button type="submit" className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+                  {editingCampaign ? 'Atualizar Cupom' : 'Ativar Campanha'}
+                </button>
               </div>
             </form>
           </div>

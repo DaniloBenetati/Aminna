@@ -225,16 +225,28 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         // --- LEAD CONVERSION LOGIC ---
         // Check if this customer corresponds to an existing Lead based on Phone
-        const matchedLead = leads.find(l => l.phone.replace(/\D/g, '') === customer.phone.replace(/\D/g, '') && l.status !== 'CONVERTIDO' && l.status !== 'PERDIDO');
+        const matchedLead = leads.find(l => {
+            const leadPhone = l.phone.replace(/\D/g, '');
+            const customerPhone = customer.phone.replace(/\D/g, '');
+            // Check for exact match or suffix match (e.g. 5511999999999 vs 11999999999)
+            // Ensure at least 8 digits to avoid matching short substrings
+            const isMatch = (leadPhone === customerPhone) ||
+                (leadPhone.length >= 8 && customerPhone.length >= 8 && (leadPhone.endsWith(customerPhone) || customerPhone.endsWith(leadPhone)));
+
+            return isMatch && l.status !== 'CONVERTIDO' && l.status !== 'PERDIDO';
+        });
 
         if (matchedLead) {
+            const confirmConversion = window.confirm(`⚠️ ESTE CLIENTE É UM LEAD ATIVO DO CRM!\n\nEste agendamento irá converter o lead "${matchedLead.name}" e movê-lo para o status "CONVERTIDO".\n\nDeseja confirmar o agendamento e a conversão?`);
+
+            if (!confirmConversion) return;
+
             // Automatically convert the lead
             setLeads(prev => prev.map(l =>
                 l.id === matchedLead.id
                     ? { ...l, status: 'CONVERTIDO', updatedAt: new Date().toISOString() }
                     : l
             ));
-            // Optional: You could show a toast here "Lead Convertido com Sucesso!"
         }
         // -----------------------------
 
@@ -439,9 +451,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         key={appt.id}
                                                         onClick={() => handleAppointmentClick(appt)}
                                                         className={`relative z-10 mb-1 p-2 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
-                                                                appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                    appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
-                                                                        'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                                                            appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
+                                                                appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
+                                                                    'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                             }`}
                                                     >
                                                         <div className="flex justify-between items-start">
@@ -451,9 +463,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         <div className="text-[9px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{appt.combinedServiceNames || service?.name}</div>
                                                         <div className="flex justify-between items-center mt-1.5">
                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                    appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                        appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                            'bg-amber-400'
+                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                        'bg-amber-400'
                                                                 }`}></span>
                                                             <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
                                                         </div>

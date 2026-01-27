@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, ExpenseCategory, PaymentSetting, CommissionSetting } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -35,34 +35,10 @@ const App: React.FC = () => {
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [pantryLogs, setPantryLogs] = useState<PantryLog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([
-    { id: 'cat-rent', name: 'Aluguel', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-energy', name: 'Energia', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-water', name: 'Água', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-net', name: 'Internet / Telefone', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-sys', name: 'Sistemas / Software', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-clean', name: 'Limpeza', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-maint', name: 'Manutenção', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-pers', name: 'Pessoal (Salários)', dreClass: 'EXPENSE_ADM', isSystem: false },
-    { id: 'cat-mkt', name: 'Marketing / Ads', dreClass: 'EXPENSE_SALES', isSystem: false },
-    { id: 'cat-comm', name: 'Comissões de Venda', dreClass: 'EXPENSE_SALES', isSystem: false },
-    { id: 'cat-bank', name: 'Tarifas Bancárias', dreClass: 'EXPENSE_FIN', isSystem: false },
-    { id: 'cat-tax', name: 'Impostos (Simples/DAS)', dreClass: 'TAX', isSystem: false },
-    { id: 'cat-mat', name: 'Materiais (Uso Técnico)', dreClass: 'COSTS', isSystem: false },
-    { id: 'cat-prod', name: 'Compra de Produtos (Revenda)', dreClass: 'COSTS', isSystem: false },
-  ]);
-
-  const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([
-    { id: 'pix', method: 'Pix', iconName: 'Smartphone', fee: 0, days: 0, color: 'text-emerald-500' },
-    { id: 'credit_vista', method: 'Cartão de Crédito (À Vista)', iconName: 'CreditCard', fee: 3.49, days: 30, color: 'text-indigo-500' },
-    { id: 'debit', method: 'Cartão de Débito', iconName: 'Landmark', fee: 1.25, days: 1, color: 'text-blue-500' },
-    { id: 'cash', method: 'Dinheiro', iconName: 'Wallet', fee: 0, days: 0, color: 'text-amber-500' },
-  ]);
-
-  const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([
-    { id: '1', startDay: 1, endDay: 15, paymentDay: 20 },
-    { id: '2', startDay: 16, endDay: 'last', paymentDay: 5 }
-  ]);
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
+  const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([]);
+  const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([]);
 
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -94,14 +70,23 @@ const App: React.FC = () => {
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
-      // 1. Providers - (Note: Providers are not in global state in App.tsx originally? 
-      // Wait, they were imported as PROVIDERS constant but not in state passed to children?
-      // Checking Dashboard props... Dashboard takes services, sales, etc.
-      // Professionals component takes appointments...
-      // Ah, PROVIDERS constant was imported directly in components too?
-      // Let's check imports. Yes, 'constants.ts' was widely used.
-      // We might need to pass providers down or refactor components to fetching too.
-      // For now, let's focus on the state variables present in App.tsx)
+      // 1. Providers
+      const { data: providersData } = await supabase.from('providers').select('*');
+      if (providersData) {
+        setProviders(providersData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          specialty: p.specialty,
+          specialties: p.specialties || [],
+          commissionRate: p.commission_rate,
+          avatar: p.avatar,
+          phone: p.phone,
+          birthDate: p.birth_date,
+          pixKey: p.pix_key,
+          active: p.active,
+          workDays: p.work_days || []
+        })));
+      }
 
       // 2. Services
       const { data: servicesData } = await supabase.from('services').select('*');
@@ -135,6 +120,25 @@ const App: React.FC = () => {
         })));
       }
 
+      // 3b. Partners
+      const { data: partnersData } = await supabase.from('partners').select('*');
+      if (partnersData) {
+        setPartners(partnersData.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          socialMedia: p.social_media,
+          category: p.category,
+          phone: p.phone,
+          email: p.email,
+          document: p.document,
+          address: p.address,
+          partnershipType: p.partnership_type,
+          pixKey: p.pix_key,
+          notes: p.notes,
+          active: p.active
+        })));
+      }
+
       // 4. Pantry
       const { data: pantryData } = await supabase.from('pantry_items').select('*');
       if (pantryData) {
@@ -147,6 +151,22 @@ const App: React.FC = () => {
           minQuantity: p.min_quantity,
           costPrice: p.cost_price,
           referencePrice: p.reference_price
+        })));
+      }
+
+      const { data: logsData } = await supabase.from('pantry_logs').select('*');
+      if (logsData) {
+        setPantryLogs(logsData.map((l: any) => ({
+          id: l.id,
+          date: l.date,
+          time: l.time,
+          itemId: l.item_id,
+          quantity: l.quantity,
+          appointmentId: l.appointment_id,
+          customerId: l.customer_id,
+          providerId: l.provider_id,
+          costAtMoment: l.cost_at_moment,
+          referenceAtMoment: l.reference_at_moment
         })));
       }
 
@@ -188,9 +208,83 @@ const App: React.FC = () => {
         })));
       }
 
+      // 6b. Leads
+      const { data: leadsData } = await supabase.from('leads').select('*');
+      if (leadsData) {
+        setLeads(leadsData.map((l: any) => ({
+          id: l.id,
+          name: l.name,
+          phone: l.phone,
+          source: l.source,
+          status: l.status,
+          createdAt: l.created_at,
+          updatedAt: l.updated_at,
+          notes: l.notes,
+          lostReason: l.lost_reason,
+          value: l.value,
+          serviceInterest: l.service_interest,
+          temperature: l.temperature,
+          tags: l.tags || []
+        })));
+      }
+
       // 7. Appointments
-      // Fetching appointments logic would go here.
-      // For 'Fresh Start', it will be empty.
+      const { data: apptsData } = await supabase.from('appointments').select('*');
+      if (apptsData) {
+        setAppointments(apptsData.map((a: any) => ({
+          id: a.id,
+          customerId: a.customer_id,
+          serviceId: a.service_id,
+          providerId: a.provider_id,
+          date: a.date,
+          time: a.time,
+          duration: a.duration,
+          status: a.status,
+          notes: a.notes,
+          price: a.price,
+          commissionRate: a.commission_rate
+        })));
+      }
+
+      // 8. Sales
+      const { data: salesData } = await supabase.from('sales').select('*');
+      if (salesData) {
+        setSales(salesData.map((s: any) => ({
+          id: s.id,
+          customerId: s.customer_id,
+          totalAmount: s.total_amount,
+          date: s.date,
+          paymentMethod: s.payment_method,
+          items: s.items || []
+        })));
+      }
+
+      // 9. Settings
+      const { data: commData } = await supabase.from('commission_settings').select('*');
+      setCommissionSettings(commData ? commData.map((c: any) => ({
+        id: c.id,
+        startDay: c.start_day,
+        endDay: c.end_day,
+        paymentDay: c.payment_day
+      })) : []);
+
+      const { data: payData } = await supabase.from('payment_settings').select('*');
+      setPaymentSettings(payData ? payData.map((p: any) => ({
+        id: p.id,
+        method: p.method,
+        iconName: p.icon_name,
+        fee: p.fee,
+        days: p.days,
+        color: p.color
+      })) : []);
+
+      const { data: catData } = await supabase.from('expense_categories').select('*');
+      setExpenseCategories(catData ? catData.map((e: any) => ({
+        id: e.id,
+        name: e.name,
+        dreClass: e.dre_class,
+        isSystem: e.is_system
+      })) : []);
 
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -218,6 +312,7 @@ const App: React.FC = () => {
             stock={stock}
             services={services}
             campaigns={campaigns}
+            providers={providers}
           />
         );
       case ViewState.CLIENTES:
@@ -232,9 +327,9 @@ const App: React.FC = () => {
           />
         );
       case ViewState.PROFISSIONAIS:
-        return <Professionals appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
+        return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} />;
       case ViewState.ESTOQUE:
@@ -253,6 +348,7 @@ const App: React.FC = () => {
             leads={leads}
             setLeads={setLeads}
             paymentSettings={paymentSettings}
+            providers={providers}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -265,12 +361,13 @@ const App: React.FC = () => {
             services={services}
             campaigns={campaigns}
             paymentSettings={paymentSettings}
+            providers={providers}
           />
         );
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
-        return <Partnerships campaigns={campaigns} setCampaigns={setCampaigns} />;
+        return <Partnerships partners={partners} setPartners={setPartners} campaigns={campaigns} setCampaigns={setCampaigns} />;
       case ViewState.COPA:
         return (
           <Copa
