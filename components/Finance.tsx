@@ -1200,19 +1200,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Favorecido (Fornecedor)</label>
-                                    <div className="relative">
-                                        <select
-                                            value={expenseForm.supplierId || ''}
-                                            onChange={e => setExpenseForm({ ...expenseForm, supplierId: e.target.value })}
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
-                                        >
-                                            <option value="">Nenhum (Gasto Avulso)</option>
-                                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                        <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Status do Pagamento</label>
+                                        <div className="relative">
+                                            <select
+                                                value={expenseForm.status}
+                                                onChange={e => setExpenseForm({ ...expenseForm, status: e.target.value as 'Pago' | 'Pendente' })}
+                                                className={`w-full border-2 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 outline-none appearance-none transition-colors ${expenseForm.status === 'Pago' ? 'border-emerald-200 text-emerald-700 dark:border-emerald-900/30 dark:text-emerald-400' : 'border-amber-200 text-amber-700 dark:border-amber-900/30 dark:text-amber-400'}`}
+                                            >
+                                                <option value="Pago">Pago</option>
+                                                <option value="Pendente">Pendente</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Favorecido (Fornecedor)</label>
+                                        <div className="relative">
+                                            <select
+                                                value={expenseForm.supplierId || ''}
+                                                onChange={e => setExpenseForm({ ...expenseForm, supplierId: e.target.value })}
+                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                            >
+                                                <option value="">Nenhum (Gasto Avulso)</option>
+                                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                            <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="pt-2">
@@ -1269,6 +1284,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     </div>
                 )
             }
-        </div>
+        </div >
     );
 };
