@@ -711,10 +711,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 const { error } = await supabase.from('expenses').delete().eq('id', id);
                 if (error) throw error;
             }
-            setExpenses(prev => prev.filter(e => e.id !== id));
+            await fetchExpenses();
             setIsBatchModalOpen(false);
             setBatchActionType('IDLE');
-            setBatchOption('ONLY_THIS');
         } catch (error) {
             console.error('Error deleting expense:', error);
         }
