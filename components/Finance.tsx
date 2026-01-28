@@ -1235,22 +1235,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 {!editingExpenseId && (
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Recorrência (Mensal)</label>
-                                        <div className="relative">
-                                            <select
-                                                value={recurrenceMonths}
-                                                onChange={e => setRecurrenceMonths(parseInt(e.target.value))}
-                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
-                                            >
-                                                <option value={1}>Não repetir (Único)</option>
-                                                <option value={2}>Repetir por 2 meses</option>
-                                                <option value={3}>Repetir por 3 meses</option>
-                                                <option value={4}>Repetir por 4 meses</option>
-                                                <option value={5}>Repetir por 5 meses</option>
-                                                <option value={6}>Repetir por 6 meses</option>
-                                                <option value={12}>Repetir por 12 meses (Anual)</option>
-                                                <option value={24}>Repetir por 24 meses</option>
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs font-bold uppercase">Meses</div>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    value={recurrenceMonths}
+                                                    onChange={e => setRecurrenceMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                                />
+                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-zinc-700 px-2 py-1 rounded-md border border-slate-200 dark:border-zinc-600">Meses</div>
+                                            </div>
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {[1, 6, 12, 24, 36, 48, 60, 120].map(m => (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        onClick={() => setRecurrenceMonths(m)}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border-2 ${recurrenceMonths === m
+                                                            ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-black dark:border-white shadow-md'
+                                                            : 'bg-white dark:bg-zinc-900 text-slate-500 border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600'
+                                                            }`}
+                                                    >
+                                                        {m === 1 ? 'Único' : `${m} meses`}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
