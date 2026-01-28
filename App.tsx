@@ -385,7 +385,7 @@ const App: React.FC = () => {
       case ViewState.ESTOQUE:
         return <Inventory stock={stock} setStock={setStock} providers={providers} />;
       case ViewState.VENDAS:
-        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} />;
+        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} customers={customers} />;
       case ViewState.AGENDA:
         return (
           <Agenda

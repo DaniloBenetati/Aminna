@@ -5,14 +5,15 @@ import { supabase } from '../services/supabase';
 import { ShoppingCart, Plus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
-import { Sale, StockItem, PaymentSetting } from '../types';
+import { Sale, StockItem, PaymentSetting, Customer } from '../types';
 
 interface SalesProps {
     sales: Sale[];
     setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
     stock: StockItem[];
     setStock: React.Dispatch<React.SetStateAction<StockItem[]>>;
-    paymentSettings: PaymentSetting[]; // Added prop
+    paymentSettings: PaymentSetting[];
+    customers: Customer[];
 }
 
 interface CartItem {
@@ -24,7 +25,7 @@ interface CartItem {
     total: number;
 }
 
-export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, paymentSettings }) => {
+export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, paymentSettings, customers }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -42,7 +43,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
     // Transaction State
     const [customerId, setCustomerId] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState(''); // Initialized empty or with first method
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState('');
     const [cart, setCart] = useState<CartItem[]>([]);
 
     // Item Selection State
@@ -52,7 +54,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
 
-    const getCustomerName = (id: string) => CUSTOMERS.find(c => c.id === id)?.name || 'Cliente Desconhecido';
+    const getCustomerName = (id: string) => customers.find(c => c.id === id)?.name || 'Cliente Desconhecido';
     const getProductName = (id: string) => stock.find(s => s.id === id)?.name || 'Produto Removido';
 
     // --- DATE HELPERS ---
@@ -217,6 +219,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             item.code?.toLowerCase().includes(search)
         );
     }, [saleProducts, productSearch]);
+
+    const filteredCustomerOptions = useMemo(() => {
+        if (!customerSearch) return customers.slice(0, 20);
+        const search = customerSearch.toLowerCase();
+        return customers.filter(c =>
+            c.name.toLowerCase().includes(search) ||
+            c.phone.includes(search)
+        ).slice(0, 20);
+    }, [customers, customerSearch]);
 
     const handleRegisterSale = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -522,20 +533,59 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                                 {/* 1. Select Customer */}
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5">Selecionar Cliente</label>
-                                    <div className="relative">
-                                        <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
-                                        <select
-                                            required={cart.length === 0}
-                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white appearance-none transition-colors"
-                                            value={customerId}
-                                            onChange={e => setCustomerId(e.target.value)}
-                                        >
-                                            <option value="">Escolha a cliente...</option>
-                                            {CUSTOMERS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
-                                    </div>
+                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5 flex justify-between items-center">
+                                        <span>Selecionar Cliente</span>
+                                        {customerId && <span className="text-[8px] text-indigo-600 dark:text-indigo-400">CLIENTE SELECIONADA</span>}
+                                    </label>
+
+                                    {!customerId ? (
+                                        <div className="relative">
+                                            <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
+                                            <input
+                                                type="text"
+                                                placeholder="Busque por nome ou celular..."
+                                                className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all"
+                                                value={customerSearch}
+                                                onChange={e => setCustomerSearch(e.target.value)}
+                                            />
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
+
+                                            {customerSearch && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                                                    {filteredCustomerOptions.length > 0 ? filteredCustomerOptions.map(c => (
+                                                        <button
+                                                            key={c.id}
+                                                            type="button"
+                                                            className="w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/client"
+                                                            onClick={() => {
+                                                                setCustomerId(c.id);
+                                                                setCustomerSearch('');
+                                                            }}
+                                                        >
+                                                            <div className="min-w-0">
+                                                                <p className="font-black text-[12px] text-slate-950 dark:text-white truncate uppercase">{c.name}</p>
+                                                                <p className="text-[9px] font-bold text-slate-500 uppercase">{c.phone}</p>
+                                                            </div>
+                                                            <ArrowRight size={14} className="text-slate-300 group-hover/client:text-indigo-600" />
+                                                        </button>
+                                                    )) : (
+                                                        <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Nenhuma cliente encontrada</div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800/50 flex items-center justify-between">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center flex-shrink-0"><User size={16} /></div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-black text-slate-950 dark:text-white truncate uppercase">{getCustomerName(customerId)}</p>
+                                                    <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">{customers.find(c => c.id === customerId)?.phone}</p>
+                                                </div>
+                                            </div>
+                                            <button type="button" onClick={() => setCustomerId('')} className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-sm hover:bg-slate-50 transition-colors">Trocar</button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* 2. Add Items Area */}
@@ -690,23 +740,22 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     </div>
                                 </div>
                             </div>
-                    </div>
 
-                    {/* Footer Actions */}
-                    <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3">
-                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                        <button
-                            type="submit"
-                            disabled={cart.length === 0}
-                            className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
-                        >
-                            <Check size={18} /> Confirmar Venda
-                        </button>
+                            {/* Footer Actions */}
+                            <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                                <button
+                                    type="submit"
+                                    disabled={cart.length === 0}
+                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+                                >
+                                    <Check size={18} /> Confirmar Venda
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
-                    </div>
-                </div >
+                </div>
             )}
-        </div >
+        </div>
     );
 };
