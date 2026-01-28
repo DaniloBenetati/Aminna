@@ -593,9 +593,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         }
     };
 
-    const handleSaveExpense = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSaveExpense = async (e?: React.FormEvent, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
+        if (e) e.preventDefault();
         if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
+
+        const currentOption = overrideOption || batchOption;
 
         const expenseData = {
             description: expenseForm.description,
@@ -619,11 +621,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     return;
                 }
 
-                if (originalExpense?.recurringId && batchOption !== 'ONLY_THIS') {
+                if (originalExpense?.recurringId && currentOption !== 'ONLY_THIS') {
                     // BATCH UPDATE
                     let updateQuery = supabase.from('expenses').update(expenseData).eq('recurring_id', originalExpense.recurringId);
 
-                    if (batchOption === 'THIS_AND_FUTURE') {
+                    if (currentOption === 'THIS_AND_FUTURE') {
                         updateQuery = updateQuery.gte('date', originalExpense.date);
                     }
 
@@ -680,9 +682,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         }
     };
 
-    const handleDeleteExpense = async (id: string) => {
+    const handleDeleteExpense = async (id: string, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
         const expense = expenses.find(exp => exp.id === id);
         if (!expense) return;
+
+        const currentOption = overrideOption || 'ONLY_THIS';
 
         if (expense.recurringId && batchActionType === 'IDLE') {
             setEditingExpenseId(id); // Temporarily store to know which series we're acting on
@@ -691,12 +695,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             return;
         }
 
-        if (!window.confirm('Tem certeza que deseja excluir?')) return;
+        // Only ask for confirmation if not coming from the batch modal
+        if (!overrideOption && !window.confirm('Tem certeza que deseja excluir?')) return;
 
         try {
-            if (expense.recurringId && batchOption !== 'ONLY_THIS') {
+            if (expense.recurringId && currentOption !== 'ONLY_THIS') {
                 let deleteQuery = supabase.from('expenses').delete().eq('recurring_id', expense.recurringId);
-                if (batchOption === 'THIS_AND_FUTURE') {
+                if (currentOption === 'THIS_AND_FUTURE') {
                     deleteQuery = deleteQuery.gte('date', expense.date);
                 }
                 const { error } = await deleteQuery;
@@ -1271,7 +1276,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
                                 <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
                             </div>
-                            <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
+                            <form onSubmit={(e) => handleSaveExpense(e)} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Descrição do Gasto</label>
                                     <input type="text" placeholder="Ex: Conta de Luz" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
@@ -1457,19 +1462,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
                             <div className="space-y-3">
                                 <button
-                                    onClick={() => { setBatchOption('ONLY_THIS'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'ONLY_THIS'); else handleDeleteExpense(editingExpenseId!, 'ONLY_THIS'); }}
                                     className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
                                 >
                                     Somente esta
                                 </button>
                                 <button
-                                    onClick={() => { setBatchOption('THIS_AND_FUTURE'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'THIS_AND_FUTURE'); else handleDeleteExpense(editingExpenseId!, 'THIS_AND_FUTURE'); }}
                                     className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
                                 >
                                     Esta e as próximas
                                 </button>
                                 <button
-                                    onClick={() => { setBatchOption('ALL'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'ALL'); else handleDeleteExpense(editingExpenseId!, 'ALL'); }}
                                     className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
                                 >
                                     Todas da série
