@@ -237,6 +237,7 @@ export interface Expense {
   status: 'Pago' | 'Pendente';
   paymentMethod: 'Boleto' | 'Pix' | 'Transferência' | 'Cartão' | 'Dinheiro';
   supplierId?: string;
+  recurringId?: string;
 }
 
 export interface Supplier {
