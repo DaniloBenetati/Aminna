@@ -311,3 +311,16 @@ export interface CommissionSetting {
   endDay: number | 'last'; // 'last' means last day of month
   paymentDay: number;
 }
+
+export interface AppPermissions {
+  tabs: ViewState[];
+  privileges: string[];
+}
+
+export interface UserProfile {
+  id: string;
+  email?: string;
+  role: 'admin' | 'manager' | 'staff';
+  permissions: AppPermissions;
+  createdAt: string;
+}

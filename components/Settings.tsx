@@ -8,7 +8,7 @@ import {
     Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
     X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer
 } from 'lucide-react';
-import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting } from '../types';
+import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile } from '../types';
 
 interface SettingsPageProps {
     onNavigate: (view: ViewState) => void;
@@ -30,7 +30,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     setCommissionSettings
 }) => {
     const [activeTab, setActiveTab] = useState<'MANUAL' | 'GENERAL'>('GENERAL');
-    const [subTab, setSubTab] = useState<'FINANCE' | 'SYSTEM' | 'UNIT' | 'CATEGORIES'>('FINANCE');
+    const [subTab, setSubTab] = useState<'FINANCE' | 'SYSTEM' | 'UNIT' | 'CATEGORIES' | 'USERS'>('FINANCE');
+    const [profiles, setProfiles] = useState<UserProfile[]>([]);
+    const [isLoadingProfiles, setIsLoadingProfiles] = useState(false);
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
     const [selectedModule, setSelectedModule] = useState<any>(null);
 
     // --- PAYMENT SETTINGS STATES ---
@@ -201,6 +205,73 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         Ticket: Tag
     };
 
+    // --- USER MANAGEMENT HANDLERS ---
+    const fetchProfiles = async () => {
+        setIsLoadingProfiles(true);
+        try {
+            const { data, error } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            if (data) {
+                const mapped: UserProfile[] = data.map(p => ({
+                    id: p.id,
+                    email: p.email,
+                    role: p.role,
+                    permissions: p.permissions || { tabs: [ViewState.DASHBOARD], privileges: [] },
+                    createdAt: p.created_at
+                }));
+                setProfiles(mapped);
+            }
+        } catch (error) {
+            console.error('Error fetching profiles:', error);
+        } finally {
+            setIsLoadingProfiles(false);
+        }
+    };
+
+    React.useEffect(() => {
+        if (subTab === 'USERS') {
+            fetchProfiles();
+        }
+    }, [subTab]);
+
+    const handleOpenUserModal = (user: UserProfile) => {
+        setEditingUser(user);
+        setIsUserModalOpen(true);
+    };
+
+    const handleSaveUserPermissions = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        try {
+            const { error } = await supabase.from('profiles').update({
+                role: editingUser.role,
+                permissions: editingUser.permissions
+            }).eq('id', editingUser.id);
+
+            if (error) throw error;
+
+            setProfiles(prev => prev.map(p => p.id === editingUser.id ? editingUser : p));
+            setIsUserModalOpen(false);
+        } catch (error) {
+            console.error('Error updating user permissions:', error);
+            alert('Erro ao salvar permissões');
+        }
+    };
+
+    const toggleTabPermission = (tab: ViewState) => {
+        if (!editingUser) return;
+        const currentTabs = editingUser.permissions.tabs;
+        const newTabs = currentTabs.includes(tab)
+            ? currentTabs.filter(t => t !== tab)
+            : [...currentTabs, tab];
+
+        setEditingUser({
+            ...editingUser,
+            permissions: { ...editingUser.permissions, tabs: newTabs }
+        });
+    };
+
     // --- DOCUMENTATION HELPERS ---
     const modules = [
         { title: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600', bg: 'bg-indigo-50', viewState: ViewState.DASHBOARD, description: 'Visão geral do negócio...', features: ['KPIs', 'Fluxo'], mockup: null },
@@ -243,6 +314,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     { id: 'FINANCE', label: 'Financeiro', icon: Landmark },
                                     { id: 'CATEGORIES', label: 'Planilhas DRE', icon: Tag },
                                     { id: 'SYSTEM', label: 'Sistema', icon: Settings },
+                                    { id: 'USERS', label: 'Usuários', icon: User },
                                     { id: 'UNIT', label: 'Minha Unidade', icon: Info },
                                 ].map(st => (
                                     <button
@@ -445,6 +517,60 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* USERS TAB */}
+                            {subTab === 'USERS' && (
+                                <div className="space-y-6">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
+                                        <div className="max-w-xl mb-8">
+                                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center gap-3">
+                                                <User className="text-indigo-600" /> Controle de Acesso
+                                            </h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                Gerencie as permissões dos usuários do sistema. Defina quais abas e funcionalidades cada perfil pode acessar.
+                                            </p>
+                                        </div>
+
+                                        {isLoadingProfiles ? (
+                                            <div className="flex justify-center py-12">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {profiles.map(user => (
+                                                    <div key={user.id} className="bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-6 border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-all group">
+                                                        <div className="flex items-center gap-4 mb-4">
+                                                            <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
+                                                                <User size={24} />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-black text-slate-900 dark:text-white truncate">{user.email}</p>
+                                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-3">
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {user.permissions.tabs.slice(0, 3).map(tab => (
+                                                                    <span key={tab} className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-md text-[9px] font-bold text-slate-500 uppercase">{tab}</span>
+                                                                ))}
+                                                                {user.permissions.tabs.length > 3 && (
+                                                                    <span className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-md text-[9px] font-bold text-slate-500">+{user.permissions.tabs.length - 3}</span>
+                                                                )}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => handleOpenUserModal(user)}
+                                                                className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:border-indigo-600 hover:text-indigo-600 transition-all"
+                                                            >
+                                                                Editar Permissões
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -665,6 +791,64 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </div>
                 )
             }
+
+            {/* USER PERMISSIONS MODAL */}
+            {isUserModalOpen && editingUser && (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                        <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
+                            <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
+                                <ShieldCheck size={20} className="text-indigo-400" />
+                                Permissões: {editingUser.email}
+                            </h3>
+                            <button onClick={() => setIsUserModalOpen(false)} className="p-1 hover:text-indigo-400 transition-colors"><X size={24} /></button>
+                        </div>
+                        <form onSubmit={handleSaveUserPermissions} className="p-6 md:p-8 space-y-8 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
+                            {/* Role Selection */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {(['admin', 'manager', 'staff'] as const).map(role => (
+                                    <button
+                                        key={role}
+                                        type="button"
+                                        onClick={() => setEditingUser({ ...editingUser, role })}
+                                        className={`p-4 rounded-2xl border-2 transition-all text-left ${editingUser.role === role ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800'}`}
+                                    >
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{role === 'admin' ? 'Acesso Total' : role === 'manager' ? 'Gestão' : 'Operativo'}</p>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{role}</p>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Tabs Access */}
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 ml-1">Acesso às Abas do Sistema</label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {Object.values(ViewState).map(tab => (
+                                        <button
+                                            key={tab}
+                                            type="button"
+                                            onClick={() => toggleTabPermission(tab)}
+                                            className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${editingUser.permissions.tabs.includes(tab) ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400' : 'border-slate-100 dark:border-zinc-800 text-slate-400'}`}
+                                        >
+                                            <div className={`w-4 h-4 rounded flex items-center justify-center border ${editingUser.permissions.tabs.includes(tab) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
+                                                {editingUser.permissions.tabs.includes(tab) && <CheckCircle2 size={10} />}
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-tight">{tab}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <Save size={18} /> Salvar Permissões
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
