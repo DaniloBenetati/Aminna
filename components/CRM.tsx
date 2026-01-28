@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../services/supabase';
+
 import { Users, Search, ArrowRightLeft, Star, Package, Clock, MessageSquare, AlertTriangle, Heart, Calendar, Check, ChevronLeft, Ticket, Briefcase, XCircle, Edit3, Save, X, Ban, ShieldAlert, HeartHandshake, Map, BarChart, Trophy, TrendingUp, Filter, Smartphone, UserPlus, CheckCircle2, ChevronRight, ArrowRight, MapPin, Phone, Mail, Contact, History, MessageCircle, AlertCircle, RefreshCw, PieChart as PieIcon, MousePointer2, Target, Zap, Lightbulb, FilterIcon } from 'lucide-react';
 import { PROVIDERS } from '../constants';
 import { Customer, CustomerHistoryItem, Lead, LeadStatus } from '../types';
@@ -132,10 +134,22 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
     const [editingLead, setEditingLead] = useState<Lead | null>(null);
 
     // New function to save Lead Details (Temperature/Notes)
-    const handleSaveLeadDetails = () => {
+    const handleSaveLeadDetails = async () => {
         if (!editingLead) return;
-        setLeads(prev => prev.map(l => l.id === editingLead.id ? editingLead : l));
-        setEditingLead(null);
+
+        const leadData = {
+            temperature: editingLead.temperature,
+            notes: editingLead.notes
+        };
+
+        try {
+            const { error } = await supabase.from('leads').update(leadData).eq('id', editingLead.id);
+            if (error) throw error;
+            setLeads(prev => prev.map(l => l.id === editingLead.id ? editingLead : l));
+            setEditingLead(null);
+        } catch (error) {
+            console.error('Error updating lead details:', error);
+        }
     };
 
     // Effect to detect duplicate lead OR existing customer

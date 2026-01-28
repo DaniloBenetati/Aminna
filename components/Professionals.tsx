@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
+import { supabase } from '../services/supabase';
+
 import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History } from 'lucide-react';
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -190,40 +192,85 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setFormData({ ...formData, active: !formData.active });
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (editingProvider) {
-            // Check for commission change
-            let updatedCommissionHistory = editingProvider.commissionHistory || [];
+        const providerData = {
+            name: formData.name,
+            phone: formData.phone,
+            specialty: formData.specialty,
+            specialties: formData.specialties || [],
+            commission_rate: formData.commissionRate,
+            pix_key: formData.pixKey,
+            birth_date: formData.birthDate || null,
+            active: formData.active,
+            work_days: formData.workDays || [],
+            avatar: formData.avatar
+        };
 
-            if (editingProvider.commissionRate !== formData.commissionRate) {
-                if (!commissionChangeReason.trim()) {
-                    alert("Por favor, informe o motivo da alteração de comissão (promoção, reajuste, etc).");
-                    return;
+        try {
+            if (editingProvider) {
+                // Check for commission change
+                let updatedCommissionHistory = editingProvider.commissionHistory || [];
+
+                if (editingProvider.commissionRate !== formData.commissionRate) {
+                    if (!commissionChangeReason.trim()) {
+                        alert("Por favor, informe o motivo da alteração de comissão (promoção, reajuste, etc).");
+                        return;
+                    }
+
+                    // Add OLD rate to history
+                    const historyItem: CommissionHistoryItem = {
+                        date: new Date().toISOString(),
+                        rate: editingProvider.commissionRate,
+                        note: commissionChangeReason
+                    };
+                    updatedCommissionHistory = [historyItem, ...updatedCommissionHistory];
                 }
 
-                // Add OLD rate to history
-                const historyItem: CommissionHistoryItem = {
-                    date: new Date().toISOString(),
-                    rate: editingProvider.commissionRate,
-                    note: commissionChangeReason
-                };
-                updatedCommissionHistory = [historyItem, ...updatedCommissionHistory];
+                const { error } = await supabase.from('providers').update({
+                    ...providerData,
+                    commission_history: updatedCommissionHistory
+                }).eq('id', editingProvider.id);
+                if (error) throw error;
+
+                const updatedProvider = {
+                    ...editingProvider,
+                    ...formData,
+                    commissionHistory: updatedCommissionHistory
+                } as Provider;
+
+                setProviders(prev => prev.map(p => p.id === editingProvider.id ? updatedProvider : p));
+            } else {
+                const { data, error } = await supabase.from('providers').insert([providerData]).select();
+                if (error) throw error;
+                if (data && data[0]) {
+                    const newProvider = { ...formData, id: data[0].id, commissionHistory: [] } as Provider;
+                    setProviders(prev => [...prev, newProvider]);
+                }
             }
-
-            const updatedProvider = {
-                ...editingProvider,
-                ...formData,
-                commissionHistory: updatedCommissionHistory
-            } as Provider;
-
-            setProviders(prev => prev.map(p => p.id === editingProvider.id ? updatedProvider : p));
-        } else {
-            const newProvider = { ...formData, id: Date.now().toString(), commissionHistory: [] } as Provider;
-            setProviders(prev => [...prev, newProvider]);
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error('Error saving provider:', error);
+            alert('Erro ao salvar profissional.');
         }
-        setIsModalOpen(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (confirm('Tem certeza que deseja desativar este profissional? Os agendamentos históricos serão mantidos.')) {
+            try {
+                const { error } = await supabase
+                    .from('providers')
+                    .update({ active: false })
+                    .eq('id', id);
+                if (error) throw error;
+
+                setProviders(prev => prev.map(p => p.id === id ? { ...p, active: false } : p));
+            } catch (error) {
+                console.error('Error deactivating provider:', error);
+                alert('Erro ao desativar profissional.');
+            }
+        }
     };
 
     const confirmInactivation = () => {
@@ -354,8 +401,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${provider.active
-                                                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
-                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-zinc-600'
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
+                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-zinc-600'
                                                 }`}>
                                                 {provider.active ? <><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Ativa</> : 'Inativa'}
                                             </span>
@@ -381,8 +428,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     <div
                                                         key={day.id}
                                                         className={`w-4 h-4 rounded-full flex items-center justify-center text-[7px] font-bold ${provider.workDays?.includes(day.id)
-                                                                ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
-                                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-300 dark:text-zinc-600'
+                                                            ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300'
+                                                            : 'bg-slate-100 dark:bg-zinc-800 text-slate-300 dark:text-zinc-600'
                                                             }`}
                                                     >
                                                         {day.label}
@@ -585,8 +632,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     type="button"
                                                     onClick={() => toggleWorkDay(day.id)}
                                                     className={`flex-1 py-3 rounded-xl border-2 transition-all text-sm font-black uppercase ${isSelected
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
-                                                            : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:border-slate-300 dark:hover:border-zinc-600'
+                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
+                                                        : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:border-slate-300 dark:hover:border-zinc-600'
                                                         }`}
                                                 >
                                                     {day.label}

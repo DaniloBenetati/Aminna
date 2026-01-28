@@ -1,5 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
+import { supabase } from '../services/supabase';
+
 import { ShoppingCart, Plus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting } from '../types';
@@ -161,54 +163,85 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setCart(cart.filter(item => item.id !== itemId));
     };
 
-    const handleRegisterSale = (e: React.FormEvent) => {
+    const handleRegisterSale = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!customerId || cart.length === 0) {
             alert("Selecione a cliente e adicione pelo menos um produto.");
             return;
         }
 
-        // Use local time for date
         const now = new Date();
         const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
-        // Create sales records and update stock for each item
-        const newSales: Sale[] = [];
-        let updatedStock = [...stock];
-
-        cart.forEach(item => {
-            newSales.push({
-                id: Date.now().toString() + Math.random(),
+        try {
+            // 1. Prepare sales data for insertion
+            const salesToInsert = cart.map(item => ({
+                customer_id: customerId,
+                total_amount: item.total,
                 date: localDate,
-                customerId: customerId,
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                totalPrice: item.total,
-                paymentMethod: paymentMethod
-            });
+                payment_method: paymentMethod || 'Pix',
+                items: [{
+                    productId: item.productId,
+                    quantity: item.quantity,
+                    unitPrice: item.unitPrice,
+                    name: item.productName
+                }]
+            }));
 
-            updatedStock = updatedStock.map(s =>
-                s.id === item.productId
-                    ? { ...s, quantity: s.quantity - item.quantity }
-                    : s
-            );
-        });
+            // 2. Insert into Supabase
+            const { data: insertedSales, error: saleError } = await supabase.from('sales').insert(salesToInsert).select();
+            if (saleError) throw saleError;
 
-        setSales(prev => [...newSales, ...prev]);
-        setStock(updatedStock);
+            // 3. Update local state and Stock in Supabase
+            let updatedStock = [...stock];
+            for (const item of cart) {
+                const stockItem = updatedStock.find(s => s.id === item.productId);
+                if (stockItem) {
+                    const newQty = stockItem.quantity - item.quantity;
+                    const { error: stockError } = await supabase
+                        .from('stock_items')
+                        .update({ quantity: newQty })
+                        .eq('id', item.productId);
+                    if (stockError) throw stockError;
 
-        // Reset and Close
-        setIsModalOpen(false);
-        setCart([]);
-        setCustomerId('');
-        setCurrentProduct('');
-        setPaymentMethod('Pix');
+                    updatedStock = updatedStock.map(s => s.id === item.productId ? { ...s, quantity: newQty } : s);
+                }
+            }
+
+            if (insertedSales) {
+                const newLocalSales: Sale[] = insertedSales.map((s: any) => ({
+                    id: s.id,
+                    customerId: s.customer_id,
+                    totalAmount: s.total_amount,
+                    date: s.date,
+                    paymentMethod: s.payment_method,
+                    items: s.items || []
+                }));
+                setSales(prev => [...newLocalSales, ...prev]);
+            }
+
+            setStock(updatedStock);
+            setIsModalOpen(false);
+            setCart([]);
+            setCustomerId('');
+            setCurrentProduct('');
+            setPaymentMethod('Pix');
+
+        } catch (error) {
+            console.error('Error registering sale:', error);
+            alert('Erro ao registrar venda.');
+        }
     };
 
-    const handleDeleteSale = (id: string) => {
+    const handleDeleteSale = async (id: string) => {
         if (confirm('Deseja estornar esta venda? O estoque não será devolvido automaticamente nesta versão.')) {
-            setSales(prev => prev.filter(s => s.id !== id));
+            try {
+                const { error } = await supabase.from('sales').delete().eq('id', id);
+                if (error) throw error;
+                setSales(prev => prev.filter(s => s.id !== id));
+            } catch (error) {
+                console.error('Error deleting sale:', error);
+            }
         }
     };
 

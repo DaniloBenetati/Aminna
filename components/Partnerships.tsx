@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import { supabase } from '../services/supabase';
+
 import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown } from 'lucide-react';
 import { PARTNERS as INITIAL_PARTNERS } from '../constants';
 import { Partner, Campaign } from '../types';
@@ -38,61 +40,155 @@ export const Partnerships: React.FC<PartnershipsProps> = ({ partners, setPartner
     setIsCampaignModalOpen(true);
   };
 
-  const handleSavePartner = (e: React.FormEvent) => {
+  const togglePartnerStatus = async (id: string) => {
+    const partner = partners.find(p => p.id === id);
+    if (!partner) return;
+    const newStatus = !partner.active;
+    try {
+      const { error } = await supabase.from('partners').update({ active: newStatus }).eq('id', id);
+      if (error) throw error;
+      setPartners(prev => prev.map(p => p.id === id ? { ...p, active: newStatus } : p));
+    } catch (error) {
+      console.error('Error toggling partner status:', error);
+    }
+  };
+
+  const handleSavePartner = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    const partnerData: Partial<Partner> = {
+    const partnerData = {
       name: (form.elements.namedItem('name') as HTMLInputElement).value,
-      socialMedia: (form.elements.namedItem('socialMedia') as HTMLInputElement).value,
+      social_media: (form.elements.namedItem('socialMedia') as HTMLInputElement).value,
       category: (form.elements.namedItem('category') as HTMLSelectElement).value,
       phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
       email: (form.elements.namedItem('email') as HTMLInputElement).value,
       document: (form.elements.namedItem('document') as HTMLInputElement).value,
       address: (form.elements.namedItem('address') as HTMLInputElement).value,
-      partnershipType: (form.elements.namedItem('partnershipType') as HTMLSelectElement).value as 'PERMUTA' | 'PAGO',
-      pixKey: (form.elements.namedItem('pixKey') as HTMLInputElement).value,
+      partnership_type: (form.elements.namedItem('partnershipType') as HTMLSelectElement).value,
+      pix_key: (form.elements.namedItem('pixKey') as HTMLInputElement).value,
       notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value,
       active: editingPartner ? editingPartner.active : true
     };
 
-    if (editingPartner) {
-      setPartners(prev => prev.map(p => p.id === editingPartner.id ? { ...p, ...partnerData } as Partner : p));
-    } else {
-      const newPartner: Partner = { ...partnerData, id: `part-${Date.now()}` } as Partner;
-      setPartners([...partners, newPartner]);
+    try {
+      if (editingPartner) {
+        const { error } = await supabase.from('partners').update(partnerData).eq('id', editingPartner.id);
+        if (error) throw error;
+        setPartners(prev => prev.map(p => p.id === editingPartner.id ? {
+          ...p,
+          name: partnerData.name,
+          socialMedia: partnerData.social_media,
+          category: partnerData.category,
+          phone: partnerData.phone,
+          email: partnerData.email,
+          document: partnerData.document,
+          address: partnerData.address,
+          partnershipType: partnerData.partnership_type as any,
+          pixKey: partnerData.pix_key,
+          notes: partnerData.notes,
+          active: partnerData.active
+        } : p));
+      } else {
+        const { data, error } = await supabase.from('partners').insert([partnerData]).select();
+        if (error) throw error;
+        if (data && data[0]) {
+          setPartners(prev => [...prev, {
+            id: data[0].id,
+            name: partnerData.name,
+            socialMedia: partnerData.social_media,
+            category: partnerData.category,
+            phone: partnerData.phone,
+            email: partnerData.email,
+            document: partnerData.document,
+            address: partnerData.address,
+            partnershipType: partnerData.partnership_type as any,
+            pixKey: partnerData.pix_key,
+            notes: partnerData.notes,
+            active: partnerData.active
+          } as Partner]);
+        }
+      }
+      setIsPartnerModalOpen(false);
+    } catch (error) {
+      console.error('Error saving partner:', error);
+      alert('Erro ao salvar parceiro.');
     }
-    setIsPartnerModalOpen(false);
   };
 
-  const handleSaveCampaign = (e: React.FormEvent) => {
+  const handleSaveCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
-    const campaignData: Partial<Campaign> = {
-      partnerId: (form.elements.namedItem('partnerId') as HTMLSelectElement).value,
+    const campaignData = {
+      partner_id: (form.elements.namedItem('partnerId') as HTMLSelectElement).value,
       name: (form.elements.namedItem('name') as HTMLInputElement).value,
-      couponCode: (form.elements.namedItem('couponCode') as HTMLInputElement).value.toUpperCase(),
-      discountType: (form.elements.namedItem('discountType') as HTMLSelectElement).value as 'PERCENTAGE' | 'FIXED',
-      discountValue: parseFloat((form.elements.namedItem('discountValue') as HTMLInputElement).value),
-      maxUses: parseInt((form.elements.namedItem('maxUses') as HTMLInputElement).value) || 100,
+      coupon_code: (form.elements.namedItem('couponCode') as HTMLInputElement).value.toUpperCase(),
+      discount_type: (form.elements.namedItem('discountType') as HTMLSelectElement).value as 'PERCENTAGE' | 'FIXED',
+      discount_value: parseFloat((form.elements.namedItem('discountValue') as HTMLInputElement).value),
+      max_uses: parseInt((form.elements.namedItem('maxUses') as HTMLInputElement).value) || 100,
     };
 
-    if (editingCampaign) {
-      setCampaigns(prev => prev.map(c => c.id === editingCampaign.id ? { ...c, ...campaignData } as Campaign : c));
-    } else {
-      const newCampaign: Campaign = {
-        ...campaignData,
-        id: `camp-${Date.now()}`,
-        startDate: new Date().toISOString().split('T')[0],
-        useCount: 0,
-        totalRevenueGenerated: 0
-      } as Campaign;
-      setCampaigns([...campaigns, newCampaign]);
+    try {
+      if (editingCampaign) {
+        const { error } = await supabase.from('campaigns').update(campaignData).eq('id', editingCampaign.id);
+        if (error) throw error;
+        setCampaigns(prev => prev.map(c => c.id === editingCampaign.id ? {
+          ...c,
+          partnerId: campaignData.partner_id,
+          name: campaignData.name,
+          couponCode: campaignData.coupon_code,
+          discountType: campaignData.discount_type,
+          discountValue: campaignData.discount_value,
+          maxUses: campaignData.max_uses
+        } : c));
+      } else {
+        const newCampaignInsert = {
+          ...campaignData,
+          start_date: new Date().toISOString().split('T')[0]
+        };
+        const { data, error } = await supabase.from('campaigns').insert([newCampaignInsert]).select();
+        if (error) throw error;
+        if (data && data[0]) {
+          setCampaigns(prev => [...prev, {
+            id: data[0].id,
+            partnerId: campaignData.partner_id,
+            name: campaignData.name,
+            couponCode: campaignData.coupon_code,
+            discountType: campaignData.discount_type,
+            discountValue: campaignData.discount_value,
+            maxUses: campaignData.max_uses,
+            startDate: data[0].start_date,
+            useCount: 0,
+            totalRevenueGenerated: 0
+          } as Campaign]);
+        }
+      }
+      setIsCampaignModalOpen(false);
+    } catch (error) {
+      console.error('Error saving campaign:', error);
+      alert('Erro ao salvar campanha.');
     }
-    setIsCampaignModalOpen(false);
   };
 
-  const togglePartnerStatus = (id: string) => {
-    setPartners(prev => prev.map(p => p.id === id ? { ...p, active: !p.active } : p));
+  const handleDeletePartner = async (id: string) => {
+    if (!confirm('Deseja excluir este parceiro permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('partners').delete().eq('id', id);
+      if (error) throw error;
+      setPartners(prev => prev.filter(p => p.id !== id));
+    } catch (error) {
+      console.error('Error deleting partner:', error);
+    }
+  };
+
+  const handleDeleteCampaign = async (id: string) => {
+    if (!confirm('Deseja excluir esta campanha permanentemente?')) return;
+    try {
+      const { error } = await supabase.from('campaigns').delete().eq('id', id);
+      if (error) throw error;
+      setCampaigns(prev => prev.filter(c => c.id !== id));
+    } catch (error) {
+      console.error('Error deleting campaign:', error);
+    }
   };
 
   const toggleCampaignExpand = (id: string) => {

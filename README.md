@@ -2,19 +2,41 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# Aminna - Gestão Inteligente
 
-This contains everything you need to run your app locally.
+Sistema de gestão completa para estabelecimentos de beleza e estética, focado em automação de processos, controle financeiro e retenção de clientes.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1SErpqeIL30B_vDjEoTtXjqG731zTgwU8
+## 📑 Documentação e Manual
+Para entender todas as funcionalidades do sistema, acesse o nosso completo:
+👉 **[Manual do Usuário (MANUAL.md)](./MANUAL.md)**
 
-## Run Locally
+## 🚀 Tecnologias
+- **Frontend**: React + TypeScript + Vite
+- **Estilização**: Tailwind CSS / Vanilla CSS
+- **Backend & DB**: Supabase (PostgreSQL, Auth, Realtime)
+- **Icons**: Lucide React
 
-**Prerequisites:**  Node.js
+## 🛠️ Como Rodar Localmente
 
+**Pré-requisitos:** Node.js v18+
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+1. **Instalar dependências:**
+   ```bash
+   npm install
+   ```
+
+2. **Configuração de Ambiente:**
+   Configure as chaves do Supabase e Gemini no arquivo `.env.local`:
+   ```env
+   VITE_SUPABASE_URL=seu_url_aqui
+   VITE_SUPABASE_ANON_KEY=sua_chave_aqui
+   GEMINI_API_KEY=sua_chave_aqui
+   ```
+
+3. **Iniciar servidor de desenvolvimento:**
+   ```bash
+   npm run dev
+   ```
+
+## 🌐 Deploy
+O projeto está configurado para deploy imediato na **Vercel**.

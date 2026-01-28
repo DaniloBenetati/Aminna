@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { supabase } from '../services/supabase';
+
 import { DOCUMENTATION_DATA } from './DocumentationData';
 import {
     Settings, BookOpen, LayoutDashboard, Calendar, Users, DollarSign,
@@ -44,25 +46,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         setIsCommissionModalOpen(true);
     };
 
-    const handleSaveCommission = (e: React.FormEvent) => {
+    const handleSaveCommission = async (e: React.FormEvent) => {
         e.preventDefault();
-        const form = e.target as HTMLFormElement;
-
-        let endDayValue: number | 'last' = parseInt((form.elements.namedItem('endDay') as HTMLSelectElement).value);
-        if ((form.elements.namedItem('endDay') as HTMLSelectElement).value === 'last') {
-            endDayValue = 'last';
-        }
-
-        const data: Partial<CommissionSetting> = {
-            startDay: parseInt((form.elements.namedItem('startDay') as HTMLSelectElement).value),
-            endDay: endDayValue,
-            paymentDay: parseInt((form.elements.namedItem('paymentDay') as HTMLSelectElement).value)
-        };
-
         if (!setCommissionSettings || !editingCommission) return;
 
-        setCommissionSettings(prev => prev.map(c => c.id === editingCommission.id ? { ...c, ...data } : c));
-        setIsCommissionModalOpen(false);
+        const form = e.target as HTMLFormElement;
+        let endDayValue: number | 'last' = (form.elements.namedItem('endDay') as HTMLSelectElement).value === 'last'
+            ? 'last'
+            : parseInt((form.elements.namedItem('endDay') as HTMLSelectElement).value);
+
+        const data = {
+            start_day: parseInt((form.elements.namedItem('startDay') as HTMLSelectElement).value),
+            end_day: endDayValue === 'last' ? null : endDayValue, // Supabase might use NULL for 'last' or similar
+            payment_day: parseInt((form.elements.namedItem('paymentDay') as HTMLSelectElement).value)
+        };
+
+        try {
+            const { error } = await supabase.from('commission_settings').update(data).eq('id', editingCommission.id);
+            if (error) throw error;
+
+            setCommissionSettings(prev => prev.map(c => c.id === editingCommission.id ? {
+                ...c,
+                startDay: data.start_day,
+                endDay: endDayValue,
+                paymentDay: data.payment_day
+            } : c));
+            setIsCommissionModalOpen(false);
+        } catch (error) {
+            console.error('Error saving commission setting:', error);
+        }
     };
 
     // --- CATEGORY SETTINGS STATES ---
@@ -70,24 +82,40 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const [newCategoryDRE, setNewCategoryDRE] = useState<ExpenseCategory['dreClass']>('EXPENSE_ADM');
     const [editingCategory, setEditingCategory] = useState<ExpenseCategory | null>(null);
 
-    const handleSaveCategory = (e: React.FormEvent) => {
+    const handleSaveCategory = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newCategoryName.trim() || !setExpenseCategories) return;
 
-        if (editingCategory) {
-            setExpenseCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: newCategoryName, dreClass: newCategoryDRE } : c));
-            setEditingCategory(null);
-        } else {
-            const newCat: ExpenseCategory = {
-                id: `cat-${Date.now()}`,
-                name: newCategoryName,
-                dreClass: newCategoryDRE,
-                isSystem: false
-            };
-            setExpenseCategories(prev => [...prev, newCat]);
+        const catData = {
+            name: newCategoryName,
+            dre_class: newCategoryDRE,
+            is_system: false
+        };
+
+        try {
+            if (editingCategory) {
+                const { error } = await supabase.from('expense_categories').update(catData).eq('id', editingCategory.id);
+                if (error) throw error;
+                setExpenseCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: newCategoryName, dreClass: newCategoryDRE } : c));
+                setEditingCategory(null);
+            } else {
+                const { data, error } = await supabase.from('expense_categories').insert([catData]).select();
+                if (error) throw error;
+                if (data && data[0]) {
+                    const newCat: ExpenseCategory = {
+                        id: data[0].id,
+                        name: newCategoryName,
+                        dreClass: newCategoryDRE,
+                        isSystem: false
+                    };
+                    setExpenseCategories(prev => [...prev, newCat]);
+                }
+            }
+            setNewCategoryName('');
+            setNewCategoryDRE('EXPENSE_ADM');
+        } catch (error) {
+            console.error('Error saving category:', error);
         }
-        setNewCategoryName('');
-        setNewCategoryDRE('EXPENSE_ADM');
     };
 
     const handleEditCategory = (cat: ExpenseCategory) => {
@@ -102,10 +130,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         setNewCategoryDRE('EXPENSE_ADM');
     };
 
-    const handleDeleteCategory = (id: string) => {
+    const handleDeleteCategory = async (id: string) => {
         if (!setExpenseCategories) return;
-        if (confirm('Excluir esta categoria?')) {
+        const cat = expenseCategories.find(c => c.id === id);
+        if (cat?.isSystem) return alert('Categorias do sistema não podem ser excluídas');
+        if (!confirm('Excluir esta categoria permanentemente?')) return;
+
+        try {
+            const { error } = await supabase.from('expense_categories').delete().eq('id', id);
+            if (error) throw error;
             setExpenseCategories(prev => prev.filter(c => c.id !== id));
+        } catch (error) {
+            console.error('Error deleting category:', error);
         }
     };
 
