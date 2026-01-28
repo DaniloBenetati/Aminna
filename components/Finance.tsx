@@ -638,17 +638,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 }
             } else {
                 const newExpenses = [];
-                let currentDate = new Date(expenseForm.date!);
                 const rId = recurrenceMonths > 1 ? crypto.randomUUID() : null;
 
                 for (let i = 0; i < recurrenceMonths; i++) {
+                    const d = new Date(expenseForm.date! + 'T12:00:00');
+                    d.setMonth(d.getMonth() + i);
+
                     newExpenses.push({
                         ...expenseData,
                         description: recurrenceMonths > 1 ? `${expenseForm.description} (${i + 1}/${recurrenceMonths})` : expenseForm.description,
-                        date: currentDate.toISOString().split('T')[0],
+                        date: toLocalDateStr(d),
                         recurring_id: rId
                     });
-                    currentDate.setMonth(currentDate.getMonth() + 1);
                 }
                 const { error } = await supabase.from('expenses').insert(newExpenses);
                 if (error) throw error;
