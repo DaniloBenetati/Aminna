@@ -195,23 +195,35 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         try {
             const { data: { text } } = await Tesseract.recognize(file, 'por+eng');
 
-            const recognizedText = text.toLowerCase();
-            console.log("Texto reconhecido:", recognizedText);
+            // Clean and normalize text
+            const normalizedText = text.toLowerCase()
+                .replace(/[#*_\-\/]/g, ' ') // Remove special chars commonly misread or ignored
+                .replace(/\s+/g, ' ')       // Normalize spaces
+                .trim();
+
+            console.log("Original OCR Texto:", text);
+            console.log("Texto Normalizado:", normalizedText);
 
             // Fuzzy matching logic
             const matchedItem = stock.find(item => {
                 const name = item.name.toLowerCase();
                 const code = item.code.toLowerCase();
 
-                // Direct match
-                if (recognizedText.includes(name) || recognizedText.includes(code)) return true;
+                // Direct match on code (priority)
+                if (normalizedText.includes(code)) return true;
+
+                // Direct match on full name
+                if (normalizedText.includes(name)) return true;
 
                 // Word match (for products like "Helen Color")
                 const nameWords = name.split(' ').filter(word => word.length > 2);
-                return nameWords.some(word => recognizedText.includes(word));
+                if (nameWords.length > 0 && nameWords.every(word => normalizedText.includes(word))) return true;
+
+                return false;
             });
 
             if (matchedItem) {
+                console.log("Produto Identificado:", matchedItem.name);
                 setSelectedItemId(matchedItem.id);
                 const item = stock.find(i => i.id === matchedItem.id);
                 if (item) setEntryCost(item.costPrice.toString());
@@ -942,7 +954,18 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             placeholder="Digite nome ou código..."
                                             className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
                                             value={productSearch}
-                                            onChange={e => setProductSearch(e.target.value)}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setProductSearch(val);
+
+                                                // AUTO-SELECT ON EXACT MATCH (Barcode Scanner support)
+                                                const exactMatch = stock.find(i => i.code?.toUpperCase() === val.toUpperCase());
+                                                if (exactMatch) {
+                                                    setSelectedItemId(exactMatch.id);
+                                                    setProductSearch('');
+                                                    setEntryCost(exactMatch.costPrice.toString());
+                                                }
+                                            }}
                                         />
                                         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
 

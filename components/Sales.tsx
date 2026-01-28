@@ -2,7 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
+import { ShoppingCart, Plus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight } from 'lucide-react';
+import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting } from '../types';
 
@@ -47,6 +48,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     // Item Selection State
     const [currentProduct, setCurrentProduct] = useState('');
     const [currentQuantity, setCurrentQuantity] = useState(1);
+    const [productSearch, setProductSearch] = useState('');
+    const [isScanning, setIsScanning] = useState(false);
+    const [ocrError, setOcrError] = useState<string | null>(null);
 
     const getCustomerName = (id: string) => CUSTOMERS.find(c => c.id === id)?.name || 'Cliente Desconhecido';
     const getProductName = (id: string) => stock.find(s => s.id === id)?.name || 'Produto Removido';
@@ -162,6 +166,57 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const handleRemoveFromCart = (itemId: string) => {
         setCart(cart.filter(item => item.id !== itemId));
     };
+
+    const handleOCRField = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        setOcrError(null);
+
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'por+eng');
+            const normalizedText = text.toLowerCase()
+                .replace(/[#*_\-\/]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            const matchedItem = stock.find(item => {
+                if (item.category !== 'Venda') return false;
+                const name = item.name.toLowerCase();
+                const code = item.code?.toLowerCase();
+
+                if (code && normalizedText.includes(code)) return true;
+                if (normalizedText.includes(name)) return true;
+
+                const nameWords = name.split(' ').filter(word => word.length > 2);
+                if (nameWords.length > 0 && nameWords.every(word => normalizedText.includes(word))) return true;
+
+                return false;
+            });
+
+            if (matchedItem) {
+                setCurrentProduct(matchedItem.id);
+            } else {
+                setOcrError("Produto não identificado.");
+            }
+        } catch (error) {
+            console.error("OCR Error:", error);
+            setOcrError("Erro ao ler imagem.");
+        } finally {
+            setIsScanning(false);
+            if (e.target) e.target.value = '';
+        }
+    };
+
+    const filteredProductOptions = useMemo(() => {
+        if (!productSearch) return saleProducts.slice(0, 50);
+        const search = productSearch.toLowerCase();
+        return saleProducts.filter(item =>
+            item.name.toLowerCase().includes(search) ||
+            item.code?.toLowerCase().includes(search)
+        );
+    }, [saleProducts, productSearch]);
 
     const handleRegisterSale = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -484,118 +539,174 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </div>
 
                                 {/* 2. Add Items Area */}
-                                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 space-y-3">
+                                <div className="flex justify-between items-center mb-1.5 px-1">
                                     <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adicionar Produto</label>
+                                    <div className="relative">
+                                        <input
+                                            type="file"
+                                            id="ocr-scanner-sales"
+                                            className="hidden"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={handleOCRField}
+                                            disabled={isScanning}
+                                        />
+                                        <label
+                                            htmlFor="ocr-scanner-sales"
+                                            className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}
+                                        >
+                                            {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
+                                            {isScanning ? 'Lendo...' : 'Escanear'}
+                                        </label>
+                                    </div>
+                                </div>
 
+                                {!currentProduct ? (
                                     <div className="relative">
                                         <Package size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
+                                        <input
+                                            type="text"
+                                            placeholder="Busque por nome ou bipe o código..."
+                                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-2xl text-sm font-black outline-none text-slate-900 dark:text-white transition-all"
+                                            value={productSearch}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setProductSearch(val);
+                                                const exactMatch = stock.find(i => i.category === 'Venda' && i.code?.toUpperCase() === val.toUpperCase());
+                                                if (exactMatch) {
+                                                    setCurrentProduct(exactMatch.id);
+                                                    setProductSearch('');
+                                                }
+                                            }}
+                                        />
+                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+
+                                        {productSearch && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                                                {filteredProductOptions.map(item => (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
+                                                        onClick={() => {
+                                                            setCurrentProduct(item.id);
+                                                            setProductSearch('');
+                                                        }}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
+                                                            <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code || 'S/ REF'} - R$ {item.price?.toFixed(2)}</p>
+                                                        </div>
+                                                        <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Produto Selecionado</p>
+                                            <p className="text-xs font-black text-slate-950 dark:text-white truncate">{selectedStockItem?.name}</p>
+                                            <p className="text-[10px] text-emerald-600 font-bold">R$ {selectedStockItem?.price?.toFixed(2)}</p>
+                                        </div>
+                                        <button type="button" onClick={() => setCurrentProduct('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-white dark:bg-zinc-700 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-600 shadow-sm">Remover</button>
+                                    </div>
+                                )}
+                                {ocrError && <p className="text-[9px] font-bold text-rose-600 px-1">{ocrError}</p>}
+
+                                <div className="flex gap-3">
+                                    <div className="flex-1">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max={selectedStockItem?.quantity || 999}
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white rounded-2xl p-3 text-lg font-black outline-none text-slate-900 dark:text-white text-center placeholder:text-slate-300"
+                                            placeholder="Qtd"
+                                            value={currentQuantity}
+                                            onChange={e => setCurrentQuantity(parseInt(e.target.value) || 1)}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleAddItemToCart}
+                                        disabled={!currentProduct}
+                                        className="flex-[2] bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 transition-all"
+                                    >
+                                        <Plus size={16} /> Adicionar
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 3. Cart List */}
+                            {cart.length > 0 && (
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Itens no Carrinho</label>
+                                    <div className="bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl overflow-hidden divide-y divide-slate-50 dark:divide-zinc-700">
+                                        {cart.map(item => (
+                                            <div key={item.id} className="p-3 flex justify-between items-center group">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-slate-100 dark:bg-zinc-700 p-2 rounded-lg text-slate-500 dark:text-slate-400"><ShoppingBag size={16} /></div>
+                                                    <div>
+                                                        <p className="text-xs font-black text-slate-900 dark:text-white">{item.productName}</p>
+                                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{item.quantity}x R$ {item.unitPrice.toFixed(2)}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-sm font-black text-slate-900 dark:text-white">R$ {item.total.toFixed(2)}</span>
+                                                    <button onClick={() => handleRemoveFromCart(item.id)} className="text-rose-300 hover:text-rose-600 transition-colors">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 4. Payment & Totals */}
+                            <div className="space-y-4 pt-2">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5">Forma de Pagamento</label>
+                                    <div className="relative">
                                         <select
-                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-2xl text-sm font-black outline-none text-slate-900 dark:text-white appearance-none transition-all"
-                                            value={currentProduct}
-                                            onChange={e => setCurrentProduct(e.target.value)}
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white appearance-none"
+                                            value={paymentMethod}
+                                            onChange={e => setPaymentMethod(e.target.value)}
                                         >
-                                            <option value="">Escolha o produto...</option>
-                                            {saleProducts.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.name} - R$ {p.price?.toFixed(2)} (Disp: {p.quantity})
-                                                </option>
+                                            <option value="" disabled>Selecione...</option>
+                                            {paymentSettings.map(pay => (
+                                                <option key={pay.id} value={pay.method}>{pay.method}</option>
                                             ))}
                                         </select>
                                         <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
                                     </div>
-
-                                    <div className="flex gap-3">
-                                        <div className="flex-1">
-                                            <input
-                                                type="number"
-                                                min="1"
-                                                max={selectedStockItem?.quantity || 999}
-                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white rounded-2xl p-3 text-lg font-black outline-none text-slate-900 dark:text-white text-center placeholder:text-slate-300"
-                                                placeholder="Qtd"
-                                                value={currentQuantity}
-                                                onChange={e => setCurrentQuantity(parseInt(e.target.value) || 1)}
-                                            />
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={handleAddItemToCart}
-                                            disabled={!currentProduct}
-                                            className="flex-[2] bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 transition-all"
-                                        >
-                                            <Plus size={16} /> Adicionar
-                                        </button>
-                                    </div>
                                 </div>
 
-                                {/* 3. Cart List */}
-                                {cart.length > 0 && (
-                                    <div className="space-y-2">
-                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Itens no Carrinho</label>
-                                        <div className="bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl overflow-hidden divide-y divide-slate-50 dark:divide-zinc-700">
-                                            {cart.map(item => (
-                                                <div key={item.id} className="p-3 flex justify-between items-center group">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="bg-slate-100 dark:bg-zinc-700 p-2 rounded-lg text-slate-500 dark:text-slate-400"><ShoppingBag size={16} /></div>
-                                                        <div>
-                                                            <p className="text-xs font-black text-slate-900 dark:text-white">{item.productName}</p>
-                                                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{item.quantity}x R$ {item.unitPrice.toFixed(2)}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-black text-slate-900 dark:text-white">R$ {item.total.toFixed(2)}</span>
-                                                        <button onClick={() => handleRemoveFromCart(item.id)} className="text-rose-300 hover:text-rose-600 transition-colors">
-                                                            <X size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* 4. Payment & Totals */}
-                                <div className="space-y-4 pt-2">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5">Forma de Pagamento</label>
-                                        <div className="relative">
-                                            <select
-                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white appearance-none"
-                                                value={paymentMethod}
-                                                onChange={e => setPaymentMethod(e.target.value)}
-                                            >
-                                                <option value="" disabled>Selecione...</option>
-                                                {paymentSettings.map(pay => (
-                                                    <option key={pay.id} value={pay.method}>{pay.method}</option>
-                                                ))}
-                                            </select>
-                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-3xl border-2 border-emerald-100 dark:border-emerald-800/50">
-                                        <div className="flex justify-between items-center text-2xl font-black text-emerald-950 dark:text-emerald-400">
-                                            <span>Total Geral</span>
-                                            <span>R$ {cartTotal.toFixed(2)}</span>
-                                        </div>
+                                <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-3xl border-2 border-emerald-100 dark:border-emerald-800/50">
+                                    <div className="flex justify-between items-center text-2xl font-black text-emerald-950 dark:text-emerald-400">
+                                        <span>Total Geral</span>
+                                        <span>R$ {cartTotal.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Footer Actions */}
-                            <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                <button
-                                    type="submit"
-                                    disabled={cart.length === 0}
-                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
-                                >
-                                    <Check size={18} /> Confirmar Venda
-                                </button>
-                            </div>
-                        </form>
                     </div>
-                </div>
+
+                    {/* Footer Actions */}
+                    <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex gap-3">
+                        <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
+                        <button
+                            type="submit"
+                            disabled={cart.length === 0}
+                            className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100"
+                        >
+                            <Check size={18} /> Confirmar Venda
+                        </button>
+                    </div>
+                </form>
+                    </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };
