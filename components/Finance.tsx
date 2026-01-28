@@ -516,7 +516,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         // 5. (=) Lucro Bruto
         const grossProfit = netRevenue - totalCOGS;
 
-        // 6. (=) Despesas Operacionais - Aggregated by dreClass
+        // 6. (=) Despesas Operacionais - Aggregated by dreClass and Grouped by Category
         const expensesVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES');
         const expensesAdm = exps.filter(e => e.dreClass === 'EXPENSE_ADM');
         const expensesFin = exps.filter(e => e.dreClass === 'EXPENSE_FIN');
@@ -526,6 +526,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0);
 
         const totalOpExpenses = amountVendas + amountAdm + amountFin;
+
+        // Grouping helper
+        const groupByCat = (list: Expense[]) => {
+            return list.reduce((acc: Record<string, { total: number, items: Expense[] }>, e) => {
+                if (!acc[e.category]) acc[e.category] = { total: 0, items: [] };
+                acc[e.category].total += e.amount;
+                acc[e.category].items.push(e);
+                return acc;
+            }, {});
+        };
 
         // 7. (=) Resultado Antes IRPJ CSLL
         const resultBeforeTaxes = grossProfit - totalOpExpenses;
@@ -546,9 +556,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             resultBeforeTaxes,
             irpjCsll,
             netResult,
-            breakdownVendas: expensesVendas,
-            breakdownAdm: expensesAdm,
-            breakdownFin: expensesFin
+            breakdownVendas: groupByCat(expensesVendas),
+            breakdownAdm: groupByCat(expensesAdm),
+            breakdownFin: groupByCat(expensesFin)
         };
     }, [appointments, sales, expenses, startDate, endDate]);
 
@@ -692,13 +702,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         <tr class="main-row"><td>5. (=) LUCRO BRUTO</td><td class="amount positive">R$ ${dreData.grossProfit.toFixed(2)}</td><td class="amount">${formatPercent(dreData.grossProfit, dreData.grossRevenue)}</td></tr>
                         
                         <tr><td>6. (-) DESPESAS COM VENDAS</td><td class="amount negative">- R$ ${dreData.amountVendas.toFixed(2)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
-                        ${dreData.breakdownVendas.map(e => `<tr class="sub-row"><td>${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                        ${Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => `
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">R$ ${info.total.toFixed(2)}</td><td class="amount"></td></tr>
+                            ${(info.items as Expense[]).map(e => `<tr class="sub-row"><td style="padding-left: 50px;">└ ${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                        `).join('')}
                         
                         <tr><td>7. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- R$ ${dreData.amountAdm.toFixed(2)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
-                         ${dreData.breakdownAdm.map(e => `<tr class="sub-row"><td>${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                         ${Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => `
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">R$ ${info.total.toFixed(2)}</td><td class="amount"></td></tr>
+                            ${(info.items as Expense[]).map(e => `<tr class="sub-row"><td style="padding-left: 50px;">└ ${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                        `).join('')}
 
                         <tr><td>8. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- R$ ${dreData.amountFin.toFixed(2)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
-                         ${dreData.breakdownFin.map(e => `<tr class="sub-row"><td>${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                         ${Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => `
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">R$ ${info.total.toFixed(2)}</td><td class="amount"></td></tr>
+                            ${(info.items as Expense[]).map(e => `<tr class="sub-row"><td style="padding-left: 50px;">└ ${e.description}</td><td class="amount">R$ ${e.amount.toFixed(2)}</td><td class="amount">${formatPercent(e.amount, dreData.grossRevenue)}</td></tr>`).join('')}
+                        `).join('')}
 
                         <tr class="main-row"><td>9. (=) RESULTADO ANTES IRPJ/CSLL</td><td class="amount">R$ ${dreData.resultBeforeTaxes.toFixed(2)}</td><td class="amount">${formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)}</td></tr>
                         
@@ -733,11 +752,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             ['   Custo Produtos', `-${dreData.productCOGS.toFixed(2)}`, formatPercent(dreData.productCOGS, dreData.grossRevenue)],
             ['5. (=) LUCRO BRUTO', dreData.grossProfit.toFixed(2), formatPercent(dreData.grossProfit, dreData.grossRevenue)],
             ['6. (-) DESPESAS VENDAS', `-${dreData.amountVendas.toFixed(2)}`, formatPercent(dreData.amountVendas, dreData.grossRevenue)],
-            ...dreData.breakdownVendas.map(e => [`   ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)]),
+            ...Object.entries(dreData.breakdownVendas as Record<string, any>).flatMap(([cat, info]) => [
+                [`   [${cat.toUpperCase()}]`, `-${info.total.toFixed(2)}`, ''],
+                ...(info.items as Expense[]).map(e => [`      ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)])
+            ]),
             ['7. (-) DESPESAS ADM', `-${dreData.amountAdm.toFixed(2)}`, formatPercent(dreData.amountAdm, dreData.grossRevenue)],
-            ...dreData.breakdownAdm.map(e => [`   ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)]),
+            ...Object.entries(dreData.breakdownAdm as Record<string, any>).flatMap(([cat, info]) => [
+                [`   [${cat.toUpperCase()}]`, `-${info.total.toFixed(2)}`, ''],
+                ...(info.items as Expense[]).map(e => [`      ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)])
+            ]),
             ['8. (-) DESPESAS FIN', `-${dreData.amountFin.toFixed(2)}`, formatPercent(dreData.amountFin, dreData.grossRevenue)],
-            ...dreData.breakdownFin.map(e => [`   ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)]),
+            ...Object.entries(dreData.breakdownFin as Record<string, any>).flatMap(([cat, info]) => [
+                [`   [${cat.toUpperCase()}]`, `-${info.total.toFixed(2)}`, ''],
+                ...(info.items as Expense[]).map(e => [`      ${e.description}`, `-${e.amount.toFixed(2)}`, formatPercent(e.amount, dreData.grossRevenue)])
+            ]),
             ['9. (=) RESULTADO ANTES IRPJ', dreData.resultBeforeTaxes.toFixed(2), formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)],
             ['10. (-) IRPJ/CSLL', `-${dreData.irpjCsll.toFixed(2)}`, formatPercent(dreData.irpjCsll, dreData.grossRevenue)],
             ['11. (=) RESULTADO LÍQUIDO', dreData.netResult.toFixed(2), formatPercent(dreData.netResult, dreData.grossRevenue)]
@@ -996,12 +1024,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountVendas.toFixed(2)}</td>
                                         <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountVendas / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
                                     </tr>
-                                    {expandedSections.includes('exp-vendas') && dreData.breakdownVendas.map((e, idx) => (
-                                        <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
-                                            <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic">└ {e.description}</td>
-                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {e.amount.toFixed(2)}</td>
-                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
-                                        </tr>
+                                    {expandedSections.includes('exp-vendas') && Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => (
+                                        <React.Fragment key={cat}>
+                                            <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2">
+                                                    <TrendingUp size={12} />
+                                                    {cat}
+                                                </td>
+                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                            </tr>
+                                            {(info.items as Expense[]).map((e, idx) => (
+                                                <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
 
                                     {/* 7. DESPESAS ADMINISTRATIVAS */}
@@ -1013,12 +1053,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountAdm.toFixed(2)}</td>
                                         <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountAdm / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
                                     </tr>
-                                    {expandedSections.includes('exp-adm') && dreData.breakdownAdm.map((e, idx) => (
-                                        <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
-                                            <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic">└ {e.description}</td>
-                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {e.amount.toFixed(2)}</td>
-                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
-                                        </tr>
+                                    {expandedSections.includes('exp-adm') && Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => (
+                                        <React.Fragment key={cat}>
+                                            <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2">
+                                                    <TrendingUp size={12} />
+                                                    {cat}
+                                                </td>
+                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                            </tr>
+                                            {(info.items as Expense[]).map((e, idx) => (
+                                                <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
 
                                     {/* 8. DESPESAS FINANCEIRAS */}
@@ -1030,12 +1082,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountFin.toFixed(2)}</td>
                                         <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountFin / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
                                     </tr>
-                                    {expandedSections.includes('exp-fin') && dreData.breakdownFin.map((e, idx) => (
-                                        <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
-                                            <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic">└ {e.description}</td>
-                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {e.amount.toFixed(2)}</td>
-                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
-                                        </tr>
+                                    {expandedSections.includes('exp-fin') && Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
+                                        <React.Fragment key={cat}>
+                                            <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2">
+                                                    <TrendingUp size={12} />
+                                                    {cat}
+                                                </td>
+                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                            </tr>
+                                            {(info.items as Expense[]).map((e, idx) => (
+                                                <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
 
                                     {/* 9. RESULTADO ANTES IRPJ */}
@@ -1257,7 +1321,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
-                                        <input type="text" placeholder="Ex: Bebidas" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.category} onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })} />
+                                        <div className="relative">
+                                            <select
+                                                required
+                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                                value={supplierForm.category}
+                                                onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })}
+                                            >
+                                                <option value="" disabled>Selecione...</option>
+                                                {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                                <option value="Outros">Outros</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Documento (CPF/CNPJ)</label>
