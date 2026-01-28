@@ -22,7 +22,14 @@ import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEM
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentView, setCurrentView] = useState<ViewState>(ViewState.DASHBOARD);
+  const [currentView, setCurrentView] = useState<ViewState>(() => {
+    const saved = localStorage.getItem('currentView');
+    return (saved as ViewState) || ViewState.DASHBOARD;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('currentView', currentView);
+  }, [currentView]);
 
   // GLOBAL STATE: Initialized empty, populated from Supabase
   const [customers, setCustomers] = useState<Customer[]>([]);
