@@ -31,6 +31,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [isAddingNewSubGroup, setIsAddingNewSubGroup] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
+    const [productSearch, setProductSearch] = useState('');
+    const [providerSearch, setProviderSearch] = useState('');
 
     // Form state for products
     const [productFormData, setProductFormData] = useState({
@@ -60,6 +62,24 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         stock.forEach(item => { if (item.subGroup) subGroups.add(item.subGroup); });
         return Array.from(subGroups).sort();
     }, [stock]);
+
+    const filteredStockOptions = useMemo(() => {
+        if (!productSearch) return stock.slice(0, 100);
+        const search = productSearch.toLowerCase();
+        return stock.filter(item =>
+            item.name.toLowerCase().includes(search) ||
+            item.code.toLowerCase().includes(search)
+        );
+    }, [stock, productSearch]);
+
+    const filteredProviderOptions = useMemo(() => {
+        const activeProviders = providers.filter(p => p.active);
+        if (!providerSearch) return activeProviders;
+        const search = providerSearch.toLowerCase();
+        return activeProviders.filter(p =>
+            p.name.toLowerCase().includes(search)
+        );
+    }, [providers, providerSearch]);
 
     const filteredStock = useMemo(() => {
         return stock.filter(item =>
@@ -333,7 +353,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
     const closeModal = () => {
         setModalType(null); setSelectedItemId(''); setQuantity(''); setPhysicalCount(''); setInventoryJustification(''); setNewPrice(''); setPriceNote(''); setEntryCost(''); setExitProviderId(''); setShowReportExportMenu(false);
-        setIsAddingNewGroup(false); setIsAddingNewSubGroup(false);
+        setIsAddingNewGroup(false); setIsAddingNewSubGroup(false); setProductSearch(''); setProviderSearch('');
     };
 
     const openHistory = (id: string) => { setSelectedItemId(id); setModalType('HISTORY'); setHistoryTab('USAGE'); };
@@ -858,10 +878,42 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             </label>
                                         </div>
                                     </div>
-                                    <select required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white" value={selectedItemId} onChange={e => { setSelectedItemId(e.target.value); const item = stock.find(i => i.id === e.target.value); if (item) { setEntryCost(item.costPrice.toString()); } }}>
-                                        <option value="">Escolha o item...</option>
-                                        {stock.map(item => <option key={item.id} value={item.id} className="text-slate-950 dark:text-white font-bold">{item.name}</option>)}
-                                    </select>
+
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Digite nome ou código..."
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            value={productSearch}
+                                            onChange={e => setProductSearch(e.target.value)}
+                                        />
+                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+
+                                        {productSearch && (
+                                            <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                                {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
+                                                        onClick={() => {
+                                                            setSelectedItemId(item.id);
+                                                            setProductSearch('');
+                                                            setEntryCost(item.costPrice.toString());
+                                                        }}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
+                                                            <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code}</p>
+                                                        </div>
+                                                        <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600 transition-colors" />
+                                                    </button>
+                                                )) : (
+                                                    <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Nenhum produto encontrado</div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     {ocrError && <p className="mt-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 animate-in fade-in slide-in-from-top-1">{ocrError}</p>}
                                 </>
                             ) : (
@@ -891,10 +943,51 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 {modalType === 'EXIT' && (
                                     <div className="animate-in fade-in slide-in-from-top-1">
                                         <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Profissional Responsável</label>
-                                        <select required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white" value={exitProviderId} onChange={e => setExitProviderId(e.target.value)}>
-                                            <option value="" className="text-slate-950 dark:text-white">Selecione...</option>
-                                            {providers.filter(p => p.active).map(p => <option key={p.id} value={p.id} className="text-slate-950 dark:text-white font-bold">{p.name}</option>)}
-                                        </select>
+
+                                        <div className="relative">
+                                            {exitProviderId ? (
+                                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-[12px] font-black text-slate-950 dark:text-white truncate">{getProviderName(exitProviderId)}</p>
+                                                    </div>
+                                                    <button type="button" onClick={() => setExitProviderId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Buscar profissional..."
+                                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white"
+                                                            value={providerSearch}
+                                                            onChange={e => setProviderSearch(e.target.value)}
+                                                        />
+                                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                                    </div>
+
+                                                    {providerSearch && (
+                                                        <div className="absolute z-30 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                                            {filteredProviderOptions.length > 0 ? filteredProviderOptions.map(p => (
+                                                                <button
+                                                                    key={p.id}
+                                                                    type="button"
+                                                                    className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
+                                                                    onClick={() => {
+                                                                        setExitProviderId(p.id);
+                                                                        setProviderSearch('');
+                                                                    }}
+                                                                >
+                                                                    <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{p.name}</p>
+                                                                    <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600 transition-colors" />
+                                                                </button>
+                                                            )) : (
+                                                                <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Nenhum profissional encontrado</div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
