@@ -215,7 +215,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     date: e.date,
                     status: e.status,
                     paymentMethod: e.payment_method,
-                    supplierId: e.supplier_id
+                    supplierId: e.supplier_id,
+                    recurringId: e.recurring_id
                 })));
             }
         };
@@ -283,6 +284,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     const [physicalCash, setPhysicalCash] = useState('');
     const [closingObservation, setClosingObservation] = useState('');
     const [closerName, setCloserName] = useState('');
+
+    // Batch Edit States
+    const [batchActionType, setBatchActionType] = useState<'IDLE' | 'SAVE' | 'DELETE'>('IDLE');
+    const [batchOption, setBatchOption] = useState<'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL'>('ONLY_THIS');
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
@@ -581,7 +587,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 date: e.date,
                 status: e.status,
                 paymentMethod: e.payment_method,
-                supplierId: e.supplier_id
+                supplierId: e.supplier_id,
+                recurringId: e.recurring_id
             })));
         }
     };
@@ -604,17 +611,40 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
         try {
             if (editingExpenseId) {
-                const { error } = await supabase.from('expenses').update(expenseData).eq('id', editingExpenseId);
-                if (error) throw error;
+                // If editing a recurring expense, we might need a batch prompt
+                const originalExpense = expenses.find(exp => exp.id === editingExpenseId);
+                if (originalExpense?.recurringId && batchActionType === 'IDLE') {
+                    setBatchActionType('SAVE');
+                    setIsBatchModalOpen(true);
+                    return;
+                }
+
+                if (originalExpense?.recurringId && batchOption !== 'ONLY_THIS') {
+                    // BATCH UPDATE
+                    let updateQuery = supabase.from('expenses').update(expenseData).eq('recurring_id', originalExpense.recurringId);
+
+                    if (batchOption === 'THIS_AND_FUTURE') {
+                        updateQuery = updateQuery.gte('date', originalExpense.date);
+                    }
+
+                    const { error } = await updateQuery;
+                    if (error) throw error;
+                } else {
+                    // SINGLE UPDATE
+                    const { error } = await supabase.from('expenses').update(expenseData).eq('id', editingExpenseId);
+                    if (error) throw error;
+                }
             } else {
                 const newExpenses = [];
                 let currentDate = new Date(expenseForm.date!);
+                const rId = recurrenceMonths > 1 ? crypto.randomUUID() : null;
 
                 for (let i = 0; i < recurrenceMonths; i++) {
                     newExpenses.push({
                         ...expenseData,
                         description: recurrenceMonths > 1 ? `${expenseForm.description} (${i + 1}/${recurrenceMonths})` : expenseForm.description,
-                        date: currentDate.toISOString().split('T')[0]
+                        date: currentDate.toISOString().split('T')[0],
+                        recurring_id: rId
                     });
                     currentDate.setMonth(currentDate.getMonth() + 1);
                 }
@@ -623,6 +653,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }
             await fetchExpenses(); // Refresh list
             setIsModalOpen(false);
+            setIsBatchModalOpen(false);
+            setBatchActionType('IDLE');
+            setBatchOption('ONLY_THIS');
         } catch (error) {
             console.error('Error saving expense:', error);
             alert('Erro ao salvar despesa. Tente novamente.');
@@ -648,11 +681,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     };
 
     const handleDeleteExpense = async (id: string) => {
-        if (!window.confirm('Tem certeza que deseja excluir esta despesa?')) return;
+        const expense = expenses.find(exp => exp.id === id);
+        if (!expense) return;
+
+        if (expense.recurringId && batchActionType === 'IDLE') {
+            setEditingExpenseId(id); // Temporarily store to know which series we're acting on
+            setBatchActionType('DELETE');
+            setIsBatchModalOpen(true);
+            return;
+        }
+
+        if (!window.confirm('Tem certeza que deseja excluir?')) return;
+
         try {
-            const { error } = await supabase.from('expenses').delete().eq('id', id);
-            if (error) throw error;
+            if (expense.recurringId && batchOption !== 'ONLY_THIS') {
+                let deleteQuery = supabase.from('expenses').delete().eq('recurring_id', expense.recurringId);
+                if (batchOption === 'THIS_AND_FUTURE') {
+                    deleteQuery = deleteQuery.gte('date', expense.date);
+                }
+                const { error } = await deleteQuery;
+                if (error) throw error;
+            } else {
+                const { error } = await supabase.from('expenses').delete().eq('id', id);
+                if (error) throw error;
+            }
             setExpenses(prev => prev.filter(e => e.id !== id));
+            setIsBatchModalOpen(false);
+            setBatchActionType('IDLE');
+            setBatchOption('ONLY_THIS');
         } catch (error) {
             console.error('Error deleting expense:', error);
         }
@@ -1382,6 +1438,54 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     </div>
                 )
             }
+
+            {/* BATCH ACTION MODAL (Recurring Expenses) */}
+            {isBatchModalOpen && (
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
+                                <AlertCircle size={40} />
+                            </div>
+
+                            <div>
+                                <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight">Despesa Recorrente</h3>
+                                <p className="text-sm text-slate-500 font-bold mt-2 leading-relaxed">
+                                    Esta despesa faz parte de uma série. Como deseja prosseguir com a {batchActionType === 'SAVE' ? 'edição' : 'exclusão'}?
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => { setBatchOption('ONLY_THIS'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
+                                >
+                                    Somente esta
+                                </button>
+                                <button
+                                    onClick={() => { setBatchOption('THIS_AND_FUTURE'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
+                                >
+                                    Esta e as próximas
+                                </button>
+                                <button
+                                    onClick={() => { setBatchOption('ALL'); if (batchActionType === 'SAVE') handleSaveExpense({ preventDefault: () => { } } as any); else handleDeleteExpense(editingExpenseId!); }}
+                                    className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
+                                >
+                                    Todas da série
+                                </button>
+                            </div>
+
+                            <button
+                                onClick={() => { setIsBatchModalOpen(false); setBatchActionType('IDLE'); }}
+                                className="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-colors tracking-widest"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
