@@ -236,6 +236,17 @@ export interface Expense {
   date: string;
   status: 'Pago' | 'Pendente';
   paymentMethod: 'Boleto' | 'Pix' | 'Transferência' | 'Cartão' | 'Dinheiro';
+  supplierId?: string;
+}
+
+export interface Supplier {
+  id: string;
+  name: string;
+  category?: string;
+  document?: string;
+  phone?: string;
+  email?: string;
+  active: boolean;
 }
 
 export interface ExpenseCategory {

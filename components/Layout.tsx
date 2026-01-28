@@ -7,6 +7,8 @@ interface LayoutProps {
   currentView: ViewState;
   onNavigate: (view: ViewState) => void;
   onLogout: () => void;
+  isDarkMode: boolean;
+  toggleTheme: () => void;
   children: React.ReactNode;
 }
 
@@ -32,20 +34,8 @@ const Logo = ({ className = "h-16" }: { className?: string }) => (
   </div>
 );
 
-export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogout, children }) => {
+export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogout, isDarkMode, toggleTheme, children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // Toggle Theme Function
-  const toggleTheme = () => {
-    const newMode = !isDarkMode;
-    setIsDarkMode(newMode);
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  };
 
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
@@ -94,8 +84,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${isActive
-                    ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm border border-slate-200 dark:border-zinc-700'
-                    : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm border border-slate-200 dark:border-zinc-700'
+                  : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
               >
                 <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
@@ -160,8 +150,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${isActive
-                    ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
-                    : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
+                  ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
+                  : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
                   }`}
               >
                 <Icon size={20} />
@@ -183,8 +173,8 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
           <button
             onClick={() => handleNavigate(ViewState.SETTINGS)}
             className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${currentView === ViewState.SETTINGS
-                ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
-                : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
+              ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
+              : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
               }`}
           >
             <Settings size={20} />

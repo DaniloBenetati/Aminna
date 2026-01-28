@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { PROVIDERS, CUSTOMERS, STOCK } from '../constants';
-import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting } from '../types';
+import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier } from '../types';
 import { supabase } from '../services/supabase';
 
 const toLocalDateStr = (date: Date) => {
@@ -186,14 +186,14 @@ interface FinanceProps {
     services: Service[];
     appointments: Appointment[];
     sales: Sale[];
-    expenseCategories: ExpenseCategory[];
-    setExpenseCategories?: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
     paymentSettings: PaymentSetting[];
     commissionSettings?: CommissionSetting[];
+    suppliers: Supplier[];
+    setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings }) => {
-    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE'>('DAILY');
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers }) => {
+    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE' | 'SUPPLIERS'>('DAILY');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
     const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 8) + '01');
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -214,12 +214,63 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     amount: e.amount,
                     date: e.date,
                     status: e.status,
-                    paymentMethod: e.payment_method
+                    paymentMethod: e.payment_method,
+                    supplierId: e.supplier_id
                 })));
             }
         };
         fetchExpenses();
     }, []);
+
+    // Suppliers CRUD States
+    const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
+    const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
+    const [supplierForm, setSupplierForm] = useState<Partial<Supplier>>({
+        name: '', category: '', document: '', phone: '', email: '', active: true
+    });
+
+    const handleOpenSupplierModal = (sup?: Supplier) => {
+        if (sup) {
+            setEditingSupplierId(sup.id);
+            setSupplierForm(sup);
+        } else {
+            setEditingSupplierId(null);
+            setSupplierForm({ name: '', category: '', document: '', phone: '', email: '', active: true });
+        }
+        setIsSupplierModalOpen(true);
+    };
+
+    const handleSaveSupplier = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!supplierForm.name) return;
+
+        try {
+            if (editingSupplierId) {
+                const { error } = await supabase.from('suppliers').update(supplierForm).eq('id', editingSupplierId);
+                if (error) throw error;
+                setSuppliers(prev => prev.map(s => s.id === editingSupplierId ? { ...s, ...supplierForm } as Supplier : s));
+            } else {
+                const { data, error } = await supabase.from('suppliers').insert([supplierForm]).select();
+                if (error) throw error;
+                if (data) setSuppliers(prev => [...prev, data[0]]);
+            }
+            setIsSupplierModalOpen(false);
+        } catch (error) {
+            console.error('Error saving supplier:', error);
+            alert('Erro ao salvar fornecedor.');
+        }
+    };
+
+    const handleDeleteSupplier = async (id: string) => {
+        if (!window.confirm('Excluir fornecedor?')) return;
+        try {
+            const { error } = await supabase.from('suppliers').delete().eq('id', id);
+            if (error) throw error;
+            setSuppliers(prev => prev.filter(s => s.id !== id));
+        } catch (error) {
+            console.error('Error deleting supplier:', error);
+        }
+    };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
@@ -519,7 +570,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 amount: e.amount,
                 date: e.date,
                 status: e.status,
-                paymentMethod: e.payment_method
+                paymentMethod: e.payment_method,
+                supplierId: e.supplier_id
             })));
         }
     };
@@ -536,7 +588,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             dre_class: expenseForm.dreClass, // Mapping to snake_case column
             date: expenseForm.date,
             status: expenseForm.status,
-            payment_method: expenseForm.paymentMethod || 'Pix'
+            payment_method: expenseForm.paymentMethod || 'Pix',
+            supplier_id: expenseForm.supplierId
         };
 
         try {
@@ -712,6 +765,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
                         { id: 'PAYABLES', label: 'Contas a Pagar', icon: FileText },
                         { id: 'DAILY', label: 'Caixa Diário', icon: ArrowDownCircle },
+                        { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
                         { id: 'DRE', label: 'DRE', icon: CalcIcon },
                     ].map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 md:flex-none min-w-[100px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}><tab.icon size={14} /> {tab.label}</button>
@@ -810,6 +864,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
                                         <th className="px-6 py-4">Data</th>
                                         <th className="px-6 py-4">Descrição</th>
+                                        <th className="px-6 py-4">Favorecido</th>
                                         <th className="px-6 py-4">Categoria</th>
                                         <th className="px-6 py-4 text-center">Status</th>
                                         <th className="px-6 py-4 text-right">Valor</th>
@@ -821,6 +876,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
                                             <td className="px-6 py-4 text-xs font-bold font-mono">{new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                                             <td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td>
+                                            <td className="px-6 py-4 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+                                                {suppliers.find(s => s.id === exp.supplierId)?.name || '-'}
+                                            </td>
                                             <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{exp.category}</td>
                                             <td className="px-6 py-4 text-center">
                                                 <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black uppercase px-3 py-1 rounded-lg border transition-all ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : 'bg-amber-50 text-amber-800 border-amber-100 animate-pulse'}`}>{exp.status}</button>
@@ -1028,6 +1086,49 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     </div>
                 )}
+                {activeTab === 'SUPPLIERS' && (
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><Users size={16} /> Cadastro de Fornecedores</h3>
+                            <button onClick={() => handleOpenSupplierModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"><Plus size={12} /> Novo Fornecedor</button>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm">
+                                <thead>
+                                    <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
+                                        <th className="px-6 py-4">Nome</th>
+                                        <th className="px-6 py-4">Categoria</th>
+                                        <th className="px-6 py-4">Documento</th>
+                                        <th className="px-6 py-4">Contato</th>
+                                        <th className="px-6 py-4 text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                    {suppliers.map(sup => (
+                                        <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
+                                            <td className="px-6 py-4 font-black text-xs uppercase">{sup.name}</td>
+                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{sup.category || '-'}</td>
+                                            <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</span>
+                                                    <span className="text-[9px] text-slate-400">{sup.email || '-'}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 flex items-center justify-center gap-2">
+                                                <button onClick={() => handleOpenSupplierModal(sup)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                                <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {suppliers.length === 0 && (
+                                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {
@@ -1099,6 +1200,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Favorecido (Fornecedor)</label>
+                                    <div className="relative">
+                                        <select
+                                            value={expenseForm.supplierId || ''}
+                                            onChange={e => setExpenseForm({ ...expenseForm, supplierId: e.target.value })}
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                        >
+                                            <option value="">Nenhum (Gasto Avulso)</option>
+                                            {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                        <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
                                 <div className="pt-2">
                                     <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
                                         {recurrenceMonths > 1 ? `Lançar ${recurrenceMonths}x Despesas` : 'Salvar Despesa'}
@@ -1109,6 +1225,50 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     </div>
                 )
             }
-        </div >
+
+            {
+                isSupplierModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                            <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Users size={18} /> {editingSupplierId ? 'Editar' : 'Novo'} Fornecedor</h3>
+                                <button onClick={() => setIsSupplierModalOpen(false)}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSaveSupplier} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nome do Fornecedor</label>
+                                    <input type="text" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
+                                        <input type="text" placeholder="Ex: Bebidas" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.category} onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Documento (CPF/CNPJ)</label>
+                                        <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.document} onChange={e => setSupplierForm({ ...supplierForm, document: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Telefone</label>
+                                        <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">E-mail</label>
+                                        <input type="email" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} />
+                                    </div>
+                                </div>
+                                <div className="pt-2">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                        Salvar Fornecedor
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+        </div>
     );
 };

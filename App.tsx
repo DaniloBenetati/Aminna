@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -39,10 +39,29 @@ const App: React.FC = () => {
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([]);
   const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // THEME STATE
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   useEffect(() => {
     // Check current session
@@ -286,6 +305,19 @@ const App: React.FC = () => {
         isSystem: e.is_system
       })) : []);
 
+      const { data: supsData } = await supabase.from('suppliers').select('*');
+      if (supsData) {
+        setSuppliers(supsData.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          document: s.document,
+          phone: s.phone,
+          email: s.email,
+          active: s.active
+        })));
+      }
+
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -329,7 +361,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:
@@ -401,7 +433,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <Layout currentView={currentView} onNavigate={setCurrentView} onLogout={handleLogout}>
+    <Layout
+      currentView={currentView}
+      onNavigate={setCurrentView}
+      onLogout={handleLogout}
+      isDarkMode={isDarkMode}
+      toggleTheme={toggleTheme}
+    >
       {renderView()}
     </Layout>
   );

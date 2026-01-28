@@ -1,7 +1,8 @@
 
 import React, { useState, useMemo } from 'react';
-import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
+import Tesseract from 'tesseract.js';
 
 interface InventoryProps {
     stock: StockItem[];
@@ -26,6 +27,10 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [priceNote, setPriceNote] = useState('');
     const [historyTab, setHistoryTab] = useState<'PRICE' | 'USAGE'>('USAGE');
     const [reportFilter, setReportFilter] = useState<'ALL' | 'EXIT' | 'ENTRY' | 'CORRECTION'>('ALL');
+    const [isAddingNewGroup, setIsAddingNewGroup] = useState(false);
+    const [isAddingNewSubGroup, setIsAddingNewSubGroup] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [ocrError, setOcrError] = useState<string | null>(null);
 
     // Form state for products
     const [productFormData, setProductFormData] = useState({
@@ -43,6 +48,18 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const totalStockValue = stock.reduce((acc, item) => acc + (item.quantity * item.costPrice), 0);
     const getSelectedItem = () => stock.find(i => i.id === selectedItemId);
     const getProviderName = (id?: string) => providers.find(p => p.id === id)?.name || 'N/A';
+
+    const uniqueGroups = useMemo(() => {
+        const groups = new Set<string>();
+        stock.forEach(item => { if (item.group) groups.add(item.group); });
+        return Array.from(groups).sort();
+    }, [stock]);
+
+    const uniqueSubGroups = useMemo(() => {
+        const subGroups = new Set<string>();
+        stock.forEach(item => { if (item.subGroup) subGroups.add(item.subGroup); });
+        return Array.from(subGroups).sort();
+    }, [stock]);
 
     const filteredStock = useMemo(() => {
         return stock.filter(item =>
@@ -74,56 +91,6 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         });
     }, [getAllMovements, reportFilter]);
 
-    const handlePrintInventorySheet = () => {
-        const printContent = `
-      <html>
-        <head>
-          <title>Folha de Contagem de Estoque - Aminna</title>
-          <style>
-            body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #000; }
-            h1 { font-size: 24px; font-weight: 900; text-transform: uppercase; margin-bottom: 5px; }
-            p { font-size: 12px; color: #666; margin-bottom: 20px; }
-            table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            th { border: 1px solid #000; padding: 8px; background: #f0f0f0; text-align: left; text-transform: uppercase; }
-            td { border: 1px solid #000; padding: 8px; vertical-align: middle; }
-            .checkbox { width: 20px; height: 20px; border: 1px solid #000; display: inline-block; margin-right: 5px; }
-            .line { border-bottom: 1px solid #999; width: 100%; display: block; height: 20px; }
-          </style>
-        </head>
-        <body>
-          <h1>Folha de Conferência de Estoque</h1>
-          <p>Gerado em: ${new Date().toLocaleString('pt-BR')} | Responsável: _______________________________</p>
-          <table>
-            <thead>
-              <tr>
-                <th style="width: 10%">Cód</th>
-                <th style="width: 30%">Produto</th>
-                <th style="width: 15%">Local/Grupo</th>
-                <th style="width: 10%">Qtd. Sist.</th>
-                <th style="width: 15%">Contagem Real</th>
-                <th style="width: 20%">Obs</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredStock.map(item => `
-                <tr>
-                  <td>${item.code}</td>
-                  <td><strong>${item.name}</strong><br/>${item.category}</td>
-                  <td>${item.group || '-'}${item.subGroup ? ' / ' + item.subGroup : ''}</td>
-                  <td style="text-align: center; font-weight: bold;">${item.quantity} ${item.unit}</td>
-                  <td></td>
-                  <td></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-          <script>window.onload = () => { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `;
-        const win = window.open('', '_blank');
-        if (win) { win.document.write(printContent); win.document.close(); }
-    };
 
     const handlePrintReport = () => {
         setShowReportExportMenu(false);
@@ -148,12 +115,12 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         <body>
           <div class="header">
             <div>
-                <h1>Aminna Home Nail Gel</h1>
-                <p>Relatório de Movimentações & Conciliação de Estoque</p>
+              <h1>Aminna Home Nail Gel</h1>
+              <p>Relatório de Movimentações & Conciliação de Estoque</p>
             </div>
             <div style="text-align: right;">
-                <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
-                <p><strong>Filtro:</strong> ${reportFilter === 'ALL' ? 'Geral' : reportFilter === 'ENTRY' ? 'Entradas' : reportFilter === 'CORRECTION' ? 'Ajustes/Inventário' : 'Saídas'}</p>
+              <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+              <p><strong>Filtro:</strong> ${reportFilter === 'ALL' ? 'Geral' : reportFilter === 'ENTRY' ? 'Entradas' : reportFilter === 'CORRECTION' ? 'Ajustes/Inventário' : 'Saídas'}</p>
             </div>
           </div>
           <table>
@@ -186,35 +153,71 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
               `).join('')}
             </tbody>
           </table>
-          
           <div class="summary">
             Total de Registros: ${filteredMovements.length}
           </div>
-
-          <script>
-            window.onload = () => { window.print(); window.close(); }
-          </script>
+          <script>window.onload = () => { window.print(); window.close(); }</script>
         </body>
       </html>
     `;
         const win = window.open('', '_blank');
-        if (win) {
-            win.document.write(printContent);
-            win.document.close();
+        if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
+    const handleOCRField = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsScanning(true);
+        setOcrError(null);
+
+        try {
+            const { data: { text } } = await Tesseract.recognize(file, 'por+eng');
+
+            const recognizedText = text.toLowerCase();
+            console.log("Texto reconhecido:", recognizedText);
+
+            // Fuzzy matching logic
+            const matchedItem = stock.find(item => {
+                const name = item.name.toLowerCase();
+                const code = item.code.toLowerCase();
+
+                // Direct match
+                if (recognizedText.includes(name) || recognizedText.includes(code)) return true;
+
+                // Word match (for products like "Helen Color")
+                const nameWords = name.split(' ').filter(word => word.length > 2);
+                return nameWords.some(word => recognizedText.includes(word));
+            });
+
+            if (matchedItem) {
+                setSelectedItemId(matchedItem.id);
+                const item = stock.find(i => i.id === matchedItem.id);
+                if (item) setEntryCost(item.costPrice.toString());
+            } else {
+                setOcrError("Produto não identificado. Tente novamente.");
+            }
+        } catch (error) {
+            console.error("Erro no OCR:", error);
+            setOcrError("Erro ao ler imagem.");
+        } finally {
+            setIsScanning(false);
+            // Reset input so same file can be selected again
+            if (e.target) e.target.value = '';
         }
     };
 
     const handleWhatsAppReport = () => {
         setShowReportExportMenu(false);
-        let message = `📦 *RELATÓRIO DE ESTOQUE - AMINNA*\n`;
-        message += `📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
-        message += `🔍 Filtro: ${reportFilter === 'ALL' ? 'Geral' : reportFilter === 'ENTRY' ? 'Entradas' : reportFilter === 'CORRECTION' ? 'Ajustes' : 'Saídas'}\n\n`;
+        let message = `📦 * RELATÓRIO DE ESTOQUE - AMINNA *\n`;
+        message += `📅 Data: ${new Date().toLocaleDateString('pt-BR')} \n`;
+        message += `🔍 Filtro: ${reportFilter === 'ALL' ? 'Geral' : reportFilter === 'ENTRY' ? 'Entradas' : reportFilter === 'CORRECTION' ? 'Ajustes' : 'Saídas'} \n\n`;
 
         filteredMovements.slice(0, 30).forEach(m => {
             const icon = m.type === 'AJUSTE_ENTRADA' ? '🟢' : m.type === 'CORRECAO' ? '⚠️' : '🔴';
-            message += `${icon} *${m.productName}* (${new Date(m.date).toLocaleDateString('pt-BR')})\n`;
-            message += `   Qtd: ${m.quantity} (${m.type.replace('_', ' ')})\n`;
-            message += `   Obs: ${m.providerId ? getProviderName(m.providerId) : m.note || 'Sem justificativa'}\n\n`;
+            message += `${icon} * ${m.productName}* (${new Date(m.date).toLocaleDateString('pt-BR')}) \n`;
+            message += `   Qtd: ${m.quantity} (${m.type.replace('_', ' ')}) \n`;
+            message += `   Obs: ${m.providerId ? getProviderName(m.providerId) : m.note || 'Sem justificativa'} \n\n`;
         });
 
         if (filteredMovements.length > 30) message += `... e mais ${filteredMovements.length - 30} registros.`;
@@ -330,6 +333,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
     const closeModal = () => {
         setModalType(null); setSelectedItemId(''); setQuantity(''); setPhysicalCount(''); setInventoryJustification(''); setNewPrice(''); setPriceNote(''); setEntryCost(''); setExitProviderId(''); setShowReportExportMenu(false);
+        setIsAddingNewGroup(false); setIsAddingNewSubGroup(false);
     };
 
     const openHistory = (id: string) => { setSelectedItemId(id); setModalType('HISTORY'); setHistoryTab('USAGE'); };
@@ -348,6 +352,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             costPrice: item.costPrice,
             price: item.price || 0
         });
+        setIsAddingNewGroup(false);
+        setIsAddingNewSubGroup(false);
         setModalType('EDIT_PRODUCT');
     };
 
@@ -363,6 +369,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             costPrice: 0,
             price: 0
         });
+        setIsAddingNewGroup(false);
+        setIsAddingNewSubGroup(false);
         setModalType('NEW_PRODUCT');
     };
 
@@ -374,10 +382,6 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de materiais e revenda</p>
                 </div>
                 <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
-                    {/* Added dedicated Inventory Check Sheet button */}
-                    <button onClick={handlePrintInventorySheet} className="flex-1 md:flex-none px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
-                        <ClipboardList size={14} /> Folha Contagem
-                    </button>
                     <button onClick={() => { setModalType('REPORT'); setReportFilter('ALL'); }} className="flex-1 md:flex-none px-3 py-2 bg-slate-800 dark:bg-zinc-800 text-white dark:text-white rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all border border-transparent dark:border-zinc-700"><FileText size={14} /> Relatórios</button>
                     <button onClick={() => setModalType('CHOICE')} className="flex-1 md:flex-none px-3 py-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"><Tag size={14} /> Novo</button>
                 </div>
@@ -583,34 +587,87 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
                             </div>
 
-                            {/* NEW FIELDS: GROUP & SUBGROUP */}
+                            {/* DYNAMIC FIELDS: GROUP & SUBGROUP */}
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Grupo (Categoria)</label>
-                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Cosméticos" value={productFormData.group} onChange={e => setProductFormData({ ...productFormData, group: e.target.value })} />
+                                    {!isAddingNewGroup ? (
+                                        <select
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                            value={productFormData.group}
+                                            onChange={e => {
+                                                if (e.target.value === 'ADD_NEW') {
+                                                    setIsAddingNewGroup(true);
+                                                    setProductFormData({ ...productFormData, group: '' });
+                                                } else {
+                                                    setProductFormData({ ...productFormData, group: e.target.value });
+                                                }
+                                            }}
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {uniqueGroups.map(g => <option key={g} value={g}>{g}</option>)}
+                                            <option value="ADD_NEW" className="text-indigo-600 font-bold">+ Novo Grupo...</option>
+                                        </select>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                required
+                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                                placeholder="Nome do novo grupo"
+                                                value={productFormData.group}
+                                                onChange={e => setProductFormData({ ...productFormData, group: e.target.value })}
+                                            />
+                                            <button type="button" onClick={() => setIsAddingNewGroup(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={16} /></button>
+                                        </div>
+                                    )}
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Subgrupo</label>
-                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmaltes" value={productFormData.subGroup} onChange={e => setProductFormData({ ...productFormData, subGroup: e.target.value })} />
+                                    {!isAddingNewSubGroup ? (
+                                        <select
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                            value={productFormData.subGroup}
+                                            onChange={e => {
+                                                if (e.target.value === 'ADD_NEW') {
+                                                    setIsAddingNewSubGroup(true);
+                                                    setProductFormData({ ...productFormData, subGroup: '' });
+                                                } else {
+                                                    setProductFormData({ ...productFormData, subGroup: e.target.value });
+                                                }
+                                            }}
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {uniqueSubGroups.map(sg => <option key={sg} value={sg}>{sg}</option>)}
+                                            <option value="ADD_NEW" className="text-indigo-600 font-bold">+ Novo Subgrupo...</option>
+                                        </select>
+                                    ) : (
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                required
+                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                                placeholder="Nome do novo subgrupo"
+                                                value={productFormData.subGroup}
+                                                onChange={e => setProductFormData({ ...productFormData, subGroup: e.target.value })}
+                                            />
+                                            <button type="button" onClick={() => setIsAddingNewSubGroup(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={16} /></button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Finalidade</label>
-                                    <select className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.category} onChange={e => setProductFormData({ ...productFormData, category: e.target.value as any })}>
-                                        <option value="Uso Interno">Uso Interno</option>
-                                        <option value="Venda">Venda</option>
-                                    </select>
-                                </div>
-                                <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Unid. Medida</label>
                                     <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Estoque Mínimo</label>
-                                <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) })} />
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Estoque Mínimo</label>
+                                    <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) || 0 })} />
+                                </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-3xl">
                                 <div>
@@ -779,13 +836,34 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         </div>
                         <form onSubmit={handleTransaction} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1 scrollbar-hide bg-white dark:bg-zinc-900">
                             {!selectedItemId ? (
-                                <div>
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Selecionar Produto</label>
+                                <>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Selecionar Produto</label>
+                                        <div className="relative">
+                                            <input
+                                                type="file"
+                                                id="ocr-scanner"
+                                                className="hidden"
+                                                accept="image/*"
+                                                capture="environment"
+                                                onChange={handleOCRField}
+                                                disabled={isScanning}
+                                            />
+                                            <label
+                                                htmlFor="ocr-scanner"
+                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}
+                                            >
+                                                {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+                                                {isScanning ? 'Lendo...' : 'Escanear'}
+                                            </label>
+                                        </div>
+                                    </div>
                                     <select required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white" value={selectedItemId} onChange={e => { setSelectedItemId(e.target.value); const item = stock.find(i => i.id === e.target.value); if (item) { setEntryCost(item.costPrice.toString()); } }}>
                                         <option value="">Escolha o item...</option>
                                         {stock.map(item => <option key={item.id} value={item.id} className="text-slate-950 dark:text-white font-bold">{item.name}</option>)}
                                     </select>
-                                </div>
+                                    {ocrError && <p className="mt-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 animate-in fade-in slide-in-from-top-1">{ocrError}</p>}
+                                </>
                             ) : (
                                 <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
                                     <div className="min-w-0 flex-1">
