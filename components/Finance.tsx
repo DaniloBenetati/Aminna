@@ -796,7 +796,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
                         { id: 'DRE', label: 'DRE', icon: CalcIcon },
                     ].map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex-1 md:flex-none min-w-[100px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}><tab.icon size={14} /> {tab.label}</button>
+                        <button
+                            key={tab.id}
+                            onClick={() => {
+                                setActiveTab(tab.id as any);
+                                if (tab.id === 'DRE') {
+                                    setTimeView('month');
+                                    setDateRef(new Date());
+                                }
+                            }}
+                            className={`flex-1 md:flex-none min-w-[100px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                        >
+                            <tab.icon size={14} /> {tab.label}
+                        </button>
                     ))}
                 </div>
 
