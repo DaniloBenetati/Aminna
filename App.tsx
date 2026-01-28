@@ -122,6 +122,8 @@ const App: React.FC = () => {
 
       // 3. Stock
       const { data: stockData } = await supabase.from('stock_items').select('*');
+      const { data: usageLogsData } = await supabase.from('usage_logs').select('*');
+
       if (stockData) {
         setStock(stockData.map((s: any) => ({
           id: s.id,
@@ -135,7 +137,16 @@ const App: React.FC = () => {
           unit: s.unit,
           costPrice: s.cost_price,
           price: s.sale_price,
-          usageHistory: [] // Todo fetch logs
+          usageHistory: (usageLogsData || [])
+            .filter((l: any) => l.stock_item_id === s.id)
+            .map((l: any) => ({
+              id: l.id,
+              date: l.date,
+              quantity: l.quantity,
+              type: l.type,
+              providerId: l.provider_id,
+              note: l.note
+            }))
         })));
       }
 

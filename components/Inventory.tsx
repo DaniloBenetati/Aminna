@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import Tesseract from 'tesseract.js';
+import { supabase } from '../services/supabase';
 
 interface InventoryProps {
     stock: StockItem[];
@@ -245,110 +246,166 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
     };
 
-    const handleTransaction = (e: React.FormEvent) => {
+    const handleTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedItemId) return;
 
-        if (modalType === 'INVENTORY') {
-            const physicalQty = parseInt(physicalCount);
-            const currentItem = stock.find(i => i.id === selectedItemId);
-            if (!currentItem || isNaN(physicalQty) || physicalQty < 0) return;
-            const diff = physicalQty - currentItem.quantity;
-            if (diff !== 0 && !inventoryJustification.trim()) {
-                alert("⚠️ Atenção: Como há divergência no estoque, é OBRIGATÓRIO informar a justificativa no relatório.");
+        try {
+            if (modalType === 'INVENTORY') {
+                const physicalQty = parseInt(physicalCount);
+                const currentItem = stock.find(i => i.id === selectedItemId);
+                if (!currentItem || isNaN(physicalQty) || physicalQty < 0) return;
+                const diff = physicalQty - currentItem.quantity;
+                if (diff !== 0 && !inventoryJustification.trim()) {
+                    alert("⚠️ Atenção: Como há divergência no estoque, é OBRIGATÓRIO informar a justificativa no relatório.");
+                    return;
+                }
+
+                // 1. Update stock_items quantity
+                const { error: updateError } = await supabase.from('stock_items').update({ quantity: physicalQty }).eq('id', selectedItemId);
+                if (updateError) throw updateError;
+
+                // 2. Insert usage_log if there's a difference
+                if (diff !== 0) {
+                    const { error: logError } = await supabase.from('usage_logs').insert([{
+                        stock_item_id: selectedItemId,
+                        quantity: Math.abs(diff),
+                        type: 'CORRECAO',
+                        note: `Inventário: Sist(${currentItem.quantity}) vs Real(${physicalQty}) | Motivo: ${inventoryJustification}`,
+                        date: new Date().toISOString()
+                    }]);
+                    if (logError) throw logError;
+                }
+
+                setStock(prev => prev.map(item => item.id === selectedItemId ? { ...item, quantity: physicalQty } : item));
+                closeModal();
                 return;
             }
+
+            if (!quantity) return;
+            if (modalType === 'EXIT' && !exitProviderId) {
+                alert("É obrigatório informar a profissional responsável pela retirada.");
+                return;
+            }
+            const qtyNum = parseInt(quantity);
+            if (isNaN(qtyNum) || qtyNum <= 0) return;
+
+            const currentItem = stock.find(i => i.id === selectedItemId);
+            if (!currentItem) return;
+
+            const newQty = modalType === 'ENTRY' ? currentItem.quantity + qtyNum : Math.max(0, currentItem.quantity - qtyNum);
+
+            // 1. Update stock_items quantity and possibly cost price
+            const updateData: any = { quantity: newQty };
+            if (modalType === 'ENTRY' && entryCost) {
+                updateData.cost_price = parseFloat(entryCost);
+            }
+            const { error: updateError } = await supabase.from('stock_items').update(updateData).eq('id', selectedItemId);
+            if (updateError) throw updateError;
+
+            // 2. Insert usage_log
+            const { error: logError } = await supabase.from('usage_logs').insert([{
+                stock_item_id: selectedItemId,
+                quantity: qtyNum,
+                type: modalType === 'ENTRY' ? 'AJUSTE_ENTRADA' : 'USO_INTERNO',
+                provider_id: modalType === 'EXIT' ? exitProviderId : undefined,
+                note: modalType === 'EXIT' ? 'Baixa Manual' : `Reposição - Custo: R$ ${entryCost}`,
+                date: new Date().toISOString()
+            }]);
+            if (logError) throw logError;
+
             setStock(prev => prev.map(item => {
                 if (item.id === selectedItemId) {
-                    if (diff === 0) return item;
-                    const newLog: StockUsageLog = {
-                        id: Date.now().toString(),
-                        date: new Date().toISOString().split('T')[0],
-                        quantity: diff, // Store signed diff to know direction
-                        type: 'CORRECAO',
-                        note: `Inventário: Sist(${item.quantity}) vs Real(${physicalQty}) | Motivo: ${inventoryJustification}`
-                    };
-                    return { ...item, quantity: physicalQty, usageHistory: [...(item.usageHistory || []), newLog] };
+                    let updatedItem = { ...item, quantity: newQty };
+                    if (modalType === 'ENTRY' && entryCost) {
+                        updatedItem.costPrice = parseFloat(entryCost);
+                    }
+                    return updatedItem;
                 }
                 return item;
             }));
             closeModal();
-            return;
+        } catch (error) {
+            console.error("Erro na transação de estoque:", error);
+            alert("Erro ao salvar movimentação no banco de dados.");
         }
-
-        if (!quantity) return;
-        if (modalType === 'EXIT' && !exitProviderId) {
-            alert("É obrigatório informar a profissional responsável pela retirada.");
-            return;
-        }
-        const qtyNum = parseInt(quantity);
-        if (isNaN(qtyNum) || qtyNum <= 0) return;
-
-        setStock(prev => prev.map(item => {
-            if (item.id === selectedItemId) {
-                let updatedItem = { ...item };
-                updatedItem.quantity = modalType === 'ENTRY' ? item.quantity + qtyNum : Math.max(0, item.quantity - qtyNum);
-
-                if (modalType === 'ENTRY' && entryCost) {
-                    updatedItem.costPrice = parseFloat(entryCost);
-                }
-                const newLog: StockUsageLog = {
-                    id: Date.now().toString(),
-                    date: new Date().toISOString().split('T')[0],
-                    quantity: qtyNum,
-                    type: modalType === 'ENTRY' ? 'AJUSTE_ENTRADA' : 'USO_INTERNO',
-                    providerId: modalType === 'EXIT' ? exitProviderId : undefined,
-                    note: modalType === 'EXIT' ? 'Baixa Manual' : `Reposição - Custo: R$ ${entryCost}`
-                };
-                updatedItem.usageHistory = [...(item.usageHistory || []), newLog];
-                return updatedItem;
-            }
-            return item;
-        }));
-        closeModal();
     };
 
-    const handleUpdatePrice = (e: React.FormEvent) => {
+    const handleUpdatePrice = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedItemId || !newPrice) return;
         const priceNum = parseFloat(newPrice);
         if (isNaN(priceNum)) return;
 
-        setStock(prev => prev.map(item => {
-            if (item.id === selectedItemId) {
-                const hist: PriceHistoryItem = {
-                    date: new Date().toISOString().split('T')[0],
-                    price: item.price || 0,
-                    note: priceNote || 'Alteração manual de preço'
-                };
-                return {
-                    ...item,
-                    price: priceNum,
-                    priceHistory: [...(item.priceHistory || []), hist]
-                };
-            }
-            return item;
-        }));
-        closeModal();
+        try {
+            const { error } = await supabase.from('stock_items').update({ sale_price: priceNum }).eq('id', selectedItemId);
+            if (error) throw error;
+
+            setStock(prev => prev.map(item => {
+                if (item.id === selectedItemId) {
+                    const hist: PriceHistoryItem = {
+                        date: new Date().toISOString().split('T')[0],
+                        price: item.price || 0,
+                        note: priceNote || 'Alteração manual de preço'
+                    };
+                    return {
+                        ...item,
+                        price: priceNum,
+                        priceHistory: [...(item.priceHistory || []), hist]
+                    };
+                }
+                return item;
+            }));
+            closeModal();
+        } catch (error) {
+            console.error("Erro ao atualizar preço:", error);
+            alert("Erro ao salvar novo preço no banco de dados.");
+        }
     };
 
-    const handleCreateOrUpdateProduct = (e: React.FormEvent) => {
+    const handleCreateOrUpdateProduct = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (modalType === 'EDIT_PRODUCT' && selectedItemId) {
-            setStock(prev => prev.map(item => item.id === selectedItemId ? { ...item, ...productFormData } : item));
-        } else {
-            const newItem: StockItem = {
-                ...productFormData,
-                id: Date.now().toString(),
-                quantity: 0,
-                usageHistory: [],
-                priceHistory: [],
-                price: productFormData.price,
-                costPrice: productFormData.costPrice
+        try {
+            const productData = {
+                code: productFormData.code,
+                name: productFormData.name,
+                category: productFormData.category,
+                group: productFormData.group,
+                sub_group: productFormData.subGroup,
+                min_quantity: productFormData.minQuantity,
+                unit: productFormData.unit,
+                cost_price: productFormData.costPrice,
+                sale_price: productFormData.price,
+                active: true
             };
-            setStock([...stock, newItem]);
+
+            if (modalType === 'EDIT_PRODUCT' && selectedItemId) {
+                const { error } = await supabase.from('stock_items').update(productData).eq('id', selectedItemId);
+                if (error) throw error;
+                setStock(prev => prev.map(item => item.id === selectedItemId ? { ...item, ...productFormData } : item));
+            } else {
+                const { data, error } = await supabase.from('stock_items').insert([{
+                    ...productData,
+                    quantity: 0
+                }]).select();
+
+                if (error) throw error;
+                if (data && data[0]) {
+                    const newItem: StockItem = {
+                        ...productFormData,
+                        id: data[0].id,
+                        quantity: 0,
+                        usageHistory: [],
+                        priceHistory: [],
+                    };
+                    setStock([...stock, newItem]);
+                }
+            }
+            closeModal();
+        } catch (error) {
+            console.error("Erro ao salvar produto:", error);
+            alert("Erro ao salvar produto no banco de dados.");
         }
-        closeModal();
     };
 
     const closeModal = () => {
