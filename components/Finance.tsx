@@ -290,6 +290,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     const [batchOption, setBatchOption] = useState<'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL'>('ONLY_THIS');
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
+    // Filter States for Payables
+    const [payablesFilter, setPayablesFilter] = useState('');
+    const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('');
+
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
     const [expandedSections, setExpandedSections] = useState<string[]>(['gross', 'cogs', 'exp-vendas', 'exp-adm', 'exp-fin']);
@@ -484,6 +488,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     }, [services, expenses, appointments, sales, paymentSettings, commissionSettings]);
 
     const filteredTransactions = useMemo(() => transactions.filter(t => t.date >= startDate && t.date <= endDate), [transactions, startDate, endDate]);
+
+    const filteredPayables = useMemo(() => {
+        return expenses.filter(exp => {
+            const matchesDate = exp.date >= startDate && exp.date <= endDate;
+            const matchesDesc = exp.description.toLowerCase().includes(payablesFilter.toLowerCase());
+            const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
+            const matchesSupplier = supplierName.toLowerCase().includes(payablesSupplierFilter.toLowerCase());
+            return matchesDate && matchesDesc && matchesSupplier;
+        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [expenses, startDate, endDate, payablesFilter, payablesSupplierFilter, suppliers]);
 
     const dreData = useMemo(() => {
         const apps = appointments.filter(a => a.date >= startDate && a.date <= endDate && a.status === 'Concluído');
@@ -958,7 +972,37 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} />}
                 {activeTab === 'PAYABLES' && (
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
-                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50"><h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3><button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"><Plus size={12} /> Lançar Despesa</button></div>
+                        <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50 gap-4">
+                            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 w-full">
+                                <div>
+                                    <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                                </div>
+
+                                <div className="flex flex-1 max-w-2xl gap-2 w-full">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                        <input
+                                            type="text"
+                                            placeholder="Filtrar descrição..."
+                                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all"
+                                            value={payablesFilter}
+                                            onChange={e => setPayablesFilter(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="relative flex-1">
+                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                        <input
+                                            type="text"
+                                            placeholder="Filtrar favorecido..."
+                                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all"
+                                            value={payablesSupplierFilter}
+                                            onChange={e => setPayablesSupplierFilter(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all w-full md:w-auto"><Plus size={12} /> Lançar Despesa</button>
+                        </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
                                 <thead>
@@ -973,7 +1017,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                    {expenses.map(exp => (
+                                    {filteredPayables.map(exp => (
                                         <tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
                                             <td className="px-6 py-4 text-xs font-bold font-mono">{new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
                                             <td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td>
