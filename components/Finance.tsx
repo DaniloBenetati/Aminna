@@ -1339,26 +1339,45 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 {/* Recurrence Field (Only for new expenses) */}
                                 {!editingExpenseId && (
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Recorrência (Mensal)</label>
-                                        <div className="flex flex-col gap-2">
-                                            <div className="relative">
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    value={recurrenceMonths}
-                                                    onChange={e => setRecurrenceMonths(Math.max(1, parseInt(e.target.value) || 1))}
-                                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
-                                                />
-                                                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-zinc-700 px-2 py-1 rounded-md border border-slate-200 dark:border-zinc-600">Meses</div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Parcelas (Recorrência Mensal)</label>
+                                        <div className="flex flex-col gap-3 p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border-2 border-slate-200 dark:border-zinc-700">
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={[1, 6, 12, 24, 36, 48, 60, 120].includes(recurrenceMonths) ? recurrenceMonths : ''}
+                                                    onChange={e => setRecurrenceMonths(parseInt(e.target.value))}
+                                                    className="flex-1 border-2 border-slate-200 dark:border-zinc-700 p-2.5 rounded-xl font-bold bg-white dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black text-[11px] uppercase tracking-tighter"
+                                                >
+                                                    <option value="" disabled>Padrões...</option>
+                                                    <option value={1}>Única</option>
+                                                    <option value={6}>6 Meses</option>
+                                                    <option value={12}>12 Meses</option>
+                                                    <option value={24}>24 Meses</option>
+                                                    <option value={36}>36 Meses</option>
+                                                    <option value={48}>48 Meses</option>
+                                                    <option value={60}>60 Meses</option>
+                                                    <option value={120}>120 Meses</option>
+                                                </select>
+                                                <div className="relative flex-1">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        value={recurrenceMonths}
+                                                        onChange={e => setRecurrenceMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-2.5 rounded-xl font-bold bg-white dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black text-[11px]"
+                                                        placeholder="Custom"
+                                                    />
+                                                    <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-[8px] font-black uppercase bg-slate-50 dark:bg-zinc-700 px-1 rounded-md border border-slate-200 dark:border-zinc-600">Meses</div>
+                                                </div>
                                             </div>
-                                            <div className="flex flex-wrap gap-1.5">
+
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
                                                 {[1, 6, 12, 24, 36, 48, 60, 120].map(m => (
                                                     <button
                                                         key={m}
                                                         type="button"
                                                         onClick={() => setRecurrenceMonths(m)}
                                                         className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all border-2 ${recurrenceMonths === m
-                                                            ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-black dark:border-white shadow-md'
+                                                            ? 'bg-zinc-950 text-white border-zinc-950 dark:bg-white dark:text-black dark:border-white shadow-md scale-105'
                                                             : 'bg-white dark:bg-zinc-900 text-slate-500 border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600'
                                                             }`}
                                                     >
