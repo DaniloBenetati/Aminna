@@ -555,6 +555,45 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const irpjCsll = exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
             const netResult = resultBeforeTaxes - irpjCsll;
 
+            const breakdownServices = apps.reduce((acc, a) => {
+                const serviceName = services.find(s => s.id === a.serviceId)?.name || 'Serviço Removido';
+                if (!acc[serviceName]) acc[serviceName] = { total: 0, count: 0 };
+                acc[serviceName].total += (a.pricePaid || 0);
+                acc[serviceName].count += 1;
+                return acc;
+            }, {} as Record<string, { total: number, count: number }>);
+
+            const breakdownProducts = sls.reduce((acc, s) => {
+                // If items structure exists and is populated
+                if (s.items && s.items.length > 0) {
+                    s.items.forEach((item: any) => {
+                        const name = item.name || 'Produto';
+                        if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                        acc[name].total += (item.unitPrice * item.quantity);
+                        acc[name].count += item.quantity;
+                    });
+                } else {
+                    // Fallback to sale description
+                    const name = 'Venda Avulsa / Diversos';
+                    if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                    acc[name].total += s.totalPrice;
+                    acc[name].count += 1;
+                }
+                return acc;
+            }, {} as Record<string, { total: number, count: number }>);
+
+            const breakdownCommissions = apps.reduce((acc, a) => {
+                const provider = PROVIDERS.find(p => p.id === a.providerId);
+                const name = provider?.name || 'Profissional Removido';
+                const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
+                const commVal = (a.pricePaid || 0) * rate;
+
+                if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                acc[name].total += commVal;
+                acc[name].count += 1;
+                return acc;
+            }, {} as Record<string, { total: number, count: number }>);
+
             return {
                 grossRevenue, revenueServices, revenueProducts,
                 deductions, netRevenue,
@@ -563,7 +602,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 resultBeforeTaxes, irpjCsll, netResult,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
-                breakdownFin: groupByCat(expensesFin)
+                breakdownFin: groupByCat(expensesFin),
+                breakdownServices,
+                breakdownProducts,
+                breakdownCommissions
             };
         };
 
@@ -572,7 +614,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         // Se visualização por ANO, calcular os 12 meses para comparação
         let monthlySnapshots: any[] = [];
         if (timeView === 'year') {
-            const year = new Date(startDate).getFullYear();
+            const year = parseInt(startDate.split('-')[0]);
             monthlySnapshots = Array.from({ length: 12 }, (_, m) => {
                 const mStart = new Date(year, m, 1).toISOString().split('T')[0];
                 const mEnd = new Date(year, m + 1, 0).toISOString().split('T')[0];
@@ -1277,10 +1319,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <th className="px-8 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Categorização Financeira</th>
                                         {timeView === 'year' ? (
                                             <>
-                                                <th className="px-6 py-4 text-right bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">TOTAL ANO</th>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <th key={m.name} className="px-4 py-4 text-right border-l border-slate-200/50 dark:border-zinc-700/50">{m.name}</th>
                                                 ))}
+                                                <th className="px-6 py-4 text-right bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">TOTAL ANO</th>
                                             </>
                                         ) : (
                                             <>
@@ -1299,10 +1341,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-sm bg-indigo-100/20 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {dreData.grossRevenue.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.grossRevenue.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-sm bg-indigo-100/20 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {dreData.grossRevenue.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1313,14 +1355,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </tr>
                                     {expandedSections.includes('gross') && (
                                         <>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Serviços</td>
+                                            <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                    {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    └ Serviços
+                                                </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueServices.toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
                                                             <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{m.revenueServices.toFixed(0)}</td>
                                                         ))}
+                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueServices.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1331,14 +1376,37 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     </>
                                                 )}
                                             </tr>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Produtos</td>
+                                            {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                            <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                    {expandedSections.includes('products-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    └ Produtos
+                                                </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueProducts.toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
                                                             <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{m.revenueProducts.toFixed(0)}</td>
                                                         ))}
+                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueProducts.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1349,6 +1417,26 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     </>
                                                 )}
                                             </tr>
+                                            {expandedSections.includes('products-list') && Object.entries(dreData.breakdownProducts as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
                                         </>
                                     )}
 
@@ -1357,10 +1445,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">2. (-) DEDUÇÕES E ABATIMENTOS</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.deductions.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.deductions.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.deductions.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1377,10 +1465,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÍQUIDA</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-sm border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.netRevenue.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.netRevenue.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-sm border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.netRevenue.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1398,10 +1486,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.totalCOGS.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.totalCOGS.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.totalCOGS.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1414,14 +1502,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </tr>
                                     {expandedSections.includes('cogs') && (
                                         <>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Comissões (Técnica)</td>
+                                            <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                    {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    └ Comissões (Técnica)
+                                                </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
                                                             <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.commissions.toFixed(0)}</td>
                                                         ))}
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1432,14 +1523,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     </>
                                                 )}
                                             </tr>
+                                            {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Custo Mercadoria Vendida</td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.productCOGS.toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
                                                             <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.productCOGS.toFixed(0)}</td>
                                                         ))}
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.productCOGS.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1458,10 +1569,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 font-black text-sm text-emerald-800 dark:text-emerald-400 uppercase sticky left-0 bg-emerald-50 dark:bg-emerald-950 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">5. (=) LUCRO BRUTO</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400 border-l-2 border-emerald-200 dark:border-emerald-800">R$ {dreData.grossProfit.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-emerald-100 dark:border-emerald-800/30 ${m.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{m.grossProfit.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400 border-l-2 border-emerald-200 dark:border-emerald-800">R$ {dreData.grossProfit.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1481,10 +1592,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountVendas.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountVendas.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountVendas.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1504,11 +1615,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
                                                             const catTotal = (m.breakdownVendas[cat]?.total || 0);
                                                             return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
                                                         })}
+                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1524,8 +1635,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {e.description}</td>
                                                     {timeView === 'year' ? (
                                                         <>
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                             <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1548,10 +1659,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountAdm.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountAdm.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountAdm.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1571,11 +1682,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
                                                             const catTotal = (m.breakdownAdm[cat]?.total || 0);
                                                             return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
                                                         })}
+                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1591,8 +1702,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {e.description}</td>
                                                     {timeView === 'year' ? (
                                                         <>
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                             <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1615,10 +1726,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountFin.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountFin.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountFin.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1638,11 +1749,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
                                                             const catTotal = (m.breakdownFin[cat]?.total || 0);
                                                             return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
                                                         })}
+                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1658,8 +1769,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {e.description}</td>
                                                     {timeView === 'year' ? (
                                                         <>
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                             <td colSpan={12} className="text-center text-[9px] text-slate-300 italic">Detalhes mensais no relatório</td>
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400">R$ {e.amount.toFixed(2)}</td>
                                                         </>
                                                     ) : (
                                                         <>
@@ -1679,10 +1790,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase sticky left-0 bg-slate-100 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">9. (=) RESULTADO ANTES IRPJ/CSLL</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200 border-l-2 border-slate-300 dark:border-zinc-600">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-slate-200/50 dark:border-zinc-700/50 ${m.resultBeforeTaxes >= 0 ? 'text-slate-700' : 'text-rose-600'}`}>{m.resultBeforeTaxes.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200 border-l-2 border-slate-300 dark:border-zinc-600">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1699,10 +1810,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">10. (-) PROVISÕES IRPJ E CSLL</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.irpjCsll.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.irpjCsll.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.irpjCsll.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1719,10 +1830,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO</td>
                                         {timeView === 'year' ? (
                                             <>
-                                                <td className="px-6 py-6 text-right font-black text-xl border-l-2 border-white/20 dark:border-black/20">R$ {dreData.netResult.toFixed(2)}</td>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
                                                     <td key={m.name} className={`px-4 py-6 text-right text-xs font-black border-l border-white/10 dark:border-black/10 ${m.netResult >= 0 ? '' : 'text-rose-400'}`}>{m.netResult.toFixed(0)}</td>
                                                 ))}
+                                                <td className="px-6 py-6 text-right font-black text-xl border-l-2 border-white/20 dark:border-black/20">R$ {dreData.netResult.toFixed(2)}</td>
                                             </>
                                         ) : (
                                             <>
@@ -1974,8 +2085,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 </button>
                             </div>
                         </div>
-            )}
                     </div>
+                )}
         </div >
     );
 };
