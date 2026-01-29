@@ -607,6 +607,207 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         }
     };
 
+    const handlePrintPayablesReport = () => {
+        const printContent = `
+            <html>
+            <head>
+                <title>Relatório de Contas a Pagar - ${getDateLabel()}</title>
+                <style>
+                    body { font-family: 'Inter', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #fff; }
+                    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+                    .logo-section h1 { font-size: 24px; font-weight: 900; margin: 0; color: #000; letter-spacing: -0.025em; }
+                    .logo-section p { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #64748b; margin-top: 4px; }
+                    .info-section { text-align: right; }
+                    .info-section p { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; margin: 0; }
+                    .info-section h2 { font-size: 14px; font-weight: 900; margin: 4px 0 0 0; color: #0f172a; }
+                    
+                    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                    .summary-card { padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; }
+                    .summary-card p { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; margin: 0; }
+                    .summary-card span { font-size: 18px; font-weight: 900; color: #0f172a; display: block; margin-top: 4px; }
+                    
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                    th { text-align: left; padding: 12px 8px; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+                    td { padding: 12px 8px; font-size: 11px; font-weight: 600; border-bottom: 1px solid #f1f5f9; }
+                    .amount { font-weight: 900; text-align: right; }
+                    .status { font-size: 9px; font-weight: 900; text-transform: uppercase; padding: 4px 8px; border-radius: 6px; display: inline-block; }
+                    .status-pago { background: #f0fdf4; color: #166534; }
+                    .status-pendente { background: #fffbeb; color: #92400e; }
+                    
+                    .footer { margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 9px; color: #94a3b8; font-weight: 600; }
+                    @media print { body { padding: 20px; } .summary-card { border: 1px solid #e2e8f0; -webkit-print-color-adjust: exact; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="logo-section">
+                        <h1>AMINNA HOME NAIL GEL</h1>
+                        <p>GESTÃO FINANCEIRA PROFISSIONAL</p>
+                    </div>
+                    <div class="info-section">
+                        <p>Relatório de Contas a Pagar</p>
+                        <h2>${getDateLabel()}</h2>
+                        <p style="margin-top: 8px;">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                    </div>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <p>Total de Lançamentos</p>
+                        <span>${filteredPayables.length} item(ns)</span>
+                    </div>
+                    <div class="summary-card">
+                        <p>Total Pendente</p>
+                        <span>R$ ${filteredPayables.filter(e => e.status !== 'Pago').reduce((acc, e) => acc + e.amount, 0).toFixed(2)}</span>
+                    </div>
+                    <div class="summary-card" style="border-color: #000; background: #f8fafc;">
+                        <p>Vlr. Total do Período</p>
+                        <span>R$ ${filteredPayables.reduce((acc, e) => acc + e.amount, 0).toFixed(2)}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Favorecido</th>
+                            <th>Categoria</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredPayables.map(e => `
+                            <tr>
+                                <td>${new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                <td style="font-weight: 800; text-transform: uppercase;">${e.description}</td>
+                                <td style="text-transform: uppercase; color: #4338ca;">${suppliers.find(s => s.id === e.supplierId)?.name || '-'}</td>
+                                <td style="text-transform: uppercase; color: #64748b;">${e.category}</td>
+                                <td><span class="status ${e.status === 'Pago' ? 'status-pago' : 'status-pendente'}">${e.status}</span></td>
+                                <td class="amount">R$ ${e.amount.toFixed(2)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    AMINNA GESTÃO INTELIGENTE - Relatório Extraído do Sistema em ${new Date().toLocaleDateString('pt-BR')}
+                </div>
+                <script>window.onload = () => { window.print(); window.close(); }</script>
+            </body>
+            </html>
+        `;
+        const win = window.open('', '_blank');
+        if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
+    const handlePrintAnnualReport = () => {
+        const year = new Date(startDate).getFullYear();
+        const monthsNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+        const monthlyData = monthsNames.map((name, m) => {
+            const mStart = new Date(year, m, 1).toISOString().split('T')[0];
+            const mEnd = new Date(year, m + 1, 0).toISOString().split('T')[0];
+
+            const apps = appointments.filter(a => a.date >= mStart && a.date <= mEnd && a.status === 'Concluído');
+            const sls = sales.filter(s => s.date >= mStart && s.date <= mEnd);
+            const exps = expenses.filter(e => e.date >= mStart && e.date <= mEnd);
+
+            const grossRevenue = apps.reduce((acc, a) => acc + (a.pricePaid || 0), 0) + sls.reduce((acc, s) => acc + s.totalPrice, 0);
+            const deductions = (grossRevenue * 0.06) + exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
+            const commissions = apps.reduce((acc, a) => {
+                const provider = PROVIDERS.find(p => p.id === a.providerId);
+                const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
+                return acc + ((a.pricePaid || 0) * rate);
+            }, 0);
+            const productCOGS = sls.reduce((acc, s) => {
+                const stockItem = STOCK.find(item => item.id === s.productId);
+                return acc + (s.quantity * (stockItem?.costPrice || 0));
+            }, 0);
+            const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
+            const totalCOGS = commissions + productCOGS + manualCosts;
+            const grossProfit = (grossRevenue - deductions) - totalCOGS;
+            const amountVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES').reduce((acc, e) => acc + e.amount, 0);
+            const amountAdm = exps.filter(e => e.dreClass === 'EXPENSE_ADM').reduce((acc, e) => acc + e.amount, 0);
+            const amountFin = exps.filter(e => e.dreClass === 'EXPENSE_FIN').reduce((acc, e) => acc + e.amount, 0);
+            const totalOpExpenses = amountVendas + amountAdm + amountFin;
+            const netResult = (grossProfit - totalOpExpenses) - exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
+
+            return { name, grossRevenue, grossProfit, totalOpExpenses, netResult };
+        });
+
+        const printContent = `
+            <html>
+            <head>
+                <title>Fluxo Anual ${year} - AMINNA</title>
+                <style>
+                    @page { size: landscape; margin: 10mm; }
+                    body { font-family: 'Inter', system-ui, sans-serif; padding: 20px; color: #1e293b; background: #fff; font-size: 10px; }
+                    .header { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+                    h1 { margin: 0; font-size: 18px; font-weight: 900; }
+                    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                    th, td { border: 1px solid #e2e8f0; padding: 8px 4px; text-align: right; }
+                    th { background: #f8fafc; font-weight: 900; text-transform: uppercase; font-size: 8px; text-align: center; }
+                    .row-label { text-align: left; font-weight: 800; background: #f1f5f9; width: 120px; text-transform: uppercase; font-size: 8px; }
+                    .positive { color: #16a34a; font-weight: 900; }
+                    .negative { color: #dc2626; font-weight: 900; }
+                    .total { background: #0f172a; color: #fff; font-weight: 900; }
+                    .subtotal { background: #f8fafc; font-weight: 700; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <h1>FLUXO DE CAIXA ANUAL - ${year}</h1>
+                        <p style="margin: 4px 0 0 0; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Faturamento e Resultados por Mês</p>
+                    </div>
+                    <div style="text-align: right; font-weight: 800; color: #94a3b8; text-transform: uppercase; font-size: 8px;">Sistema Aminna • Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="row-label">Categoria</th>
+                            ${monthsNames.map(m => `<th>${m}</th>`).join('')}
+                            <th class="total">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="row-label">Receita Bruta</td>
+                            ${monthlyData.map(d => `<td>${d.grossRevenue.toFixed(0)}</td>`).join('')}
+                            <td class="total">${monthlyData.reduce((acc, d) => acc + d.grossRevenue, 0).toFixed(0)}</td>
+                        </tr>
+                        <tr>
+                            <td class="row-label">Lucro Bruto</td>
+                            ${monthlyData.map(d => `<td class="${d.grossProfit >= 0 ? 'positive' : 'negative'}">${d.grossProfit.toFixed(0)}</td>`).join('')}
+                            <td class="total">${monthlyData.reduce((acc, d) => acc + d.grossProfit, 0).toFixed(0)}</td>
+                        </tr>
+                        <tr>
+                            <td class="row-label">Desp. Operacionais</td>
+                            ${monthlyData.map(d => `<td style="color: #64748b;">${d.totalOpExpenses.toFixed(0)}</td>`).join('')}
+                            <td class="total">${monthlyData.reduce((acc, d) => acc + d.totalOpExpenses, 0).toFixed(0)}</td>
+                        </tr>
+                        <tr style="border-top: 2px solid #0f172a;">
+                            <td class="row-label" style="background: #0f172a; color: #fff;">Resultado Líquido</td>
+                            ${monthlyData.map(d => `<td style="background: ${d.netResult >= 0 ? '#f0fdf4' : '#fef2f2'}; font-weight: 900;" class="${d.netResult >= 0 ? 'positive' : 'negative'}">${d.netResult.toFixed(0)}</td>`).join('')}
+                            <td class="total" style="background: #000;">${monthlyData.reduce((acc, d) => acc + d.netResult, 0).toFixed(0)}</td>
+                        </tr>
+                        <tr>
+                            <td class="row-label">Margem Líquida</td>
+                            ${monthlyData.map(d => `<td>${d.grossRevenue > 0 ? ((d.netResult / d.grossRevenue) * 100).toFixed(1) : '0.0'}%</td>`).join('')}
+                            <td class="total">${monthlyData.reduce((acc, d) => acc + d.grossRevenue, 0) > 0 ? ((monthlyData.reduce((acc, d) => acc + d.netResult, 0) / monthlyData.reduce((acc, d) => acc + d.grossRevenue, 0)) * 100).toFixed(1) : '0.0'}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <script>window.onload = () => { window.print(); window.close(); }</script>
+            </body>
+            </html>
+        `;
+        const win = window.open('', '_blank');
+        if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
     const handleSaveExpense = async (e?: React.FormEvent, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
         if (e) e.preventDefault();
         if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
@@ -888,6 +1089,31 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto items-center">
+                    {activeTab === 'PAYABLES' && (
+                        <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
+                            <div className="relative w-full md:w-48">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input
+                                    type="text"
+                                    placeholder="Descrição..."
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    value={payablesFilter}
+                                    onChange={e => setPayablesFilter(e.target.value)}
+                                />
+                            </div>
+                            <div className="relative w-full md:w-48">
+                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input
+                                    type="text"
+                                    placeholder="Favorecido..."
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    value={payablesSupplierFilter}
+                                    onChange={e => setPayablesSupplierFilter(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
@@ -972,36 +1198,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} />}
                 {activeTab === 'PAYABLES' && (
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
-                        <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50 gap-4">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 w-full">
-                                <div>
-                                    <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
-                                </div>
-
-                                <div className="flex flex-1 max-w-2xl gap-2 w-full">
-                                    <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                        <input
-                                            type="text"
-                                            placeholder="Filtrar descrição..."
-                                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all"
-                                            value={payablesFilter}
-                                            onChange={e => setPayablesFilter(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="relative flex-1">
-                                        <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                        <input
-                                            type="text"
-                                            placeholder="Filtrar favorecido..."
-                                            className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all"
-                                            value={payablesSupplierFilter}
-                                            onChange={e => setPayablesSupplierFilter(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
+                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                            <div className="flex gap-2">
+                                <button onClick={handlePrintPayablesReport} className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
+                                <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all"><Plus size={12} /> Lançar Despesa</button>
                             </div>
-                            <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1 shadow-md active:scale-95 transition-all w-full md:w-auto"><Plus size={12} /> Lançar Despesa</button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -1042,12 +1244,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 )}
                 {activeTab === 'DRE' && (
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-6 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                             <div>
-                                <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2"><CalcIcon size={20} className="text-indigo-600" /> DRE - Demonstrativo de Resultado</h3>
-                                <p className="text-[10px] text-slate-500 uppercase font-bold mt-1">Análise detalhada de performance financeira no período</p>
+                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowUpCircle size={16} className="text-emerald-500" /> Demonstração do Resultado (DRE)</h3>
+                                <p className="text-[9px] text-slate-500 uppercase mt-0.5">Visão Gerencial de Competência</p>
                             </div>
                             <div className="flex gap-2">
+                                <button onClick={handlePrintAnnualReport} className="text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border-2 border-indigo-100 dark:border-indigo-800 px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório Anual</button>
                                 <button onClick={handlePrintDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Printer size={18} /></button>
                                 <button onClick={handleDownloadDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Download size={18} /></button>
                             </div>
@@ -1077,12 +1280,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic">└ Serviços</td>
                                                 <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">R$ {dreData.revenueServices.toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((dreData.revenueServices / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? ((dreData.revenueServices / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic">└ Produtos</td>
                                                 <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">R$ {dreData.revenueProducts.toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((dreData.revenueProducts / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? ((dreData.revenueProducts / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                         </>
                                     )}
@@ -1091,7 +1298,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <tr>
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 flex items-center gap-2">2. (-) DEDUÇÕES E ABATIMENTOS (IMPOSTOS/TAXAS)</td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.deductions.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.deductions / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.deductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
 
                                     {/* 3. RECEITA LÍQUIDA */}
@@ -1108,19 +1317,25 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             4. (-) CPV / CMV (CUSTOS DIRETOS)
                                         </td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.totalCOGS.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.totalCOGS / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
                                     {expandedSections.includes('cogs') && (
                                         <>
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic">└ Comissões (Técnica)</td>
                                                 <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.commissions.toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((dreData.commissions / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? ((dreData.commissions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic">└ Custo Mercadoria Vendida</td>
                                                 <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.productCOGS.toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{((dreData.productCOGS / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? ((dreData.productCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                         </>
                                     )}
@@ -1129,7 +1344,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
                                         <td className="px-8 py-4 font-black text-sm text-emerald-800 dark:text-emerald-400 uppercase">5. (=) LUCRO BRUTO</td>
                                         <td className="px-8 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400">R$ {dreData.grossProfit.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right font-black text-[10px] text-emerald-600/50">{((dreData.grossProfit / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right font-black text-[10px] text-emerald-600/50">
+                                            {dreData.grossRevenue > 0 ? ((dreData.grossProfit / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
 
                                     {/* 6. DESPESAS COM VENDAS */}
@@ -1139,7 +1356,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             6. (-) DESPESAS COM VENDAS
                                         </td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountVendas.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountVendas / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.amountVendas / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
                                     {expandedSections.includes('exp-vendas') && Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => (
                                         <React.Fragment key={cat}>
@@ -1149,13 +1368,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     {cat}
                                                 </td>
                                                 <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                             {(info.items as Expense[]).map((e, idx) => (
                                                 <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
                                                     <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
-                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((e.amount / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </React.Fragment>
@@ -1168,7 +1391,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             7. (-) DESPESAS ADMINISTRATIVAS
                                         </td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountAdm.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountAdm / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.amountAdm / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
                                     {expandedSections.includes('exp-adm') && Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => (
                                         <React.Fragment key={cat}>
@@ -1178,13 +1403,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     {cat}
                                                 </td>
                                                 <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                             {(info.items as Expense[]).map((e, idx) => (
                                                 <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
                                                     <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
-                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((e.amount / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </React.Fragment>
@@ -1197,7 +1426,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             8. (-) DESPESAS FINANCEIRAS
                                         </td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountFin.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.amountFin / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.amountFin / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
                                     {expandedSections.includes('exp-fin') && Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
                                         <React.Fragment key={cat}>
@@ -1207,13 +1438,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     {cat}
                                                 </td>
                                                 <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">{(((info.total as number) / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                </td>
                                             </tr>
                                             {(info.items as Expense[]).map((e, idx) => (
                                                 <tr key={e.id || idx} className="animate-in slide-in-from-top-1 duration-200">
                                                     <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic">└ {e.description}</td>
                                                     <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {e.amount.toFixed(2)}</td>
-                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">{((e.amount / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((e.amount / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </React.Fragment>
@@ -1223,14 +1458,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <tr className="bg-slate-100 dark:bg-zinc-800">
                                         <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase">9. (=) RESULTADO ANTES IRPJ/CSLL</td>
                                         <td className="px-8 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right font-black text-[10px] text-slate-500">{((dreData.resultBeforeTaxes / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right font-black text-[10px] text-slate-500">
+                                            {dreData.grossRevenue > 0 ? ((dreData.resultBeforeTaxes / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
 
                                     {/* 10. PROVISÕES IRPJ */}
                                     <tr>
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12">10. (-) PROVISÕES IRPJ E CSLL</td>
                                         <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.irpjCsll.toFixed(2)}</td>
-                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">{((dreData.irpjCsll / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                            {dreData.grossRevenue > 0 ? ((dreData.irpjCsll / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
 
                                     {/* 11. RESULTADO LÍQUIDO */}
@@ -1240,7 +1479,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             11. (=) RESULTADO LÍQUIDO
                                         </td>
                                         <td className="px-8 py-6 text-right font-black text-xl">R$ {dreData.netResult.toFixed(2)}</td>
-                                        <td className="px-8 py-6 text-right font-black text-xs text-white/50">{((dreData.netResult / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                        <td className="px-8 py-6 text-right font-black text-xs text-white/50">
+                                            {dreData.grossRevenue > 0 ? ((dreData.netResult / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -1258,7 +1499,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-700">
                                         <p className="text-[9px] font-black text-slate-400 uppercase">Margem de Lucro Final</p>
                                         <p className={`text-sm font-black mt-1 ${dreData.netResult >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            {((dreData.netResult / dreData.grossRevenue) * 100 || 0).toFixed(1)}%
+                                            {dreData.grossRevenue > 0 ? ((dreData.netResult / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                         </p>
                                         <p className="text-[8px] text-slate-400 font-bold mt-1">Rentabilidade sobre as vendas</p>
                                     </div>
