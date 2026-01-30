@@ -188,6 +188,8 @@ interface FinanceProps {
     sales: Sale[];
     paymentSettings: PaymentSetting[];
     commissionSettings?: CommissionSetting[];
+    expenseCategories: ExpenseCategory[];
+    setExpenseCategories: React.Dispatch<React.SetStateAction<ExpenseCategory[]>>;
     suppliers: Supplier[];
     setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
     providers: Provider[];
@@ -395,8 +397,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         const getPaymentDetails = (methodName: string) => {
             const method = paymentSettings.find(p => p.method === methodName);
             return {
-                fee: method ? method.fee : 0,
-                days: method ? method.days : 0
+                fee: (method ? method.fee : 0) || 0,
+                days: (method ? method.days : 0) || 0
             };
         };
 

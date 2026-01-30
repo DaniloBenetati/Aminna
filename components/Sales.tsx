@@ -112,7 +112,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         const productCounts: Record<string, number> = {};
 
         filteredSales.forEach(s => {
-            if (s.items) {
+            if (s.items && Array.isArray(s.items)) {
                 s.items.forEach((item: any) => {
                     totalItems += (item.quantity || 0);
                     const id = item.productId || 'unknown';

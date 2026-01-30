@@ -331,10 +331,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const topProducts = useMemo(() => {
         const revenue: Record<string, number> = {};
         filteredSales.forEach(s => {
-            if (s.items) {
+            if (s.items && Array.isArray(s.items)) {
                 s.items.forEach((item: any) => {
                     const id = item.productId || 'unknown';
-                    revenue[id] = (revenue[id] || 0) + (item.unitPrice * item.quantity);
+                    revenue[id] = (revenue[id] || 0) + ((item.unitPrice || 0) * (item.quantity || 0));
                 });
             }
         });
