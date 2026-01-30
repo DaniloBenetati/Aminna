@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier } from './types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -47,6 +47,7 @@ const App: React.FC = () => {
   const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([]);
   const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -96,6 +97,21 @@ const App: React.FC = () => {
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
+      // 0. User Profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+        if (profileData) {
+          setUserProfile({
+            id: profileData.id,
+            email: profileData.email,
+            role: profileData.role,
+            permissions: profileData.permissions,
+            createdAt: profileData.created_at
+          });
+        }
+      }
+
       // 1. Providers
       const { data: providersData } = await supabase.from('providers').select('*');
       if (providersData) {
@@ -241,7 +257,9 @@ const App: React.FC = () => {
           assignedProviderId: c.assigned_provider_id,
           preferences: c.preferences,
           history: [], // TODO fetch history
-          acquisitionChannel: c.acquisition_channel
+          acquisitionChannel: c.acquisition_channel,
+          isBlocked: c.is_blocked,
+          blockReason: c.block_reason
         })));
       }
 
@@ -366,7 +384,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.CLIENTES:
-        return <Clients customers={customers} setCustomers={setCustomers} appointments={appointments} />;
+        return <Clients customers={customers} setCustomers={setCustomers} appointments={appointments} userProfile={userProfile} />;
       case ViewState.CRM:
         return (
           <CRM
@@ -374,12 +392,13 @@ const App: React.FC = () => {
             setCustomers={setCustomers}
             leads={leads}
             setLeads={setLeads}
+            providers={providers}
           />
         );
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:
@@ -399,6 +418,8 @@ const App: React.FC = () => {
             setLeads={setLeads}
             paymentSettings={paymentSettings}
             providers={providers}
+            stock={stock}
+            userProfile={userProfile}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -412,6 +433,8 @@ const App: React.FC = () => {
             campaigns={campaigns}
             paymentSettings={paymentSettings}
             providers={providers}
+            stock={stock}
+            userProfile={userProfile}
           />
         );
       case ViewState.SERVICOS:

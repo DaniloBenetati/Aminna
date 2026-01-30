@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket } from 'lucide-react';
-import { STOCK } from '../constants';
-import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider } from '../types';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem } from '../types';
+import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 
 interface ServiceLine {
@@ -33,6 +33,7 @@ interface ServiceModalProps {
     source?: 'AGENDA' | 'DAILY';
     paymentSettings: PaymentSetting[];
     providers: Provider[];
+    stock: StockItem[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -47,7 +48,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     campaigns,
     source = 'DAILY',
     paymentSettings,
-    providers
+    providers,
+    stock
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -258,7 +260,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const handleFinishService = async () => {
-        if (restrictionData.isRestricted) return;
+        if (restrictionData.isRestricted || customer.isBlocked) return;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const allProductsUsed = lines.flatMap(l => l.products);
@@ -291,6 +293,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const saleData = {
             customer_id: customer.id,
             total_amount: totalValue,
+            total_price: totalValue,
             date: dischargeDate,
             payment_method: paymentMethod,
             items: lines.map(l => ({
@@ -383,7 +386,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const handleSave = async () => {
-        if (restrictionData.isRestricted) return;
+        if (restrictionData.isRestricted || customer.isBlocked) return;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const extras = lines.slice(1).map(l => ({
@@ -395,7 +398,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             products: l.products
         }));
 
-        const updatedData = {
+        const dataToSave = {
             time: appointmentTime,
             date: appointmentDate,
             status: status,
@@ -406,29 +409,43 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount
+            discount_amount: couponDiscountAmount,
+            customer_id: customer.id
         };
 
         try {
-            const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+
+            let result;
+            if (isNew) {
+                result = await supabase.from('appointments').insert([dataToSave]).select();
+            } else {
+                result = await supabase.from('appointments').update(dataToSave).eq('id', appointment.id).select();
+            }
+
+            const { data, error } = result;
             if (error) throw error;
+
+            const savedAppt = data?.[0];
+            if (!savedAppt) throw new Error('No data returned from database');
 
             onUpdateAppointments(prev => {
                 const exists = prev.find(a => a.id === appointment.id);
                 const updatedAppt = {
                     ...appointment,
-                    ...(exists || {}),
-                    time: appointmentTime,
-                    date: appointmentDate,
-                    status: status,
-                    combinedServiceNames: combinedNames,
-                    serviceId: lines[0].serviceId,
-                    providerId: lines[0].providerId,
-                    bookedPrice: lines[0].unitPrice,
-                    mainServiceProducts: lines[0].products,
-                    additionalServices: extras,
-                    appliedCoupon: appliedCampaign?.couponCode,
-                    discountAmount: couponDiscountAmount
+                    id: savedAppt.id,
+                    customerId: savedAppt.customer_id,
+                    providerId: savedAppt.provider_id,
+                    serviceId: savedAppt.service_id,
+                    time: savedAppt.time,
+                    date: savedAppt.date,
+                    status: savedAppt.status as any,
+                    combinedServiceNames: savedAppt.combined_service_names,
+                    bookedPrice: savedAppt.booked_price,
+                    mainServiceProducts: savedAppt.main_service_products,
+                    additionalServices: savedAppt.additional_services,
+                    appliedCoupon: savedAppt.applied_coupon,
+                    discountAmount: savedAppt.discount_amount
                 } as Appointment;
 
                 if (exists) {
@@ -544,7 +561,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const activeProviders = providers.filter(p => p.active);
-    const internalStock = STOCK.filter(p => p.category === 'Uso Interno');
+    const internalStock = stock.filter(p => p.category === 'Uso Interno');
     const hasRestriction = !!customer.preferences?.restrictions;
 
     const isAgendaMode = source === 'AGENDA';
@@ -567,6 +584,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
+
+                    {/* CUSTOMER BLOCKED WARNING */}
+                    {customer.isBlocked && (
+                        <div className="bg-rose-600 dark:bg-rose-700 border-2 border-rose-400 p-4 rounded-2xl flex items-start gap-4 animate-in fade-in duration-300">
+                            <div className="bg-white p-2 rounded-xl text-rose-600 flex-shrink-0">
+                                <Ban size={24} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-[10px] font-black text-rose-100 uppercase tracking-widest leading-none mb-1">CLIENTE BLOQUEADA</p>
+                                <p className="text-sm font-black text-white uppercase leading-tight mb-2">Motivo: {customer.blockReason || 'Não informado'}</p>
+                                <p className="text-[10px] font-bold text-rose-50 opacity-80 uppercase">Atendimento não permitido para clientes bloqueadas.</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* PROVIDER RESTRICTION WARNING */}
                     {restrictionData.isRestricted && (
@@ -670,10 +701,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                                 <select
                                                     className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                    style={{ colorScheme: 'dark' }}
                                                     value={line.serviceId}
                                                     onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
                                                 >
-                                                    {services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
+                                                    {services
+                                                        .filter(s => {
+                                                            const provider = providers.find(p => p.id === line.providerId);
+                                                            if (!provider) return true;
+                                                            // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
+                                                            if (!provider.specialties || provider.specialties.length === 0) return true;
+                                                            // Filtra por nome do serviço
+                                                            return provider.specialties.includes(s.name);
+                                                        })
+                                                        .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
                                                 </select>
                                             </div>
 
@@ -694,7 +735,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     />
                                                     {line.showProductResults && (
                                                         <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
-                                                            {STOCK.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                            {/* Use stock prop instead of STOCK constant */}
+                                                            {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
                                                                 <button
                                                                     key={p.id} type="button"
                                                                     onClick={() => {
@@ -722,18 +764,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
 
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
-                                            <div className="flex flex-col">
+                                            <div className="flex flex-col flex-1">
                                                 <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                                <select
-                                                    className={`bg-transparent border-none text-[11px] font-black p-1 outline-none ${customer.restrictedProviderIds?.includes(line.providerId)
-                                                        ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
-                                                        : 'text-slate-950 dark:text-white'
-                                                        }`}
-                                                    value={line.providerId}
-                                                    onChange={e => updateLine(line.id, 'providerId', e.target.value)}
-                                                >
-                                                    {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
-                                                </select>
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar
+                                                        src={providers.find(p => p.id === line.providerId)?.avatar}
+                                                        name={providers.find(p => p.id === line.providerId)?.name || ''}
+                                                        size="w-6 h-6"
+                                                    />
+                                                    <select
+                                                        className={`bg-transparent border-none text-[11px] font-black p-1 outline-none w-full ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                            ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
+                                                            : 'text-slate-950 dark:text-white'
+                                                            }`}
+                                                        style={{ colorScheme: 'dark' }}
+                                                        value={line.providerId}
+                                                        onChange={e => updateLine(line.id, 'providerId', e.target.value)}
+                                                    >
+                                                        {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
+                                                    </select>
+                                                </div>
                                             </div>
 
                                             <div className="flex flex-col">
@@ -814,11 +864,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={handleSave}
-                                                        disabled={restrictionData.isRestricted}
-                                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                        disabled={restrictionData.isRestricted || customer.isBlocked}
+                                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
-                                                        {restrictionData.isRestricted ? <Ban size={16} /> : <Save size={16} />}
-                                                        {restrictionData.isRestricted ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES'}
+                                                        {restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />}
+                                                        {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES'}
                                                     </button>
                                                 </div>
                                             )}
@@ -828,10 +878,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={handleStartService}
-                                                disabled={restrictionData.isRestricted}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                disabled={restrictionData.isRestricted || customer.isBlocked}
+                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                             >
-                                                {restrictionData.isRestricted ? <Ban size={16} /> : 'INICIAR ATENDIMENTO'}
+                                                {restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO'}
                                             </button>
                                         ) : (
                                             <button
@@ -1035,7 +1085,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             />
                                                             {line.showProductResults && (
                                                                 <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
-                                                                    {STOCK.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                                    {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
                                                                         <button
                                                                             key={p.id} type="button"
                                                                             onClick={() => addProductToLine(line.id, `[${p.code}] ${p.name}`)}
@@ -1084,10 +1134,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <button
                                     type="button"
                                     onClick={handleFinishService}
-                                    disabled={restrictionData.isRestricted}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                    disabled={restrictionData.isRestricted || customer.isBlocked}
+                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
                                 >
-                                    {restrictionData.isRestricted ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                                    {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
                                 </button>
                                 <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
                             </div>

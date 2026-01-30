@@ -3,8 +3,10 @@ import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
 import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History } from 'lucide-react';
+
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
+import { Avatar } from './Avatar';
 
 interface ProfessionalsProps {
     providers: Provider[];
@@ -146,8 +148,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setFormData({
             name: '',
             phone: '',
-            specialty: 'Manicure',
-            specialties: ['Mão Simples', 'Pé Simples'],
+            phone: '',
+            specialty: '',
+            specialties: [],
             commissionRate: 0.5,
             commissionHistory: [],
             pixKey: '',
@@ -391,10 +394,11 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     <tr key={provider.id} className={`hover:bg-slate-50/80 dark:hover:bg-zinc-800/30 transition-colors group ${!provider.active ? 'opacity-60 bg-slate-50/30 dark:bg-zinc-800/10' : ''}`}>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                <img
+                                                <Avatar
                                                     src={provider.avatar}
-                                                    alt={provider.name}
-                                                    className={`w-10 h-10 rounded-full object-cover border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-sm' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
+                                                    name={provider.name}
+                                                    size="w-10 h-10"
+                                                    className={`border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-sm' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
                                                 />
                                                 <span className={`font-black text-base ${!provider.active ? 'text-slate-500 dark:text-slate-500 line-through' : 'text-slate-950 dark:text-white'}`}>{provider.name}</span>
                                             </div>
@@ -465,10 +469,11 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                         >
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-3">
-                                    <img
+                                    <Avatar
                                         src={provider.avatar}
-                                        alt={provider.name}
-                                        className={`w-14 h-14 rounded-2xl object-cover border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-md' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
+                                        name={provider.name}
+                                        size="w-14 h-14"
+                                        className={`rounded-2xl border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-md' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
                                     />
                                     <div className="min-w-0">
                                         <h4 className={`font-black text-base truncate ${!provider.active ? 'text-slate-600 dark:text-slate-500 line-through' : 'text-slate-950 dark:text-white'}`}>{provider.name}</h4>
@@ -539,6 +544,66 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 >
                                     {formData.active ? <ToggleRight size={44} /> : <ToggleLeft size={44} />}
                                 </button>
+                            </div>
+
+                            <div className="flex justify-center -mt-6 mb-4 relative z-10">
+                                <div className="relative group">
+                                    <Avatar
+                                        src={formData.avatar}
+                                        name={formData.name || '?'}
+                                        size="w-24 h-24"
+                                        className="border-4 border-white dark:border-zinc-900 shadow-2xl"
+                                    />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm" onClick={() => document.getElementById('avatar-url-input')?.focus()}>
+                                        <Edit2 size={24} className="text-white drop-shadow-md" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* AVATAR PRESETS */}
+                            <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Escolha um Avatar</label>
+                                <div className="flex flex-wrap justify-center gap-2">
+                                    {[
+                                        // Females (Micah style is very clean/modern)
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Annie',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Bella',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Caitlyn',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Donna',
+                                        // Males
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Felix',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=George',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Jack',
+                                        'https://api.dicebear.com/7.x/micah/svg?seed=Leo',
+                                    ].map((presetUrl, idx) => (
+                                        <button
+                                            key={idx}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, avatar: presetUrl })}
+                                            className={`w-10 h-10 rounded-full overflow-hidden border-2 transition-all hover:scale-110 active:scale-95 ${formData.avatar === presetUrl ? 'border-indigo-600 ring-2 ring-indigo-200' : 'border-slate-200 dark:border-zinc-600 hover:border-indigo-400'}`}
+                                        >
+                                            <img src={presetUrl} alt="Avatar Preset" className="w-full h-full object-cover bg-white" />
+                                        </button>
+                                    ))}
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, avatar: `https://i.pravatar.cc/150?u=${Date.now()}` })}
+                                        className="w-10 h-10 rounded-full border-2 border-dashed border-slate-300 dark:border-zinc-600 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all"
+                                        title="Gerar Aleatório"
+                                    >
+                                        <Sparkles size={16} />
+                                    </button>
+                                </div>
+                                <div className="mt-3 relative">
+                                    <input
+                                        id="avatar-url-input"
+                                        type="text"
+                                        value={formData.avatar}
+                                        onChange={e => setFormData({ ...formData, avatar: e.target.value })}
+                                        placeholder="Ou cole uma URL de imagem..."
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-[10px] text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-500 text-center font-mono"
+                                    />
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

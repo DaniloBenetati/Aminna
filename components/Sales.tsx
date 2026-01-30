@@ -107,19 +107,25 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     }, [sales, timeView, dateRef, customRange, searchTerm, paymentFilter, stock]);
 
     const stats = useMemo(() => {
-        const totalRevenue = filteredSales.reduce((acc, s) => acc + s.totalPrice, 0);
-        const totalItems = filteredSales.reduce((acc, s) => acc + s.quantity, 0);
-        const avgTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
-
-        // Find top product
+        const totalRevenue = filteredSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+        let totalItems = 0;
         const productCounts: Record<string, number> = {};
+
         filteredSales.forEach(s => {
-            productCounts[s.productId] = (productCounts[s.productId] || 0) + s.quantity;
+            if (s.items) {
+                s.items.forEach((item: any) => {
+                    totalItems += (item.quantity || 0);
+                    const id = item.productId || 'unknown';
+                    productCounts[id] = (productCounts[id] || 0) + (item.quantity || 0);
+                });
+            }
         });
+
+        const avgTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
         const topProductId = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
         const topProduct = stock.find(p => p.id === topProductId)?.name || '-';
 
-        return { totalRevenue, totalItems, avgTicket, topProduct, count: filteredSales.length };
+        return { totalRevenue, totalItems, avgTicket, topProduct };
     }, [filteredSales, stock]);
 
     const saleProducts = stock.filter(item => item.category === 'Venda');
@@ -455,7 +461,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         R$ {sale.unitPrice.toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4 text-right font-black text-emerald-700 dark:text-emerald-400">
-                                        R$ {sale.totalPrice.toFixed(2)}
+                                        R$ {(sale.totalAmount || 0).toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <span className="text-[9px] px-2 py-1 rounded-full font-black uppercase bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 dark:text-slate-300">
@@ -488,7 +494,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </div>
                             </div>
                             <div className="text-right">
-                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 leading-none">R$ {sale.totalPrice.toFixed(2)}</p>
+                                <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 leading-none">R$ {(sale.totalAmount || 0).toFixed(2)}</p>
                                 <span className="text-[9px] font-black uppercase text-slate-400">{sale.quantity} unid.</span>
                             </div>
                         </div>
@@ -721,6 +727,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     <div className="relative">
                                         <select
                                             className="w-full bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white appearance-none"
+                                            style={{ colorScheme: 'dark' }}
                                             value={paymentMethod}
                                             onChange={e => setPaymentMethod(e.target.value)}
                                         >

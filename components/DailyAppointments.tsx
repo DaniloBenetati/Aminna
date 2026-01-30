@@ -4,7 +4,7 @@ import {
   Calendar as CalendarIcon, Search, MessageCircle,
   ChevronLeft, ChevronRight, AlertTriangle, Clock
 } from 'lucide-react';
-import { Appointment, Customer, Service, Campaign, PaymentSetting, Provider } from '../types';
+import { Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem } from '../types';
 import { ServiceModal } from './ServiceModal';
 
 interface DailyAppointmentsProps {
@@ -16,9 +16,10 @@ interface DailyAppointmentsProps {
   campaigns: Campaign[];
   paymentSettings: PaymentSetting[];
   providers: Provider[];
+  stock: StockItem[];
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -196,6 +197,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           source="DAILY" // Explicitly setting source to DAILY
           paymentSettings={paymentSettings}
           providers={providers}
+          stock={stock}
         />
       )}
     </div>

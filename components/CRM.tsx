@@ -3,8 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
 import { Users, Search, ArrowRightLeft, Star, Package, Clock, MessageSquare, AlertTriangle, Heart, Calendar, Check, ChevronLeft, Ticket, Briefcase, XCircle, Edit3, Save, X, Ban, ShieldAlert, HeartHandshake, Map, BarChart, Trophy, TrendingUp, Filter, Smartphone, UserPlus, CheckCircle2, ChevronRight, ArrowRight, MapPin, Phone, Mail, Contact, History, MessageCircle, AlertCircle, RefreshCw, PieChart as PieIcon, MousePointer2, Target, Zap, Lightbulb, FilterIcon } from 'lucide-react';
-import { PROVIDERS } from '../constants';
-import { Customer, CustomerHistoryItem, Lead, LeadStatus } from '../types';
+import { Customer, CustomerHistoryItem, Lead, LeadStatus, Provider } from '../types';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area, Legend, FunnelChart, Funnel, LabelList } from 'recharts';
 
 interface CRMProps {
@@ -12,9 +11,10 @@ interface CRMProps {
     setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
     leads: Lead[];
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
+    providers: Provider[];
 }
 
-export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLeads }) => {
+export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLeads, providers }) => {
     // Main CRM Tab State
     const [crmView, setCrmView] = useState<'RELATIONSHIP' | 'JOURNEY' | 'REPORTS'>('JOURNEY');
 
@@ -53,7 +53,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
     );
 
     const getProviderName = (id?: string) => {
-        return PROVIDERS.find(p => p.id === id)?.name || 'Não atribuído';
+        return providers.find(p => p.id === id)?.name || 'Não atribuído';
     };
 
     const handleManagementAction = (e: React.FormEvent) => {
@@ -453,12 +453,15 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                                 <p className="font-black text-slate-950 dark:text-white truncate uppercase text-sm">{customer.name}</p>
                                                 <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold mt-0.5 truncate uppercase">Fiel a: {getProviderName(customer.assignedProviderId)}</p>
                                             </div>
-                                            <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase whitespace-nowrap ml-2 border ${customer.status === 'VIP' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
-                                                customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-400 border-rose-200 dark:border-rose-800' :
-                                                    'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-zinc-700'
-                                                }`}>
-                                                {customer.status}
-                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                {customer.isBlocked && <span className="bg-rose-500 text-white text-[7px] font-black px-1 py-0.5 rounded-sm uppercase tracking-tighter">BLOQUEADA</span>}
+                                                <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase whitespace-nowrap border ${customer.status === 'VIP' ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' :
+                                                    customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-400 border-rose-200 dark:border-rose-800' :
+                                                        'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-zinc-700'
+                                                    }`}>
+                                                    {customer.status}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -480,9 +483,14 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex flex-wrap items-center gap-2">
                                                     <h3 className="text-lg md:text-2xl font-black text-slate-950 dark:text-white truncate leading-tight uppercase tracking-tight">{selectedCustomer.name}</h3>
+                                                    {selectedCustomer.isBlocked && (
+                                                        <span className="text-[8px] bg-rose-600 text-white px-2 py-0.5 rounded font-black border border-rose-400 uppercase flex items-center gap-1 shadow-sm">
+                                                            <Ban size={10} /> CLIENTE BLOQUEADA
+                                                        </span>
+                                                    )}
                                                     {selectedCustomer.restrictedProviderIds && selectedCustomer.restrictedProviderIds.length > 0 && (
                                                         <span className="text-[8px] bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded font-black border border-rose-200 dark:border-rose-800 uppercase flex items-center gap-1">
-                                                            <Ban size={10} /> BLOQUEIOS
+                                                            <ShieldAlert size={10} /> BLOQUEIOS DE PROFISSIONAL
                                                         </span>
                                                     )}
                                                 </div>
@@ -582,6 +590,15 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
 
                                         {activeTab === 'PREFERENCES' && (
                                             <div className="space-y-6 animate-in slide-in-from-bottom-2">
+                                                {selectedCustomer.isBlocked && (
+                                                    <div className="bg-rose-50 dark:bg-rose-950/40 p-5 rounded-[1.5rem] border-2 border-rose-200 dark:border-rose-800 shadow-sm animate-pulse-subtle">
+                                                        <h4 className="text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Ban size={16} /> MOTIVO DO BLOQUEIO GERAL</h4>
+                                                        <p className="text-sm font-black text-rose-900 dark:text-rose-200 leading-relaxed bg-white/50 dark:bg-black/20 p-3 rounded-xl border border-rose-100 dark:border-rose-800/50">
+                                                            {selectedCustomer.blockReason || 'Motivo não informado pelo administrador.'}
+                                                        </p>
+                                                        <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 mt-3 uppercase">Esta cliente não pode realizar agendamentos ou atendimentos.</p>
+                                                    </div>
+                                                )}
                                                 <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-700 shadow-sm">
                                                     <h4 className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-3 flex items-center gap-2"><AlertTriangle size={14} /> Restrições & Saúde</h4>
                                                     <p className="text-sm font-bold text-slate-900 dark:text-white leading-relaxed">
@@ -1042,7 +1059,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                 <label className="block text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-1"><Ban size={12} /> Profissional a Restringir</label>
                                 <select className="w-full border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-rose-500 bg-white dark:bg-zinc-800 text-slate-900 dark:text-white outline-none font-black appearance-none" value={providerToRestrictId} onChange={e => setProviderToRestrictId(e.target.value)}>
                                     <option value="">Ninguém (Apenas trocar responsável)</option>
-                                    {PROVIDERS.filter(p => !selectedCustomer.restrictedProviderIds?.includes(p.id)).map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialty}</option>)}
+                                    {providers.filter(p => !selectedCustomer.restrictedProviderIds?.includes(p.id)).map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialty}</option>)}
                                 </select>
                                 <p className="text-[9px] text-rose-700 dark:text-rose-300 mt-2 font-bold leading-tight uppercase">* Esta profissional será bloqueada na agenda para esta cliente.</p>
                             </div>
@@ -1058,7 +1075,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                     <div className="animate-in fade-in slide-in-from-top-2">
                                         <select required={shouldAssignNew} className="w-full border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-slate-900 dark:text-white outline-none font-black appearance-none shadow-sm" value={newProviderId} onChange={e => setNewProviderId(e.target.value)}>
                                             <option value="" className="text-slate-400">Selecione nova responsável...</option>
-                                            {PROVIDERS.filter(p => p.id !== selectedCustomer.assignedProviderId).filter(p => p.id !== providerToRestrictId).filter(p => !selectedCustomer.restrictedProviderIds?.includes(p.id)).map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialty}</option>)}
+                                            {providers.filter(p => p.id !== selectedCustomer.assignedProviderId).filter(p => p.id !== providerToRestrictId).filter(p => !selectedCustomer.restrictedProviderIds?.includes(p.id)).map(p => <option key={p.id} value={p.id}>{p.name} - {p.specialty}</option>)}
                                         </select>
                                     </div>
                                 )}

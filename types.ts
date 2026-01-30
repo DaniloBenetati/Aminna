@@ -99,6 +99,8 @@ export interface Customer {
   lastVisit: string;
   totalSpent: number;
   status: 'VIP' | 'Regular' | 'Risco de Churn' | 'Novo' | 'Restrito';
+  isBlocked?: boolean;
+  blockReason?: string;
   assignedProviderId?: string;
   restrictedProviderIds?: string[]; // Lista de IDs de profissionais bloqueados para esta cliente
   history: CustomerHistoryItem[];
