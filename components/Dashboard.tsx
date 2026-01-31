@@ -62,6 +62,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         if (timeView === 'day') {
             newDate.setDate(dateRef.getDate() + (direction === 'next' ? 1 : -1));
         } else if (timeView === 'month') {
+            // Safe month navigation
+            newDate.setDate(1); // Reset to 1st of month to avoid overflow (e.g. Jan 31 -> Feb 28/29)
             newDate.setMonth(dateRef.getMonth() + (direction === 'next' ? 1 : -1));
         } else {
             newDate.setFullYear(dateRef.getFullYear() + (direction === 'next' ? 1 : -1));

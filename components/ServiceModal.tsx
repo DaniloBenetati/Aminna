@@ -34,6 +34,7 @@ interface ServiceModalProps {
     paymentSettings: PaymentSetting[];
     providers: Provider[];
     stock: StockItem[];
+    customers: Customer[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -49,7 +50,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     source = 'DAILY',
     paymentSettings,
     providers,
-    stock
+    stock,
+    customers
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -66,6 +68,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
 
     const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
@@ -97,6 +101,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setAppliedCampaign(campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null);
         setIsCancelling(false);
         setCancellationReason('');
+        setIncludeDebt(!!customer.outstandingBalance && customer.outstandingBalance > 0);
 
         if (appointment.status === 'Concluído') setMode('HISTORY');
         else if (appointment.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
@@ -149,8 +154,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (appliedCampaign.discountType === 'FIXED') total -= appliedCampaign.discountValue;
             else total -= total * (appliedCampaign.discountValue / 100);
         }
+
+        if (includeDebt && customer.outstandingBalance && customer.outstandingBalance > 0) {
+            total += customer.outstandingBalance;
+        }
+
         return Math.max(0, total);
-    }, [lines, appliedCampaign]);
+    }, [lines, appliedCampaign, includeDebt, customer.outstandingBalance]);
 
     const totalBeforeCoupon = useMemo(() => {
         return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : (line.unitPrice - line.discount)), 0);
@@ -182,6 +192,134 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return { isRestricted: false, providerName: '', reason: '' };
     }, [lines, customer]);
 
+    const handleCheckConflict = () => {
+        const currentProviderIds = new Set(lines.map(l => l.providerId));
+
+        const conflictingAppt = allAppointments.find(a => {
+            if (a.id === appointment.id) return false;
+            // Normalize time to HH:mm for comparison
+            const apptTime = a.time.slice(0, 5);
+            const currentTime = appointmentTime.slice(0, 5);
+
+            if (a.date !== appointmentDate || apptTime !== currentTime) return false;
+            if (a.status === 'Cancelado') return false;
+
+            // 1. Conflict: Same professional
+            const isProvBusy = currentProviderIds.has(a.providerId) ||
+                a.additionalServices?.some(extra => currentProviderIds.has(extra.providerId));
+
+            return isProvBusy;
+        });
+
+        if (conflictingAppt) {
+            // Case: Professional is busy with another client
+            const conflictingProvider = providers.find(p => p.id === conflictingAppt.providerId);
+            alert(`⚠️ CONFLITO DE PROFISSIONAL\n\n${conflictingProvider?.name || 'A profissional'} já está ocupada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+            return true;
+        }
+        return false;
+        return false;
+    };
+
+    const performMerge = async (targetAppt: Appointment) => {
+        setIsSaving(true);
+        try {
+            // 1. Prepare new extras from current lines
+            // Convert current lines (including main) to extras format
+            const newExtras = lines.map(l => ({
+                serviceId: l.serviceId,
+                providerId: l.providerId,
+                isCourtesy: l.isCourtesy,
+                discount: l.discount,
+                bookedPrice: l.unitPrice,
+                products: l.products
+            }));
+
+            // 2. Combine with target's existing extras
+            const updatedExtras = [
+                ...(targetAppt.additionalServices || []),
+                ...newExtras
+            ];
+
+            // 3. Update target appointment
+            const combinedNames = [
+                targetAppt.combinedServiceNames || services.find(s => s.id === targetAppt.serviceId)?.name,
+                ...lines.map(l => services.find(s => s.id === l.serviceId)?.name)
+            ].join(' + ');
+
+            const { error: updateError } = await supabase.from('appointments').update({
+                additional_services: updatedExtras,
+                combined_service_names: combinedNames
+            }).eq('id', targetAppt.id);
+
+            if (updateError) throw updateError;
+
+            // 4. Delete current appointment if it exists (not new)
+            // Identify if current appointment is persisted
+            const isPersisted = /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+            if (isPersisted) {
+                const { error: delError } = await supabase.from('appointments').delete().eq('id', appointment.id);
+                if (delError) throw delError;
+            }
+
+            // 5. Update local state via callback
+            onUpdateAppointments(prev => {
+                // Remove current if existed
+                let list = isPersisted ? prev.filter(a => a.id !== appointment.id) : prev;
+
+                // Update target
+                list = list.map(a => {
+                    if (a.id === targetAppt.id) {
+                        return {
+                            ...a,
+                            additionalServices: updatedExtras,
+                            combinedServiceNames: combinedNames
+                        };
+                    }
+                    return a;
+                });
+                return list;
+            });
+
+            alert('Agendamentos unificados com sucesso!');
+            onClose();
+            return true;
+
+        } catch (error) {
+            console.error('Error merging appointments:', error);
+            alert('Erro ao unir agendamentos.');
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const checkForCustomerConflictAndMerge = async () => {
+        const concurrentAppt = allAppointments.find(a => {
+            if (a.id === appointment.id) return false;
+            if (a.customerId !== customer.id) return false;
+
+            // Normalize time
+            const apptTime = a.time.slice(0, 5);
+            const currentTime = appointmentTime.slice(0, 5);
+
+            if (a.date !== appointmentDate || apptTime !== currentTime) return false;
+            if (a.status === 'Cancelado' || a.status === 'Concluído') return false;
+
+            return true;
+        });
+
+        if (concurrentAppt) {
+            const providerName = providers.find(p => p.id === concurrentAppt.providerId)?.name || 'Profissional';
+            const confirmMerge = window.confirm(`A cliente ${customer.name} já tem um agendamento às ${appointmentTime} com ${providerName}.\n\nDeseja JUNTAR este serviço ao agendamento existente?`);
+
+            if (confirmMerge) {
+                return await performMerge(concurrentAppt);
+            }
+        }
+        return false; // User declined merge or no conflict, proceed with normal save
+    };
+
     const handleApplyCoupon = () => {
         const campaign = campaigns.find(c => c.couponCode === couponCode.toUpperCase());
         if (campaign) {
@@ -202,7 +340,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const handleStartService = async () => {
-        if (restrictionData.isRestricted) return;
+        if (isSaving || restrictionData.isRestricted || handleCheckConflict()) return;
+
+        // Check for merge possibility
+        if (await checkForCustomerConflictAndMerge()) return;
+
+        setIsSaving(true);
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const extras = lines.slice(1).map(l => ({
@@ -256,11 +399,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         } catch (error) {
             console.error('Error starting service:', error);
             alert('Erro ao iniciar atendimento no banco de dados.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleFinishService = async () => {
-        if (restrictionData.isRestricted || customer.isBlocked) return;
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+
+        // Check merge (though unlikely in finish flow, better safe)
+        if (await checkForCustomerConflictAndMerge()) return;
+
+        setIsSaving(true);
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const allProductsUsed = lines.flatMap(l => l.products);
@@ -320,9 +470,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // Currently App.tsx fetches history from 'customers' table? 
             // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan, 
             // but the UI uses it. Let's assume we update the customer's totals in DB.
+            // 3. Update Customer History and Balance
+            let newOutstandingBalance = customer.outstandingBalance || 0;
+
+            // If paying debt, reduce it (but ensure it doesn't go below zero if strict)
+            if (includeDebt) {
+                newOutstandingBalance = 0; // Paying off total debt
+            }
+
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
-                total_spent: customer.totalSpent + totalValue
+                total_spent: customer.totalSpent + totalValue,
+                outstanding_balance: newOutstandingBalance
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -382,11 +541,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         } catch (error) {
             console.error('Error finishing service:', error);
             alert('Erro ao finalizar atendimento no banco de dados.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
     const handleSave = async () => {
-        if (restrictionData.isRestricted || customer.isBlocked) return;
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+
+        // Check for merge
+        if (await checkForCustomerConflictAndMerge()) return;
+
+        setIsSaving(true);
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const extras = lines.slice(1).map(l => ({
@@ -454,10 +620,143 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     return [...prev, updatedAppt];
                 }
             });
+
+
             onClose();
         } catch (error) {
             console.error('Error saving appointment:', error);
-            alert('Erro ao salvar alterações no banco de dados.');
+            alert('Erro ao salvar no banco de dados.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleCreateDebt = async () => {
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+
+        const confirmDebt = window.confirm(`Confirmar criação de dívida de R$ ${totalValue.toFixed(2)} para ${customer.name}?`);
+        if (!confirmDebt) return;
+
+        setIsSaving(true);
+
+        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+        const allProductsUsed = lines.flatMap(l => l.products);
+        const extras = lines.slice(1).map(l => ({
+            serviceId: l.serviceId,
+            providerId: l.providerId,
+            isCourtesy: l.isCourtesy,
+            discount: l.discount,
+            bookedPrice: l.unitPrice,
+            products: l.products
+        }));
+
+        const dischargeDate = new Date().toISOString().split('T')[0];
+
+        const updatedData = {
+            status: 'Concluído',
+            price_paid: 0, // Paid now is 0
+            payment_date: dischargeDate,
+            payment_method: 'Dívida',
+            products_used: allProductsUsed,
+            combined_service_names: combinedNames,
+            booked_price: lines[0].unitPrice,
+            main_service_products: lines[0].products,
+            additional_services: extras,
+            applied_coupon: appliedCampaign?.couponCode,
+            discount_amount: couponDiscountAmount
+        };
+
+        const saleData = {
+            customer_id: customer.id,
+            total_amount: totalValue,
+            total_price: totalValue,
+            date: dischargeDate,
+            payment_method: 'Dívida',
+            items: lines.map(l => ({
+                serviceId: l.serviceId,
+                name: services.find(s => s.id === l.serviceId)?.name,
+                unitPrice: l.unitPrice,
+                discount: l.discount,
+                isCourtesy: l.isCourtesy,
+                providerId: l.providerId
+            }))
+        };
+
+        try {
+            // 1. Update Appointment
+            const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (apptError) throw apptError;
+
+            // 2. Create Sale Record
+            const { error: saleError } = await supabase.from('sales').insert(saleData);
+            if (saleError) throw saleError;
+
+            // 3. Update Customer Balance
+            const currentBalance = customer.outstandingBalance || 0;
+            const { error: custError } = await supabase.from('customers').update({
+                last_visit: dischargeDate,
+                total_spent: customer.totalSpent + totalValue,
+                outstanding_balance: currentBalance + totalValue
+            }).eq('id', customer.id);
+
+            if (custError) throw custError;
+
+            onUpdateAppointments(prev => {
+                const exists = prev.find(a => a.id === appointment.id);
+                const updatedAppt = {
+                    ...appointment,
+                    ...(exists || {}),
+                    status: 'Concluído',
+                    pricePaid: 0,
+                    paymentDate: dischargeDate,
+                    paymentMethod: 'Dívida',
+                    productsUsed: allProductsUsed,
+                    combinedServiceNames: combinedNames,
+                    bookedPrice: lines[0].unitPrice,
+                    mainServiceProducts: lines[0].products,
+                    additionalServices: extras,
+                    appliedCoupon: appliedCampaign?.couponCode,
+                    discountAmount: couponDiscountAmount
+                } as Appointment;
+
+                if (exists) {
+                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                } else {
+                    return [...prev, updatedAppt];
+                }
+            });
+
+            onUpdateCustomers(prev => prev.map(c => {
+                if (c.id === customer.id) {
+                    const newEntries: CustomerHistoryItem[] = lines.map(line => ({
+                        id: `${Date.now()}-${line.id}`,
+                        date: dischargeDate,
+                        type: 'VISIT',
+                        description: `Serviço (Fiado): ${services.find(s => s.id === line.serviceId)?.name}`,
+                        details: `Dívida Criada: R$ ${totalValue.toFixed(2)}`,
+                        rating: line.rating,
+                        feedback: line.feedback,
+                        providerId: line.providerId
+                    }));
+
+                    return {
+                        ...c,
+                        lastVisit: dischargeDate,
+                        totalSpent: c.totalSpent + totalValue,
+                        outstandingBalance: (c.outstandingBalance || 0) + totalValue,
+                        history: [...newEntries, ...c.history]
+                    };
+                }
+                return c;
+            }));
+
+            onClose();
+            alert('Dívida registrada com sucesso!');
+        } catch (error: any) {
+            console.error('Error creating debt:', error);
+            alert(`Erro ao registrar dívida no banco de dados: ${error.message || JSON.stringify(error)}`);
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -820,6 +1119,24 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     </div>
                                 </div>
 
+                                {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                                    <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
+                                        <input
+                                            type="checkbox"
+                                            id="payDebt"
+                                            checked={includeDebt}
+                                            onChange={(e) => setIncludeDebt(e.target.checked)}
+                                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                        />
+                                        <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
+                                            Incluir Pagmento de Dívida Pendente
+                                        </label>
+                                        <span className="text-sm font-black text-rose-500">
+                                            + R$ {customer.outstandingBalance.toFixed(2)}
+                                        </span>
+                                    </div>
+                                )}
+
                                 <div className="flex flex-col gap-2">
                                     {isAgendaMode ? (
                                         <>
@@ -864,11 +1181,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={handleSave}
-                                                        disabled={restrictionData.isRestricted || customer.isBlocked}
-                                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                        disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
-                                                        {restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />}
-                                                        {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES'}
+                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />)}
+                                                        {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES')}
                                                     </button>
                                                 </div>
                                             )}
@@ -878,10 +1195,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             <button
                                                 type="button"
                                                 onClick={handleStartService}
-                                                disabled={restrictionData.isRestricted || customer.isBlocked}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                             >
-                                                {restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO'}
+                                                {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
+                                                {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
                                             </button>
                                         ) : (
                                             <button
@@ -916,9 +1234,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] mr-2">
                                                             • {new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {app.time} -
                                                         </span>
-                                                        <span className={`text-indigo-900 dark:text-indigo-300 uppercase font-black ${onSelectAppointment ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-200 group-hover:underline transition-all' : ''}`}>
-                                                            {app.combinedServiceNames || s?.name}
-                                                        </span>
+                                                        <div className="flex flex-col leading-tight">
+                                                            <span className={`text-indigo-900 dark:text-indigo-300 uppercase font-black ${onSelectAppointment ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-200 group-hover:underline transition-all' : ''}`}>
+                                                                {providers.find(p => p.id === app.providerId)?.name}
+                                                            </span>
+                                                            <span className="text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase">
+                                                                {app.combinedServiceNames || s?.name}
+                                                            </span>
+                                                        </div>
                                                         {onSelectAppointment && (
                                                             <ArrowRight size={10} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                         )}
@@ -984,7 +1307,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             )}
 
                             <div className="space-y-3 px-1">
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center mb-2 px-1">
                                     <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
                                         <Sparkles size={12} /> Serviços & Avaliação
                                     </h4>
@@ -1117,18 +1440,54 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                             <div className="space-y-3 px-1">
                                 <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Forma de Recebimento</label>
-                                <select
-                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
-                                    value={paymentMethod}
-                                    onChange={(e) => setPaymentMethod(e.target.value)}
-                                >
-                                    {paymentSettings.map(pay => (
-                                        <option key={pay.id} value={pay.method}>
-                                            {pay.method}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                        value={paymentMethod}
+                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                    >
+                                        {paymentSettings.map(pay => (
+                                            <option key={pay.id} value={pay.method}>
+                                                {pay.method}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateDebt}
+                                        disabled={isSaving || (lines.some(l => !l.serviceId || !l.providerId))}
+                                        className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
+                                        title="Registrar como Dívida (Fiado)"
+                                    >
+                                        <Wallet size={14} />
+                                        <span>{isSaving ? '...' : 'FIADO'}</span>
+                                    </button>
+                                </div>
                             </div>
+
+                            {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
+                            {/* EXIBIÇÃO DA DÍVIDA ANTERIOR COM CHECKBOX */}
+                            {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIncludeDebt(!includeDebt)}
+                                    className={`w-full p-3 rounded-xl flex items-center justify-between transition-all border ${includeDebt ? 'bg-indigo-600 border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 hover:border-indigo-300'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${includeDebt ? 'bg-white border-white text-indigo-600' : 'border-slate-300 dark:border-zinc-600'}`}>
+                                            {includeDebt && <Check size={14} strokeWidth={4} />}
+                                        </div>
+                                        <div className="flex flex-col items-start">
+                                            <span className={`text-[10px] font-black uppercase tracking-widest ${includeDebt ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                Incluir Dívida Pendente
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span className={`text-sm font-black ${includeDebt ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+                                        R$ {customer.outstandingBalance.toFixed(2)}
+                                    </span>
+                                </button>
+                            )}
 
                             <div className="pt-2 flex flex-col gap-3">
                                 <button
@@ -1230,6 +1589,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

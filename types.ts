@@ -108,6 +108,7 @@ export interface Customer {
   complaints?: Complaint[];
   observations?: string;
   acquisitionChannel?: string; // Novo campo: Canal de Entrada
+  outstandingBalance?: number; // Saldo Devedor
 }
 
 export interface CustomerHistoryItem {

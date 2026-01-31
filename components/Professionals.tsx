@@ -148,7 +148,6 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setFormData({
             name: '',
             phone: '',
-            phone: '',
             specialty: '',
             specialties: [],
             commissionRate: 0.5,
@@ -382,7 +381,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 <th className="px-6 py-5">Profissional</th>
                                 <th className="px-6 py-5">Status</th>
                                 <th className="px-6 py-5">Serviços Habilitados</th>
-                                <th className="px-6 py-5 text-center">Repasse</th>
+                                <th className="px-6 py-5 text-center">Celular</th>
                                 <th className="px-6 py-5 text-center">Dias Ativos</th>
                                 <th className="px-6 py-5 text-center">Ações</th>
                             </tr>
@@ -423,8 +422,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-center font-black text-indigo-800 dark:text-indigo-400 text-base">
-                                            {(provider.commissionRate * 100).toFixed(0)}%
+                                        <td className="px-6 py-4 text-center font-black text-slate-800 dark:text-slate-300 text-xs">
+                                            {provider.phone || 'N/A'}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex justify-center gap-0.5">
@@ -485,8 +484,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-base font-black text-indigo-800 dark:text-indigo-400">{(provider.commissionRate * 100).toFixed(0)}%</p>
-                                    <p className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Taxa Repasse</p>
+                                    <p className="text-xs font-black text-slate-800 dark:text-slate-300">{provider.phone || 'N/A'}</p>
+                                    <p className="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Contato</p>
                                 </div>
                             </div>
 
@@ -813,11 +812,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             {inactivationData && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[90vh]">
-                        <div className="px-6 py-4 bg-amber-400 text-amber-950 flex justify-between items-center flex-shrink-0">
-                            <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                                <AlertTriangle size={18} /> Atenção: Agenda Pendente
+                        <div className="px-6 py-4 bg-amber-400 text-amber-950 flex justify-between items-center flex-shrink-0 gap-4">
+                            <h3 className="font-black text-[11px] md:text-sm uppercase tracking-widest flex items-center gap-2 min-w-0">
+                                <AlertTriangle size={18} className="flex-shrink-0" />
+                                <span className="truncate">Atenção: Agenda Pendente</span>
                             </h3>
-                            <button onClick={() => setInactivationData(null)}><X size={20} /></button>
+                            <button onClick={() => setInactivationData(null)} className="flex-shrink-0"><X size={20} /></button>
                         </div>
                         <div className="p-6 space-y-4 flex-1 overflow-y-auto bg-white dark:bg-zinc-900">
                             <p className="text-sm font-bold text-slate-700 dark:text-slate-300">

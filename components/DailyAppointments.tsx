@@ -198,6 +198,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           paymentSettings={paymentSettings}
           providers={providers}
           stock={stock}
+          customers={customers}
         />
       )}
     </div>
