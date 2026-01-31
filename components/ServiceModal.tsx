@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -71,6 +71,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [cancellationReason, setCancellationReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
+    const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
 
     const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
@@ -381,27 +382,39 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             products: l.products
         }));
 
-        const updatedData = {
+        const dataToSave = {
             status: 'Em Andamento',
             time: appointmentTime,
             date: appointmentDate,
             combined_service_names: combinedNames,
+            service_id: lines[0].serviceId,
+            provider_id: lines[0].providerId,
             booked_price: lines[0].unitPrice,
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount
+            discount_amount: couponDiscountAmount,
+            customer_id: customer.id,
+            payments: payments
         };
 
         try {
-            const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
-            if (error) throw error;
+            const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+            let result;
+
+            if (isNew) {
+                result = await supabase.from('appointments').insert([dataToSave]).select().single();
+            } else {
+                result = await supabase.from('appointments').update(dataToSave).eq('id', appointment.id).select().single();
+            }
+
+            if (result.error) throw result.error;
+            const savedAppt = result.data;
 
             onUpdateAppointments(prev => {
-                const exists = prev.find(a => a.id === appointment.id);
                 const updatedAppt = {
                     ...appointment,
-                    ...(exists || {}),
+                    id: savedAppt.id, // Ensure we use the real DB ID
                     status: 'Em Andamento',
                     time: appointmentTime,
                     date: appointmentDate,
@@ -410,13 +423,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     mainServiceProducts: lines[0].products,
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
-                    discountAmount: couponDiscountAmount
+                    discountAmount: couponDiscountAmount,
+                    payments: payments
                 } as Appointment;
 
-                if (exists) {
+                if (!isNew) {
                     return prev.map(a => a.id === appointment.id ? updatedAppt : a);
                 } else {
-                    return [...prev, updatedAppt];
+                    // Remove temp ID if it exists and add new, or just add new
+                    // If isNew, the previous ID was local. We should remove the local draft if it was in the list?
+                    // Usually 'Novo' appointments aren't in the list yet? 
+                    // Actually handleNewAppointment sets draft, doesn't add to list. 
+                    // But if checking conflict added it? No.
+                    // safely add to list.
+                    // Check if we need to replace a temp one:
+                    const filtered = prev.filter(a => a.id !== appointment.id);
+                    return [...filtered, updatedAppt];
                 }
             });
             onClose();
@@ -465,34 +487,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payments: payments
         };
 
-        const saleData = {
-            customer_id: customer.id,
-            total_amount: totalValue,
-            total_price: totalValue,
-            date: dischargeDate,
-            payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
-            items: lines.map(l => ({
-                serviceId: l.serviceId,
-                name: services.find(s => s.id === l.serviceId)?.name,
-                unitPrice: l.unitPrice,
-                discount: l.discount,
-                isCourtesy: l.isCourtesy,
-                providerId: l.providerId
-            })),
-            payments: payments
-        };
-
         try {
             // 1. Update Appointment
             const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
             if (apptError) throw apptError;
 
-            // 2. Create Sale Record
-            const { error: saleError } = await supabase.from('sales').insert(saleData);
-            if (saleError) throw saleError;
+            // 2. Create Sale Record REMOVED (Prevents DRE duplication)
+            // The appointment record itself is sufficient for Service revenue.
 
             // 3. Update Customer History (handled locally for now, assuming App.tsx will refetch on next load)
-            // But we should also update DB history if that's where it's stored. 
             // Currently App.tsx fetches history from 'customers' table? 
             // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan, 
             // but the UI uses it. Let's assume we update the customer's totals in DB.
@@ -662,67 +665,51 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleCreateDebt = async () => {
+    const handleCreateDebt = async (forced = false) => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
 
-        const confirmDebt = window.confirm(`Confirmar criação de dívida de R$ ${totalValue.toFixed(2)} para ${customer.name}?`);
-        if (!confirmDebt) return;
+        if (!forced) {
+            setShowDebtConfirmModal(true);
+            return;
+        }
 
+        setShowDebtConfirmModal(false);
         setIsSaving(true);
 
-        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
-        const allProductsUsed = lines.flatMap(l => l.products);
-        const extras = lines.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
-            isCourtesy: l.isCourtesy,
-            discount: l.discount,
-            bookedPrice: l.unitPrice,
-            products: l.products
-        }));
-
-        const dischargeDate = new Date().toISOString().split('T')[0];
-
-        const updatedData = {
-            status: 'Concluído',
-            price_paid: 0, // Paid now is 0
-            payment_date: dischargeDate,
-            payment_method: 'Dívida',
-            products_used: allProductsUsed,
-            combined_service_names: combinedNames,
-            booked_price: lines[0].unitPrice,
-            main_service_products: lines[0].products,
-            additional_services: extras,
-            applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount,
-            payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
-        };
-
-        const saleData = {
-            customer_id: customer.id,
-            total_amount: totalValue,
-            total_price: totalValue,
-            date: dischargeDate,
-            payment_method: 'Dívida',
-            items: lines.map(l => ({
-                serviceId: l.serviceId,
-                name: services.find(s => s.id === l.serviceId)?.name,
-                unitPrice: l.unitPrice,
-                discount: l.discount,
-                isCourtesy: l.isCourtesy,
-                providerId: l.providerId
-            })),
-            payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
-        };
-
         try {
+            const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+            const allProductsUsed = lines.flatMap(l => l.products);
+            const extras = lines.slice(1).map(l => ({
+                serviceId: l.serviceId,
+                providerId: l.providerId,
+                isCourtesy: l.isCourtesy,
+                discount: l.discount,
+                bookedPrice: l.unitPrice,
+                products: l.products
+            }));
+
+            const dischargeDate = new Date().toISOString().split('T')[0];
+
+            const updatedData = {
+                status: 'Concluído',
+                price_paid: 0, // Paid now is 0
+                payment_date: dischargeDate,
+                payment_method: 'Dívida',
+                products_used: allProductsUsed,
+                combined_service_names: combinedNames,
+                booked_price: lines[0].unitPrice,
+                main_service_products: lines[0].products,
+                additional_services: extras,
+                applied_coupon: appliedCampaign?.couponCode,
+                discount_amount: couponDiscountAmount,
+                payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
+            };
+
             // 1. Update Appointment
             const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
             if (apptError) throw apptError;
 
-            // 2. Create Sale Record
-            const { error: saleError } = await supabase.from('sales').insert(saleData);
-            if (saleError) throw saleError;
+            // 2. Create Sale Record REMOVED
 
             // 3. Update Customer Balance
             const currentBalance = customer.outstandingBalance || 0;
@@ -911,7 +898,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </h3>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{customer.name}</p>
                     </div>
-                    <button onClick={onClose} className="p-1 hover:text-indigo-400 transition-colors"><X size={24} /></button>
+                    <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 border border-white/20"><ChevronDown size={20} /></button>
                 </div>
 
                 {/* Content */}
@@ -1004,7 +991,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         {mode === 'HISTORY' && (
                             <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
                                 <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
-                                <span className="text-sm font-black text-slate-950 dark:text-white">{appointment.paymentDate ? new Date(appointment.paymentDate + 'T12:00:00').toLocaleDateString('pt-BR') : new Date(appointment.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                <span className="text-sm font-black text-slate-950 dark:text-white">
+                                    {(() => {
+                                        const dateStr = appointment.paymentDate || appointment.date;
+                                        if (!dateStr) return '-';
+                                        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+                                        return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
+                                    })()}
+                                </span>
                             </div>
                         )}
                     </div>
@@ -1207,18 +1201,33 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={() => setIsCancelling(true)}
-                                                        className="flex-1 py-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                                        className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                                        title="Cancelar Agendamento"
                                                     >
-                                                        <XCircle size={16} /> CANCELAR
+                                                        <XCircle size={16} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (appointment.status === 'Em Andamento') {
+                                                                setMode('CHECKOUT');
+                                                            } else {
+                                                                handleStartService();
+                                                            }
+                                                        }}
+                                                        className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                                                    >
+                                                        {appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />}
+                                                        {appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR'}
                                                     </button>
                                                     <button
                                                         type="button"
                                                         onClick={handleSave}
                                                         disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                        className={`flex-[2] py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                        className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
                                                         {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />)}
-                                                        {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR ALTERAÇÕES')}
+                                                        {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR')}
                                                     </button>
                                                 </div>
                                             )}
@@ -1265,7 +1274,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
                                                     >
                                                         <span className="text-slate-400 dark:text-slate-500 font-bold text-[10px] mr-2">
-                                                            • {new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {app.time} -
+                                                            • {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {app.time} -
                                                         </span>
                                                         <div className="flex flex-col leading-tight">
                                                             <span className={`text-indigo-900 dark:text-indigo-300 uppercase font-black ${onSelectAppointment ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-200 group-hover:underline transition-all' : ''}`}>
@@ -1476,47 +1485,64 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
                                     <button
                                         type="button"
-                                        onClick={addPayment}
-                                        className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:text-indigo-700 flex items-center gap-1"
+                                        onClick={() => setMode('VIEW')}
+                                        className="p-4 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
+                                        title="Voltar"
                                     >
-                                        <Plus size={12} /> Adicionar Fonte
+                                        <ChevronLeft size={20} />
                                     </button>
                                 </div>
                                 <div className="space-y-2">
-                                    {payments.map((payment, index) => (
-                                        <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
-                                            <select
-                                                className="flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
-                                                value={payment.method}
-                                                onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
-                                            >
-                                                {paymentSettings.map(pay => (
-                                                    <option key={pay.id} value={pay.method}>
-                                                        {pay.method}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <div className="relative flex-1">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
-                                                <input
-                                                    type="number"
-                                                    className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
-                                                    value={payment.amount || ''}
-                                                    placeholder="0,00"
-                                                    onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                                                />
-                                            </div>
-                                            {payments.length > 1 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removePayment(payment.id)}
-                                                    className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                    {payments.map((payment, index) => {
+                                        const isCredit = payment.method.toLowerCase().includes('crédito');
+                                        return (
+                                            <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
+                                                <select
+                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
+                                                    value={payment.method}
+                                                    onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                 >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
+                                                    {paymentSettings.map(pay => (
+                                                        <option key={pay.id} value={pay.method}>
+                                                            {pay.method}
+                                                        </option>
+                                                    ))}
+                                                </select>
+
+                                                {isCredit && (
+                                                    <select
+                                                        className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
+                                                        value={payment.installments || 1}
+                                                        onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
+                                                    >
+                                                        {[...Array(12)].map((_, i) => (
+                                                            <option key={i} value={i + 1}>{i + 1}x</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+
+                                                <div className="relative flex-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
+                                                        value={payment.amount || ''}
+                                                        placeholder="0,00"
+                                                        onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                    />
+                                                </div>
+                                                {payments.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePayment(payment.id)}
+                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="flex gap-2 mt-4">
@@ -1677,6 +1703,86 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     )}
                 </div>
             </div>
-        </div >
+            {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
+            {isCancelling && (
+                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="p-8 text-center pt-10">
+                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
+                                <X size={40} className="animate-pulse" />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                Cancelar Atendimento?
+                            </h3>
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-8">
+                                Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
+                            </p>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setIsCancelling(false)}
+                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                >
+                                    Não, Manter
+                                </button>
+                                <button
+                                    onClick={handleConfirmCancellation}
+                                    disabled={isSaving}
+                                    className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* CUSTOM DEBT CONFIRMATION MODAL ("FIADO") */}
+            {showDebtConfirmModal && (
+                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="p-8 text-center pt-10">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
+                                <AlertTriangle size={40} className="animate-pulse" />
+                            </div>
+
+                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                Atenção: Registro de "Fiado"
+                            </h3>
+
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
+                                <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
+                                </p>
+
+                                <div className="flex flex-col items-center gap-1 py-2">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Pendente</span>
+                                    <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
+                                </div>
+
+                                <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
+                                    💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setShowDebtConfirmModal(false)}
+                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={() => handleCreateDebt(true)}
+                                    className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <Save size={16} /> Confirmar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };

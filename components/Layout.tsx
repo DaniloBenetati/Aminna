@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
@@ -61,8 +61,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
-    { id: ViewState.AGENDA, label: 'Agenda Completa', icon: Calendar },
-    { id: ViewState.DAILY_APPOINTMENTS, label: 'Agenda Diária', icon: Clock },
+    { id: ViewState.AGENDA, label: 'Agenda', icon: Calendar },
+    { id: ViewState.DAILY_APPOINTMENTS, label: 'Check-in', icon: Clock },
     { id: ViewState.CLIENTES, label: 'Clientes', icon: Contact },
     { id: ViewState.CRM, label: 'CRM', icon: Users },
     { id: ViewState.COPA, label: 'Copa & Consumo', icon: Coffee },
@@ -107,7 +107,7 @@ export const Layout: React.FC<LayoutProps> = ({
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-full flex items-center justify-center shadow-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all z-10 hover:scale-110 active:scale-90"
           >
-            {isSidebarCollapsed ? <Menu size={12} /> : <X size={12} />}
+            {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
         </div>
 

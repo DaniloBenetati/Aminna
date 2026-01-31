@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History } from 'lucide-react';
+import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers } from 'lucide-react';
 
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -20,6 +20,8 @@ interface ProfessionalsProps {
 export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProviders, appointments, setAppointments, customers, services }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+    const [serviceAddSearch, setServiceAddSearch] = useState(''); // New state for service search
+    const [filterCategory, setFilterCategory] = useState('');
 
     // States for Edit/Add Modal
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,6 +57,10 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         return services.map(s => s.name).sort();
     }, [services]);
 
+    const uniqueCategories = useMemo(() => {
+        return Array.from(new Set(services.map(s => s.category).filter(Boolean))) as string[];
+    }, [services]);
+
     // Helper for weekdays
     const weekDays = [
         { id: 0, label: 'D', full: 'Domingo' },
@@ -75,8 +81,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         }
     };
 
-    const addSpecialty = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const spec = e.target.value;
+    const addSpecialty = (spec: string) => {
         if (!spec) return;
 
         const currentSpecs = formData.specialties || [];
@@ -84,13 +89,26 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             const added = [...currentSpecs, spec];
             setFormData({ ...formData, specialties: added, specialty: added[0] });
         }
-        e.target.value = ""; // Reset select
+        setServiceAddSearch(''); // Reset search after adding
     };
 
     const removeSpecialty = (spec: string) => {
         const currentSpecs = formData.specialties || [];
         const filtered = currentSpecs.filter(s => s !== spec);
         setFormData({ ...formData, specialties: filtered, specialty: filtered[0] || '' });
+    };
+
+    const handleAddGroup = (category: string) => {
+        if (!category) return;
+        const servicesInGroup = services
+            .filter(s => s.category === category)
+            .map(s => s.name);
+
+        const currentSpecs = formData.specialties || [];
+        // Add only ones not already present
+        const newSpecs = [...new Set([...currentSpecs, ...servicesInGroup])];
+
+        setFormData({ ...formData, specialties: newSpecs, specialty: newSpecs[0] || '' });
     };
 
     // Performance Calculations
@@ -122,14 +140,188 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         };
     }, [providers, appointments]);
 
-    const filteredProviders = providers.filter(p => {
-        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.specialty.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' ||
-            (statusFilter === 'active' && p.active) ||
-            (statusFilter === 'inactive' && !p.active);
-        return matchesSearch && matchesStatus;
-    });
+    const filteredProviders = providers
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+        .filter(p => {
+            const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                p.specialty.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'all' ||
+                (statusFilter === 'active' && p.active) ||
+                (statusFilter === 'inactive' && !p.active);
+            return matchesSearch && matchesStatus;
+        });
+
+    // Helper to ensure all providers have an order
+    const normalizeOrders = async (currentList: Provider[]) => {
+        const updates = currentList.map((p, index) => ({
+            ...p,
+            order: index
+        }));
+
+        // Optimistic update all
+        setProviders(prev => {
+            const map = new Map(updates.map(u => [u.id, u]));
+            return prev.map(p => map.get(p.id) || p);
+        });
+
+        // Persist all
+        const { error } = await supabase.from('providers').upsert(
+            updates.map(p => ({
+                id: p.id,
+                order: p.order,
+                name: p.name, // Required for upsert if not partial? No, partial is fine usually but upsert matches on ID.
+                // Depending on Supabase setup, minimal fields might work if other fields aren't required.
+                // Safest to just update the order specifically via repeated updates or a specific RPC if available.
+                // Or better: Use upsert with minimal fields if table constraints allow, otherwise map full object.
+                // Assuming we can just update 'order' via upsert if we provide ID? 
+                // Actually, standard `update` for batch is tricky. `upsert` replaces the row.
+                // So we should include all fields or use a loop for safety if schema is strict.
+                // Let's rely on the fact that we have the full object in `updates`.
+                ...p,
+                commission_history: p.commissionHistory, // Map back to DB column name structure
+                commission_rate: p.commissionRate,
+                pix_key: p.pixKey,
+                birth_date: p.birthDate,
+                work_days: p.workDays
+            }))
+        );
+
+        if (error) console.error('Error normalizing orders:', error);
+        return updates;
+    };
+
+    const handleMoveUp = async (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (index === 0) return;
+
+        // Check if we need normalization (any invalid order)
+        // Or simply ALWAYS normalize the visible list to ensure consistency with visual order
+        // This handles cases where filtered sorting might be ambiguous
+        const needsNormalization = filteredProviders.some(p => p.order === undefined || p.order === null);
+
+        let workingList = [...filteredProviders];
+
+        if (needsNormalization) {
+            // Assign temporary orders based on current index
+            workingList = workingList.map((p, idx) => ({ ...p, order: idx }));
+        }
+
+        const currentParams = workingList[index];
+        const prevParams = workingList[index - 1];
+
+        // Swap orders
+        const currentOrder = currentParams.order!;
+        const prevOrder = prevParams.order!;
+
+        // Optimistic update
+        const updatedCurrent = { ...currentParams, order: prevOrder };
+        const updatedPrev = { ...prevParams, order: currentOrder };
+
+        // Update local state by finding original items in the full `providers` list
+        setProviders(prev => prev.map(p => {
+            if (p.id === currentParams.id) return updatedCurrent;
+            if (p.id === prevParams.id) return updatedPrev;
+            // If we normalized, we should technically update EVERYONE's order in state too?
+            // Yes, if we normalized, we need to update everyone.
+            if (needsNormalization) {
+                const found = workingList.find(w => w.id === p.id);
+                if (found) return found.id === currentParams.id ? updatedCurrent : found.id === prevParams.id ? updatedPrev : found;
+            }
+            return p;
+        }));
+
+        if (needsNormalization) {
+            // If we normalized, we must save EVERYTHING
+            const finalList = workingList.map(p => {
+                if (p.id === currentParams.id) return updatedCurrent;
+                if (p.id === prevParams.id) return updatedPrev;
+                return p;
+            });
+
+            // Map to DB structure for UPSERT
+            const dbUpdates = finalList.map(p => ({
+                id: p.id,
+                name: p.name,
+                phone: p.phone,
+                specialty: p.specialty,
+                specialties: p.specialties,
+                commission_rate: p.commissionRate,
+                commission_history: p.commissionHistory,
+                pix_key: p.pixKey,
+                birth_date: p.birthDate,
+                active: p.active,
+                work_days: p.workDays,
+                avatar: p.avatar,
+                order: p.order
+            }));
+            await supabase.from('providers').upsert(dbUpdates);
+        } else {
+            // Just save the two swapped
+            await supabase.from('providers').update({ order: prevOrder }).eq('id', currentParams.id);
+            await supabase.from('providers').update({ order: currentOrder }).eq('id', prevParams.id);
+        }
+    };
+
+    const handleMoveDown = async (index: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (index === filteredProviders.length - 1) return;
+
+        const needsNormalization = filteredProviders.some(p => p.order === undefined || p.order === null);
+        let workingList = [...filteredProviders];
+
+        if (needsNormalization) {
+            workingList = workingList.map((p, idx) => ({ ...p, order: idx }));
+        }
+
+        const currentParams = workingList[index];
+        const nextParams = workingList[index + 1];
+
+        // Swap orders
+        const currentOrder = currentParams.order!;
+        const nextOrder = nextParams.order!;
+
+        // Optimistic update
+        const updatedCurrent = { ...currentParams, order: nextOrder };
+        const updatedNext = { ...nextParams, order: currentOrder };
+
+        // Update local state
+        setProviders(prev => prev.map(p => {
+            if (p.id === currentParams.id) return updatedCurrent;
+            if (p.id === nextParams.id) return updatedNext;
+            if (needsNormalization) {
+                const found = workingList.find(w => w.id === p.id);
+                if (found) return found.id === currentParams.id ? updatedCurrent : found.id === nextParams.id ? updatedNext : found;
+            }
+            return p;
+        }));
+
+        if (needsNormalization) {
+            const finalList = workingList.map(p => {
+                if (p.id === currentParams.id) return updatedCurrent;
+                if (p.id === nextParams.id) return updatedNext;
+                return p;
+            });
+            const dbUpdates = finalList.map(p => ({
+                id: p.id,
+                name: p.name,
+                phone: p.phone,
+                specialty: p.specialty,
+                specialties: p.specialties,
+                commission_rate: p.commissionRate,
+                commission_history: p.commissionHistory,
+                pix_key: p.pixKey,
+                birth_date: p.birthDate,
+                active: p.active,
+                work_days: p.workDays,
+                avatar: p.avatar,
+                order: p.order
+            }));
+            await supabase.from('providers').upsert(dbUpdates);
+        } else {
+            await supabase.from('providers').update({ order: nextOrder }).eq('id', currentParams.id);
+            await supabase.from('providers').update({ order: currentOrder }).eq('id', nextParams.id);
+        }
+    };
 
     const handleEdit = (provider: Provider) => {
         setEditingProvider(provider);
@@ -145,6 +337,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     const handleAddNew = () => {
         setEditingProvider(null);
         setCommissionChangeReason(''); // Reset reason
+        setServiceAddSearch(''); // Reset search
         setFormData({
             name: '',
             phone: '',
@@ -207,7 +400,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             birth_date: formData.birthDate || null,
             active: formData.active,
             work_days: formData.workDays || [],
-            avatar: formData.avatar
+            avatar: formData.avatar,
+            order: editingProvider ? undefined : providers.length // Set last order for new items (undefined for updates to ignore)
         };
 
         try {
@@ -247,7 +441,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 const { data, error } = await supabase.from('providers').insert([providerData]).select();
                 if (error) throw error;
                 if (data && data[0]) {
-                    const newProvider = { ...formData, id: data[0].id, commissionHistory: [] } as Provider;
+                    const newProvider = { ...formData, id: data[0].id, commissionHistory: [], order: providers.length } as Provider;
                     setProviders(prev => [...prev, newProvider]);
                 }
             }
@@ -441,12 +635,30 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <button
-                                                onClick={() => handleEdit(provider)}
-                                                className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all active:scale-90"
-                                            >
-                                                <Edit2 size={18} />
-                                            </button>
+                                            <div className="flex items-center justify-center">
+                                                <div className="flex bg-slate-100 dark:bg-zinc-800 rounded-xl overflow-hidden mr-2">
+                                                    <button
+                                                        onClick={(e) => handleMoveUp(filteredProviders.indexOf(provider), e)}
+                                                        disabled={filteredProviders.indexOf(provider) === 0}
+                                                        className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-transparent text-slate-500 dark:text-slate-400"
+                                                    >
+                                                        <ArrowUp size={14} />
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => handleMoveDown(filteredProviders.indexOf(provider), e)}
+                                                        disabled={filteredProviders.indexOf(provider) === filteredProviders.length - 1}
+                                                        className="p-1.5 hover:bg-slate-200 dark:hover:bg-zinc-700 disabled:opacity-30 disabled:hover:bg-transparent text-slate-500 dark:text-slate-400"
+                                                    >
+                                                        <ArrowDown size={14} />
+                                                    </button>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleEdit(provider)}
+                                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all active:scale-90"
+                                                >
+                                                    <Edit2 size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -495,6 +707,22 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     <p className="text-xs font-black text-slate-950 dark:text-white mt-1">{proStats} Atendimentos</p>
                                 </div>
                                 <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-center">
+                                    <div className="flex gap-1 mr-2 bg-white dark:bg-zinc-900 rounded-lg">
+                                        <button
+                                            onClick={(e) => handleMoveUp(filteredProviders.indexOf(provider), e)}
+                                            disabled={filteredProviders.indexOf(provider) === 0}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-30 text-slate-500 dark:text-slate-400"
+                                        >
+                                            <ArrowUp size={12} />
+                                        </button>
+                                        <button
+                                            onClick={(e) => handleMoveDown(filteredProviders.indexOf(provider), e)}
+                                            disabled={filteredProviders.indexOf(provider) === filteredProviders.length - 1}
+                                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 disabled:opacity-30 text-slate-500 dark:text-slate-400"
+                                        >
+                                            <ArrowDown size={12} />
+                                        </button>
+                                    </div>
                                     <button className="flex items-center gap-1.5 text-[10px] font-black uppercase text-indigo-900 dark:text-indigo-300">
                                         <Edit2 size={14} /> Editar
                                     </button>
@@ -586,22 +814,15 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     ))}
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, avatar: `https://i.pravatar.cc/150?u=${Date.now()}` })}
-                                        className="w-10 h-10 rounded-full border-2 border-dashed border-slate-300 dark:border-zinc-600 flex items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all"
-                                        title="Gerar Aleatório"
+                                        onClick={() => {
+                                            const randomSeed = Math.random().toString(36).substring(7);
+                                            setFormData({ ...formData, avatar: `https://api.dicebear.com/7.x/micah/svg?seed=${randomSeed}` });
+                                        }}
+                                        className="w-10 h-10 rounded-full border-2 border-dashed border-indigo-300 dark:border-indigo-700 flex items-center justify-center text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all"
+                                        title="Gerar Novo Avatar"
                                     >
                                         <Sparkles size={16} />
                                     </button>
-                                </div>
-                                <div className="mt-3 relative">
-                                    <input
-                                        id="avatar-url-input"
-                                        type="text"
-                                        value={formData.avatar}
-                                        onChange={e => setFormData({ ...formData, avatar: e.target.value })}
-                                        placeholder="Ou cole uma URL de imagem..."
-                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-[10px] text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-500 text-center font-mono"
-                                    />
                                 </div>
                             </div>
 
@@ -618,30 +839,90 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     />
                                 </div>
                                 <div className="md:col-span-2">
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" /> Serviços Habilitados
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-2 flex items-center justify-between">
+                                        <span className="flex items-center gap-2"><Sparkles size={14} className="text-indigo-600 dark:text-indigo-400" /> Serviços Habilitados</span>
+                                        {/* Original Dropdown removed in favor of integrated filter */}
                                     </label>
 
                                     <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700 space-y-4">
-                                        {/* Dropdown */}
-                                        <div>
-                                            <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1.5 ml-1">Adicionar Serviço</label>
-                                            <div className="relative">
-                                                <select
-                                                    className="w-full pl-4 pr-10 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 appearance-none transition-all"
-                                                    onChange={addSpecialty}
-                                                    value=""
+                                        {/* Search & Select Interface */}
+                                        <div className="space-y-3">
+                                            <div className="flex gap-2">
+                                                {/* Filter Dropdown */}
+                                                <div className="relative min-w-[120px]">
+                                                    <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <select
+                                                        value={filterCategory}
+                                                        onChange={e => setFilterCategory(e.target.value)}
+                                                        className="w-full pl-9 pr-8 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black uppercase text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500 appearance-none cursor-pointer transition-all"
+                                                    >
+                                                        <option value="">Todas</option>
+                                                        {uniqueCategories.map(cat => (
+                                                            <option key={cat} value={cat}>{cat}</option>
+                                                        ))}
+                                                    </select>
+                                                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                </div>
+
+                                                {/* Search Input */}
+                                                <div className="relative flex-1">
+                                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar serviço..."
+                                                        className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all placeholder:text-slate-400"
+                                                        value={serviceAddSearch}
+                                                        onChange={e => setServiceAddSearch(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Bulk Add Button for Filtered Category */}
+                                            {filterCategory && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleAddGroup(filterCategory)}
+                                                    className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2"
                                                 >
-                                                    <option value="">Selecione o serviço...</option>
-                                                    {availableServices.length > 0 ? availableServices
+                                                    <Layers size={12} /> Adicionar Todos de {filterCategory}
+                                                </button>
+                                            )}
+
+                                            {/* Scrollable List of Available Services */}
+                                            <div className="max-h-40 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl p-2">
+                                                <div className="flex flex-wrap gap-2">
+                                                    {availableServices
                                                         .filter(s => !formData.specialties?.includes(s))
+                                                        .filter(s => {
+                                                            // Filter by Name
+                                                            const nameMatch = s.toLowerCase().includes(serviceAddSearch.toLowerCase());
+                                                            // Filter by Category
+                                                            const serviceObj = services.find(serv => serv.name === s);
+                                                            const categoryMatch = filterCategory ? serviceObj?.category === filterCategory : true;
+
+                                                            return nameMatch && categoryMatch;
+                                                        })
                                                         .map(spec => (
-                                                            <option key={spec} value={spec}>{spec}</option>
-                                                        )) : (
-                                                        <option disabled>Nenhum serviço cadastrado</option>
-                                                    )}
-                                                </select>
-                                                <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                            <button
+                                                                key={spec}
+                                                                type="button"
+                                                                onClick={() => addSpecialty(spec)}
+                                                                className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-zinc-700 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 group"
+                                                            >
+                                                                <Plus size={12} className="opacity-0 group-hover:opacity-100 -ml-1 transition-opacity" />
+                                                                {spec}
+                                                            </button>
+                                                        ))}
+                                                    {/* Empty State Logic Check */}
+                                                    {availableServices.filter(s => !formData.specialties?.includes(s) &&
+                                                        s.toLowerCase().includes(serviceAddSearch.toLowerCase()) &&
+                                                        (filterCategory ? services.find(serv => serv.name === s)?.category === filterCategory : true)
+                                                    ).length === 0 && (
+                                                            <p className="w-full text-center text-[10px] text-slate-400 py-2 italic">
+                                                                Nenhum serviço disponível com este filtro.
+                                                            </p>
+                                                        )}
+                                                </div>
                                             </div>
                                         </div>
 

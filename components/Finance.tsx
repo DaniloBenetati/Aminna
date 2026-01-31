@@ -5,7 +5,7 @@ import {
     TrendingUp, Users, Wallet, Printer, ArrowUpCircle,
     ArrowDownCircle, AlertTriangle, BarChart3, Target, Calculator, Files,
     Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
-    ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp,
+    ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
     Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
@@ -17,6 +17,17 @@ const toLocalDateStr = (date: Date) => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+};
+
+const parseDateSafe = (dateStr: string | undefined): Date => {
+    if (!dateStr) return new Date();
+    try {
+        const str = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
+        const d = new Date(str);
+        return isNaN(d.getTime()) ? new Date() : d;
+    } catch (e) {
+        return new Date();
+    }
 };
 
 // --- MOCK DATA GENERATOR FOR OPERATIONAL EXPENSES ---
@@ -301,7 +312,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
-    const [expandedSections, setExpandedSections] = useState<string[]>(['gross', 'cogs', 'exp-admin', 'exp-vendas', 'exp-fin', 'tax']);
+    const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
     const toggleSection = (section: string) => {
         setExpandedSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]);
@@ -370,7 +381,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         // Helper to find commission payment date
         const getCommissionDate = (dateStr: string) => {
             if (!commissionSettings || commissionSettings.length === 0) return dateStr;
-            const date = new Date(dateStr + 'T12:00:00');
+            const date = parseDateSafe(dateStr);
             const day = date.getDate();
             const month = date.getMonth();
             const year = date.getFullYear();
@@ -403,7 +414,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         };
 
         const addDays = (dateStr: string, days: number) => {
-            const d = new Date(dateStr + 'T12:00:00');
+            const d = parseDateSafe(dateStr);
             d.setDate(d.getDate() + days);
             return toLocalDateStr(d);
         };
@@ -557,7 +568,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <tbody>
                         ${filteredTransactions.map(t => `
                             <tr>
-                                <td>${new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                <td>${parseDateSafe(t.date).toLocaleDateString('pt-BR')}</td>
                                 <td class="${t.type}"><strong>${t.type}</strong></td>
                                 <td>${t.origin}</td>
                                 <td>
@@ -616,12 +627,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const exps = expenses.filter(e => e.date >= start && e.date <= end);
 
             const revenueServices = apps.reduce((acc, a) => acc + (a.pricePaid || 0), 0);
-            const revenueProducts = sls.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
-            const grossRevenue = revenueServices + revenueProducts;
+            const grossRevenue = revenueServices;
 
             const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
-            const autoDeductions = grossRevenue * 0.06;
-            const deductions = autoDeductions + manualDeductions;
+            const deductions = manualDeductions;
             const netRevenue = grossRevenue - deductions;
 
             const commissions = apps.reduce((acc, a) => {
@@ -629,18 +638,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
                 return acc + ((a.pricePaid || 0) * rate);
             }, 0);
-            const productCOGS = sls.reduce((acc, s) => {
-                let saleCogs = 0;
-                if (s.items && Array.isArray(s.items) && s.items.length > 0) {
-                    s.items.forEach((item: any) => {
-                        const stockItem = stock.find(i => i.id === item.productId);
-                        saleCogs += (item.quantity || 1) * (stockItem?.costPrice || 0);
-                    });
-                }
-                return acc + saleCogs;
-            }, 0);
+
             const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
-            const totalCOGS = commissions + productCOGS + manualCosts;
+            const totalCOGS = commissions + manualCosts;
             const grossProfit = netRevenue - totalCOGS;
 
             const expensesVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES');
@@ -673,25 +673,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 return acc;
             }, {} as Record<string, { total: number, count: number }>);
 
-            const breakdownProducts = sls.reduce((acc, s) => {
-                // If items structure exists and is populated
-                if (s.items && Array.isArray(s.items) && s.items.length > 0) {
-                    s.items.forEach((item: any) => {
-                        const name = item.name || 'Produto';
-                        if (!acc[name]) acc[name] = { total: 0, count: 0 };
-                        acc[name].total += ((item.unitPrice || 0) * (item.quantity || 0));
-                        acc[name].count += (item.quantity || 0);
-                    });
-                } else {
-                    // Fallback to sale description
-                    const name = 'Venda Avulsa / Diversos';
-                    if (!acc[name]) acc[name] = { total: 0, count: 0 };
-                    acc[name].total += (s.totalAmount || 0);
-                    acc[name].count += 1;
-                }
-                return acc;
-            }, {} as Record<string, { total: number, count: number }>);
-
             const breakdownCommissions = apps.reduce((acc, a) => {
                 const provider = providers.find(p => p.id === a.providerId);
                 const name = provider?.name || 'Profissional Removido';
@@ -705,16 +686,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }, {} as Record<string, { total: number, count: number }>);
 
             return {
-                grossRevenue, revenueServices, revenueProducts,
+                grossRevenue, revenueServices,
                 deductions, netRevenue,
-                totalCOGS, commissions, productCOGS,
+                totalCOGS, commissions,
                 grossProfit, totalOpExpenses, amountVendas, amountAdm, amountFin,
                 resultBeforeTaxes, irpjCsll, netResult,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
                 breakdownServices,
-                breakdownProducts,
                 breakdownCommissions
             };
         };
@@ -838,7 +818,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <tbody>
                         ${filteredPayables.map(e => `
                             <tr>
-                                <td>${new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                <td>${parseDateSafe(e.date).toLocaleDateString('pt-BR')}</td>
                                 <td style="font-weight: 800; text-transform: uppercase;">${e.description}</td>
                                 <td style="text-transform: uppercase; color: #4338ca;">${suppliers.find(s => s.id === e.supplierId)?.name || '-'}</td>
                                 <td style="text-transform: uppercase; color: #64748b;">${e.category}</td>
@@ -900,8 +880,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     const { data: expensesToUpdate } = await query;
 
                     if (expensesToUpdate) {
-                        const originalDateObj = new Date(originalExpense.date + 'T12:00:00');
-                        const newDateObj = new Date(expenseForm.date! + 'T12:00:00');
+                        const originalDateObj = parseDateSafe(originalExpense.date);
+                        const newDateObj = parseDateSafe(expenseForm.date!);
                         const timeDiff = newDateObj.getTime() - originalDateObj.getTime(); // Time difference in ms
 
                         // Base description: remove the (x/y) suffix from the input to get the clean name
@@ -914,7 +894,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             const suffix = suffixMatch ? suffixMatch[0] : '';
 
                             // Calculate new shifted date
-                            const currentExpDate = new Date(exp.date + 'T12:00:00');
+                            const currentExpDate = parseDateSafe(exp.date);
                             const shiftedDate = new Date(currentExpDate.getTime() + timeDiff);
 
                             return {
@@ -939,7 +919,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 const rId = recurrenceMonths > 1 ? crypto.randomUUID() : null;
 
                 for (let i = 0; i < recurrenceMonths; i++) {
-                    const d = new Date(expenseForm.date! + 'T12:00:00');
+                    const d = parseDateSafe(expenseForm.date!);
                     d.setMonth(d.getMonth() + i);
 
                     newExpenses.push({
@@ -1053,7 +1033,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <tbody>
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="positive">${dreData.grossRevenue.toFixed(0)}</td>${months.map(m => `<td>${m.grossRevenue.toFixed(0)}</td>`).join('')}</tr>
                         <tr class="sub-row"><td>Serviços</td><td>${dreData.revenueServices.toFixed(0)}</td>${months.map(m => `<td>${m.revenueServices.toFixed(0)}</td>`).join('')}</tr>
-                        <tr class="sub-row"><td>Produtos</td><td>${dreData.revenueProducts.toFixed(0)}</td>${months.map(m => `<td>${m.revenueProducts.toFixed(0)}</td>`).join('')}</tr>
 
                         <tr><td>2. (-) DEDUÇÕES</td><td class="negative">-${dreData.deductions.toFixed(0)}</td>${months.map(m => `<td class="negative">-${m.deductions.toFixed(0)}</td>`).join('')}</tr>
 
@@ -1119,7 +1098,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <tbody>
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="amount positive">R$ ${dreData.grossRevenue.toFixed(2)}</td><td class="amount">100.0%</td></tr>
                         <tr class="sub-row"><td>Serviços</td><td class="amount">R$ ${dreData.revenueServices.toFixed(2)}</td><td class="amount">${formatPercent(dreData.revenueServices, dreData.grossRevenue)}</td></tr>
-                        <tr class="sub-row"><td>Produtos (Revenda)</td><td class="amount">R$ ${dreData.revenueProducts.toFixed(2)}</td><td class="amount">${formatPercent(dreData.revenueProducts, dreData.grossRevenue)}</td></tr>
                         
                         <tr><td>2. (-) DEDUÇÕES E IMPOSTOS</td><td class="amount negative">- R$ ${dreData.deductions.toFixed(2)}</td><td class="amount">${formatPercent(dreData.deductions, dreData.grossRevenue)}</td></tr>
                         
@@ -1127,7 +1105,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         
                         <tr><td>4. (-) CPV / CMV</td><td class="amount negative">- R$ ${dreData.totalCOGS.toFixed(2)}</td><td class="amount">${formatPercent(dreData.totalCOGS, dreData.grossRevenue)}</td></tr>
                         <tr class="sub-row"><td>Comissões Técnica</td><td class="amount">R$ ${dreData.commissions.toFixed(2)}</td><td class="amount">${formatPercent(dreData.commissions, dreData.grossRevenue)}</td></tr>
-                        <tr class="sub-row"><td>Custo de Produtos</td><td class="amount">R$ ${dreData.productCOGS.toFixed(2)}</td><td class="amount">${formatPercent(dreData.productCOGS, dreData.grossRevenue)}</td></tr>
                         
                         <tr class="main-row"><td>5. (=) LUCRO BRUTO</td><td class="amount positive">R$ ${dreData.grossProfit.toFixed(2)}</td><td class="amount">${formatPercent(dreData.grossProfit, dreData.grossRevenue)}</td></tr>
                         
@@ -1182,7 +1159,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             headerRow,
             ['1. RECEITA BRUTA', dreData.grossRevenue.toFixed(2), ...(isYearView ? months.map(m => m.grossRevenue.toFixed(2)) : ['100.0%'])],
             ['   Serviços', dreData.revenueServices.toFixed(2), ...(isYearView ? months.map(m => m.revenueServices.toFixed(2)) : [formatPercent(dreData.revenueServices, dreData.grossRevenue)])],
-            ['   Produtos', dreData.revenueProducts.toFixed(2), ...(isYearView ? months.map(m => m.revenueProducts.toFixed(2)) : [formatPercent(dreData.revenueProducts, dreData.grossRevenue)])],
             ['2. (-) DEDUÇÕES', `-${dreData.deductions.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.deductions.toFixed(2)}`) : [formatPercent(dreData.deductions, dreData.grossRevenue)])],
             ['3. (=) RECEITA LÍQUIDA', dreData.netRevenue.toFixed(2), ...(isYearView ? months.map(m => m.netRevenue.toFixed(2)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
             ['4. (-) CPV / CMV', `-${dreData.totalCOGS.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.totalCOGS.toFixed(2)}`) : [formatPercent(dreData.totalCOGS, dreData.grossRevenue)])],
@@ -1310,7 +1286,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {filteredTransactions.length > 0 ? filteredTransactions.map(t => (
                                         <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors group text-sm">
                                             <td className="px-6 py-4 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
-                                                {new Date(t.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase w-fit border ${t.type === 'RECEITA' ? 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800' : 'bg-rose-50 text-rose-700 border-rose-100 dark:bg-rose-900/20 dark:text-rose-400 dark:border-rose-800'}`}>
@@ -1402,7 +1378,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                         {filteredPayables.map(exp => (
                                             <tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
-                                                <td className="px-6 py-4 text-xs font-bold font-mono">{new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                                <td className="px-6 py-4 text-xs font-bold font-mono">{parseDateSafe(exp.date).toLocaleDateString('pt-BR')}</td>
                                                 <td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td>
                                                 <td className="px-6 py-4 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
                                                     {suppliers.find(s => s.id === exp.supplierId)?.name || '-'}
@@ -1570,49 +1546,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     )}
                                                 </tr>
                                             ))}
-                                            <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSections.includes('products-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                    └ Produtos
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => (
-                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{m.revenueProducts.toFixed(0)}</td>
-                                                        ))}
-                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueProducts.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">R$ {dreData.revenueProducts.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.revenueProducts / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSections.includes('products-list') && Object.entries(dreData.breakdownProducts as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
-                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
-                                                    </td>
-                                                    {timeView === 'year' ? (
-                                                        <>
-                                                            {dreData.monthlySnapshots?.map((m: any) => (
-                                                                <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
-                                                            ))}
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
                                         </>
                                     )}
 
@@ -1657,7 +1590,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {/* 4. CPV/CMV */}
                                     <tr onClick={() => toggleSection('cogs')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('cogs') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            <Menu size={16} />
                                             4. (-) CPV / CMV
                                         </td>
                                         {timeView === 'year' ? (
@@ -1680,7 +1613,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <>
                                             <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    <Menu size={12} />
                                                     └ Comissões (Técnica)
                                                 </td>
                                                 {timeView === 'year' ? (
@@ -1722,38 +1655,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 </tr>
                                             ))}
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Custo Mercadoria Vendida</td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => (
-                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.productCOGS.toFixed(0)}</td>
-                                                        ))}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.productCOGS.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.productCOGS.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.productCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Custos Operacionais (Manuais)</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const costVal = m.totalCOGS - m.commissions - m.productCOGS;
+                                                            const costVal = m.totalCOGS - m.commissions;
                                                             return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{costVal.toFixed(0)}</td>
                                                         })}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {(dreData.totalCOGS - dreData.commissions - dreData.productCOGS).toFixed(2)}</td>
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {(dreData.totalCOGS - dreData.commissions).toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {(dreData.totalCOGS - dreData.commissions - dreData.productCOGS).toFixed(2)}</td>
+                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {(dreData.totalCOGS - dreData.commissions).toFixed(2)}</td>
                                                         <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? (((dreData.totalCOGS - dreData.commissions - dreData.productCOGS) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            {dreData.grossRevenue > 0 ? (((dreData.totalCOGS - dreData.commissions) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                         </td>
                                                     </>
                                                 )}
@@ -1784,7 +1699,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {/* 6. DESPESAS COM VENDAS */}
                                     <tr onClick={() => toggleSection('exp-vendas')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('exp-vendas') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            <Menu size={16} />
                                             6. (-) DESPESAS COM VENDAS
                                         </td>
                                         {timeView === 'year' ? (
@@ -1807,7 +1722,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <React.Fragment key={cat}>
                                             <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSubSections.includes(cat) ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    <Menu size={12} />
                                                     {cat}
                                                 </td>
                                                 {timeView === 'year' ? (
@@ -1831,14 +1746,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
                                                 (info.items as Expense[]).forEach(e => {
                                                     let key = e.recurringId;
-                                                    let displayDesc = e.description;
-                                                    const match = e.description.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                    let displayDesc = e.description || '';
+                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
                                                     if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = e.description; } }
-                                                    if (!groupedItems[key]) { groupedItems[key] = { description: displayDesc, amounts: {}, total: 0 }; }
-                                                    const month = new Date(e.date + 'T12:00:00').getMonth();
-                                                    groupedItems[key].amounts[month] = (groupedItems[key].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key].total += e.amount;
+                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                    const dateObj = parseDateSafe(e.date);
+                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                    groupedItems[key || 'no-key'].total += e.amount;
                                                 });
                                                 const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                 return sortedGroups.map((group, idx) => (
@@ -1869,7 +1785,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {/* 7. DESPESAS ADMINISTRATIVAS */}
                                     <tr onClick={() => toggleSection('exp-adm')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('exp-adm') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            <Menu size={16} />
                                             7. (-) DESPESAS ADMINISTRATIVAS
                                         </td>
                                         {timeView === 'year' ? (
@@ -1892,7 +1808,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <React.Fragment key={cat}>
                                             <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSubSections.includes(cat) ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    <Menu size={12} />
                                                     {cat}
                                                 </td>
                                                 {timeView === 'year' ? (
@@ -1916,14 +1832,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
                                                 (info.items as Expense[]).forEach(e => {
                                                     let key = e.recurringId;
-                                                    let displayDesc = e.description;
-                                                    const match = e.description.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                    let displayDesc = e.description || '';
+                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
                                                     if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = e.description; } }
-                                                    if (!groupedItems[key]) { groupedItems[key] = { description: displayDesc, amounts: {}, total: 0 }; }
-                                                    const month = new Date(e.date + 'T12:00:00').getMonth();
-                                                    groupedItems[key].amounts[month] = (groupedItems[key].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key].total += e.amount;
+                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                    const dateObj = parseDateSafe(e.date);
+                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                    groupedItems[key || 'no-key'].total += e.amount;
                                                 });
                                                 const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                 return sortedGroups.map((group, idx) => (
@@ -1954,7 +1871,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {/* 8. DESPESAS FINANCEIRAS */}
                                     <tr onClick={() => toggleSection('exp-fin')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('exp-fin') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            <Menu size={16} />
                                             8. (-) DESPESAS FINANCEIRAS
                                         </td>
                                         {timeView === 'year' ? (
@@ -1977,7 +1894,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <React.Fragment key={cat}>
                                             <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                 <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSubSections.includes(cat) ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                    <Menu size={12} />
                                                     {cat}
                                                 </td>
                                                 {timeView === 'year' ? (
@@ -2001,14 +1918,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
                                                 (info.items as Expense[]).forEach(e => {
                                                     let key = e.recurringId;
-                                                    let displayDesc = e.description;
-                                                    const match = e.description.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                    let displayDesc = e.description || '';
+                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
                                                     if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = e.description; } }
-                                                    if (!groupedItems[key]) { groupedItems[key] = { description: displayDesc, amounts: {}, total: 0 }; }
-                                                    const month = new Date(e.date + 'T12:00:00').getMonth();
-                                                    groupedItems[key].amounts[month] = (groupedItems[key].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key].total += e.amount;
+                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                    const dateObj = parseDateSafe(e.date);
+                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                    groupedItems[key || 'no-key'].total += e.amount;
                                                 });
                                                 const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                 return sortedGroups.map((group, idx) => (

@@ -81,7 +81,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     };
 
     const isDateInPeriod = (dateStr: string) => {
-        const d = new Date(dateStr + 'T12:00:00');
+        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
 
         if (timeView === 'day') {
             return d.getDate() === dateRef.getDate() &&

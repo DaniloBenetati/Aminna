@@ -53,6 +53,7 @@ export interface Provider {
   birthDate?: string;
   pixKey?: string;
   active: boolean;
+  order?: number; // Para ordenação personalizada
   workDays?: number[]; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
 }
 
@@ -69,6 +70,7 @@ export interface Service {
   durationMinutes: number;
   requiredSpecialty?: string; // Especialidade técnica necessária
   priceHistory?: PriceHistoryItem[];
+  category?: string; // Categoria do serviço (ex: Cabelo, Unha, Estética)
 }
 
 export interface Complaint {
@@ -306,6 +308,7 @@ export interface PaymentInfo {
   id: string;
   method: string;
   amount: number;
+  installments?: number;
 }
 
 export interface PaymentSetting {

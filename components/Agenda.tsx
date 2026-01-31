@@ -67,6 +67,20 @@ export const Agenda: React.FC<AgendaProps> = ({
         localStorage.setItem('agenda_row_height', rowHeight.toString());
     }, [rowHeight]);
 
+    // Persist View Mode (Day/Month/etc)
+    const [isInitialized, setIsInitialized] = useState(false);
+    React.useEffect(() => {
+        const savedView = localStorage.getItem('agenda_time_view') as 'day' | 'month' | 'year' | 'custom';
+        if (savedView) setTimeView(savedView);
+        setIsInitialized(true);
+    }, []);
+
+    React.useEffect(() => {
+        if (isInitialized) {
+            localStorage.setItem('agenda_time_view', timeView);
+        }
+    }, [timeView, isInitialized]);
+
     // Helpers
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -141,7 +155,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             ? activeProviders.filter(p => visibleProviderIds.length === 0 || visibleProviderIds.includes(p.id))
             : activeProviders.filter(p => p.id === selectedProviderId);
 
-        return filtered;
+        return filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
     }, [activeProviders, selectedProviderId, visibleProviderIds]);
 
     // Confirmation Logic (Uses Range)
@@ -409,7 +423,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 <button
                     key={d}
                     onClick={() => { setDateRef(current); setTimeView('day'); }}
-                    className={`w-8 h-8 flex items-center justify-center text-[10px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
+                    className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
                 >
                     {d}
                 </button>
@@ -424,8 +438,8 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         return (
-            <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm animate-in fade-in duration-300">
-                <div className="flex justify-between items-center mb-4">
+            <div className="p-2 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm animate-in fade-in duration-300">
+                <div className="flex justify-between items-center mb-2">
                     <button onClick={() => navigateMonth('prev')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={16} /></button>
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">{monthName}</span>
                     <button onClick={() => navigateMonth('next')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={16} /></button>
@@ -451,9 +465,9 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         return (
-            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-4 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="p-4 border-b border-slate-100 dark:border-zinc-800">
-                    <h3 className="text-[10px] font-black uppercase tracking-widest mb-3 text-slate-900 dark:text-white">Profissionais</h3>
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
+                <div className="p-3 border-b border-slate-100 dark:border-zinc-800">
+                    <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Profissionais</h3>
                     <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -466,7 +480,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 scrollbar-hide space-y-3">
+                <div className="flex-1 overflow-y-auto p-3 scrollbar-hide space-y-2">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <input
                             type="checkbox"
@@ -496,9 +510,9 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     return (
-        <div className="flex h-full gap-6 pb-20 md:pb-0 font-sans">
+        <div className="flex h-full gap-4 pb-20 md:pb-0 font-sans">
             {/* Sidebar (Left) */}
-            <div className={`hidden lg:flex flex-col w-72 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
+            <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
                 <ProviderFilter />
             </div>
@@ -539,7 +553,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         )}
                     </div>
 
-                    <div className="flex gap-3 w-full xl:w-auto">
+                    <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
                         <div className="relative flex-1 md:min-w-[200px]">
                             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <select
@@ -552,34 +566,30 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                             </select>
                         </div>
+
+                        <div className="relative flex-1 md:min-w-[200px]">
+                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Filtrar cliente..."
+                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <button
+                            onClick={() => setIsWhatsAppModalOpen(true)}
+                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                        >
+                            <MessageCircle size={16} /> Confirmações
+                        </button>
+
                         <button
                             onClick={() => handleNewAppointment()}
                             className="flex items-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                         >
                             <Plus size={16} /> <span className="hidden sm:inline">Novo</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Secondary Toolbar: Search, Zoom (Horizontal), Confirmations */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white dark:bg-zinc-900 p-2 px-3 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors">
-                    <div className="relative w-full md:w-64">
-                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Filtrar cliente..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-                        <button
-                            onClick={() => setIsWhatsAppModalOpen(true)}
-                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md transition-all active:scale-95"
-                        >
-                            <MessageCircle size={16} /> Confirmações
                         </button>
                     </div>
                 </div>
@@ -848,17 +858,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div
                                                                 key={appt.id}
                                                                 onClick={() => handleAppointmentClick(appt)}
-                                                                className={`relative z-10 mb-1 p-2 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                className={`relative z-10 mb-1 p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                                                                         appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
                                                             >
                                                                 <div className="flex justify-between items-start">
-                                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
-                                                                    <span className="text-[9px] font-mono text-slate-500 dark:text-slate-400">{appt.time.split(':')[1]}</span>
+                                                                    <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
+                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{appt.time.split(':')[1]}</span>
                                                                 </div>
-                                                                <div className="text-[9px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{appt.combinedServiceNames || service?.name}</div>
+                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{appt.combinedServiceNames || service?.name}</div>
                                                                 <div className="flex justify-between items-center mt-1.5">
                                                                     <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
                                                                         appt.status === 'Em Andamento' ? 'bg-blue-500' :

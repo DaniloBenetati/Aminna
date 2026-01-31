@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, Clock, DollarSign, X, Edit2, Sparkles, History, Check, Trash2, TrendingUp } from 'lucide-react';
+import { Search, Plus, Clock, DollarSign, X, Edit2, Sparkles, History, Check, Trash2, TrendingUp, Tag, ChevronDown } from 'lucide-react';
 import { Service, PriceHistoryItem } from '../types';
 
 interface ServicesManagementProps {
@@ -18,6 +18,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
     const [editingService, setEditingService] = useState<Service | null>(null);
 
     // Form State
+    const [isCustomCategory, setIsCustomCategory] = useState(false);
     const [formData, setFormData] = useState<Partial<Service>>({
         name: '',
         price: 0,
@@ -30,16 +31,25 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
 
     const handleAddNew = () => {
         setEditingService(null);
+        setIsCustomCategory(false);
         setFormData({
             name: '',
             price: 0,
-            durationMinutes: 60
+            durationMinutes: 60,
+            category: ''
         });
         setIsModalOpen(true);
     };
 
     const handleEdit = (service: Service) => {
         setEditingService(service);
+        // Check if category is in the known list (derived from ALL services) 
+        // If it is, keep isCustomCategory false. If not (or if we want to allow editing easily), maybe checking isn't necessary?
+        // Actually, if we open edit, and the category exists in the list, show dropdown.
+        // If it's a new or unique category that isn't commonly used? 
+        // For simplicity: If category exists, show dropdown. If not (or empty), show dropdown.
+        // The user can always click "New" to switch to custom.
+        setIsCustomCategory(false);
         setFormData(service);
         setIsModalOpen(true);
     };
@@ -54,7 +64,8 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
             price: formData.price,
             duration_minutes: formData.durationMinutes,
             required_specialty: formData.requiredSpecialty || null,
-            active: formData.active !== undefined ? formData.active : true
+            active: formData.active !== undefined ? formData.active : true,
+            category: formData.category || null
         };
 
         try {
@@ -85,9 +96,9 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                 }
             }
             setIsModalOpen(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving service:', error);
-            alert('Erro ao salvar serviço.');
+            alert(`Erro ao salvar serviço: ${error.message || JSON.stringify(error)}`);
         }
     };
 
@@ -132,59 +143,90 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                 />
             </div>
 
-            {/* Services List Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredServices.map(service => {
-                    const hasHistory = service.priceHistory && service.priceHistory.length > 0;
-
-                    return (
-                        <div key={service.id} className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col justify-between group hover:border-slate-300 dark:hover:border-zinc-600 transition-all relative overflow-hidden">
-                            {/* Background decoration */}
-                            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                <Sparkles size={64} />
-                            </div>
-
-                            <div className="flex justify-between items-start mb-3 relative z-10">
-                                <div className="flex-1 min-w-0 pr-2">
-                                    <h3 className="font-black text-slate-950 dark:text-white text-base uppercase tracking-tight truncate leading-tight">{service.name}</h3>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase bg-slate-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-slate-100 dark:border-zinc-700">
-                                            <Clock size={12} /> {service.durationMinutes} min
-                                        </span>
-                                        {hasHistory && (
-                                            <span className="flex items-center gap-1 text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800" title="Possui histórico de preços">
-                                                <History size={12} /> Histórico
+            {/* Services List Table */}
+            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border-2 border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                        <thead>
+                            <tr className="border-b-2 border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/50">
+                                <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-widest min-w-[200px]">Serviço</th>
+                                <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Categoria</th>
+                                <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Duração</th>
+                                <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Valor</th>
+                                <th className="p-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right min-w-[100px]">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                            {filteredServices.map(service => {
+                                const hasHistory = service.priceHistory && service.priceHistory.length > 0;
+                                return (
+                                    <tr key={service.id} className="group hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                        <td className="p-5">
+                                            <div className="flex items-center gap-2">
+                                                <div>
+                                                    <p className="font-black text-slate-900 dark:text-white text-sm uppercase tracking-tight">{service.name}</p>
+                                                    {hasHistory && (
+                                                        <div className="flex items-center gap-1 mt-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
+                                                            <History size={10} /> Histórico de Preços
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 text-center">
+                                            {service.category ? (
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-zinc-700">
+                                                    <Tag size={10} /> {service.category}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-300 dark:text-zinc-700 text-[20px]">-</span>
+                                            )}
+                                        </td>
+                                        <td className="p-5 text-center">
+                                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase">
+                                                <Clock size={12} /> {service.durationMinutes} min
                                             </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="flex gap-1 flex-shrink-0">
-                                    <button onClick={() => handleEdit(service)} className="p-2.5 text-slate-400 hover:text-indigo-600 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all border border-transparent hover:border-indigo-100 dark:hover:border-indigo-800">
-                                        <Edit2 size={16} />
-                                    </button>
-                                    <button onClick={() => handleDelete(service.id)} className="p-2.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-800">
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <span className="text-base font-black text-emerald-700 dark:text-emerald-400 tracking-tighter">
+                                                R$ {service.price.toFixed(2)}
+                                            </span>
+                                        </td>
+                                        <td className="p-5 text-right">
+                                            <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={() => handleEdit(service)}
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
+                                                    title="Editar Serviço"
+                                                >
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(service.id)}
+                                                    className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all"
+                                                    title="Excluir Serviço"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
 
-                            <div className="flex justify-between items-end border-t border-slate-100 dark:border-zinc-800 pt-3 mt-1 relative z-10">
-                                <div>
-                                    <p className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Valor Vigente</p>
-                                    <div className="flex items-baseline gap-1">
-                                        <span className="text-2xl font-black text-emerald-700 dark:text-emerald-400 tracking-tighter">R$ {service.price.toFixed(2)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {filteredServices.length === 0 && (
-                    <div className="col-span-full py-16 text-center text-slate-400 dark:text-zinc-600 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-3xl">
-                        <p className="text-sm font-black uppercase tracking-widest">Nenhum serviço encontrado</p>
-                    </div>
-                )}
+                            {filteredServices.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="p-12 text-center text-slate-400 dark:text-zinc-600">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <Search size={32} className="opacity-20" />
+                                            <p className="text-sm font-black uppercase tracking-widest">Nenhum serviço encontrado</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* ADD/EDIT MODAL */}
@@ -210,6 +252,61 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                     className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
                                     placeholder="Ex: Manicure Completa"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Categoria (Opcional)</label>
+                                <div className="relative">
+                                    <Tag size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
+
+                                    {isCustomCategory ? (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                autoFocus
+                                                value={formData.category || ''}
+                                                onChange={e => setFormData({ ...formData, category: e.target.value })}
+                                                className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
+                                                placeholder="Digite o nome da nova categoria..."
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setIsCustomCategory(false);
+                                                    setFormData({ ...formData, category: '' });
+                                                }}
+                                                className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+                                                title="Voltar para lista"
+                                            >
+                                                <X size={20} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="relative">
+                                            <select
+                                                value={formData.category || ''}
+                                                onChange={(e) => {
+                                                    if (e.target.value === 'NEW_CATEGORY_PROMPT') {
+                                                        setIsCustomCategory(true);
+                                                        setFormData({ ...formData, category: '' });
+                                                    } else {
+                                                        setFormData({ ...formData, category: e.target.value });
+                                                    }
+                                                }}
+                                                className="w-full pl-10 pr-10 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all appearance-none cursor-pointer"
+                                            >
+                                                <option value="">Selecione ou Crie...</option>
+                                                {Array.from(new Set(services.map(s => s.category).filter(Boolean))).sort().map(cat => (
+                                                    <option key={cat!} value={cat!}>{cat}</option>
+                                                ))}
+                                                <option value="NEW_CATEGORY_PROMPT" className="font-bold text-indigo-600 dark:text-indigo-400">+ Nova Categoria...</option>
+                                            </select>
+                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                                                <ChevronDown size={16} />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
