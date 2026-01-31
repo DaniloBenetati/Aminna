@@ -52,6 +52,7 @@ const App: React.FC = () => {
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [simulatedProfile, setSimulatedProfile] = useState<UserProfile | null>(null);
 
   // THEME STATE
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -297,7 +298,17 @@ const App: React.FC = () => {
           status: a.status,
           notes: a.notes,
           price: a.price,
-          commissionRate: a.commission_rate
+          commissionRate: a.commission_rate,
+          pricePaid: a.price_paid,
+          paymentMethod: a.payment_method,
+          payments: a.payments || [],
+          paymentDate: a.payment_date,
+          combinedServiceNames: a.combined_service_names,
+          bookedPrice: a.booked_price,
+          mainServiceProducts: a.main_service_products,
+          additionalServices: a.additional_services,
+          appliedCoupon: a.applied_coupon,
+          discountAmount: a.discount_amount
         })));
       }
 
@@ -310,7 +321,8 @@ const App: React.FC = () => {
           totalAmount: s.total_amount,
           date: s.date,
           paymentMethod: s.payment_method,
-          items: s.items || []
+          items: s.items || [],
+          payments: s.payments || []
         })));
       }
 
@@ -384,7 +396,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.CLIENTES:
-        return <Clients customers={customers} setCustomers={setCustomers} appointments={appointments} userProfile={userProfile} />;
+        return <Clients customers={customers} setCustomers={setCustomers} appointments={appointments} userProfile={simulatedProfile || userProfile} />;
       case ViewState.CRM:
         return (
           <CRM
@@ -419,7 +431,7 @@ const App: React.FC = () => {
             paymentSettings={paymentSettings}
             providers={providers}
             stock={stock}
-            userProfile={userProfile}
+            userProfile={simulatedProfile || userProfile}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -434,7 +446,7 @@ const App: React.FC = () => {
             paymentSettings={paymentSettings}
             providers={providers}
             stock={stock}
-            userProfile={userProfile}
+            userProfile={simulatedProfile || userProfile}
           />
         );
       case ViewState.SERVICOS:
@@ -454,7 +466,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.SETTINGS:
-        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} />;
+        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} isAdmin={userProfile?.role === 'admin'} onSimulateUser={setSimulatedProfile} />;
       default:
         return <div className="p-10 text-center text-slate-500">Módulo em desenvolvimento...</div>;
     }
@@ -480,6 +492,9 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       isDarkMode={isDarkMode}
       toggleTheme={toggleTheme}
+      userProfile={simulatedProfile || userProfile}
+      isSimulating={!!simulatedProfile}
+      onStopSimulation={() => setSimulatedProfile(null)}
     >
       {renderView()}
     </Layout>

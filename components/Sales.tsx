@@ -5,7 +5,7 @@ import { supabase } from '../services/supabase';
 import { ShoppingCart, Plus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
-import { Sale, StockItem, PaymentSetting, Customer } from '../types';
+import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
 
 interface SalesProps {
     sales: Sale[];
@@ -40,11 +40,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     });
 
     const [paymentFilter, setPaymentFilter] = useState('all');
+    const [selectedSaleDetail, setSelectedSaleDetail] = useState<Sale | null>(null);
 
     // Transaction State
     const [customerId, setCustomerId] = useState('');
     const [customerSearch, setCustomerSearch] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
+    const [payments, setPayments] = useState<PaymentInfo[]>([]);
     const [cart, setCart] = useState<CartItem[]>([]);
 
     // Item Selection State
@@ -136,6 +138,28 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
     // Cart Totals
     const cartTotal = cart.reduce((acc, item) => acc + item.total, 0);
+
+    const totalPaid = useMemo(() => {
+        return payments.reduce((acc, p) => acc + p.amount, 0);
+    }, [payments]);
+
+    const addPayment = () => {
+        const remaining = cartTotal - totalPaid;
+        setPayments([...payments, {
+            id: Date.now().toString(),
+            method: paymentSettings[0]?.method || 'Pix',
+            amount: Math.max(0, remaining)
+        }]);
+    };
+
+    const removePayment = (id: string) => {
+        if (payments.length <= 1) return;
+        setPayments(payments.filter(p => p.id !== id));
+    };
+
+    const updatePayment = (id: string, field: keyof PaymentInfo, value: any) => {
+        setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
+    };
 
     const handleAddItemToCart = () => {
         if (!currentProduct || currentQuantity <= 0) return;
@@ -251,13 +275,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 customer_id: customerId,
                 total_amount: item.total,
                 date: localDate,
-                payment_method: paymentMethod || 'Pix',
+                payment_method: payments.length > 0 ? (payments.length === 1 ? payments[0].method : 'Múltiplos') : 'Pix',
                 items: [{
                     productId: item.productId,
                     quantity: item.quantity,
                     unitPrice: item.unitPrice,
                     name: item.productName
-                }]
+                }],
+                payments: payments
             }));
 
             // 2. Insert into Supabase
@@ -287,7 +312,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     totalAmount: s.total_amount,
                     date: s.date,
                     paymentMethod: s.payment_method,
-                    items: s.items || []
+                    items: s.items || [],
+                    payments: s.payments || []
                 }));
                 setSales(prev => [...newLocalSales, ...prev]);
             }
@@ -469,9 +495,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100">
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="flex items-center justify-center gap-2">
+                                            <button onClick={() => setSelectedSaleDetail(sale)} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors">
+                                                <Search size={16} />
+                                            </button>
+                                            <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -500,9 +531,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
                         <div className="pt-3 border-t border-slate-50 dark:border-zinc-800 flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <span className="text-[9px] px-2 py-1 bg-slate-50 dark:bg-zinc-800 rounded-full font-black uppercase text-slate-900 dark:text-slate-300 border border-slate-100 dark:border-zinc-700 flex items-center gap-1">
-                                    <CreditCard size={10} /> {sale.paymentMethod}
-                                </span>
+                                <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-full font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1">
+                                    <Search size={10} /> DETALHES
+                                </button>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase">Unit: R${sale.unitPrice.toFixed(2)}</p>
                             </div>
                             <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-rose-200 dark:text-rose-900 active:text-rose-600 dark:active:text-rose-400">
@@ -723,21 +754,69 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             {/* 4. Payment & Totals */}
                             <div className="space-y-4 pt-2">
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5">Forma de Pagamento</label>
-                                    <div className="relative">
-                                        <select
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white appearance-none"
-                                            style={{ colorScheme: 'dark' }}
-                                            value={paymentMethod}
-                                            onChange={e => setPaymentMethod(e.target.value)}
+                                    <div className="flex items-center justify-between ml-1 mb-2">
+                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
+                                        <button
+                                            type="button"
+                                            onClick={addPayment}
+                                            className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:text-indigo-700 flex items-center gap-1"
                                         >
-                                            <option value="" disabled>Selecione...</option>
-                                            {paymentSettings.map(pay => (
-                                                <option key={pay.id} value={pay.method}>{pay.method}</option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
+                                            <Plus size={12} /> Adicionar Fonte
+                                        </button>
                                     </div>
+                                    <div className="space-y-2">
+                                        {payments.length === 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={addPayment}
+                                                className="w-full p-3 bg-slate-50 dark:bg-zinc-800 border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                                            >
+                                                Definir Pagamento
+                                            </button>
+                                        )}
+                                        {payments.map((payment) => (
+                                            <div key={payment.id} className="flex gap-2">
+                                                <select
+                                                    className="flex-[2] bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                    value={payment.method}
+                                                    onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
+                                                >
+                                                    {paymentSettings.map(pay => (
+                                                        <option key={pay.id} value={pay.method}>
+                                                            {pay.method}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <div className="relative flex-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
+                                                        value={payment.amount || ''}
+                                                        placeholder="0,00"
+                                                        onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                    />
+                                                </div>
+                                                {payments.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePayment(payment.id)}
+                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {payments.length > 0 && (
+                                        <div className={`mt-3 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                                            <span className="text-[9px] font-black uppercase text-slate-500">Total Pago</span>
+                                            <span className={`text-xs font-black ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                R$ {totalPaid.toFixed(2)} / R$ {cartTotal.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-3xl border-2 border-emerald-100 dark:border-emerald-800/50">
@@ -760,6 +839,76 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Sale Details Modal */}
+            {selectedSaleDetail && (
+                <div className="fixed inset-0 bg-black/60 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border border-slate-200 dark:border-zinc-800">
+                        <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50 dark:bg-zinc-950">
+                            <div>
+                                <h3 className="font-black text-sm uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                                    <ShoppingBag size={18} className="text-indigo-600" /> Detalhes da Venda
+                                </h3>
+                                <p className="text-[9px] font-black text-slate-400 uppercase">{getCustomerName(selectedSaleDetail.customerId)}</p>
+                            </div>
+                            <button onClick={() => setSelectedSaleDetail(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center text-emerald-900 dark:text-emerald-300">
+                                <span className="text-[10px] font-black uppercase tracking-widest">Total Pago</span>
+                                <span className="text-2xl font-black tracking-tighter">R$ {selectedSaleDetail.totalAmount.toFixed(2)}</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Itens Vendidos</h4>
+                                <div className="space-y-2">
+                                    {(selectedSaleDetail.items || []).map((item: any, idx: number) => (
+                                        <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
+                                            <div className="min-w-0">
+                                                <p className="text-[11px] font-black text-slate-950 dark:text-white uppercase truncate">{item.name || getProductName(item.productId)}</p>
+                                                <p className="text-[9px] font-bold text-slate-500">{item.quantity}un x R$ {item.unitPrice?.toFixed(2)}</p>
+                                            </div>
+                                            <span className="text-xs font-black text-slate-900 dark:text-white ml-2">R$ {(item.quantity * item.unitPrice).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Formas de Recebimento</h4>
+                                <div className="bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700 space-y-2">
+                                    {(selectedSaleDetail.payments && selectedSaleDetail.payments.length > 0) ? (
+                                        selectedSaleDetail.payments.map((p: any, idx: number) => (
+                                            <div key={idx} className="flex justify-between items-center">
+                                                <div className="flex items-center gap-2">
+                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                    <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{p.method}</span>
+                                                </div>
+                                                <span className="text-[11px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                            <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase">{selectedSaleDetail.paymentMethod}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setSelectedSaleDetail(null)}
+                                className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all mt-2"
+                            >
+                                Fechar Detalhes
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket } from 'lucide-react';
-import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem } from '../types';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 
@@ -55,6 +55,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
+    const [payments, setPayments] = useState<PaymentInfo[]>(appointment.payments || []);
     const [lines, setLines] = useState<ServiceLine[]>([]);
     const [appliedCoupon, setAppliedCoupon] = useState<string>(appointment.appliedCoupon || '');
 
@@ -140,7 +141,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             });
         }
         setLines(initialLines);
+        setPayments(appointment.payments || [{ id: '1', method: appointment.paymentMethod || 'Pix', amount: 0 }]);
     }, [appointment, services, campaigns, source]);
+
+    const totalPaid = useMemo(() => {
+        return payments.reduce((acc, p) => acc + p.amount, 0);
+    }, [payments]);
+
+    const addPayment = () => {
+        const remaining = totalValue - totalPaid;
+        setPayments([...payments, {
+            id: Date.now().toString(),
+            method: paymentSettings[0]?.method || 'Pix',
+            amount: Math.max(0, remaining)
+        }]);
+    };
+
+    const removePayment = (id: string) => {
+        if (payments.length <= 1) return;
+        setPayments(payments.filter(p => p.id !== id));
+    };
+
+    const updatePayment = (id: string, field: keyof PaymentInfo, value: any) => {
+        setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
+    };
 
     const totalValue = useMemo(() => {
         let total = 0;
@@ -430,14 +454,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             status: 'Concluído',
             price_paid: totalValue,
             payment_date: dischargeDate,
-            payment_method: paymentMethod,
+            payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
             products_used: allProductsUsed,
             combined_service_names: combinedNames,
             booked_price: lines[0].unitPrice,
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount
+            discount_amount: couponDiscountAmount,
+            payments: payments
         };
 
         const saleData = {
@@ -445,7 +470,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             total_amount: totalValue,
             total_price: totalValue,
             date: dischargeDate,
-            payment_method: paymentMethod,
+            payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
             items: lines.map(l => ({
                 serviceId: l.serviceId,
                 name: services.find(s => s.id === l.serviceId)?.name,
@@ -453,7 +478,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 discount: l.discount,
                 isCourtesy: l.isCourtesy,
                 providerId: l.providerId
-            }))
+            })),
+            payments: payments
         };
 
         try {
@@ -493,14 +519,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     status: 'Concluído',
                     pricePaid: totalValue,
                     paymentDate: dischargeDate,
-                    paymentMethod: paymentMethod,
+                    paymentMethod: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
                     productsUsed: allProductsUsed,
                     combinedServiceNames: combinedNames,
                     bookedPrice: lines[0].unitPrice,
                     mainServiceProducts: lines[0].products,
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
-                    discountAmount: couponDiscountAmount
+                    discountAmount: couponDiscountAmount,
+                    payments: payments
                 } as Appointment;
 
                 if (exists) {
@@ -576,7 +603,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
-            customer_id: customer.id
+            customer_id: customer.id,
+            payments: payments
         };
 
         try {
@@ -611,7 +639,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     mainServiceProducts: savedAppt.main_service_products,
                     additionalServices: savedAppt.additional_services,
                     appliedCoupon: savedAppt.applied_coupon,
-                    discountAmount: savedAppt.discount_amount
+                    discountAmount: savedAppt.discount_amount,
+                    pricePaid: savedAppt.price_paid,
+                    paymentMethod: savedAppt.payment_method,
+                    payments: savedAppt.payments || []
                 } as Appointment;
 
                 if (exists) {
@@ -663,7 +694,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount
+            discount_amount: couponDiscountAmount,
+            payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
         };
 
         const saleData = {
@@ -679,7 +711,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 discount: l.discount,
                 isCourtesy: l.isCourtesy,
                 providerId: l.providerId
-            }))
+            })),
+            payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
         };
 
         try {
@@ -1439,19 +1472,60 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </div>
 
                             <div className="space-y-3 px-1">
-                                <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Forma de Recebimento</label>
-                                <div className="flex gap-2">
-                                    <select
-                                        className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
-                                        value={paymentMethod}
-                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                <div className="flex items-center justify-between ml-1">
+                                    <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
+                                    <button
+                                        type="button"
+                                        onClick={addPayment}
+                                        className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest hover:text-indigo-700 flex items-center gap-1"
                                     >
-                                        {paymentSettings.map(pay => (
-                                            <option key={pay.id} value={pay.method}>
-                                                {pay.method}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <Plus size={12} /> Adicionar Fonte
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {payments.map((payment, index) => (
+                                        <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
+                                            <select
+                                                className="flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                                value={payment.method}
+                                                onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
+                                            >
+                                                {paymentSettings.map(pay => (
+                                                    <option key={pay.id} value={pay.method}>
+                                                        {pay.method}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                <input
+                                                    type="number"
+                                                    className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
+                                                    value={payment.amount || ''}
+                                                    placeholder="0,00"
+                                                    onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                />
+                                            </div>
+                                            {payments.length > 1 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePayment(payment.id)}
+                                                    className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="flex gap-2 mt-4">
+                                    <div className={`flex-1 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - totalValue) < 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
+                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
+                                        <span className={`text-xs font-black ${Math.abs(totalPaid - totalValue) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                            R$ {totalPaid.toFixed(2)} / R$ {totalValue.toFixed(2)}
+                                        </span>
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={handleCreateDebt}
@@ -1553,9 +1627,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
                                 <div>
                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
-                                    <div className="flex items-center gap-2">
-                                        <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                    <div className="space-y-1">
+                                        {(appointment.payments && appointment.payments.length > 0) ? (
+                                            appointment.payments.map((p, pIdx) => (
+                                                <div key={pIdx} className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method}</span>
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 {appliedCampaign && (

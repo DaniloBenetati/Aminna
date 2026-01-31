@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut } from 'lucide-react';
-import { ViewState } from '../types';
+import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
   currentView: ViewState;
@@ -9,6 +9,9 @@ interface LayoutProps {
   onLogout: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  userProfile?: UserProfile | null;
+  isSimulating?: boolean;
+  onStopSimulation?: () => void;
   children: React.ReactNode;
 }
 
@@ -34,7 +37,17 @@ const Logo = ({ className = "h-16", collapsed = false }: { className?: string; c
   </div>
 );
 
-export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogout, isDarkMode, toggleTheme, children }) => {
+export const Layout: React.FC<LayoutProps> = ({
+  currentView,
+  onNavigate,
+  onLogout,
+  isDarkMode,
+  toggleTheme,
+  userProfile,
+  isSimulating,
+  onStopSimulation,
+  children
+}) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -60,7 +73,11 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
     { id: ViewState.FINANCEIRO, label: 'Financeiro', icon: BarChart3 },
     { id: ViewState.FECHAMENTOS, label: 'Fechamentos', icon: DollarSign },
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
-  ];
+  ].filter(item => {
+    if (!userProfile) return true;
+    if (userProfile.role === 'admin') return true;
+    return userProfile.permissions.tabs.includes(item.id);
+  });
 
   const handleNavigate = (view: ViewState) => {
     onNavigate(view);
@@ -151,12 +168,12 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
 
           <div className={`mt-4 flex items-center gap-3 px-4 pt-4 border-t border-slate-50 dark:border-zinc-800 ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}>
             <div className="w-8 h-8 flex-shrink-0 rounded-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-slate-950 dark:text-white font-serif italic text-xs">
-              Am
+              {userProfile?.email ? userProfile.email.slice(0, 2).toUpperCase() : 'Am'}
             </div>
             {!isSidebarCollapsed && (
               <div className="overflow-hidden text-left transition-all">
-                <p className="text-sm font-black text-slate-950 dark:text-white truncate">Recepção</p>
-                <p className="text-[10px] text-slate-500 font-bold truncate">Unidade SP</p>
+                <p className="text-sm font-black text-slate-950 dark:text-white truncate">{userProfile?.email?.split('@')[0] || 'Recepção'}</p>
+                <p className="text-[10px] text-slate-500 font-bold truncate uppercase tracking-widest">{userProfile?.role || 'Unidade SP'}</p>
               </div>
             )}
           </div>
@@ -243,6 +260,22 @@ export const Layout: React.FC<LayoutProps> = ({ currentView, onNavigate, onLogou
 
       {/* Main Content */}
       <main className={`flex-1 overflow-auto pt-20 md:pt-0 ${isFluidView && currentView === ViewState.AGENDA ? 'p-0' : 'md:pt-10 md:px-8 md:pb-8 p-4'}`}>
+        {isSimulating && (
+          <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-3">
+              <Sparkles className="animate-pulse" size={20} />
+              <p className="text-sm font-black uppercase tracking-widest">
+                Simulando Acesso: <span className="text-indigo-200">{userProfile?.email}</span> ({userProfile?.role})
+              </p>
+            </div>
+            <button
+              onClick={onStopSimulation}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+            >
+              Sair da Simulação
+            </button>
+          </div>
+        )}
         <div className={`${isFluidView ? 'w-full h-full max-w-none' : 'max-w-7xl mx-auto h-full'}`}>
           {children}
         </div>

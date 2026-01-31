@@ -154,6 +154,7 @@ export interface Sale {
   customerId: string;
   totalAmount: number;
   paymentMethod: string;
+  payments?: PaymentInfo[];
   items: any[]; // List of { productId, quantity, unitPrice, name } or service details
 }
 
@@ -175,7 +176,8 @@ export interface Appointment {
   isCourtesy?: boolean;
   appliedCoupon?: string;
   discountAmount?: number;
-  paymentMethod?: string; // Added field
+  paymentMethod?: string; // Legacy/Main method
+  payments?: PaymentInfo[]; // Detailed multi-payments
 
   // Lista de produtos vinculados especificamente ao serviço principal
   mainServiceProducts?: string[];
@@ -298,6 +300,12 @@ export interface PantryLog {
   providerId?: string; // Profissional responsável pelo atendimento
   costAtMoment: number; // Custo de compra no momento
   referenceAtMoment: number; // Valor ref no momento
+}
+
+export interface PaymentInfo {
+  id: string;
+  method: string;
+  amount: number;
 }
 
 export interface PaymentSetting {

@@ -18,6 +18,8 @@ interface SettingsPageProps {
     setPaymentSettings?: React.Dispatch<React.SetStateAction<PaymentSetting[]>>;
     commissionSettings?: CommissionSetting[];
     setCommissionSettings?: React.Dispatch<React.SetStateAction<CommissionSetting[]>>;
+    isAdmin?: boolean;
+    onSimulateUser?: (user: UserProfile | null) => void;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -27,7 +29,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     paymentSettings = [],
     setPaymentSettings,
     commissionSettings = [],
-    setCommissionSettings
+    setCommissionSettings,
+    isAdmin = false,
+    onSimulateUser
 }) => {
     const [activeTab, setActiveTab] = useState<'MANUAL' | 'GENERAL'>('GENERAL');
     const [subTab, setSubTab] = useState<'FINANCE' | 'SYSTEM' | 'UNIT' | 'CATEGORIES' | 'USERS'>('FINANCE');
@@ -560,12 +564,22 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                     <span className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-md text-[9px] font-bold text-slate-500">+{user.permissions.tabs.length - 3}</span>
                                                                 )}
                                                             </div>
-                                                            <button
-                                                                onClick={() => handleOpenUserModal(user)}
-                                                                className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:border-indigo-600 hover:text-indigo-600 transition-all"
-                                                            >
-                                                                Editar Permissões
-                                                            </button>
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <button
+                                                                    onClick={() => handleOpenUserModal(user)}
+                                                                    className="py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:border-indigo-600 hover:text-indigo-600 transition-all"
+                                                                >
+                                                                    Permissões
+                                                                </button>
+                                                                {isAdmin && onSimulateUser && (
+                                                                    <button
+                                                                        onClick={() => onSimulateUser(user)}
+                                                                        className="py-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:border-indigo-600 transition-all flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <Sparkles size={12} /> Simular
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 ))}
