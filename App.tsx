@@ -116,7 +116,7 @@ const App: React.FC = () => {
       // 1. Providers
       const { data: providersData } = await supabase.from('providers').select('*');
       if (providersData) {
-        setProviders(providersData.map((p: any) => ({
+        const mappedProviders = providersData.map((p: any) => ({
           id: p.id,
           name: p.name,
           specialty: p.specialty,
@@ -127,8 +127,27 @@ const App: React.FC = () => {
           birthDate: p.birth_date,
           pixKey: p.pix_key,
           active: p.active,
-          workDays: p.work_days || []
-        })));
+          workDays: p.work_days || [],
+          order: p.order,
+          commissionHistory: p.commission_history || []
+        }));
+
+        // Deduplicate by phone number - keep the most recent (last) record
+        const deduplicatedProviders = mappedProviders.reduce((acc: any[], current: any) => {
+          // Find existing provider with same phone
+          const existingIndex = acc.findIndex(p => p.phone && p.phone === current.phone);
+
+          if (existingIndex >= 0) {
+            // Replace if current has more complete data or is the same/newer
+            acc[existingIndex] = current;
+          } else {
+            acc.push(current);
+          }
+
+          return acc;
+        }, []);
+
+        setProviders(deduplicatedProviders);
       }
 
       // 2. Services
