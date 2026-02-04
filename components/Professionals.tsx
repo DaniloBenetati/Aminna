@@ -44,22 +44,19 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalCnpj?: string;
         fiscalMunicipalRegistration?: string;
         fiscalSocialName?: string;
-        fiscalServicePercentage?: number;
     }>({
         name: '',
         phone: '',
         specialty: '', // Legacy/Main label
         specialties: [], // New multi-select list
-        commissionRate: 0.6,
+        commissionRate: 0.4, // 40% profissional, 60% salão
         pixKey: '',
         birthDate: '',
         active: true,
         workDays: [1, 2, 3, 4, 5, 6], // Default Mon-Sat
         // Fiscal data
         fiscalCnpj: '',
-        fiscalMunicipalRegistration: '',
-        fiscalSocialName: '',
-        fiscalServicePercentage: 70
+        fiscalMunicipalRegistration: ''
     });
 
     // Extract unique required specialties from services - STRICTLY derived from services names
@@ -400,12 +397,15 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     // Save fiscal data to professional_fiscal_config table
     const saveFiscalData = async (providerId: string) => {
         try {
+            // Convert commission rate (0.4) to percentage (40)
+            const servicePercentage = (formData.commissionRate || 0.4) * 100;
+
             const fiscalData = {
                 provider_id: providerId,
                 cnpj: formData.fiscalCnpj,
                 municipal_registration: formData.fiscalMunicipalRegistration || null,
-                social_name: formData.fiscalSocialName || null,
-                service_percentage: formData.fiscalServicePercentage || 70,
+                social_name: formData.fiscalSocialName || formData.name || null,
+                service_percentage: servicePercentage,
                 active: true,
                 verified: false, // Admin needs to verify
             };
@@ -1064,7 +1064,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-1.5">% Comissão (Ex: 0.6 = 60%)</label>
+                                    <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-1.5">
+                                        % Profissional (Repasse + NFSe)
+                                    </label>
                                     <div className="relative">
                                         <DollarSign size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400" />
                                         <input
@@ -1078,6 +1080,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             className="w-full pl-11 pr-4 py-4 bg-indigo-50/50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl text-sm font-black text-indigo-950 dark:text-indigo-300 focus:border-indigo-600 focus:ring-0 outline-none transition-all"
                                         />
                                     </div>
+                                    <p className="text-[8px] font-bold text-indigo-600 dark:text-indigo-500 mt-1">
+                                        Ex: 0.4 = 40% profissional / 60% salão. Usado para repasses e NFSe.
+                                    </p>
                                 </div>
 
                                 {/* COMMISSION CHANGE REASON (Visible only if rate changed) */}
@@ -1148,38 +1153,19 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         />
                                     </div>
 
-                                    <div>
+                                    <div className="md:col-span-2">
                                         <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
-                                            Razão Social
+                                            Razão Social (Opcional)
                                         </label>
                                         <input
                                             type="text"
                                             value={formData.fiscalSocialName || ''}
                                             onChange={e => setFormData({ ...formData, fiscalSocialName: e.target.value })}
                                             className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
-                                            placeholder="Nome ou Razão Social"
+                                            placeholder="Se vazio, usará o nome cadastrado acima"
                                         />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
-                                            % Serviço Profissional
-                                        </label>
-                                        <div className="relative">
-                                            <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
-                                            <input
-                                                type="number"
-                                                step="5"
-                                                min="0"
-                                                max="100"
-                                                value={formData.fiscalServicePercentage || 70}
-                                                onChange={e => setFormData({ ...formData, fiscalServicePercentage: parseFloat(e.target.value) })}
-                                                className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all"
-                                                placeholder="70"
-                                            />
-                                        </div>
                                         <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500 mt-1">
-                                            Padrão: 70% (Salão fica com 30%)
+                                            💡 O percentual da profissional será o mesmo do campo "% Comissão" acima ({((formData.commissionRate || 0.4) * 100).toFixed(0)}%)
                                         </p>
                                     </div>
                                 </div>

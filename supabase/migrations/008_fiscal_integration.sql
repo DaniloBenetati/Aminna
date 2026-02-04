@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS fiscal_config (
   auto_issue_nfse BOOLEAN DEFAULT false,
   -- Salão Parceiro Settings
   salao_parceiro_enabled BOOLEAN DEFAULT true,
-  default_salon_percentage DECIMAL(5,2) DEFAULT 30.00, -- Default salon commission %
+  default_salon_percentage DECIMAL(5,2) DEFAULT 60.00, -- Default salon commission % (60% salon, 40% professional)
   -- Metadata
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS professional_fiscal_config (
   municipal_registration VARCHAR(50),
   social_name VARCHAR(255), -- Razão Social
   fantasy_name VARCHAR(255), -- Nome Fantasia
-  service_percentage DECIMAL(5,2) DEFAULT 70.00, -- Professional receives 70% by default
+  service_percentage DECIMAL(5,2) DEFAULT 40.00, -- Professional receives 40% by default
   -- Address (if different from salon)
   address TEXT,
   city VARCHAR(100),
@@ -134,7 +134,7 @@ INSERT INTO fiscal_config (
   'São Paulo',
   'SP',
   true,
-  30.00,
+  60.00,
   false
 ) ON CONFLICT (cnpj) DO NOTHING;
 
@@ -142,5 +142,5 @@ INSERT INTO fiscal_config (
 COMMENT ON TABLE fiscal_config IS 'Salon fiscal configuration for NFSe issuance';
 COMMENT ON TABLE professional_fiscal_config IS 'Professional CNPJ data for Salão Parceiro compliance';
 COMMENT ON TABLE nfse_records IS 'Track all issued NFSe via Focus NFe';
-COMMENT ON COLUMN nfse_records.salon_value IS 'Salon portion (typically 30%)';
-COMMENT ON COLUMN nfse_records.professional_value IS 'Professional portion with CNPJ (typically 70%)';
+COMMENT ON COLUMN nfse_records.salon_value IS 'Salon portion (60%)';
+COMMENT ON COLUMN nfse_records.professional_value IS 'Professional portion with CNPJ (40%)';
