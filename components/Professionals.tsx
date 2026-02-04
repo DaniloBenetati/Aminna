@@ -40,7 +40,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     const [replacementMap, setReplacementMap] = useState<Record<string, string>>({});
 
     // Form State
-    const [formData, setFormData] = useState<Partial<Provider>>({
+    const [formData, setFormData] = useState<Partial<Provider> & {
+        fiscalCnpj?: string;
+        fiscalMunicipalRegistration?: string;
+        fiscalSocialName?: string;
+        fiscalServicePercentage?: number;
+    }>({
         name: '',
         phone: '',
         specialty: '', // Legacy/Main label
@@ -49,7 +54,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         pixKey: '',
         birthDate: '',
         active: true,
-        workDays: [1, 2, 3, 4, 5, 6] // Default Mon-Sat
+        workDays: [1, 2, 3, 4, 5, 6], // Default Mon-Sat
+        // Fiscal data
+        fiscalCnpj: '',
+        fiscalMunicipalRegistration: '',
+        fiscalSocialName: '',
+        fiscalServicePercentage: 70
     });
 
     // Extract unique required specialties from services - STRICTLY derived from services names
@@ -387,6 +397,48 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setFormData({ ...formData, active: !formData.active });
     };
 
+    // Save fiscal data to professional_fiscal_config table
+    const saveFiscalData = async (providerId: string) => {
+        try {
+            const fiscalData = {
+                provider_id: providerId,
+                cnpj: formData.fiscalCnpj,
+                municipal_registration: formData.fiscalMunicipalRegistration || null,
+                social_name: formData.fiscalSocialName || null,
+                service_percentage: formData.fiscalServicePercentage || 70,
+                active: true,
+                verified: false, // Admin needs to verify
+            };
+
+            // Check if fiscal config already exists for this provider
+            const { data: existing } = await supabase
+                .from('professional_fiscal_config')
+                .select('id')
+                .eq('provider_id', providerId)
+                .single();
+
+            if (existing) {
+                // Update existing
+                const { error } = await supabase
+                    .from('professional_fiscal_config')
+                    .update(fiscalData)
+                    .eq('provider_id', providerId);
+
+                if (error) throw error;
+            } else {
+                // Insert new
+                const { error } = await supabase
+                    .from('professional_fiscal_config')
+                    .insert([fiscalData]);
+
+                if (error) throw error;
+            }
+        } catch (error) {
+            console.error('Error saving fiscal data:', error);
+            alert('Erro ao salvar dados fiscais. Verifique e tente novamente.');
+        }
+    };
+
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -437,12 +489,22 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 } as Provider;
 
                 setProviders(prev => prev.map(p => p.id === editingProvider.id ? updatedProvider : p));
+
+                // Save fiscal data if provided
+                if (formData.fiscalCnpj) {
+                    await saveFiscalData(editingProvider.id);
+                }
             } else {
                 const { data, error } = await supabase.from('providers').insert([providerData]).select();
                 if (error) throw error;
                 if (data && data[0]) {
                     const newProvider = { ...formData, id: data[0].id, commissionHistory: [], order: providers.length } as Provider;
                     setProviders(prev => [...prev, newProvider]);
+
+                    // Save fiscal data if provided
+                    if (formData.fiscalCnpj) {
+                        await saveFiscalData(data[0].id);
+                    }
                 }
             }
             setIsModalOpen(false);
@@ -1047,6 +1109,91 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         />
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* FISCAL DATA SECTION - NFSe / Salão Parceiro */}
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 p-5 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800 mt-6">
+                                <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <Briefcase size={14} /> Dados Fiscais - NFSe (Salão Parceiro SP)
+                                </h4>
+                                <p className="text-[9px] font-bold text-emerald-700 dark:text-emerald-500 mb-4">
+                                    Obrigatório para emissão de Nota Fiscal com segregação de valores
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                            CNPJ da Profissional *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.fiscalCnpj || ''}
+                                            onChange={e => setFormData({ ...formData, fiscalCnpj: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                            placeholder="XX.XXX.XXX/XXXX-XX"
+                                            maxLength={18}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                            Inscrição Municipal
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.fiscalMunicipalRegistration || ''}
+                                            onChange={e => setFormData({ ...formData, fiscalMunicipalRegistration: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                            placeholder="Ex: 12345678"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                            Razão Social
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.fiscalSocialName || ''}
+                                            onChange={e => setFormData({ ...formData, fiscalSocialName: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                            placeholder="Nome ou Razão Social"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                            % Serviço Profissional
+                                        </label>
+                                        <div className="relative">
+                                            <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                                            <input
+                                                type="number"
+                                                step="5"
+                                                min="0"
+                                                max="100"
+                                                value={formData.fiscalServicePercentage || 70}
+                                                onChange={e => setFormData({ ...formData, fiscalServicePercentage: parseFloat(e.target.value) })}
+                                                className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all"
+                                                placeholder="70"
+                                            />
+                                        </div>
+                                        <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500 mt-1">
+                                            Padrão: 70% (Salão fica com 30%)
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {formData.fiscalCnpj && (
+                                    <div className="mt-3 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                        <p className="text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase mb-1">
+                                            ✓ Dados fiscais serão salvos para emissão de NFSe
+                                        </p>
+                                        <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500">
+                                            O CNPJ aparecerá na NFSe conforme legislação "Salão Parceiro" de São Paulo
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Display Commission History if available */}
