@@ -339,3 +339,107 @@ export interface UserProfile {
   permissions: AppPermissions;
   createdAt: string;
 }
+
+// --- TIPOS PARA INTEGRAÇÃO FISCAL (Focus NFe / Salão Parceiro) ---
+
+export enum NFSeStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  ISSUED = 'issued',
+  ERROR = 'error',
+  CANCELLED = 'cancelled'
+}
+
+export interface FiscalConfig {
+  id: string;
+  salonName: string;
+  cnpj: string;
+  municipalRegistration?: string;
+  stateRegistration?: string;
+  city: string;
+  state: string;
+  address?: string;
+  zipCode?: string;
+  // Focus NFe Settings
+  focusNfeToken?: string;
+  focusNfeEnvironment: 'sandbox' | 'production';
+  autoIssueNfse: boolean;
+  // Salão Parceiro Settings
+  salaoParceiroEnabled: boolean;
+  defaultSalonPercentage: number; // Percentage salon keeps (e.g., 30%)
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProfessionalFiscalConfig {
+  id: string;
+  providerId: string;
+  cnpj: string;
+  municipalRegistration?: string;
+  socialName?: string; // Razão Social
+  fantasyName?: string; // Nome Fantasia
+  servicePercentage: number; // Percentage professional receives (e.g., 70%)
+  // Address (if different from salon)
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  // Contact
+  email?: string;
+  phone?: string;
+  // Status
+  active: boolean;
+  verified: boolean; // Admin verified this data
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NFSeRecord {
+  id: string;
+  // References
+  appointmentId?: string;
+  providerId?: string;
+  customerId?: string;
+  // NFSe Data
+  reference?: string; // Focus NFe reference ID
+  nfseNumber?: string; // NFSe number after issued
+  verificationCode?: string;
+  status: NFSeStatus;
+  // Values (Salão Parceiro segregation)
+  totalValue: number;
+  salonValue: number;
+  professionalValue: number;
+  professionalCnpj: string;
+  // Service Description
+  serviceDescription: string;
+  // Focus NFe Response
+  focusResponse?: any;
+  xmlUrl?: string;
+  pdfUrl?: string;
+  // Error Handling
+  errorMessage?: string;
+  retryCount: number;
+  lastRetryAt?: string;
+  // Cancellation
+  cancelledAt?: string;
+  cancellationReason?: string;
+  // Metadata
+  issuedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Update Provider to include fiscal config
+export interface ProviderWithFiscal extends Provider {
+  fiscalConfigId?: string;
+  fiscalConfig?: ProfessionalFiscalConfig;
+}
+
+// Update Appointment to include NFSe reference
+export interface AppointmentWithNFSe extends Appointment {
+  nfseRecordId?: string;
+  nfseRecord?: NFSeRecord;
+}
+
