@@ -44,7 +44,10 @@ serve(async (req) => {
         }
 
         // Determine API URL based on environment
-        const baseUrl = environment === 'homologacao'
+        // Accept both 'homologacao' (Focus NFe term) and 'sandbox' (our internal term)
+        const isSandbox = environment === 'homologacao' || environment === 'sandbox'
+
+        const baseUrl = isSandbox
             ? 'https://homologacao.acrasnfe.acras.com.br'
             : 'https://api.focusnfe.com.br'
 
