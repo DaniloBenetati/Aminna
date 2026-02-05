@@ -149,6 +149,27 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
         setLines(initialLines);
         setPayments(appointment.payments || [{ id: '1', method: appointment.paymentMethod || 'Pix', amount: 0 }]);
+
+        // Fetch existing NFSe
+        const fetchNFSe = async () => {
+            if (!appointment.id) return;
+            const { data, error } = await supabase
+                .from('nfse_records')
+                .select('*')
+                .eq('appointment_id', appointment.id)
+                .maybeSingle();
+
+            if (data) {
+                setNfseData(data);
+                if (data.status === 'issued') setNfseStatus('success');
+                else if (data.status === 'processing') setNfseStatus('loading');
+                else if (data.status === 'error') {
+                    setNfseStatus('error');
+                    setNfseError(data.error_message);
+                }
+            }
+        };
+        fetchNFSe();
     }, [appointment, services, campaigns, source]);
 
     const totalPaid = useMemo(() => {
@@ -819,7 +840,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 throw new Error(result.error || 'Erro ao emitir NFSe');
             }
 
-            setNfseStatus('success');
+            // Fetch the newly created record
+            const { data: newRecord } = await supabase
+                .from('nfse_records')
+                .select('*')
+                .eq('id', result.nfseRecordId)
+                .single();
+
+            if (newRecord) {
+                setNfseData(newRecord);
+                setNfseStatus('success');
+            } else {
+                setNfseStatus('success'); // Fallback
+            }
+
             alert('NFSe emitida com sucesso! ✅');
 
         } catch (error: any) {
@@ -1755,11 +1789,38 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     </div>
                                 </div>
                                 <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
-                                    {nfseStatus === 'success' ? (
-                                        <div className="text-center">
-                                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mb-2">
-                                                ✅ NFSe Emitida com Sucesso!
-                                            </p>
+                                    {nfseStatus === 'success' || (nfseData && nfseData.status === 'issued') ? (
+                                        <div className="space-y-3">
+                                            <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                                                <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
+                                                    <CheckCircle2 size={16} /> NFSe Emitida!
+                                                </p>
+                                                {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {nfseData?.pdf_url && (
+                                                    <button
+                                                        onClick={() => window.open(nfseData.pdf_url, '_blank')}
+                                                        className="py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                    >
+                                                        <FileText size={14} /> Baixar PDF
+                                                    </button>
+                                                )}
+
+                                                {nfseData?.pdf_url && (
+                                                    <button
+                                                        onClick={() => {
+                                                            const msg = `Olá ${customer.name.split(' ')[0]}, aqui está sua Nota Fiscal de Serviço (NFSe) da Aminna Barbearia: ${nfseData.pdf_url}`;
+                                                            const phone = customer.phone.replace(/\D/g, '');
+                                                            window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                        }}
+                                                        className="py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                    >
+                                                        <Smartphone size={14} /> WhatsApp
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : nfseStatus === 'error' ? (
                                         <div>

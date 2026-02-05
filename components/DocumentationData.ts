@@ -229,7 +229,33 @@ export const DOCUMENTATION_DATA = {
             ]
         },
         {
-            title: "5. Stack Tecnológico",
+            title: "5. Módulo Fiscal - Salão Parceiro (NFSe)",
+            content: "Módulo de emissão de notas fiscais integrado à Focus NFe, com suporte total à Lei do Salão Parceiro.",
+            subsections: [
+                {
+                    title: "🧾 Emissão de Notas (NFSe)",
+                    subtitle: "Integração Automática",
+                    description: "Emissão de notas fiscais de serviço para o município de São Paulo e outros.",
+                    items: [
+                        { label: "CPF Opcional", text: "Emissão para consumidor final sem necessidade de CPF (campo opcional)." },
+                        { label: "Ações Rápidas", text: "Download de PDF e Envio por WhatsApp disponíveis diretamente na tela de agendamento." },
+                        { label: "Status", text: "Acompanhamento em tempo real (Processando, Emitida, Erro, Cancelada)." }
+                    ]
+                },
+                {
+                    title: "🤝 Lei Salão Parceiro",
+                    subtitle: "Conformidade Tributária",
+                    description: "O sistema realiza a segregação automática de valores (Split) conforme a legislação.",
+                    items: [
+                        { label: "Nota Fiscal Fatiada", text: "A NFSe discrimina: Valor Total, Valor do Salão (Retenção) e Valor do Profissional (Repasse)." },
+                        { label: "Intermediário", text: "O CNPJ do Profissional Parceiro é enviado no campo 'Intermediário', permitindo a dedução da base de cálculo do ISS para o salão." },
+                        { label: "Configuração", text: "Requer que cada profissional tenha CNPJ e Inscrição Municipal cadastrados." }
+                    ]
+                }
+            ]
+        },
+        {
+            title: "6. Stack Tecnológico",
             content: "Tecnologias utilizadas no desenvolvimento do sistema:",
             subsections: [
                 {

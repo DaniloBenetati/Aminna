@@ -9,7 +9,7 @@ import { NFSeStatus } from '../types';
 import type { NFSeRecord, FiscalConfig, ProfessionalFiscalConfig } from '../types';
 
 // Focus NFe API Base URLs
-const FOCUS_NFE_SANDBOX_URL = 'https://homologacao.acrasnfe.acras.com.br';
+const FOCUS_NFE_SANDBOX_URL = 'https://homologacao.focusnfe.com.br';
 const FOCUS_NFE_PRODUCTION_URL = 'https://api.focusnfe.com.br';
 
 interface IssueNFSeParams {
@@ -230,7 +230,10 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
 
         if (!response.ok) {
             console.error('Edge Function HTTP error:', edgeResponse);
-            throw new Error(edgeResponse.error || 'Erro ao chamar Edge Function');
+            const errorMsg = edgeResponse.error ||
+                (edgeResponse.data && (edgeResponse.data.mensagem || JSON.stringify(edgeResponse.data))) ||
+                'Erro ao chamar Edge Function';
+            throw new Error(errorMsg);
         }
 
         if (!edgeResponse.success) {
@@ -412,8 +415,76 @@ export const cancelNFSe = async (nfseRecordId: string, reason: string): Promise<
     }
 };
 
+/**
+ * Register company with Focus Nfe
+ */
+export const registerCompany = async (): Promise<{ success: boolean; error?: string }> => {
+    try {
+        const fiscalConfig = await getFiscalConfig();
+        if (!fiscalConfig || !fiscalConfig.focusNfeToken) {
+            return { success: false, error: 'Configuração fiscal inválida ou Token não informado.' };
+        }
+
+        const environment = fiscalConfig.focusNfeEnvironment;
+
+        // Prepare company data for registration
+        const companyData = {
+            cnpj: fiscalConfig.cnpj.replace(/\D/g, ''),
+            razao_social: fiscalConfig.salonName,
+            nome_fantasia: fiscalConfig.salonName,
+            inscricao_municipal: fiscalConfig.municipalRegistration,
+            inscricao_estadual: fiscalConfig.stateRegistration?.replace(/\D/g, ''),
+            bairro: 'Centro',
+            cep: fiscalConfig.zipCode?.replace(/\D/g, '') || '01001000',
+            municipio: fiscalConfig.city,
+            uf: fiscalConfig.state,
+            logradouro: fiscalConfig.address || 'Endereço não informado',
+            numero: 'S/N',
+            telefone: '11999999999',
+            email: 'contato@aminna.com.br',
+            regime_tributario: '1',
+            enviar_email_destinatario: true,
+            discriminar_impostos: true
+        };
+
+        // Call Supabase Edge Function (proxy)
+        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/register-company`;
+
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+                companyData,
+                environment: fiscalConfig.focusNfeEnvironment
+            }),
+        });
+
+        if (!response.ok) {
+            const errorResponse = await response.json();
+            return { success: false, error: errorResponse.error || 'Erro ao chamar serviço de registro' };
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            return { success: false, error: result.error || 'Erro ao cadastrar empresa' };
+        }
+
+        return { success: true };
+
+    } catch (error: any) {
+        console.error('Exception registering company:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Export service functions
 export const focusNfeService = {
     issueNFSe,
-    cancelNFSe
+    cancelNFSe,
+    registerCompany
 };
+

@@ -14,7 +14,7 @@ serve(async (req) => {
 
     try {
         // Get request body
-        const { nfseData, environment } = await req.json()
+        const { companyData, environment } = await req.json()
 
         // Get Supabase client
         const supabaseClient = createClient(
@@ -22,7 +22,7 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_ANON_KEY') ?? ''
         )
 
-        // Get fiscal configuration from database
+        // Get fiscal configuration (to get token)
         const { data: fiscalConfig, error: configError } = await supabaseClient
             .from('fiscal_config')
             .select('*')
@@ -44,16 +44,14 @@ serve(async (req) => {
         }
 
         // Determine API URL based on environment
-        // Accept both 'homologacao' (Focus NFe term) and 'sandbox' (our internal term)
         const isSandbox = environment === 'homologacao' || environment === 'sandbox'
-
         const baseUrl = isSandbox
             ? 'https://homologacao.focusnfe.com.br'
             : 'https://api.focusnfe.com.br'
 
-        // Generate unique reference
-        const reference = nfseData.reference || `NFSE-${Date.now()}`
-        const apiUrl = `${baseUrl}/v2/nfse?ref=${reference}`
+        const apiUrl = `${baseUrl}/v2/empresas`
+
+        console.log(`Calling Focus NFe API: ${apiUrl}`)
 
         // Call Focus NFe API
         const response = await fetch(apiUrl, {
@@ -62,30 +60,61 @@ serve(async (req) => {
                 'Content-Type': 'application/json',
                 'Authorization': `Basic ${btoa(token + ':')}`
             },
-            body: JSON.stringify(nfseData.payload)
+            body: JSON.stringify(companyData)
         })
 
-        const data = await response.json()
+        if (!response.ok) {
+            const errorData = await response.json()
+            console.log('Focus API error:', errorData)
 
-        // Return response
+            // Special handling for "CNPJ already registered"
+            // If status is 422 and message contains "já cadastrada", treat as success
+            if (response.status === 422 && errorData.mensagem?.includes('já cadastrada')) {
+                return new Response(
+                    JSON.stringify({
+                        success: true,
+                        status: 422,
+                        message: 'Empresa já cadastrada (Autorizado)'
+                    }),
+                    {
+                        status: 200,
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                    }
+                )
+            }
+
+            return new Response(
+                JSON.stringify({
+                    success: false,
+                    status: response.status,
+                    data: errorData,
+                    error: `(Focus URL: ${apiUrl}) ${errorData.mensagem || 'Erro ao cadastrar empresa'}`
+                }),
+                {
+                    status: response.status, // Pass through original status
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                }
+            )
+        }
+
+        // Success (200 OK)
         return new Response(
             JSON.stringify({
-                success: response.ok,
+                success: true,
                 status: response.status,
-                data: data,
-                reference: reference
+                debugUrl: apiUrl
             }),
             {
-                status: response.status,
+                status: 200,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             }
         )
 
     } catch (error) {
-        console.error('Error in issue-nfse function:', error)
+        console.error('Error in register-company function:', error)
         return new Response(
             JSON.stringify({
-                error: error.message || 'Erro ao emitir NFSe'
+                error: `Erro interno: ${error.message}`
             }),
             {
                 status: 500,

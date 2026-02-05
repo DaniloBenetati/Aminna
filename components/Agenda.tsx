@@ -50,7 +50,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     // Quick Registration State
     const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
-    const [quickRegisterData, setQuickRegisterData] = useState({ name: '', phone: '' });
+    const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
     const [isRegisteringClient, setIsRegisteringClient] = useState(false);
 
     // UI States
@@ -261,6 +261,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             const newCustomerPayload = {
                 name: quickRegisterData.name,
                 phone: quickRegisterData.phone,
+                cpf: quickRegisterData.cpf,
                 registration_date: new Date().toISOString().split('T')[0],
                 status: 'Novo',
                 total_spent: 0,
@@ -298,7 +299,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                 // 4. Reset Form
                 setIsQuickRegisterOpen(false);
-                setQuickRegisterData({ name: '', phone: '' });
+                setQuickRegisterData({ name: '', phone: '', cpf: '' });
             }
 
         } catch (error) {
@@ -949,6 +950,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase"
                                             value={quickRegisterData.phone}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="CPF (Opcional)"
+                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase"
+                                            value={quickRegisterData.cpf || ''}
+                                            onChange={e => setQuickRegisterData({ ...quickRegisterData, cpf: e.target.value })}
                                         />
                                         <button
                                             type="submit"

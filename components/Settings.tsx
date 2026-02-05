@@ -6,9 +6,10 @@ import {
     Settings, BookOpen, LayoutDashboard, Calendar, Users, DollarSign,
     Package, ShoppingCart, Briefcase, Sparkles, Handshake, BarChart3,
     Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
-    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer
+    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, CheckCircle
 } from 'lucide-react';
-import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile } from '../types';
+import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile, FiscalConfig } from '../types';
+import { getFiscalConfig, focusNfeService } from '../services/focusNfeService';
 
 interface SettingsPageProps {
     onNavigate: (view: ViewState) => void;
@@ -48,6 +49,85 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     // --- COMMISSION SETTINGS STATES ---
     const [isCommissionModalOpen, setIsCommissionModalOpen] = useState(false);
     const [editingCommission, setEditingCommission] = useState<CommissionSetting | null>(null);
+
+    // --- FISCAL SETTINGS STATES ---
+    const [fiscalConfig, setFiscalConfig] = useState<FiscalConfig | null>(null);
+    const [isLoadingFiscal, setIsLoadingFiscal] = useState(false);
+    const [isSavingFiscal, setIsSavingFiscal] = useState(false);
+    const [isRegisteringCompany, setIsRegisteringCompany] = useState(false);
+
+    // Load Fiscal Config
+    React.useEffect(() => {
+        if (subTab === 'UNIT') {
+            const loadFiscal = async () => {
+                setIsLoadingFiscal(true);
+                const config = await getFiscalConfig();
+                if (config) setFiscalConfig(config);
+                setIsLoadingFiscal(false);
+            };
+            loadFiscal();
+        }
+    }, [subTab]);
+
+    const handleSaveFiscal = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingFiscal(true);
+        // Only saving Focus Token and Environment for now as main fields
+        // In a real scenario, we would save all fields to supabase
+        const form = e.target as HTMLFormElement;
+        const updates = {
+            focus_nfe_token: (form.elements.namedItem('focusToken') as HTMLInputElement).value,
+            focus_nfe_environment: (form.elements.namedItem('environment') as HTMLSelectElement).value,
+            salon_name: (form.elements.namedItem('salonName') as HTMLInputElement).value,
+            cnpj: (form.elements.namedItem('cnpj') as HTMLInputElement).value,
+            municipal_registration: (form.elements.namedItem('im') as HTMLInputElement).value,
+        };
+
+        try {
+            // Update supabase fiscal_config
+            // Assuming there's only one record or we update by ID if we had it. 
+            // For simplicity, updating all records or the single one found.
+            if (fiscalConfig?.id) {
+                const { error } = await supabase.from('fiscal_config').update(updates).eq('id', fiscalConfig.id);
+                if (error) throw error;
+                alert('Configurações salvas com sucesso!');
+                // Refresh local state
+                const newConfig = {
+                    ...fiscalConfig,
+                    focusNfeToken: updates.focus_nfe_token,
+                    focusNfeEnvironment: updates.focus_nfe_environment as any,
+                    salonName: updates.salon_name,
+                    cnpj: updates.cnpj,
+                    municipalRegistration: updates.municipal_registration
+                };
+                setFiscalConfig(newConfig);
+            } else {
+                alert('Erro: Configuração fiscal base não encontrada no banco de dados.');
+            }
+        } catch (error) {
+            console.error('Error saving fiscal config:', error);
+            alert('Erro ao salvar configurações.');
+        } finally {
+            setIsSavingFiscal(false);
+        }
+    };
+
+    const handleRegisterCompany = async () => {
+        if (!confirm('Deseja cadastrar/autorizar esta empresa na Focus NFe usando os dados abaixo?')) return;
+        setIsRegisteringCompany(true);
+        try {
+            const result = await focusNfeService.registerCompany();
+            if (result.success) {
+                alert('Sucesso! CNPJ autorizado para emissão de NFSe.');
+            } else {
+                alert(`Erro: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Erro ao processar solicitação.');
+        } finally {
+            setIsRegisteringCompany(false);
+        }
+    };
 
     const handleOpenCommissionModal = (comm: CommissionSetting) => {
         setEditingCommission(comm);
@@ -589,7 +669,107 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
                             )}
 
-                            {(subTab === 'SYSTEM' || subTab === 'UNIT') && (
+                            {/* UNIT / FISCAL SETTINGS TAB */}
+                            {subTab === 'UNIT' && (
+                                <div className="space-y-6">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
+                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                                            <div className="max-w-xl">
+                                                <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center gap-3">
+                                                    <Building2 className="text-indigo-600" /> Minha Unidade & Fiscal
+                                                </h3>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                    Dados cadastrais da sua unidade e integração com emissão de notas fiscais (Focus NFe).
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {isLoadingFiscal ? (
+                                            <div className="flex justify-center py-12">
+                                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                                            </div>
+                                        ) : (
+                                            <form onSubmit={handleSaveFiscal} className="space-y-8">
+                                                {/* DADOS CADASTRAIS */}
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Razão Social / Nome do Salão</label>
+                                                        <input name="salonName" defaultValue={fiscalConfig?.salonName} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">CNPJ</label>
+                                                        <input name="cnpj" defaultValue={fiscalConfig?.cnpj} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Inscrição Municipal</label>
+                                                        <input name="im" defaultValue={fiscalConfig?.municipalRegistration} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                    </div>
+                                                </div>
+
+                                                <div className="h-px bg-slate-100 dark:bg-zinc-800 my-6"></div>
+
+                                                {/* INTEGRACAO FOCUS */}
+                                                <div>
+                                                    <h4 className="text-base font-black text-slate-950 dark:text-white uppercase mb-4 flex items-center gap-2">
+                                                        <Globe size={18} className="text-emerald-500" /> Integração Focus NFe
+                                                    </h4>
+
+                                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 mb-6">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            <div>
+                                                                <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5 ml-1">Token de Acesso (API Key)</label>
+                                                                <div className="relative">
+                                                                    <input name="focusToken" type="password" defaultValue={fiscalConfig?.focusNfeToken} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-xl p-3 pl-10 text-sm font-bold outline-none focus:border-emerald-500 dark:text-white" placeholder="Cole seu token aqui" />
+                                                                    <FileKey size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                                                                </div>
+                                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Obtenha em: Painel Focus &gt; Tokens</p>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5 ml-1">Ambiente</label>
+                                                                <div className="relative">
+                                                                    <select name="environment" defaultValue={fiscalConfig?.focusNfeEnvironment} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-xl p-3 text-sm font-bold outline-none appearance-none focus:border-emerald-500 dark:text-white">
+                                                                        <option value="sandbox">Homologação (Testes)</option>
+                                                                        <option value="production">Produção (Valendo)</option>
+                                                                    </select>
+                                                                    <ChevronDown size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-6 pt-6 border-t border-emerald-100 dark:border-emerald-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                                                            <div className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                                                                <p className="font-bold flex items-center gap-1"><Info size={14} /> Status: {fiscalConfig?.focusNfeToken ? 'Configurado' : 'Pendente'}</p>
+                                                                <p>Para emitir notas, é necessário que o CNPJ esteja autorizado no painel da Focus.</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleRegisterCompany}
+                                                                disabled={isRegisteringCompany || !fiscalConfig?.focusNfeToken}
+                                                                className="px-6 py-3 bg-emerald-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all shadow-sm flex items-center gap-2"
+                                                            >
+                                                                {isRegisteringCompany ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CheckCircle size={16} />}
+                                                                Autorizar CNPJ (Habilitar Emissão)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-end pt-4">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isSavingFiscal}
+                                                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                                    >
+                                                        {isSavingFiscal ? 'Salvando...' : 'Salvar Alterações'} <Save size={18} />
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {subTab === 'SYSTEM' && (
                                 <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-600 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-[3rem] bg-slate-50/50 dark:bg-zinc-900/50 min-h-[400px]">
                                     <Settings size={64} className="opacity-20 mb-4" />
                                     <h3 className="text-lg font-black uppercase tracking-widest text-slate-300 dark:text-slate-700">Módulo em Breve</h3>

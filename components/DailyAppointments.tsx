@@ -91,6 +91,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     setIsIssuingBatch(true);
     let successCount = 0;
     let failedCount = 0;
+    const errors: string[] = [];
 
     for (const appt of appsToIssue) {
       const customer = customers.find(c => c.id === appt.customerId);
@@ -117,17 +118,24 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           successCount++;
         } else {
           failedCount++;
+          errors.push(`${customer.name}: ${result.error || 'Erro desconhecido'}`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`Error issuing batch NFSe for appt ${appt.id}:`, error);
         failedCount++;
+        errors.push(`${customer.name}: ${error.message || 'Erro desconhecido'}`);
       }
     }
 
     setIsIssuingBatch(false);
     setBatchResults({ success: successCount, failed: failedCount });
     setSelectedApptIds(new Set());
-    alert(`Processamento concluído!\nSucesso: ${successCount}\nFalhas: ${failedCount}`);
+
+    let resultMessage = `Processamento concluído!\nSucesso: ${successCount}\nFalhas: ${failedCount}`;
+    if (errors.length > 0) {
+      resultMessage += `\n\nErros:\n${errors.join('\n')}`;
+    }
+    alert(resultMessage);
   };
 
 
