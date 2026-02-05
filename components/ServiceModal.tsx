@@ -1,9 +1,10 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
+import { focusNfeService } from '../services/focusNfeService';
 
 interface ServiceLine {
     id: string;
@@ -72,6 +73,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
+
+    // NFSe State
+    const [nfseStatus, setNfseStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [nfseError, setNfseError] = useState<string | null>(null);
+    const [nfseData, setNfseData] = useState<any>(null);
 
     const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
@@ -777,6 +783,50 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             alert(`Erro ao registrar dívida no banco de dados: ${error.message || JSON.stringify(error)}`);
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleIssueNFSe = async () => {
+        try {
+            setNfseStatus('loading');
+            setNfseError(null);
+
+            // Get main provider from first service line
+            const mainProvider = lines[0]?.providerId;
+            if (!mainProvider) {
+                throw new Error('Profissional não encontrado');
+            }
+
+            // Get main service
+            const mainService = services.find(s => s.id === lines[0]?.serviceId);
+            if (!mainService) {
+                throw new Error('Serviço não encontrado');
+            }
+
+            // Issue NFSe
+            const result = await focusNfeService.issueNFSe({
+                appointmentId: appointment.id,
+                customerId: customer.id,
+                customerName: customer.name,
+                customerCpfCnpj: customer.cpf, // Assuming customer has cpf field
+                customerEmail: customer.email, // Assuming customer has email field
+                providerId: mainProvider,
+                totalValue: totalValue,
+                serviceDescription: mainService.name
+            });
+
+            if (!result.success) {
+                throw new Error(result.error || 'Erro ao emitir NFSe');
+            }
+
+            setNfseStatus('success');
+            alert('NFSe emitida com sucesso! ✅');
+
+        } catch (error: any) {
+            console.error('Error issuing NFSe:', error);
+            setNfseError(error.message || 'Erro ao emitir NFSe');
+            setNfseStatus('error');
+            alert(`Erro ao emitir NFSe: ${error.message}`);
         }
     };
 
@@ -1692,6 +1742,58 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* NFSe Section */}
+                            <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="p-2 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-400 rounded-full">
+                                            <FileText size={16} />
+                                        </div>
+                                        <span className="text-[10px] font-black text-purple-900 dark:text-purple-300 uppercase tracking-widest">Nota Fiscal Eletrônica (NFSe)</span>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
+                                    {nfseStatus === 'success' ? (
+                                        <div className="text-center">
+                                            <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mb-2">
+                                                ✅ NFSe Emitida com Sucesso!
+                                            </p>
+                                        </div>
+                                    ) : nfseStatus === 'error' ? (
+                                        <div>
+                                            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-2">
+                                                ❌ {nfseError}
+                                            </p>
+                                            <button
+                                                onClick={handleIssueNFSe}
+                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <FileText size={14} />
+                                                TENTAR NOVAMENTE
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleIssueNFSe}
+                                            disabled={nfseStatus === 'loading'}
+                                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {nfseStatus === 'loading' ? (
+                                                <>
+                                                    <Sparkles size={14} className="animate-spin" />
+                                                    EMITINDO...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FileText size={14} />
+                                                    EMITIR NFSE
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="pt-2">

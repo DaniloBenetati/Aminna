@@ -205,22 +205,44 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             },
         };
 
-        // 6. Call Focus NFe API
-        const apiUrl = `${getFocusNfeUrl(fiscalConfig.focusNfeEnvironment)}/v2/nfse?ref=${reference}`;
+        // 6. Call Supabase Edge Function (bypasses CORS)
+        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/issue-nfse`;
 
-        const response = await fetch(apiUrl, {
+        const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Basic ${btoa(fiscalConfig.focusNfeToken + ':')}`,
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
             },
-            body: JSON.stringify(nfseRequest),
+            body: JSON.stringify({
+                nfseData: {
+                    reference: reference,
+                    payload: nfseRequest
+                },
+                environment: fiscalConfig.focusNfeEnvironment
+            }),
         });
 
-        const focusResponse: FocusNFeResponse = await response.json();
+        console.log('Edge Function response status:', response.status);
+
+        const edgeResponse = await response.json();
+        console.log('Edge Function response data:', edgeResponse);
+
+        if (!response.ok) {
+            console.error('Edge Function HTTP error:', edgeResponse);
+            throw new Error(edgeResponse.error || 'Erro ao chamar Edge Function');
+        }
+
+        if (!edgeResponse.success) {
+            console.error('Edge Function returned error:', edgeResponse);
+            const errorMsg = edgeResponse.error || edgeResponse.data?.mensagem || 'Erro desconhecido ao emitir NFSe';
+            throw new Error(errorMsg);
+        }
+
+        const focusResponse: FocusNFeResponse = edgeResponse.data;
 
         // 7. Create NFSe record in database
-        const nfseStatus = response.ok ? NFSeStatus.PROCESSING : NFSeStatus.ERROR;
+        const nfseStatus = edgeResponse.success ? NFSeStatus.PROCESSING : NFSeStatus.ERROR;
 
         const { data: nfseRecord, error: dbError } = await supabase
             .from('nfse_records')
@@ -257,7 +279,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             .update({ nfse_record_id: nfseRecord.id })
             .eq('id', params.appointmentId);
 
-        if (!response.ok) {
+        if (!edgeResponse.success) {
             return {
                 success: false,
                 nfseRecordId: nfseRecord.id,
@@ -388,4 +410,10 @@ export const cancelNFSe = async (nfseRecordId: string, reason: string): Promise<
         console.error('Exception cancelling NFSe:', error);
         return { success: false, error: error.message };
     }
+};
+
+// Export service functions
+export const focusNfeService = {
+    issueNFSe,
+    cancelNFSe
 };

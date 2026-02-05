@@ -17,7 +17,8 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile } from './types';
+import { NFSeTestButton } from './components/NFSeTestButton';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -47,6 +48,7 @@ const App: React.FC = () => {
   const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([]);
   const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [nfseRecords, setNfseRecords] = useState<NFSeRecord[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
 
@@ -327,7 +329,39 @@ const App: React.FC = () => {
           mainServiceProducts: a.main_service_products,
           additionalServices: a.additional_services,
           appliedCoupon: a.applied_coupon,
-          discountAmount: a.discount_amount
+          discountAmount: a.discount_amount,
+          nfseRecordId: a.nfse_record_id
+        })));
+      }
+
+      // 7b. NFSe Records
+      const { data: nfseData } = await supabase.from('nfse_records').select('*');
+      if (nfseData) {
+        setNfseRecords(nfseData.map((n: any) => ({
+          id: n.id,
+          appointmentId: n.appointment_id,
+          providerId: n.provider_id,
+          customerId: n.customer_id,
+          reference: n.reference,
+          nfseNumber: n.nfse_number,
+          verificationCode: n.verification_code,
+          status: n.status,
+          totalValue: n.total_value,
+          salonValue: n.salon_value,
+          professionalValue: n.professional_value,
+          professionalCnpj: n.professional_cnpj,
+          serviceDescription: n.service_description,
+          focusResponse: n.focus_response,
+          xmlUrl: n.xml_url,
+          pdfUrl: n.pdf_url,
+          errorMessage: n.error_message,
+          retryCount: n.retry_count,
+          lastRetryAt: n.last_retry_at,
+          cancelledAt: n.cancelled_at,
+          cancellationReason: n.cancellation_reason,
+          issuedAt: n.issued_at,
+          createdAt: n.created_at,
+          updatedAt: n.updated_at
         })));
       }
 
@@ -450,6 +484,7 @@ const App: React.FC = () => {
             paymentSettings={paymentSettings}
             providers={providers}
             stock={stock}
+            nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
           />
         );
@@ -465,6 +500,7 @@ const App: React.FC = () => {
             paymentSettings={paymentSettings}
             providers={providers}
             stock={stock}
+            nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
           />
         );
@@ -516,6 +552,7 @@ const App: React.FC = () => {
       onStopSimulation={() => setSimulatedProfile(null)}
     >
       {renderView()}
+      <NFSeTestButton />
     </Layout>
   );
 };

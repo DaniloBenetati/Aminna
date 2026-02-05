@@ -6,7 +6,7 @@ import {
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem } from '../types';
+import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
 import { Avatar } from './Avatar';
 
@@ -22,10 +22,11 @@ interface AgendaProps {
     paymentSettings: PaymentSetting[];
     providers: Provider[];
     stock: StockItem[];
+    nfseRecords: NFSeRecord[];
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -870,11 +871,22 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 </div>
                                                                 <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{appt.combinedServiceNames || service?.name}</div>
                                                                 <div className="flex justify-between items-center mt-1.5">
-                                                                    <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                        appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                            appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                                'bg-amber-400'
-                                                                        }`}></span>
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                            appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                    'bg-amber-400'
+                                                                            }`}></span>
+                                                                        {appt.status === 'Concluído' && (
+                                                                            (() => {
+                                                                                const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" title="NFSe Emitida" />;
+                                                                                if (record?.status === 'processing') return <Loader2 size={10} className="text-blue-500 animate-spin" title="Emitindo NFSe..." />;
+                                                                                if (record?.status === 'error') return <AlertCircle size={10} className="text-rose-500" title="Erro na NFSe" />;
+                                                                                return null;
+                                                                            })()
+                                                                        )}
+                                                                    </div>
                                                                     <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
                                                                 </div>
                                                             </div>

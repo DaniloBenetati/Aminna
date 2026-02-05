@@ -2,10 +2,12 @@
 import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon, Search, MessageCircle,
-  ChevronLeft, ChevronRight, AlertTriangle, Clock
+  ChevronLeft, ChevronRight, AlertTriangle, Clock, Fingerprint, RefreshCw, CheckCircle2, Loader2, AlertCircle, Play, Check
 } from 'lucide-react';
-import { Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem } from '../types';
+import { supabase } from '../services/supabase';
+import { Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
+import { issueNFSe } from '../services/focusNfeService';
 
 interface DailyAppointmentsProps {
   customers: Customer[];
@@ -17,13 +19,17 @@ interface DailyAppointmentsProps {
   paymentSettings: PaymentSetting[];
   providers: Provider[];
   stock: StockItem[];
+  nfseRecords: NFSeRecord[];
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedAppointmentForService, setSelectedAppointmentForService] = useState<Appointment | null>(null);
+  const [isIssuingBatch, setIsIssuingBatch] = useState(false);
+  const [selectedApptIds, setSelectedApptIds] = useState<Set<string>>(new Set());
+  const [batchResults, setBatchResults] = useState<{ success: number, failed: number } | null>(null);
 
   const formatDateForFilter = (date: Date) => {
     const y = date.getFullYear();
@@ -44,6 +50,86 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
       })
       .sort((a, b) => a.time.localeCompare(b.time));
   }, [appointments, selectedDate, searchTerm, statusFilter, customers]);
+
+  const eligibleForBatch = useMemo(() => {
+    return filteredAppointments.filter(appt =>
+      appt.status === 'Concluído' &&
+      !nfseRecords.some(r => r.appointmentId === appt.id && r.status === 'issued')
+    );
+  }, [filteredAppointments, nfseRecords]);
+
+  const toggleAllSelection = () => {
+    if (selectedApptIds.size === eligibleForBatch.length) {
+      setSelectedApptIds(new Set());
+    } else {
+      setSelectedApptIds(new Set(eligibleForBatch.map(a => a.id)));
+    }
+  };
+
+  const toggleApptSelection = (id: string) => {
+    const newSet = new Set(selectedApptIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedApptIds(newSet);
+  };
+
+  const handleBatchIssue = async () => {
+    const appsToIssue = eligibleForBatch.filter(a => selectedApptIds.has(a.id));
+
+    if (appsToIssue.length === 0) {
+      alert('Selecione pelo menos um atendimento para emitir nota fiscal.');
+      return;
+    }
+
+    if (!confirm(`Deseja emitir nota fiscal para os ${appsToIssue.length} atendimentos selecionados?`)) {
+      return;
+    }
+
+    setIsIssuingBatch(true);
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const appt of appsToIssue) {
+      const customer = customers.find(c => c.id === appt.customerId);
+      const service = services.find(s => s.id === appt.serviceId);
+
+      if (!customer || !service) {
+        failedCount++;
+        continue;
+      }
+
+      try {
+        const result = await issueNFSe({
+          appointmentId: appt.id,
+          customerId: appt.customerId,
+          customerName: customer.name,
+          customerCpfCnpj: customer.cpf,
+          customerEmail: customer.email,
+          providerId: appt.providerId,
+          totalValue: appt.pricePaid || appt.price || service.price,
+          serviceDescription: appt.combinedServiceNames || service.name
+        });
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failedCount++;
+        }
+      } catch (error) {
+        console.error(`Error issuing batch NFSe for appt ${appt.id}:`, error);
+        failedCount++;
+      }
+    }
+
+    setIsIssuingBatch(false);
+    setBatchResults({ success: successCount, failed: failedCount });
+    setSelectedApptIds(new Set());
+    alert(`Processamento concluído!\nSucesso: ${successCount}\nFalhas: ${failedCount}`);
+  };
+
 
   const stats = useMemo(() => {
     const dateStr = formatDateForFilter(selectedDate);
@@ -95,6 +181,32 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
             </div>
             <button onClick={() => { const d = new Date(selectedDate); d.setDate(d.getDate() + 1); setSelectedDate(d); }} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl transition-colors"><ChevronRight size={18} className="text-slate-400" /></button>
           </div>
+          <div className="flex flex-col items-end">
+            <button
+              onClick={handleBatchIssue}
+              disabled={isIssuingBatch || selectedApptIds.size === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl border-2 font-black text-[10px] uppercase transition-all shadow-sm
+                ${isIssuingBatch || selectedApptIds.size === 0
+                  ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : 'bg-indigo-600 border-indigo-700 text-white hover:bg-indigo-700 active:scale-95'
+                }`}
+            >
+              {isIssuingBatch ? (
+                <RefreshCw size={14} className="animate-spin" />
+              ) : (
+                <Play size={14} fill="currentColor" />
+              )}
+              {isIssuingBatch ? 'Processando...' : `Emitir ${selectedApptIds.size} Notas`}
+            </button>
+            {eligibleForBatch.length > 0 && (
+              <button
+                onClick={toggleAllSelection}
+                className="text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 mt-1 hover:underline"
+              >
+                {selectedApptIds.size === eligibleForBatch.length ? 'Desmarcar Todos' : 'Selecionar Todos do Dia'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -134,16 +246,28 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           const appointmentDateTime = new Date(`${appt.date}T${appt.time}`);
           const isLate = (appt.status === 'Confirmado' || appt.status === 'Pendente') && now > appointmentDateTime;
 
+          const isEligible = appt.status === 'Concluído' && !nfseRecords.some(r => r.appointmentId === appt.id && r.status === 'issued');
+
           return (
             <div
               key={appt.id}
               onClick={() => setSelectedAppointmentForService(appt)}
               className={`group p-4 rounded-[1.5rem] border shadow-sm transition-all cursor-pointer flex items-center justify-between gap-4 
-                ${isLate
+                  ${isLate
                   ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-900 hover:border-rose-300 dark:hover:border-rose-700'
                   : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600'
                 } active:scale-[0.98]`}
             >
+              {isEligible && (
+                <div
+                  onClick={(e) => { e.stopPropagation(); toggleApptSelection(appt.id); }}
+                  className="flex-shrink-0"
+                >
+                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${selectedApptIds.has(appt.id) ? 'bg-indigo-600 border-indigo-600' : 'border-slate-200 dark:border-zinc-700 bg-transparent'}`}>
+                    {selectedApptIds.has(appt.id) && <Check size={14} className="text-white" />}
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className={`flex-shrink-0 w-16 text-center py-2.5 rounded-2xl border font-mono 
                   ${isLate ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white border-slate-200 dark:border-zinc-700'}`}>
@@ -166,9 +290,20 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
               </div>
 
               <div className="flex items-center gap-3 flex-shrink-0">
-                <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full border whitespace-nowrap ${getStatusStyle(appt.status)}`}>
-                  {appt.status}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-[8px] font-black uppercase px-3 py-1 rounded-full border whitespace-nowrap ${getStatusStyle(appt.status)}`}>
+                    {appt.status}
+                  </span>
+                  {appt.status === 'Concluído' && (
+                    (() => {
+                      const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                      if (record?.status === 'issued') return <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase"><CheckCircle2 size={10} /> NFSe OK</span>;
+                      if (record?.status === 'processing') return <span className="flex items-center gap-1 text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase"><Loader2 size={10} className="animate-spin" /> Emitindo</span>;
+                      if (record?.status === 'error') return <span className="flex items-center gap-1 text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase"><AlertCircle size={10} /> Erro Fiscal</span>;
+                      return <span className="text-[8px] font-black text-slate-400 uppercase">Sem Nota</span>;
+                    })()
+                  )}
+                </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); handleSendWhatsApp(appt); }}
                   className={`p-2 rounded-xl transition-colors border ${isLate ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 border-transparent hover:border-rose-200' : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border-transparent hover:border-emerald-100 dark:hover:border-emerald-800'}`}
