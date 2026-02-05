@@ -78,6 +78,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [nfseStatus, setNfseStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [nfseError, setNfseError] = useState<string | null>(null);
     const [nfseData, setNfseData] = useState<any>(null);
+    const [showCpfPrompt, setShowCpfPrompt] = useState(false);
+    const [tempCpf, setTempCpf] = useState('');
 
     const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
@@ -807,30 +809,29 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleIssueNFSe = async () => {
+    const performIssuance = async (cpfOverride?: string) => {
         try {
             setNfseStatus('loading');
             setNfseError(null);
 
-            // Get main provider from first service line
+            // Get main provider
             const mainProvider = lines[0]?.providerId;
-            if (!mainProvider) {
-                throw new Error('Profissional não encontrado');
-            }
+            if (!mainProvider) throw new Error('Profissional não encontrado');
 
             // Get main service
             const mainService = services.find(s => s.id === lines[0]?.serviceId);
-            if (!mainService) {
-                throw new Error('Serviço não encontrado');
-            }
+            if (!mainService) throw new Error('Serviço não encontrado');
 
             // Issue NFSe
+            // Use override if provided, else use current customer.cpf (which might be null/empty, meaning Consumer)
+            const cpfToUse = cpfOverride !== undefined ? cpfOverride : customer.cpf;
+
             const result = await focusNfeService.issueNFSe({
                 appointmentId: appointment.id,
                 customerId: customer.id,
                 customerName: customer.name,
-                customerCpfCnpj: customer.cpf, // Assuming customer has cpf field
-                customerEmail: customer.email, // Assuming customer has email field
+                customerCpfCnpj: cpfToUse,
+                customerEmail: customer.email,
                 providerId: mainProvider,
                 totalValue: totalValue,
                 serviceDescription: mainService.name
@@ -862,6 +863,47 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             setNfseStatus('error');
             alert(`Erro ao emitir NFSe: ${error.message}`);
         }
+    };
+
+    const handleIssueNFSe = () => {
+        // If customer has no valid CPF (less than 11 chars or empty), prompt
+        const hasValidCpf = customer.cpf && customer.cpf.replace(/\D/g, '').length === 11;
+
+        if (!hasValidCpf) {
+            setTempCpf('');
+            setShowCpfPrompt(true);
+        } else {
+            performIssuance();
+        }
+    };
+
+    const handleSaveCpfAndIssue = async () => {
+        const cleanCpf = tempCpf.replace(/\D/g, '');
+        if (cleanCpf.length !== 11) {
+            alert('Por favor, informe um CPF válido com 11 dígitos.');
+            return;
+        }
+
+        try {
+            // 1. Update DB
+            const { error } = await supabase.from('customers').update({ cpf: tempCpf }).eq('id', customer.id);
+            if (error) throw error;
+
+            // 2. Update Local State
+            onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, cpf: tempCpf } : c));
+
+            // 3. Proceed
+            setShowCpfPrompt(false);
+            performIssuance(tempCpf);
+        } catch (error) {
+            console.error('Error updating CPF:', error);
+            alert('Erro ao salvar CPF do cliente.');
+        }
+    };
+
+    const handleSkipCpf = () => {
+        setShowCpfPrompt(false);
+        performIssuance(''); // Issue without CPF (Consumer)
     };
 
     const handleConfirmCancellation = async () => {
@@ -1940,6 +1982,57 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     <Save size={16} /> Confirmar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* CPF PROMPT MODAL */}
+            {showCpfPrompt && (
+                <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="p-8 text-center pt-8">
+                            <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                <User size={32} />
+                            </div>
+
+                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-2 leading-tight">
+                                Cliente sem CPF
+                            </h3>
+                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
+                                Deseja informar o CPF para a nota fiscal? Se informar, ele ficará salvo no cadastro.
+                            </p>
+
+                            <input
+                                type="text"
+                                placeholder="000.000.000-00"
+                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
+                                value={tempCpf}
+                                onChange={e => {
+                                    // Simple mask
+                                    let v = e.target.value.replace(/\D/g, '');
+                                    if (v.length > 11) v = v.substring(0, 11);
+                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                                    setTempCpf(v);
+                                }}
+                                autoFocus
+                            />
+
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={handleSaveCpfAndIssue}
+                                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                >
+                                    Salvar CPF e Emitir
+                                </button>
+                                <button
+                                    onClick={handleSkipCpf}
+                                    className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                >
+                                    Emitir sem CPF (Consumidor)
                                 </button>
                             </div>
                         </div>
