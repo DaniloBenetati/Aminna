@@ -468,7 +468,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         return (
             <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="p-3 border-b border-slate-100 dark:border-zinc-800">
+                <div className="px-5 py-3 border-b border-slate-100 dark:border-zinc-800">
                     <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Profissionais</h3>
                     <div className="relative">
                         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -482,7 +482,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-3 scrollbar-hide space-y-2">
+                <div className="flex-1 overflow-y-auto px-5 py-3 scrollbar-hide space-y-2">
                     <label className="flex items-center gap-3 cursor-pointer group">
                         <input
                             type="checkbox"
@@ -512,7 +512,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     return (
-        <div className="flex h-full gap-4 pb-20 md:pb-0 font-sans">
+        <div className="flex h-full gap-4 p-4 pb-20 md:p-4 font-sans">
             {/* Sidebar (Left) */}
             <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />

@@ -161,7 +161,8 @@ const App: React.FC = () => {
           price: s.price,
           durationMinutes: s.duration_minutes,
           requiredSpecialty: s.required_specialty,
-          active: s.active
+          active: s.active,
+          category: s.category
         })));
       }
 

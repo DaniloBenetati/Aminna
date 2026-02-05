@@ -94,7 +94,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         const currentSpecs = formData.specialties || [];
         if (!currentSpecs.includes(spec)) {
             const added = [...currentSpecs, spec];
-            setFormData({ ...formData, specialties: added, specialty: added[0] });
+            // Only set specialty (Title) if it's currently empty
+            const newTitle = formData.specialty ? formData.specialty : spec;
+            setFormData({ ...formData, specialties: added, specialty: newTitle });
         }
         setServiceAddSearch(''); // Reset search after adding
     };
@@ -102,7 +104,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     const removeSpecialty = (spec: string) => {
         const currentSpecs = formData.specialties || [];
         const filtered = currentSpecs.filter(s => s !== spec);
-        setFormData({ ...formData, specialties: filtered, specialty: filtered[0] || '' });
+        // Do NOT change the Title (specialty) when removing a service
+        setFormData({ ...formData, specialties: filtered });
     };
 
     const handleAddGroup = (category: string) => {
@@ -115,7 +118,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         // Add only ones not already present
         const newSpecs = [...new Set([...currentSpecs, ...servicesInGroup])];
 
-        setFormData({ ...formData, specialties: newSpecs, specialty: newSpecs[0] || '' });
+        setFormData({ ...formData, specialties: newSpecs });
     };
 
     // Performance Calculations
@@ -899,6 +902,29 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
                                         placeholder="Ex: Maria Carolina Silva"
                                     />
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Função Principal / Especialidade</label>
+                                    <div className="relative">
+                                        <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
+                                        <input
+                                            type="text"
+                                            list="categories-list"
+                                            required
+                                            value={formData.specialty}
+                                            onChange={e => setFormData({ ...formData, specialty: e.target.value })}
+                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            placeholder="Ex: Cabeleireira, Manicure, Esteticista..."
+                                        />
+                                        <datalist id="categories-list">
+                                            {uniqueCategories.map(cat => (
+                                                <option key={cat} value={cat} />
+                                            ))}
+                                        </datalist>
+                                        <p className="text-[9px] font-bold text-slate-400 mt-1.5 ml-1">
+                                            💡 Dica: Use o nome da Categoria do serviço (ex: Cabeleireira) para agrupar melhor na agenda.
+                                        </p>
+                                    </div>
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-2 flex items-center justify-between">
