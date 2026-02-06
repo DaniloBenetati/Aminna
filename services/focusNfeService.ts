@@ -174,6 +174,8 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         const reference = `APPT-${params.appointmentId}-${Date.now()}`;
 
         // 5. Prepare Focus NFe request (São Paulo - SP format)
+        const professionalName = professionalConfig.socialName || professionalConfig.fantasyName || 'Profissional Parceiro';
+
         const nfseRequest = {
             data_emissao: new Date().toISOString().split('T')[0],
             natureza_operacao: '1', // 1 = Tributação no município
@@ -194,13 +196,13 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
                     `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
                     `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
                     `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
-                    `Profissional (${professionalPercentage}%) - CNPJ ${professionalConfig.cnpj}: R$ ${professionalValue.toFixed(2)}`,
+                    `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`,
                 codigo_municipio: '3550308',
             },
             // Intermediário (Professional) - Required for Salão Parceiro
             intermediario: {
                 cnpj: professionalConfig.cnpj.replace(/\D/g, ''),
-                razao_social: professionalConfig.socialName || professionalConfig.fantasyName || 'Profissional',
+                razao_social: professionalName,
                 inscricao_municipal: professionalConfig.municipalRegistration,
             },
         };

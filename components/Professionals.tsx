@@ -44,6 +44,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalCnpj?: string;
         fiscalMunicipalRegistration?: string;
         fiscalSocialName?: string;
+        fiscalFantasyName?: string;
     }>({
         name: '',
         phone: '',
@@ -56,8 +57,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         workDays: [1, 2, 3, 4, 5, 6], // Default Mon-Sat
         // Fiscal data
         fiscalCnpj: '',
-        fiscalMunicipalRegistration: ''
+        fiscalMunicipalRegistration: '',
+        fiscalSocialName: '',
+        fiscalFantasyName: ''
     });
+
+    // ... (rest of code)
 
     // Extract unique required specialties from services - STRICTLY derived from services names
     const availableServices = useMemo(() => {
@@ -168,34 +173,27 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             order: index
         }));
 
-        // Optimistic update all
         setProviders(prev => {
             const map = new Map(updates.map(u => [u.id, u]));
             return prev.map(p => map.get(p.id) || p);
         });
 
-        // Persist all
-        const { error } = await supabase.from('providers').upsert(
-            updates.map(p => ({
-                id: p.id,
-                order: p.order,
-                name: p.name, // Required for upsert if not partial? No, partial is fine usually but upsert matches on ID.
-                // Depending on Supabase setup, minimal fields might work if other fields aren't required.
-                // Safest to just update the order specifically via repeated updates or a specific RPC if available.
-                // Or better: Use upsert with minimal fields if table constraints allow, otherwise map full object.
-                // Assuming we can just update 'order' via upsert if we provide ID? 
-                // Actually, standard `update` for batch is tricky. `upsert` replaces the row.
-                // So we should include all fields or use a loop for safety if schema is strict.
-                // Let's rely on the fact that we have the full object in `updates`.
-                ...p,
-                commission_history: p.commissionHistory, // Map back to DB column name structure
-                commission_rate: p.commissionRate,
-                pix_key: p.pixKey,
-                birth_date: p.birthDate,
-                work_days: p.workDays
-            }))
-        );
-
+        const dbUpdates = updates.map(p => ({
+            id: p.id,
+            name: p.name,
+            phone: p.phone,
+            specialty: p.specialty,
+            specialties: p.specialties,
+            commission_rate: p.commissionRate,
+            commission_history: p.commissionHistory,
+            pix_key: p.pixKey,
+            birth_date: p.birthDate,
+            active: p.active,
+            work_days: p.workDays,
+            avatar: p.avatar,
+            order: p.order
+        }));
+        const { error } = await supabase.from('providers').upsert(dbUpdates);
         if (error) console.error('Error normalizing orders:', error);
         return updates;
     };
@@ -204,35 +202,25 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         e.stopPropagation();
         if (index === 0) return;
 
-        // Check if we need normalization (any invalid order)
-        // Or simply ALWAYS normalize the visible list to ensure consistency with visual order
-        // This handles cases where filtered sorting might be ambiguous
         const needsNormalization = filteredProviders.some(p => p.order === undefined || p.order === null);
-
         let workingList = [...filteredProviders];
 
         if (needsNormalization) {
-            // Assign temporary orders based on current index
             workingList = workingList.map((p, idx) => ({ ...p, order: idx }));
         }
 
         const currentParams = workingList[index];
         const prevParams = workingList[index - 1];
 
-        // Swap orders
         const currentOrder = currentParams.order!;
         const prevOrder = prevParams.order!;
 
-        // Optimistic update
         const updatedCurrent = { ...currentParams, order: prevOrder };
         const updatedPrev = { ...prevParams, order: currentOrder };
 
-        // Update local state by finding original items in the full `providers` list
         setProviders(prev => prev.map(p => {
             if (p.id === currentParams.id) return updatedCurrent;
             if (p.id === prevParams.id) return updatedPrev;
-            // If we normalized, we should technically update EVERYONE's order in state too?
-            // Yes, if we normalized, we need to update everyone.
             if (needsNormalization) {
                 const found = workingList.find(w => w.id === p.id);
                 if (found) return found.id === currentParams.id ? updatedCurrent : found.id === prevParams.id ? updatedPrev : found;
@@ -241,14 +229,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         }));
 
         if (needsNormalization) {
-            // If we normalized, we must save EVERYTHING
             const finalList = workingList.map(p => {
                 if (p.id === currentParams.id) return updatedCurrent;
                 if (p.id === prevParams.id) return updatedPrev;
                 return p;
             });
 
-            // Map to DB structure for UPSERT
             const dbUpdates = finalList.map(p => ({
                 id: p.id,
                 name: p.name,
@@ -266,7 +252,6 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             }));
             await supabase.from('providers').upsert(dbUpdates);
         } else {
-            // Just save the two swapped
             await supabase.from('providers').update({ order: prevOrder }).eq('id', currentParams.id);
             await supabase.from('providers').update({ order: currentOrder }).eq('id', prevParams.id);
         }
@@ -286,15 +271,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         const currentParams = workingList[index];
         const nextParams = workingList[index + 1];
 
-        // Swap orders
         const currentOrder = currentParams.order!;
         const nextOrder = nextParams.order!;
 
-        // Optimistic update
         const updatedCurrent = { ...currentParams, order: nextOrder };
         const updatedNext = { ...nextParams, order: currentOrder };
 
-        // Update local state
         setProviders(prev => prev.map(p => {
             if (p.id === currentParams.id) return updatedCurrent;
             if (p.id === nextParams.id) return updatedNext;
@@ -333,17 +315,6 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         }
     };
 
-    const handleEdit = (provider: Provider) => {
-        setEditingProvider(provider);
-        setCommissionChangeReason(''); // Reset reason
-        setFormData({
-            ...provider,
-            workDays: provider.workDays || [1, 2, 3, 4, 5, 6], // Fallback if legacy data missing
-            specialties: provider.specialties || [provider.specialty] // Fallback
-        });
-        setIsModalOpen(true);
-    };
-
     const handleAddNew = () => {
         setEditingProvider(null);
         setCommissionChangeReason(''); // Reset reason
@@ -359,12 +330,15 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             birthDate: '',
             active: true,
             avatar: `https://i.pravatar.cc/150?u=${Date.now()}`,
-            workDays: [1, 2, 3, 4, 5, 6]
+            workDays: [1, 2, 3, 4, 5, 6],
+            fiscalCnpj: '',
+            fiscalMunicipalRegistration: '',
+            fiscalSocialName: '',
+            fiscalFantasyName: ''
         });
         setIsModalOpen(true);
     };
 
-    // LOGIC MOVED TO TOGGLE: Check immediately when trying to deactivate
     const handleToggleActive = () => {
         // If currently Active (true) and we are clicking to turn it OFF
         if (formData.active) {
@@ -397,6 +371,52 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setFormData({ ...formData, active: !formData.active });
     };
 
+    // Load fiscal data when editing
+    const loadFiscalData = async (providerId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('professional_fiscal_config')
+                .select('*')
+                .eq('provider_id', providerId)
+                .single();
+
+            if (data) {
+                setFormData(prev => ({
+                    ...prev,
+                    fiscalCnpj: data.cnpj,
+                    fiscalMunicipalRegistration: data.municipal_registration || '',
+                    fiscalSocialName: data.social_name || '',
+                    fiscalFantasyName: data.fantasy_name || ''
+                }));
+            }
+        } catch (error) {
+            console.error('Error loading fiscal data:', error);
+        }
+    };
+
+    // ...
+
+    const handleEdit = (provider: Provider) => {
+        setEditingProvider(provider);
+        setCommissionChangeReason(''); // Reset reason
+        setFormData({
+            ...provider,
+            workDays: provider.workDays || [1, 2, 3, 4, 5, 6], // Fallback if legacy data missing
+            specialties: provider.specialties || [provider.specialty], // Fallback
+            fiscalCnpj: '', // Reset first
+            fiscalMunicipalRegistration: '',
+            fiscalSocialName: '',
+            fiscalFantasyName: ''
+        });
+
+        // Fetch specific fiscal data
+        loadFiscalData(provider.id);
+
+        setIsModalOpen(true);
+    };
+
+    // ...
+
     // Save fiscal data to professional_fiscal_config table
     const saveFiscalData = async (providerId: string) => {
         try {
@@ -407,7 +427,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 provider_id: providerId,
                 cnpj: formData.fiscalCnpj,
                 municipal_registration: formData.fiscalMunicipalRegistration || null,
-                social_name: formData.fiscalSocialName || formData.name || null,
+                social_name: formData.fiscalSocialName || null,
+                fantasy_name: formData.fiscalFantasyName || null,
                 service_percentage: servicePercentage,
                 active: true,
                 verified: false, // Admin needs to verify
@@ -1179,17 +1200,33 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         />
                                     </div>
 
+                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                                Razão Social (Opcional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.fiscalSocialName || ''}
+                                                onChange={e => setFormData({ ...formData, fiscalSocialName: e.target.value })}
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                placeholder="Se vazio, usa o nome do perfil"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                                Nome Fantasia (Opcional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.fiscalFantasyName || ''}
+                                                onChange={e => setFormData({ ...formData, fiscalFantasyName: e.target.value })}
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                placeholder="Nome comercial da profissional"
+                                            />
+                                        </div>
+                                    </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
-                                            Razão Social (Opcional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={formData.fiscalSocialName || ''}
-                                            onChange={e => setFormData({ ...formData, fiscalSocialName: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
-                                            placeholder="Se vazio, usará o nome cadastrado acima"
-                                        />
                                         <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500 mt-1">
                                             💡 O percentual da profissional será o mesmo do campo "% Comissão" acima ({((formData.commissionRate || 0.4) * 100).toFixed(0)}%)
                                         </p>

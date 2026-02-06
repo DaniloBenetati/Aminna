@@ -193,6 +193,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const updatePayment = (id: string, field: keyof PaymentInfo, value: any) => {
+        if (field === 'amount' && payments.length === 2) {
+            const val = parseFloat(value) || 0;
+            const otherPayment = payments.find(p => p.id !== id);
+            if (otherPayment) {
+                const remaining = Math.max(0, totalValue - val);
+                // Update both
+                setPayments(payments.map(p => {
+                    if (p.id === id) return { ...p, amount: val };
+                    if (p.id === otherPayment.id) return { ...p, amount: remaining };
+                    return p;
+                }));
+                return;
+            }
+        }
         setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
     };
 
@@ -215,6 +229,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         return Math.max(0, total);
     }, [lines, appliedCampaign, includeDebt, customer.outstandingBalance]);
+
+    // Auto-fill payment amount if single payment method
+    useEffect(() => {
+        // "quando entrar na tela de pagamento o valor total já deve estar preenchido, só mude se eu selecionar mais de uma opção de pagamento"
+        if (payments.length === 1) {
+            // Only update if difference is significant to avoid infinite loops with float precision
+            if (Math.abs(payments[0].amount - totalValue) > 0.01) {
+                setPayments(prev => [{ ...prev[0], amount: totalValue }]);
+            }
+        }
+    }, [totalValue, payments.length, payments]); // payments dependency is needed to check amount, but length check protects logic
 
     const totalBeforeCoupon = useMemo(() => {
         return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : (line.unitPrice - line.discount)), 0);
@@ -481,6 +506,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const handleFinishService = async () => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+
+        if (Math.abs(totalPaid - totalValue) > 0.01) {
+            alert(`⚠️ Divergência de Valores\n\nTotal a Pagar: R$ ${totalValue.toFixed(2)}\nTotal Informado: R$ ${totalPaid.toFixed(2)}\n\nPor favor, ajuste os pagamentos para igualar o total.`);
+            return;
+        }
 
         // Check merge (though unlikely in finish flow, better safe)
         if (await checkForCustomerConflictAndMerge()) return;
@@ -1609,14 +1639,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="space-y-3 px-1">
                                 <div className="flex items-center justify-between ml-1">
                                     <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
-                                    <button
-                                        type="button"
-                                        onClick={() => setMode('VIEW')}
-                                        className="p-4 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
-                                        title="Voltar"
-                                    >
-                                        <ChevronLeft size={20} />
-                                    </button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button" onClick={addPayment}
+                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                        >
+                                            <Plus size={14} /> ADD PAGAMENTO
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setMode('VIEW')}
+                                            className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
+                                            title="Voltar"
+                                        >
+                                            <ChevronLeft size={20} />
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="space-y-2">
                                     {payments.map((payment, index) => {
