@@ -919,6 +919,48 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     </div>
                                                                     <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
                                                                 </div>
+
+                                                                {/* HOVER TOOLTIP */}
+                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[200] top-full left-0 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-top-2 duration-150 hidden md:block mt-1">
+                                                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-700/50">
+                                                                        <div className="w-1 h-8 rounded-full bg-indigo-500"></div>
+                                                                        <div>
+                                                                            <p className="text-[11px] font-black text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                            <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
+                                                                                <Clock size={10} /> {appt.time}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="space-y-2">
+                                                                        {/* Main Service */}
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div className="flex-1">
+                                                                                <p className="text-[10px] font-bold text-indigo-300 uppercase leading-tight">{services.find(s => s.id === appt.serviceId)?.name}</p>
+                                                                                <p className="text-[9px] text-slate-500 font-medium">Principal • {appt.time}</p>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <p className="text-[9px] font-black text-slate-300 uppercase">{providers.find(p => p.id === appt.providerId)?.name.split(' ')[0]}</p>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Additional Services */}
+                                                                        {appt.additionalServices?.filter(s => s.serviceId).map((extra, idx) => {
+                                                                            const extraSrv = services.find(s => s.id === extra.serviceId);
+                                                                            const extraPrv = providers.find(p => p.id === extra.providerId);
+                                                                            return (
+                                                                                <div key={idx} className="flex justify-between items-start pt-2 border-t border-slate-800/50">
+                                                                                    <div className="flex-1">
+                                                                                        <p className="text-[10px] font-bold text-emerald-300 uppercase leading-tight">{extraSrv?.name}</p>
+                                                                                        <p className="text-[9px] text-slate-500 font-medium">Extra • {extra.startTime || appt.time}</p>
+                                                                                    </div>
+                                                                                    <div className="text-right">
+                                                                                        <p className="text-[9px] font-black text-slate-300 uppercase">{extraPrv?.name.split(' ')[0]}</p>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )
+                                                                        })}
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         );
                                                     })}

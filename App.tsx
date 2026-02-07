@@ -264,10 +264,35 @@ const App: React.FC = () => {
         })));
       }
 
-      // 6. Customers
-      const { data: customersData } = await supabase.from('customers').select('*');
-      if (customersData) {
-        setCustomers(customersData.map((c: any) => ({
+      // 6. Customers - Fetch ALL with pagination
+      let allCustomers: any[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data: batch, error } = await supabase
+          .from('customers')
+          .select('*')
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) {
+          console.error('Error fetching customers batch:', error);
+          hasMore = false;
+        } else if (batch) {
+          allCustomers = [...allCustomers, ...batch];
+          if (batch.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allCustomers.length > 0) {
+        setCustomers(allCustomers.map((c: any) => ({
           id: c.id,
           name: c.name,
           phone: c.phone,
