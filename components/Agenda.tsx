@@ -137,8 +137,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         return appointments.filter(a => {
             const isDate = a.date === gridDateStr;
             const isProvider = selectedProviderId === 'all'
-                ? (visibleProviderIds.length === 0 || visibleProviderIds.includes(a.providerId))
-                : a.providerId === selectedProviderId;
+                ? (visibleProviderIds.length === 0 ||
+                    visibleProviderIds.includes(a.providerId) ||
+                    a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId)))
+                : (a.providerId === selectedProviderId ||
+                    a.additionalServices?.some(s => s.providerId === selectedProviderId));
             const isNotCancelled = a.status !== 'Cancelado';
 
             let isSearchMatch = true;
@@ -236,8 +239,16 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const getCellAppointments = (providerId: string, hour: number) => {
         return gridAppointments.filter(a => {
-            const appHour = parseInt(a.time.split(':')[0]);
-            return a.providerId === providerId && appHour === hour;
+            const mainAppHour = parseInt(a.time.split(':')[0]);
+            const isMainProvider = a.providerId === providerId && mainAppHour === hour;
+
+            const isExtraProvider = a.additionalServices?.some(s => {
+                const extraTime = s.startTime || a.time;
+                const extraHour = parseInt(extraTime.split(':')[0]);
+                return s.providerId === providerId && extraHour === hour;
+            });
+
+            return isMainProvider || isExtraProvider;
         });
     };
 
@@ -854,7 +865,25 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                     {slotAppointments.map(appt => {
                                                         const customer = customers.find(c => c.id === appt.customerId);
-                                                        const service = services.find(s => s.id === appt.serviceId);
+
+                                                        // Determine which service to show based on the column's provider (p.id)
+                                                        let displayServiceName = '';
+                                                        let displayTime = appt.time;
+
+                                                        if (appt.providerId === p.id) {
+                                                            // Main Provider
+                                                            const service = services.find(s => s.id === appt.serviceId);
+                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                            displayTime = appt.time;
+                                                        } else {
+                                                            // Additional Provider
+                                                            const subService = appt.additionalServices?.find(s => s.providerId === p.id);
+                                                            if (subService) {
+                                                                const srv = services.find(s => s.id === subService.serviceId);
+                                                                displayServiceName = srv?.name || 'Serviço Extra';
+                                                                displayTime = subService.startTime || appt.time;
+                                                            }
+                                                        }
 
                                                         return (
                                                             <div
@@ -868,9 +897,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             >
                                                                 <div className="flex justify-between items-start">
                                                                     <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
-                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{appt.time.split(':')[1]}</span>
+                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                 </div>
-                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{appt.combinedServiceNames || service?.name}</div>
+                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
                                                                 <div className="flex justify-between items-center mt-1.5">
                                                                     <div className="flex items-center gap-1">
                                                                         <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
