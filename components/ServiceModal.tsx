@@ -655,7 +655,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCourtesy: l.isCourtesy,
             discount: l.discount,
             bookedPrice: l.unitPrice,
-            products: l.products
+            products: l.products,
+            startTime: l.startTime
         }));
 
         const dataToSave = {
