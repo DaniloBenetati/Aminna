@@ -10,6 +10,8 @@ interface ServicesManagementProps {
     setServices: React.Dispatch<React.SetStateAction<Service[]>>;
 }
 
+
+
 export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services, setServices }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -115,6 +117,8 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
         }
     };
 
+
+
     return (
         <div className="space-y-4 md:space-y-6 pb-24 md:pb-8 text-slate-900 dark:text-white">
             {/* Header Area */}
@@ -123,6 +127,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                     <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white tracking-tight">Catálogo de Serviços</h2>
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de preços e tempos</p>
                 </div>
+
                 <button
                     onClick={handleAddNew}
                     className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"

@@ -192,6 +192,7 @@ export interface Appointment {
     discount: number;
     bookedPrice?: number; // Snapshot for extras
     commissionRateSnapshot?: number; // Snapshot for extras commission
+    startTime?: string; // Horário específico do serviço extra
     products?: string[]; // Lista de produtos vinculados a este serviço extra
   }[];
   combinedServiceNames?: string;

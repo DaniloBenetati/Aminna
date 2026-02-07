@@ -19,6 +19,7 @@ interface ServiceLine {
     feedback: string;
     isEditingInCheckout?: boolean;
     unitPrice: number;
+    startTime: string;
 }
 
 interface ServiceModalProps {
@@ -129,7 +130,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: appointment.bookedPrice || mainService?.price || 0
+            unitPrice: appointment.bookedPrice || mainService?.price || 0,
+            startTime: appointment.time
         }];
 
         if (appointment.additionalServices) {
@@ -145,7 +147,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     showProductResults: false,
                     rating: 5,
                     feedback: '',
-                    unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0
+                    unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
+                    startTime: extra.startTime || appointment.time // Fallback to appointment time if not set
                 });
             });
         }
@@ -433,12 +436,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCourtesy: l.isCourtesy,
             discount: l.discount,
             bookedPrice: l.unitPrice,
-            products: l.products
+            products: l.products,
+            startTime: l.startTime
         }));
 
         const dataToSave = {
             status: 'Em Andamento',
-            time: appointmentTime,
+            time: lines[0].startTime, // Use the start time of the first service as the main appointment time
             date: appointmentDate,
             combined_service_names: combinedNames,
             service_id: lines[0].serviceId,
@@ -470,7 +474,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     ...appointment,
                     id: savedAppt.id, // Ensure we use the real DB ID
                     status: 'Em Andamento',
-                    time: appointmentTime,
+                    time: lines[0].startTime,
                     date: appointmentDate,
                     combinedServiceNames: combinedNames,
                     bookedPrice: lines[0].unitPrice,
@@ -526,7 +530,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCourtesy: l.isCourtesy,
             discount: l.discount,
             bookedPrice: l.unitPrice,
-            products: l.products
+            products: l.products,
+            startTime: l.startTime
         }));
 
         const dischargeDate = new Date().toISOString().split('T')[0];
@@ -654,7 +659,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }));
 
         const dataToSave = {
-            time: appointmentTime,
+            time: lines[0].startTime,
             date: appointmentDate,
             status: status,
             combined_service_names: combinedNames,
@@ -744,7 +749,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 isCourtesy: l.isCourtesy,
                 discount: l.discount,
                 bookedPrice: l.unitPrice,
-                products: l.products
+                products: l.products,
+                startTime: l.startTime
             }));
 
             const dischargeDate = new Date().toISOString().split('T')[0];
@@ -1004,12 +1010,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const updateLine = (id: string, field: keyof ServiceLine, value: any) => {
-        setLines(prev => prev.map(l => {
+        setLines(prev => prev.map((l, index) => {
             if (l.id === id) {
                 const updated = { ...l, [field]: value };
                 if (field === 'serviceId') {
                     const newService = services.find(s => s.id === value);
                     updated.unitPrice = newService?.price || 0;
+                }
+                if (index === 0 && field === 'startTime') {
+                    setAppointmentTime(value);
                 }
                 return updated;
             }
@@ -1139,7 +1148,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         type="time"
                                         className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
                                         value={appointmentTime}
-                                        onChange={e => setAppointmentTime(e.target.value)}
+                                        onChange={e => {
+                                            const newTime = e.target.value;
+                                            setAppointmentTime(newTime);
+                                            if (lines.length > 0) {
+                                                updateLine(lines[0].id, 'startTime', newTime);
+                                            }
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -1245,7 +1260,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                            <div className="flex flex-col">
+                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
+                                                <input
+                                                    type="time"
+                                                    className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
+                                                    value={line.startTime || appointmentTime}
+                                                    onChange={e => updateLine(line.id, 'startTime', e.target.value)}
+                                                />
+                                            </div>
                                             <div className="flex flex-col flex-1">
                                                 <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
                                                 <div className="flex items-center gap-2">
