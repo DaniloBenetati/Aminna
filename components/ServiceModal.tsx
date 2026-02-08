@@ -949,29 +949,61 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return;
         }
 
+        setIsSaving(true);
+
         try {
             // 1. Update Appointment Status
             const { error: apptError } = await supabase.from('appointments').update({ status: 'Cancelado' }).eq('id', appointment.id);
             if (apptError) throw apptError;
 
-            // 2. Add Cancellation entry to client is not currently supported in DB schema via a separate table, 
-            // but we update the customer locally. In a real scenario, we'd have a customer_history table.
+            // 2. Fetch current customer data to get existing observations
+            const { data: customerData, error: fetchError } = await supabase
+                .from('customers')
+                .select('observations')
+                .eq('id', customer.id)
+                .single();
 
+            if (fetchError) throw fetchError;
+
+            // 3. Append cancellation to observations
+            const today = new Date().toISOString().split('T')[0];
+            const providerName = providers.find(p => p.id === appointment.providerId)?.name || 'Profissional não identificado';
+            const serviceName = services.find(s => s.id === appointment.serviceId)?.name || 'Serviço não identificado';
+
+            const cancellationNote = `[${today}] CANCELAMENTO: ${serviceName} com ${providerName} - Motivo: ${cancellationReason}`;
+            const updatedObservations = customerData?.observations
+                ? `${cancellationNote}\n\n${customerData.observations}`
+                : cancellationNote;
+
+            // 4. Update customer observations in database
+            const { error: updateError } = await supabase
+                .from('customers')
+                .update({ observations: updatedObservations })
+                .eq('id', customer.id);
+
+            if (updateError) throw updateError;
+
+            // 5. Update local state for appointments
             onUpdateAppointments(prev => prev.map(a =>
                 a.id === appointment.id ? { ...a, status: 'Cancelado' } : a
             ));
 
+            // 6. Update local state for customers (both observations and history)
             onUpdateCustomers(prev => prev.map(c => {
                 if (c.id === customer.id) {
                     const cancelEntry: CustomerHistoryItem = {
                         id: `cancel-${Date.now()}`,
-                        date: new Date().toISOString().split('T')[0],
+                        date: today,
                         type: 'CANCELLATION',
                         description: 'AGENDAMENTO CANCELADO',
                         details: `Motivo: ${cancellationReason}`,
                         providerId: appointment.providerId
                     };
-                    return { ...c, history: [cancelEntry, ...c.history] };
+                    return {
+                        ...c,
+                        observations: updatedObservations,
+                        history: [cancelEntry, ...c.history]
+                    };
                 }
                 return c;
             }));
@@ -980,6 +1012,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         } catch (error) {
             console.error('Error cancelling appointment:', error);
             alert('Erro ao cancelar agendamento no banco de dados.');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -1982,9 +2016,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
                                 Cancelar Atendimento?
                             </h3>
-                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-8">
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
                                 Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
                             </p>
+                            <div className="mb-6">
+                                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                    Justificativa do Cancelamento *
+                                </label>
+                                <textarea
+                                    value={cancellationReason}
+                                    onChange={(e) => setCancellationReason(e.target.value)}
+                                    placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
+                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+                                    rows={3}
+                                    autoFocus
+                                />
+                            </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => setIsCancelling(false)}
