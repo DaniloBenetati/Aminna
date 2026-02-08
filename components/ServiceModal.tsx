@@ -1565,6 +1565,58 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     )}
                                 </div>
                             </div>
+
+                            {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
+                            {futureAppointments.length > 0 && (
+                                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
+                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                                <Calendar size={18} />
+                                            </div>
+                                            <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {futureAppointments.slice(0, 5).map(app => {
+                                                const s = services.find(serv => serv.id === app.serviceId);
+                                                return (
+                                                    <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
+                                                        <div
+                                                            className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
+                                                            onClick={() => onSelectAppointment && onSelectAppointment(app)}
+                                                            title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
+                                                        >
+                                                            <div className="flex flex-col flex-1 leading-tight">
+                                                                <div className="flex items-center gap-2 mb-0.5">
+                                                                    <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
+                                                                        {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
+                                                                    </span>
+                                                                    <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
+                                                                        {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
+                                                                    </span>
+                                                                </div>
+                                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
+                                                                    {app.combinedServiceNames || s?.name}
+                                                                </span>
+                                                            </div>
+                                                            {onSelectAppointment && (
+                                                                <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            )}
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleFutureStatus(app.id, app.status)}
+                                                            className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
+                                                            title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
+                                                        ></button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -2056,57 +2108,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    {/* FUTURE APPOINTMENTS - VISIBLE IN ALL MODES EXCEPT CANCEL */}
-                    {!isCancelling && futureAppointments.length > 0 && (
-                        <div className="px-5 pb-8 flex-shrink-0 animate-in fade-in duration-500">
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800 rounded-[2rem] p-5 shadow-sm">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                        <Calendar size={18} />
-                                    </div>
-                                    <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
-                                </div>
-                                <div className="space-y-2">
-                                    {futureAppointments.slice(0, 5).map(app => {
-                                        const s = services.find(serv => serv.id === app.serviceId);
-                                        return (
-                                            <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
-                                                <div
-                                                    className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
-                                                    onClick={() => onSelectAppointment && onSelectAppointment(app)}
-                                                    title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
-                                                >
-                                                    <div className="flex flex-col flex-1 leading-tight">
-                                                        <div className="flex items-center gap-2 mb-0.5">
-                                                            <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
-                                                                {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
-                                                            </span>
-                                                            <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
-                                                                {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
-                                                            </span>
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
-                                                            {app.combinedServiceNames || s?.name}
-                                                        </span>
-                                                    </div>
-                                                    {onSelectAppointment && (
-                                                        <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => toggleFutureStatus(app.id, app.status)}
-                                                    className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
-                                                    title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
-                                                ></button>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
             {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
