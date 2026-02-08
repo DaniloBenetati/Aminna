@@ -184,28 +184,52 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
-        let message = `Olá, * ${customer.name.split(' ')[0]}* ! ✨\nPassando para falar sobre seus atendimentos na * Aminna *: \n`;
+        const getClockEmoji = (time: string) => {
+            try {
+                const [hourStr, minStr] = time.split(':');
+                const hour = parseInt(hourStr) % 12 || 12;
+                const min = parseInt(minStr);
+                const clocks: Record<number, string[]> = {
+                    1: ['🕐', '🕜'], 2: ['🕑', '🕝'], 3: ['🕒', '🕞'],
+                    4: ['🕓', '🕟'], 5: ['🕔', '🕠'], 6: ['🕕', '🕡'],
+                    7: ['🕖', '🕢'], 8: ['🕗', '🕣'], 9: ['🕘', '🕤'],
+                    10: ['🕙', '🕥'], 11: ['🕚', '🕦'], 12: ['🕛', '🕧']
+                };
+                return clocks[hour][min >= 30 ? 1 : 0];
+            } catch { return '⏰'; }
+        };
+
+        const firstName = customer.name.split(' ')[0];
+        const isPlural = sortedApps.length > 1;
+
+        let message = `Olá, ${firstName}! ✨\n`;
+        message += isPlural
+            ? `Seus atendimentos na Aminna estão confirmados:\n`
+            : `Seu atendimento na Aminna está confirmado:\n`;
+
         let currentDayGroup = '';
 
         sortedApps.forEach(a => {
             const appDateBr = new Date(a.date + 'T12:00:00').toLocaleDateString('pt-BR');
             if (appDateBr !== currentDayGroup) {
-                message += `\n📅 * ${appDateBr}*\n`;
+                message += `\n📅 ${appDateBr}\n`;
                 currentDayGroup = appDateBr;
             }
             const srv = services.find(s => s.id === a.serviceId);
             const p = providers.find(prov => prov.id === a.providerId);
             const providerName = p ? p.name.split(' ')[0] : 'Equipe';
-            const statusLabel = a.status === 'Confirmado' ? '✅ Confirmado' : '⏳ Pendente';
-            message += `📍 * ${a.time}* - ${a.combinedServiceNames || srv?.name} (Prof.${providerName}) \n   _${statusLabel} _\n`;
+            const clock = getClockEmoji(a.time);
+
+            // Clean time display (e.g., 18:00 -> 18h)
+            const displayTime = a.time.endsWith(':00') ? a.time.split(':')[0] + 'h' : a.time.replace(':', 'h');
+
+            message += `${clock} ${displayTime} - ${a.combinedServiceNames || srv?.name} (profissional ${providerName})\n`;
         });
 
-        const hasPending = sortedApps.some(a => a.status === 'Pendente');
-        if (hasPending) {
-            message += `\nPodemos confirmar os pendentes ? 🥰`;
-        } else {
-            message += `\nEstá tudo certo! Nos vemos em breve. 🥰`;
-        }
+        message += `\nEstamos te aguardando com carinho. 🥰\n`;
+        message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
+        message += `Obrigada! 😊`;
+
         return message;
     };
 

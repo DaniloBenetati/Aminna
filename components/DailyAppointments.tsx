@@ -154,8 +154,41 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     const customer = customers.find(c => c.id === appt.customerId);
     const service = services.find(s => s.id === appt.serviceId);
     if (!customer || !service) return;
+
+    const provider = providers.find(p => p.id === appt.providerId);
+    const providerName = provider ? provider.name.split(' ')[0] : 'Equipe';
+
+    const getClockEmoji = (time: string) => {
+      try {
+        const [hourStr, minStr] = time.split(':');
+        const hour = parseInt(hourStr) % 12 || 12;
+        const min = parseInt(minStr);
+        const clocks: Record<number, string[]> = {
+          1: ['🕐', '🕜'], 2: ['🕑', '🕝'], 3: ['🕒', '🕞'],
+          4: ['🕓', '🕟'], 5: ['🕔', '🕠'], 6: ['🕕', '🕡'],
+          7: ['🕖', '🕢'], 8: ['🕗', '🕣'], 9: ['🕘', '🕤'],
+          10: ['🕙', '🕥'], 11: ['🕚', '🕦'], 12: ['🕛', '🕧']
+        };
+        return clocks[hour][min >= 30 ? 1 : 0];
+      } catch { return '⏰'; }
+    };
+
+    const clock = getClockEmoji(appt.time);
+    const appDateBr = new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR');
+    const firstName = customer.name.split(' ')[0];
+
+    // Clean time display (e.g., 18:00 -> 18h)
+    const displayTime = appt.time.endsWith(':00') ? appt.time.split(':')[0] + 'h' : appt.time.replace(':', 'h');
+
+    const message = `Olá, ${firstName}! ✨\n` +
+      `Seu atendimento na Aminna está confirmado:\n\n` +
+      `📅 ${appDateBr}\n` +
+      `${clock} ${displayTime} - ${appt.combinedServiceNames || service.name} (profissional ${providerName})\n\n` +
+      `Estamos te aguardando com carinho. 🥰\n` +
+      `Se não puder comparecer, por favor nos avise com antecedência.\n\n` +
+      `Obrigada! 😊`;
+
     const phone = customer.phone.replace(/\D/g, '');
-    const message = `Olá ${customer.name.split(' ')[0]}! ✨ Passando para confirmar seu atendimento hoje às ${appt.time} para *${appt.combinedServiceNames || service.name}*. Nos vemos em breve! 🥰`;
     window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
   };
 
