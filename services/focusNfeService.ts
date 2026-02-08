@@ -72,6 +72,7 @@ export const getFiscalConfig = async (): Promise<FiscalConfig | null> => {
             focusNfeToken: data.focus_nfe_token,
             focusNfeEnvironment: data.focus_nfe_environment,
             autoIssueNfse: data.auto_issue_nfse,
+            certificateExpiresAt: data.certificate_expires_at,
             salaoParceiroEnabled: data.salao_parceiro_enabled,
             defaultSalonPercentage: data.default_salon_percentage,
             createdAt: data.created_at,
@@ -427,8 +428,6 @@ export const registerCompany = async (): Promise<{ success: boolean; error?: str
             return { success: false, error: 'Configuração fiscal inválida ou Token não informado.' };
         }
 
-        const environment = fiscalConfig.focusNfeEnvironment;
-
         // Prepare company data for registration
         const companyData = {
             cnpj: fiscalConfig.cnpj.replace(/\D/g, ''),
@@ -483,10 +482,71 @@ export const registerCompany = async (): Promise<{ success: boolean; error?: str
     }
 };
 
+/**
+ * Upload digital certificate to Focus Nfe
+ */
+export const uploadCertificate = async (file: File, password: string): Promise<{ success: boolean; expiresAt?: string; error?: string }> => {
+    try {
+        const fiscalConfig = await getFiscalConfig();
+        if (!fiscalConfig || !fiscalConfig.focusNfeToken) {
+            return { success: false, error: 'Configuração fiscal inválida ou Token não informado.' };
+        }
+
+        // Convert file to base64
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve, reject) => {
+            reader.onload = () => {
+                const result = reader.result as string;
+                const base64 = result.split(',')[1];
+                resolve(base64);
+            };
+            reader.onerror = reject;
+        });
+        reader.readAsDataURL(file);
+        const certificateBase64 = await base64Promise;
+
+        // Call Supabase Edge Function (proxy)
+        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/upload-certificate`;
+
+        const response = await fetch(edgeFunctionUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+                certificateBase64,
+                password,
+                environment: fiscalConfig.focusNfeEnvironment
+            }),
+        });
+
+        if (!response.ok) {
+            const errorResponse = await response.json();
+            return { success: false, error: errorResponse.error || 'Erro ao chamar serviço de upload' };
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            return { success: false, error: result.error || 'Erro ao fazer upload do certificado' };
+        }
+
+        return {
+            success: true,
+            expiresAt: result.data?.vencimento
+        };
+
+    } catch (error: any) {
+        console.error('Exception uploading certificate:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Export service functions
 export const focusNfeService = {
     issueNFSe,
     cancelNFSe,
-    registerCompany
+    registerCompany,
+    uploadCertificate
 };
-

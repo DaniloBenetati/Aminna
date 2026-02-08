@@ -331,17 +331,42 @@ const App: React.FC = () => {
         })));
       }
 
-      // 7. Appointments
-      const { data: apptsData } = await supabase.from('appointments').select('*');
-      if (apptsData) {
-        setAppointments(apptsData.map((a: any) => ({
+      // 7. Appointments (fetch ALL in batches due to Supabase 1000-row limit)
+      let allAppts: any[] = [];
+      let apptStart = 0;
+      const apptStep = 1000;
+      let apptHasMore = true;
+
+      while (apptHasMore) {
+        const { data: apptBatch, error } = await supabase
+          .from('appointments')
+          .select('*')
+          .range(apptStart, apptStart + apptStep - 1)
+          .order('date', { ascending: true });
+
+        if (error) {
+          console.error('❌ Error fetching appointments batch:', error);
+          apptHasMore = false;
+        } else if (apptBatch && apptBatch.length > 0) {
+          allAppts = [...allAppts, ...apptBatch];
+          if (apptBatch.length < apptStep) {
+            apptHasMore = false;
+          } else {
+            apptStart += apptStep;
+          }
+        } else {
+          apptHasMore = false;
+        }
+      }
+
+      if (allAppts.length > 0) {
+        const mappedAppointments = allAppts.map((a: any) => ({
           id: a.id,
           customerId: a.customer_id,
           serviceId: a.service_id,
           providerId: a.provider_id,
           date: a.date,
           time: a.time,
-          duration: a.duration,
           status: a.status,
           notes: a.notes,
           price: a.price,
@@ -357,7 +382,9 @@ const App: React.FC = () => {
           appliedCoupon: a.applied_coupon,
           discountAmount: a.discount_amount,
           nfseRecordId: a.nfse_record_id
-        })));
+        }));
+
+        setAppointments(mappedAppointments);
       }
 
       // 7b. NFSe Records
@@ -472,6 +499,7 @@ const App: React.FC = () => {
             services={services}
             campaigns={campaigns}
             providers={providers}
+            paymentSettings={paymentSettings}
           />
         );
       case ViewState.CLIENTES:

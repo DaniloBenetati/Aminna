@@ -6,7 +6,7 @@ import {
     Settings, BookOpen, LayoutDashboard, Calendar, Users, DollarSign,
     Package, ShoppingCart, Briefcase, Sparkles, Handshake, BarChart3,
     Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
-    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, CheckCircle
+    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, CheckCircle, AlertTriangle
 } from 'lucide-react';
 import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile, FiscalConfig } from '../types';
 import { getFiscalConfig, focusNfeService } from '../services/focusNfeService';
@@ -55,6 +55,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const [isLoadingFiscal, setIsLoadingFiscal] = useState(false);
     const [isSavingFiscal, setIsSavingFiscal] = useState(false);
     const [isRegisteringCompany, setIsRegisteringCompany] = useState(false);
+    const [isUploadingCertificate, setIsUploadingCertificate] = useState(false);
+    const [certificateFile, setCertificateFile] = useState<File | null>(null);
+    const [certificatePassword, setCertificatePassword] = useState('');
 
     // Load Fiscal Config
     React.useEffect(() => {
@@ -122,10 +125,35 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             } else {
                 alert(`Erro: ${result.error}`);
             }
-        } catch (error) {
-            alert('Erro ao processar solicitação.');
         } finally {
             setIsRegisteringCompany(false);
+        }
+    };
+
+    const handleUploadCertificate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!certificateFile || !certificatePassword) {
+            alert('Selecione o arquivo do certificado e informe a senha.');
+            return;
+        }
+
+        setIsUploadingCertificate(true);
+        try {
+            const result = await focusNfeService.uploadCertificate(certificateFile, certificatePassword);
+            if (result.success) {
+                alert(`Certificado enviado com sucesso! Válido até: ${result.expiresAt ? new Date(result.expiresAt).toLocaleDateString() : 'N/A'}`);
+                setCertificateFile(null);
+                setCertificatePassword('');
+                // Refresh fiscal config to get new expiration date
+                const config = await getFiscalConfig();
+                if (config) setFiscalConfig(config);
+            } else {
+                alert(`Erro ao enviar certificado: ${result.error}`);
+            }
+        } catch (error) {
+            alert('Erro ao processar upload do certificado.');
+        } finally {
+            setIsUploadingCertificate(false);
         }
     };
 
@@ -749,6 +777,60 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             >
                                                                 {isRegisteringCompany ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CheckCircle size={16} />}
                                                                 Autorizar CNPJ (Habilitar Emissão)
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CERTIFICADO DIGITAL */}
+                                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                                                        <h4 className="text-base font-black text-slate-950 dark:text-white uppercase mb-4 flex items-center gap-2">
+                                                            <ShieldCheck size={18} className="text-indigo-500" /> Certificado Digital (Modelo A1)
+                                                        </h4>
+
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            <div>
+                                                                <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-1.5 ml-1">Arquivo do Certificado (.pfx ou .p12)</label>
+                                                                <input
+                                                                    type="file"
+                                                                    accept=".pfx,.p12"
+                                                                    onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
+                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-2.5 text-xs font-bold outline-none focus:border-indigo-500 dark:text-white"
+                                                                />
+                                                                <p className="text-[10px] text-slate-400 mt-1 ml-1">Somente certificados modelo A1 são aceitos.</p>
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-1.5 ml-1">Senha do Certificado</label>
+                                                                <input
+                                                                    type="password"
+                                                                    value={certificatePassword}
+                                                                    onChange={(e) => setCertificatePassword(e.target.value)}
+                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-500 dark:text-white"
+                                                                    placeholder="Digite a senha de exportação"
+                                                                />
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="mt-6 pt-6 border-t border-indigo-100 dark:border-indigo-800 flex flex-col md:flex-row items-center justify-between gap-4">
+                                                            <div className="text-xs text-indigo-800 dark:text-indigo-300 font-medium">
+                                                                {fiscalConfig?.certificateExpiresAt ? (
+                                                                    <p className="font-bold flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                                                                        <CheckCircle2 size={14} /> Certificado Válido até: {new Date(fiscalConfig.certificateExpiresAt).toLocaleDateString()}
+                                                                    </p>
+                                                                ) : (
+                                                                    <p className="font-bold flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                                                                        <AlertTriangle size={14} /> Nenhum certificado configurado
+                                                                    </p>
+                                                                )}
+                                                                <p>O certificado é necessário para assinar as notas fiscais enviadas à prefeitura.</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={handleUploadCertificate}
+                                                                disabled={isUploadingCertificate || !certificateFile || !certificatePassword}
+                                                                className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2"
+                                                            >
+                                                                {isUploadingCertificate ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save size={16} />}
+                                                                Enviar Certificado
                                                             </button>
                                                         </div>
                                                     </div>

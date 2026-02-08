@@ -365,6 +365,10 @@ export interface FiscalConfig {
   focusNfeToken?: string;
   focusNfeEnvironment: 'sandbox' | 'production';
   autoIssueNfse: boolean;
+  // Digital Certificate
+  certificateBase64?: string;
+  certificatePassword?: string;
+  certificateExpiresAt?: string;
   // Salão Parceiro Settings
   salaoParceiroEnabled: boolean;
   defaultSalonPercentage: number; // Percentage salon keeps (e.g., 30%)

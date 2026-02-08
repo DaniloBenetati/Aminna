@@ -38,6 +38,14 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
     const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
+
+    // DEBUG: Track selectedProviderId changes
+    React.useEffect(() => {
+        console.log('🔴 selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
+        if (selectedProviderId !== 'all' && !providers.some(p => p.id === selectedProviderId)) {
+            console.error('❌ INVALID selectedProviderId! Not "all" and not a valid provider ID');
+        }
+    }, [selectedProviderId, providers]);
     const [sidebarSearch, setSidebarSearch] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -136,14 +144,21 @@ export const Agenda: React.FC<AgendaProps> = ({
     const gridAppointments = useMemo(() => {
         return appointments.filter(a => {
             const isDate = a.date === gridDateStr;
-            const isProvider = selectedProviderId === 'all'
-                ? (visibleProviderIds.length === 0 ||
-                    visibleProviderIds.includes(a.providerId) ||
-                    a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId)))
-                : (a.providerId === selectedProviderId ||
-                    a.additionalServices?.some(s => s.providerId === selectedProviderId));
-            const isNotCancelled = a.status !== 'Cancelado';
 
+            // Provider filter: if visibleProviderIds is empty, show ALL providers
+            let isProvider = true;
+            if (selectedProviderId !== 'all') {
+                // Specific provider selected
+                isProvider = a.providerId === selectedProviderId ||
+                    a.additionalServices?.some(s => s.providerId === selectedProviderId);
+            } else if (visibleProviderIds.length > 0) {
+                // "All" selected but specific providers checked in sidebar
+                isProvider = visibleProviderIds.includes(a.providerId) ||
+                    a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId));
+            }
+            // else: "All" selected and no providers checked = show all (isProvider stays true)
+
+            const isNotCancelled = a.status !== 'Cancelado';
             let isSearchMatch = true;
             if (searchTerm) {
                 const customer = customers.find(c => c.id === a.customerId);
@@ -235,17 +250,19 @@ export const Agenda: React.FC<AgendaProps> = ({
         }));
     };
 
-    const hours = Array.from({ length: 13 }, (_, i) => i + 8); // 8h to 20h
+    const hours = Array.from({ length: 25 }, (_, i) => {
+        const h = Math.floor(i / 2) + 8;
+        const m = i % 2 === 0 ? '00' : '30';
+        return `${String(h).padStart(2, '0')}:${m}`;
+    }); // 08:00 to 20:00 in 30min slots
 
-    const getCellAppointments = (providerId: string, hour: number) => {
+    const getCellAppointments = (providerId: string, timeSlot: string) => {
         return gridAppointments.filter(a => {
-            const mainAppHour = parseInt(a.time.split(':')[0]);
-            const isMainProvider = a.providerId === providerId && mainAppHour === hour;
+            const isMainProvider = a.providerId === providerId && a.time.startsWith(timeSlot);
 
             const isExtraProvider = a.additionalServices?.some(s => {
                 const extraTime = s.startTime || a.time;
-                const extraHour = parseInt(extraTime.split(':')[0]);
-                return s.providerId === providerId && extraHour === hour;
+                return s.providerId === providerId && extraTime.startsWith(timeSlot);
             });
 
             return isMainProvider || isExtraProvider;
@@ -458,7 +475,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <button onClick={() => navigateMonth('next')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={16} /></button>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                    {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => <span key={d} className="text-[8px] font-black text-slate-400 uppercase">{d}</span>)}
+                    {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={`${d}-${i}`} className="text-[8px] font-black text-slate-400 uppercase">{d}</span>)}
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                     {days}
@@ -474,7 +491,12 @@ export const Agenda: React.FC<AgendaProps> = ({
         );
 
         const toggleProvider = (id: string) => {
-            setVisibleProviderIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]);
+            console.log('🔧 toggleProvider called with ID:', id, 'Type:', typeof id);
+            setVisibleProviderIds(prev => {
+                const newValue = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
+                console.log('📝 visibleProviderIds updated:', prev, '→', newValue);
+                return newValue;
+            });
         };
 
         return (
@@ -837,8 +859,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     style={{ minHeight: `${rowHeight}px` }}
                                 >
                                     {/* Time Column */}
-                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-10">
-                                        {hour}:00
+                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-10 transition-colors">
+                                        {hour}
                                     </div>
 
                                     {/* Provider Columns */}
@@ -856,7 +878,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         onClick={() => handleNewAppointment({
                                                             providerId: p.id,
                                                             date: gridDateStr,
-                                                            time: `${String(hour).padStart(2, '0')}:00`
+                                                            time: hour
                                                         })}
                                                         className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
                                                     >
@@ -865,18 +887,22 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                     {slotAppointments.map(appt => {
                                                         const customer = customers.find(c => c.id === appt.customerId);
+                                                        const service = services.find(s => s.id === appt.serviceId);
 
-                                                        // Determine which service to show based on the column's provider (p.id)
+                                                        // Calculate height based on duration
+                                                        // Base height is rowHeight (for 30 mins)
+                                                        // If it's 60 mins, height is rowHeight * 2
+                                                        const duration = service?.durationMinutes || 30;
+                                                        const heightFactor = duration / 30;
+                                                        const cardHeight = (rowHeight * heightFactor) - 8; // Subtract padding
+
                                                         let displayServiceName = '';
                                                         let displayTime = appt.time;
 
                                                         if (appt.providerId === p.id) {
-                                                            // Main Provider
-                                                            const service = services.find(s => s.id === appt.serviceId);
                                                             displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
                                                             displayTime = appt.time;
                                                         } else {
-                                                            // Additional Provider
                                                             const subService = appt.additionalServices?.find(s => s.providerId === p.id);
                                                             if (subService) {
                                                                 const srv = services.find(s => s.id === subService.serviceId);
@@ -889,57 +915,63 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div
                                                                 key={appt.id}
                                                                 onClick={() => handleAppointmentClick(appt)}
-                                                                className={`relative z-10 mb-1 p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                                                                         appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
+                                                                style={{
+                                                                    height: `${cardHeight}px`,
+                                                                    top: '4px' // Padding from top of slot
+                                                                }}
                                                             >
                                                                 <div className="flex justify-between items-start">
                                                                     <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
                                                                     <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                 </div>
                                                                 <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
-                                                                <div className="flex justify-between items-center mt-1.5">
-                                                                    <div className="flex items-center gap-1">
-                                                                        <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                            appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                                    'bg-amber-400'
-                                                                            }`}></span>
-                                                                        {appt.status === 'Concluído' && (
-                                                                            (() => {
-                                                                                const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                                                                                if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" title="NFSe Emitida" />;
-                                                                                if (record?.status === 'processing') return <Loader2 size={10} className="text-blue-500 animate-spin" title="Emitindo NFSe..." />;
-                                                                                if (record?.status === 'error') return <AlertCircle size={10} className="text-rose-500" title="Erro na NFSe" />;
-                                                                                return null;
-                                                                            })()
-                                                                        )}
+
+                                                                {/* Only show bottom info if height allows */}
+                                                                {cardHeight > 40 && (
+                                                                    <div className="flex justify-between items-center mt-1.5">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                        'bg-amber-400'
+                                                                                }`}></span>
+                                                                            {appt.status === 'Concluído' && (
+                                                                                (() => {
+                                                                                    const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                    if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                    return null;
+                                                                                })()
+                                                                            )}
+                                                                        </div>
+                                                                        <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
                                                                     </div>
-                                                                    <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
-                                                                </div>
+                                                                )}
 
                                                                 {/* HOVER TOOLTIP */}
-                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[200] top-full left-0 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-top-2 duration-150 hidden md:block mt-1">
-                                                                    <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-700/50">
-                                                                        <div className="w-1 h-8 rounded-full bg-indigo-500"></div>
+                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-72 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600"></div>
                                                                         <div>
-                                                                            <p className="text-[11px] font-black text-white uppercase tracking-wider">{customer?.name}</p>
-                                                                            <p className="text-[9px] font-bold text-slate-400 flex items-center gap-1">
-                                                                                <Clock size={10} /> {appt.time}
+                                                                            <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                                                                                <Clock size={12} /> {appt.time} • {duration} min
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="space-y-2">
+                                                                    <div className="space-y-3">
                                                                         {/* Main Service */}
                                                                         <div className="flex justify-between items-start">
                                                                             <div className="flex-1">
-                                                                                <p className="text-[10px] font-bold text-indigo-300 uppercase leading-tight">{services.find(s => s.id === appt.serviceId)?.name}</p>
-                                                                                <p className="text-[9px] text-slate-500 font-medium">Principal • {appt.time}</p>
+                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{services.find(s => s.id === appt.serviceId)?.name}</p>
+                                                                                <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold uppercase">Principal • {appt.time}</p>
                                                                             </div>
                                                                             <div className="text-right">
-                                                                                <p className="text-[9px] font-black text-slate-300 uppercase">{providers.find(p => p.id === appt.providerId)?.name.split(' ')[0]}</p>
+                                                                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase">{providers.find(p => p.id === appt.providerId)?.name.split(' ')[0]}</p>
                                                                             </div>
                                                                         </div>
 
@@ -948,17 +980,27 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             const extraSrv = services.find(s => s.id === extra.serviceId);
                                                                             const extraPrv = providers.find(p => p.id === extra.providerId);
                                                                             return (
-                                                                                <div key={idx} className="flex justify-between items-start pt-2 border-t border-slate-800/50">
+                                                                                <div key={idx} className="flex justify-between items-start pt-3 border-t border-slate-100 dark:border-zinc-800">
                                                                                     <div className="flex-1">
-                                                                                        <p className="text-[10px] font-bold text-emerald-300 uppercase leading-tight">{extraSrv?.name}</p>
-                                                                                        <p className="text-[9px] text-slate-500 font-medium">Extra • {extra.startTime || appt.time}</p>
+                                                                                        <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{extraSrv?.name}</p>
+                                                                                        <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold uppercase">Extra • {extra.startTime || appt.time}</p>
                                                                                     </div>
                                                                                     <div className="text-right">
-                                                                                        <p className="text-[9px] font-black text-slate-300 uppercase">{extraPrv?.name.split(' ')[0]}</p>
+                                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase">{extraPrv?.name.split(' ')[0]}</p>
                                                                                     </div>
                                                                                 </div>
                                                                             )
                                                                         })}
+
+                                                                        <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${appt.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                                                                                appt.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                    'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                                                                                }`}>
+                                                                                {appt.status}
+                                                                            </span>
+                                                                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">R$ {(appt.bookedPrice || service?.price || 0).toFixed(0)}</p>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1181,6 +1223,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                     />
                 )}
             </div>
-        </div>
+        </div >
     );
 };

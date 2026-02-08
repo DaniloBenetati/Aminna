@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone } from 'lucide-react';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider } from '../types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 
 const KPICard = ({ title, value, sub, icon: Icon, color, lightColor }: any) => (
@@ -34,9 +34,10 @@ interface DashboardProps {
     services: Service[];
     campaigns: Campaign[];
     providers: Provider[];
+    paymentSettings: PaymentSetting[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
     // --- FILTER STATES ---
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dateRef, setDateRef] = useState(new Date()); // Default to Today
@@ -125,10 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 if (!app.appliedCoupon || !partnerCampaignCodes.includes(app.appliedCoupon)) return false;
             }
 
-            if (filterChannel !== 'all') {
-                const customer = customers.find(c => c.id === app.customerId);
-                if (!customer || customer.acquisitionChannel !== filterChannel) return false;
-            }
+            if (app.status === 'Cancelado') return false;
 
             return true;
         });
@@ -179,21 +177,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const flowData = useMemo(() => {
         // Helper to calc metrics for a list of apps
         const calcMetrics = (apps: Appointment[]) => {
-            let gross = 0;
-            let commission = 0;
+            let total = 0;
+            let fees = 0;
             apps.forEach(a => {
-                const price = a.pricePaid || services.find(s => s.id === a.serviceId)?.price || 0;
-                gross += price;
+                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                total += mainPrice;
 
-                // Find provider to calculate commission
-                const provider = providers.find(p => p.id === a.providerId);
-                if (provider) {
-                    commission += price * provider.commissionRate;
-                }
+                // Calc fees for main
+                const method = a.paymentMethod || 'Dinheiro';
+                const settings = paymentSettings.find(ps => ps.method === method);
+                if (settings) fees += (mainPrice * (settings.fee / 100));
+
+                // Add extra services
+                (a.additionalServices || []).forEach(extra => {
+                    const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                    total += extraPrice;
+                    if (settings) fees += (extraPrice * (settings.fee / 100));
+                });
             });
             return {
-                faturamento: gross,
-                receita: gross - commission
+                faturamento: total,
+                receita: total - fees
             };
         };
 
@@ -258,9 +262,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // 2. Top Providers (Updated to Revenue)
     const topProviders = useMemo(() => {
         const revenue: Record<string, number> = {};
-        filteredAppointments.filter(a => a.status === 'Concluído').forEach(a => {
-            const price = a.pricePaid || services.find(s => s.id === a.serviceId)?.price || 0;
+        filteredAppointments.filter(a => a.status !== 'Cancelado').forEach(a => {
+            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
             revenue[a.providerId] = (revenue[a.providerId] || 0) + price;
+
+            // Extra services for the same provider or others?
+            // Usually top providers bar shows revenue attributed to each professional
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                revenue[extra.providerId] = (revenue[extra.providerId] || 0) + extraPrice;
+            });
         });
         return Object.entries(revenue)
             .map(([id, val]) => ({
@@ -317,8 +328,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const topServices = useMemo(() => {
         const revenue: Record<string, number> = {};
         filteredAppointments.forEach(a => {
-            const price = a.pricePaid || services.find(s => s.id === a.serviceId)?.price || 0;
+            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
             revenue[a.serviceId] = (revenue[a.serviceId] || 0) + price;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                revenue[extra.serviceId] = (revenue[extra.serviceId] || 0) + extraPrice;
+            });
         });
         return Object.entries(revenue)
             .map(([id, val]) => ({
@@ -412,8 +428,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // KPI Calculations
     const totalRevenue = useMemo(() => {
         const serviceRevenue = filteredAppointments.reduce((acc, a) => {
-            const price = services.find(s => s.id === a.serviceId)?.price || 0;
-            return acc + (a.pricePaid || price);
+            const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+            const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
+                return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+            }, 0);
+            return acc + mainPrice + extraPrice;
         }, 0);
         const salesRevenue = filteredSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
         return serviceRevenue + salesRevenue;

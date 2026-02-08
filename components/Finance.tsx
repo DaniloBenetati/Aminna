@@ -424,13 +424,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const service = services.find(s => s.id === app.serviceId);
             const customer = customers.find(c => c.id === app.customerId);
             const provider = providers.find(p => p.id === app.providerId);
-            const rawPrice = app.pricePaid || app.bookedPrice || service?.price || 0;
+            // Revenue logic: use pricePaid if concluded (can be 0 for courtesy), else fallback
+            const revenueBase = (app.status === 'Concluído' && app.pricePaid !== undefined && app.pricePaid !== null)
+                ? app.pricePaid
+                : (app.bookedPrice || service?.price || 0);
 
             // Payment Logic
             const paymentMethodName = app.paymentMethod || 'Pix';
             const { fee, days } = getPaymentDetails(paymentMethodName);
 
-            const netAmount = rawPrice * (1 - (fee / 100));
+            const netAmount = revenueBase * (1 - (fee / 100));
 
             // Date Logic
             // If concluded, use paymentDate (D+0 reference), else use scheduled date
@@ -462,19 +465,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             if (provider) {
                 const rate = app.commissionRateSnapshot ?? provider.commissionRate;
-                // Commission is on NET value
-                const commissionLiquidBase = rawPrice * (1 - (fee / 100));
+                // Commission is on NET value of the MAIN service
+                const mainServiceBookedPrice = app.bookedPrice || service?.price || 0;
+                const commissionLiquidBase = mainServiceBookedPrice * (1 - (fee / 100));
                 const commissionAmount = commissionLiquidBase * rate;
 
-                // Commission date based on SETTLEMENT date of the service? 
-                // Or based on Service Date? Usually based on when money is received or service done.
-                // Requirement: "Repasse" logic separate. Kept 'baseDate' (service date) for commission calculation cycle start?
-                // User said: "money received first, then commission paid bi-weekly".
-                // So commission cycle reference is likely the service date.
                 const commissionDate = getCommissionDate(baseDate);
 
                 allTrans.push({
-                    id: `comm-${app.id}`,
+                    id: `comm-main-${app.id}`,
                     date: commissionDate,
                     type: 'DESPESA',
                     category: 'Comissão',
@@ -484,6 +483,35 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     paymentMethod: 'Transferência',
                     origin: 'Outro',
                     customerOrProviderName: provider.name
+                });
+            }
+
+            // --- ADDITIONAL SERVICES COMMISSIONS ---
+            if (app.additionalServices && app.additionalServices.length > 0) {
+                app.additionalServices.forEach((extra, idx) => {
+                    const extraProvider = providers.find(p => p.id === extra.providerId);
+                    const extraService = services.find(s => s.id === extra.serviceId);
+                    if (extraProvider) {
+                        const rate = extra.commissionRateSnapshot ?? extraProvider.commissionRate;
+                        const extraBookedPrice = extra.bookedPrice || extraService?.price || 0;
+                        const commissionLiquidBase = extraBookedPrice * (1 - (fee / 100));
+                        const commissionAmount = commissionLiquidBase * rate;
+
+                        const commissionDate = getCommissionDate(baseDate);
+
+                        allTrans.push({
+                            id: `comm-extra-${app.id}-${idx}`,
+                            date: commissionDate,
+                            type: 'DESPESA',
+                            category: 'Comissão',
+                            description: `Repasse Extra - ${extraProvider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%)`,
+                            amount: commissionAmount,
+                            status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
+                            paymentMethod: 'Transferência',
+                            origin: 'Outro',
+                            customerOrProviderName: extraProvider.name
+                        });
+                    }
                 });
             }
         });
@@ -622,21 +650,53 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
-            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status === 'Concluído');
+            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status !== 'Cancelado');
             const sls = sales.filter(s => s.date >= start && s.date <= end);
             const exps = expenses.filter(e => e.date >= start && e.date <= end);
 
-            const revenueServices = apps.reduce((acc, a) => acc + (a.pricePaid || 0), 0);
-            const grossRevenue = revenueServices;
+            const revenueServices = apps.reduce((acc, a) => {
+                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
+                    return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                }, 0);
+                return acc + mainPrice + extraPrice;
+            }, 0);
+
+            const revenueProducts = sls.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+            const grossRevenue = revenueServices + revenueProducts;
+
+            // Automated Deductions (Fees)
+            const automatedDeductions = apps.reduce((acc, a) => {
+                const method = a.paymentMethod || 'Dinheiro';
+                const settings = paymentSettings.find(ps => ps.method === method);
+                if (!settings) return acc;
+
+                const totalAppValue = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) +
+                    (a.additionalServices || []).reduce((sum, e) => sum + (e.bookedPrice ?? services.find(s => s.id === e.serviceId)?.price ?? 0), 0);
+
+                return acc + (totalAppValue * (settings.fee / 100));
+            }, 0);
 
             const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
-            const deductions = manualDeductions;
+            const deductions = manualDeductions + automatedDeductions;
             const netRevenue = grossRevenue - deductions;
 
             const commissions = apps.reduce((acc, a) => {
+                // Main service commission (uses bookedPrice for courtesies fallback)
                 const provider = providers.find(p => p.id === a.providerId);
                 const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
-                return acc + ((a.pricePaid || 0) * rate);
+                const mainComm = (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0) * rate;
+
+                // Additional services commission
+                const extraComm = (a.additionalServices || []).reduce((eAcc, extra) => {
+                    const eProv = providers.find(p => p.id === extra.providerId);
+                    if (!eProv) return eAcc;
+                    const eRate = extra.commissionRateSnapshot ?? eProv.commissionRate ?? 0;
+                    const ePrice = extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0;
+                    return eAcc + (ePrice * eRate);
+                }, 0);
+
+                return acc + mainComm + extraComm;
             }, 0);
 
             const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
@@ -666,22 +726,53 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const netResult = resultBeforeTaxes - irpjCsll;
 
             const breakdownServices = apps.reduce((acc, a) => {
+                // Main service
                 const serviceName = services.find(s => s.id === a.serviceId)?.name || 'Serviço Removido';
                 if (!acc[serviceName]) acc[serviceName] = { total: 0, count: 0 };
-                acc[serviceName].total += (a.pricePaid || 0);
+                const amount = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                acc[serviceName].total += amount;
                 acc[serviceName].count += 1;
+
+                // Extras
+                (a.additionalServices || []).forEach(extra => {
+                    const extraName = services.find(s => s.id === extra.serviceId)?.name || 'Serviço Removido';
+                    if (!acc[extraName]) acc[extraName] = { total: 0, count: 0 };
+                    const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                    acc[extraName].total += extraPrice;
+                    acc[extraName].count += 1;
+                });
+
                 return acc;
             }, {} as Record<string, { total: number, count: number }>);
 
             const breakdownCommissions = apps.reduce((acc, a) => {
+                // Main professional
                 const provider = providers.find(p => p.id === a.providerId);
-                const name = provider?.name || 'Profissional Removido';
-                const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
-                const commVal = (a.pricePaid || 0) * rate;
+                if (provider) {
+                    const name = provider.name;
+                    const rate = a.commissionRateSnapshot ?? provider.commissionRate ?? 0;
+                    const commVal = (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0) * rate;
 
-                if (!acc[name]) acc[name] = { total: 0, count: 0 };
-                acc[name].total += commVal;
-                acc[name].count += 1;
+                    if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                    acc[name].total += commVal;
+                    acc[name].count += 1;
+                }
+
+                // Additional professionals
+                (a.additionalServices || []).forEach(extra => {
+                    const eProv = providers.find(p => p.id === extra.providerId);
+                    if (eProv) {
+                        const name = eProv.name;
+                        const eRate = extra.commissionRateSnapshot ?? eProv.commissionRate ?? 0;
+                        const ePrice = extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0;
+                        const eComm = ePrice * eRate;
+
+                        if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                        acc[name].total += eComm;
+                        acc[name].count += 1;
+                    }
+                });
+
                 return acc;
             }, {} as Record<string, { total: number, count: number }>);
 
