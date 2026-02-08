@@ -178,6 +178,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     }, [activeProviders, selectedProviderId, visibleProviderIds]);
 
     // Confirmation Logic (Uses Range)
+    // Confirmation Logic (Uses Range)
     const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
         const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
@@ -204,32 +205,59 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         let message = `Olá, ${firstName}! ✨\n`;
         message += isPlural
-            ? `Seus atendimentos na Aminna estão confirmados:\n`
-            : `Seu atendimento na Aminna está confirmado:\n`;
+            ? `Passando para confirmar seus atendimentos na Aminna:\n`
+            : `Passando para confirmar seu atendimento na Aminna:\n`;
 
         let currentDayGroup = '';
 
+        // Group by day first
+        const appsByDay: Record<string, Appointment[]> = {};
         sortedApps.forEach(a => {
             const appDateBr = new Date(a.date + 'T12:00:00').toLocaleDateString('pt-BR');
-            if (appDateBr !== currentDayGroup) {
-                message += `\n📅 ${appDateBr}\n`;
-                currentDayGroup = appDateBr;
-            }
-            const srv = services.find(s => s.id === a.serviceId);
-            const p = providers.find(prov => prov.id === a.providerId);
-            const providerName = p ? p.name.split(' ')[0] : 'Equipe';
-            const clock = getClockEmoji(a.time);
-
-            // Clean time display (e.g., 18:00 -> 18h)
-            const displayTime = a.time.endsWith(':00') ? a.time.split(':')[0] + 'h' : a.time.replace(':', 'h');
-
-            message += `${clock} ${displayTime} - ${a.combinedServiceNames || srv?.name} (profissional ${providerName})\n`;
+            if (!appsByDay[appDateBr]) appsByDay[appDateBr] = [];
+            appsByDay[appDateBr].push(a);
         });
 
-        message += `\nEstamos te aguardando com carinho. 🥰\n`;
-        message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
-        message += `Obrigada! 😊`;
+        Object.keys(appsByDay).forEach(day => {
+            message += `\n📅 ${day}\n`;
 
+            const dayApps = appsByDay[day];
+            const confirmed = dayApps.filter(a => a.status === 'Confirmado');
+            const pending = dayApps.filter(a => a.status === 'Pendente');
+
+            if (confirmed.length > 0) {
+                message += `\n✅ Confirmado: \n`;
+                confirmed.forEach(a => {
+                    const srv = services.find(s => s.id === a.serviceId);
+                    const p = providers.find(prov => prov.id === a.providerId);
+                    const providerName = p ? p.name.split(' ')[0] : 'Equipe';
+                    const clock = getClockEmoji(a.time);
+                    const displayTime = a.time.endsWith(':00') ? a.time.split(':')[0] + 'h' : a.time.replace(':', 'h');
+                    message += `${clock} ${displayTime} - ${a.combinedServiceNames || srv?.name} (profissional ${providerName})\n`;
+                });
+            }
+
+            if (pending.length > 0) {
+                message += `\n⏳ Pendente: \n`;
+                pending.forEach(a => {
+                    const srv = services.find(s => s.id === a.serviceId);
+                    const p = providers.find(prov => prov.id === a.providerId);
+                    const providerName = p ? p.name.split(' ')[0] : 'Equipe';
+                    const clock = getClockEmoji(a.time);
+                    const displayTime = a.time.endsWith(':00') ? a.time.split(':')[0] + 'h' : a.time.replace(':', 'h');
+                    message += `${clock} ${displayTime} - ${a.combinedServiceNames || srv?.name} (profissional ${providerName})\n`;
+                });
+            }
+        });
+
+        const hasPending = sortedApps.some(a => a.status === 'Pendente');
+        if (hasPending) {
+            message += `\nPodemos confirmar os atendimentos pendentes ? 🥰`;
+        } else {
+            message += `\nEstamos te aguardando com carinho. 🥰\n`;
+            message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
+            message += `Obrigada! 😊`;
+        }
         return message;
     };
 
