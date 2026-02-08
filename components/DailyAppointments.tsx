@@ -180,8 +180,10 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     // Clean time display (e.g., 18:00 -> 18h)
     const displayTime = appt.time.endsWith(':00') ? appt.time.split(':')[0] + 'h' : appt.time.replace(':', 'h');
 
+    const hasMultipleServices = appt.combinedServiceNames?.includes(',') || appt.combinedServiceNames?.includes(' e ');
+
     const message = `Olá, ${firstName}! ✨\n` +
-      `Seu atendimento na Aminna está confirmado:\n\n` +
+      `${hasMultipleServices ? 'Seus atendimentos na Aminna estão confirmados' : 'Seu atendimento na Aminna está confirmado'}:\n\n` +
       `📅 ${appDateBr}\n` +
       `${clock} ${displayTime} - ${appt.combinedServiceNames || service.name} (profissional ${providerName})\n\n` +
       `Estamos te aguardando com carinho. 🥰\n` +

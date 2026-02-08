@@ -252,7 +252,9 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         const hasPending = sortedApps.some(a => a.status === 'Pendente');
         if (hasPending) {
-            message += `\nPodemos confirmar os atendimentos pendentes ? 🥰`;
+            message += isPlural
+                ? `\nPodemos confirmar os atendimentos pendentes? 🥰`
+                : `\nPodemos confirmar o seu atendimento pendente? 🥰`;
         } else {
             message += `\nEstamos te aguardando com carinho. 🥰\n`;
             message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
@@ -1005,54 +1007,65 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 )}
 
                                                                 {/* HOVER TOOLTIP */}
-                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-72 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600"></div>
+                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
                                                                         <div>
-                                                                            <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
                                                                             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
-                                                                                <Clock size={12} /> {appt.time} • {duration} min
+                                                                                <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
                                                                             </p>
                                                                         </div>
                                                                     </div>
-                                                                    <div className="space-y-3">
-                                                                        {/* Main Service */}
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div className="flex-1">
-                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{services.find(s => s.id === appt.serviceId)?.name}</p>
-                                                                                <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold uppercase">Principal • {appt.time}</p>
-                                                                            </div>
-                                                                            <div className="text-right">
-                                                                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase">{providers.find(p => p.id === appt.providerId)?.name.split(' ')[0]}</p>
-                                                                            </div>
-                                                                        </div>
 
-                                                                        {/* Additional Services */}
-                                                                        {appt.additionalServices?.filter(s => s.serviceId).map((extra, idx) => {
-                                                                            const extraSrv = services.find(s => s.id === extra.serviceId);
-                                                                            const extraPrv = providers.find(p => p.id === extra.providerId);
-                                                                            return (
-                                                                                <div key={idx} className="flex justify-between items-start pt-3 border-t border-slate-100 dark:border-zinc-800">
-                                                                                    <div className="flex-1">
-                                                                                        <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{extraSrv?.name}</p>
-                                                                                        <p className="text-[10px] text-slate-500 dark:text-zinc-500 font-bold uppercase">Extra • {extra.startTime || appt.time}</p>
-                                                                                    </div>
-                                                                                    <div className="text-right">
-                                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase">{extraPrv?.name.split(' ')[0]}</p>
-                                                                                    </div>
-                                                                                </div>
-                                                                            )
-                                                                        })}
+                                                                    <div className="space-y-4">
+                                                                        {(() => {
+                                                                            const customerApps = gridAppointments
+                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                .sort((a, b) => a.time.localeCompare(b.time));
 
-                                                                        <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center">
-                                                                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${appt.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
-                                                                                appt.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
-                                                                                    'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                                                                                }`}>
-                                                                                {appt.status}
-                                                                            </span>
-                                                                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tighter">R$ {(appt.bookedPrice || service?.price || 0).toFixed(0)}</p>
-                                                                        </div>
+                                                                            return customerApps.map((ca, idx) => {
+                                                                                const mainSrv = services.find(s => s.id === ca.serviceId);
+                                                                                const mainProv = providers.find(p => p.id === ca.providerId);
+
+                                                                                return (
+                                                                                    <div key={ca.id} className={`${idx > 0 ? 'pt-3 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
+                                                                                        {/* Main Service info for this record */}
+                                                                                        <div className="flex justify-between items-start mb-2">
+                                                                                            <div className="flex-1">
+                                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
+                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {ca.duration || 30} min</p>
+                                                                                            </div>
+                                                                                            <div className="text-right">
+                                                                                                <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Status and Price for this record */}
+                                                                                        <div className="flex justify-between items-center mt-1">
+                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                                                                                                    ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
+                                                                                                        ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                            'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                                                                                                }`}>
+                                                                                                {ca.status}
+                                                                                            </span>
+                                                                                            <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            });
+                                                                        })()}
+                                                                    </div>
+
+                                                                    <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
+                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                            R$ {gridAppointments
+                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                .toFixed(0)}
+                                                                        </p>
                                                                     </div>
                                                                 </div>
                                                             </div>

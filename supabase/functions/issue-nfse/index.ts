@@ -7,90 +7,58 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
-    }
+    if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
     try {
-        // Get request body
         const { nfseData, environment } = await req.json()
-
-        // Get Supabase client
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
         )
 
-        // Get fiscal configuration from database
-        const { data: fiscalConfig, error: configError } = await supabaseClient
-            .from('fiscal_config')
-            .select('*')
-            .single()
-
-        if (configError || !fiscalConfig) {
-            return new Response(
-                JSON.stringify({ error: 'Configuração fiscal não encontrada' }),
-                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
+        const { data: fiscalConfig } = await supabaseClient.from('fiscal_config').select('*').single()
+        if (!fiscalConfig) throw new Error('Configuração fiscal não encontrada')
 
         const token = fiscalConfig.focus_nfe_token
-        if (!token) {
-            return new Response(
-                JSON.stringify({ error: 'Token Focus NFe não configurado' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
+        if (!token) throw new Error('Token Focus NFe não configurado')
 
-        // Determine API URL based on environment
-        // Accept both 'homologacao' (Focus NFe term) and 'sandbox' (our internal term)
         const isSandbox = environment === 'homologacao' || environment === 'sandbox'
+        const baseUrl = isSandbox ? 'https://homologacao.focusnfe.com.br' : 'https://api.focusnfe.com.br'
 
-        const baseUrl = isSandbox
-            ? 'https://homologacao.focusnfe.com.br'
-            : 'https://api.focusnfe.com.br'
-
-        // Generate unique reference
         const reference = nfseData.reference || `NFSE-${Date.now()}`
         const apiUrl = `${baseUrl}/v2/nfse?ref=${reference}`
 
-        // Call Focus NFe API
+        console.log(`Calling Focus NFe API for NFSe issuance: ${apiUrl} (Env: ${environment})`)
+
         const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${btoa(token + ':')}`
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Basic ${btoa(token + ':')}` },
             body: JSON.stringify(nfseData.payload)
         })
 
-        const data = await response.json()
+        const text = await response.text()
+        let data
+        try {
+            data = JSON.parse(text)
+        } catch (e) {
+            throw new Error(`Resposta inválida da Focus NFe (não é JSON). Status: ${response.status}. Corpo: ${text.substring(0, 100)}`)
+        }
 
-        // Return response
-        return new Response(
-            JSON.stringify({
-                success: response.ok,
-                status: response.status,
-                data: data,
-                reference: reference
-            }),
-            {
-                status: response.status,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-        )
-
-    } catch (error) {
-        console.error('Error in issue-nfse function:', error)
-        return new Response(
-            JSON.stringify({
-                error: error.message || 'Erro ao emitir NFSe'
-            }),
-            {
-                status: 500,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            }
-        )
+        return new Response(JSON.stringify({
+            success: response.ok,
+            status: response.status,
+            data,
+            reference,
+            error: response.ok ? null : (data.mensagem || `Erro ao emitir NFSe (Status ${response.status})`)
+        }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+    } catch (e) {
+        console.error('Error in issue-nfse:', e.message)
+        return new Response(JSON.stringify({ success: false, error: e.message }), {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
     }
 })

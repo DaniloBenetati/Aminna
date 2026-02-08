@@ -463,15 +463,10 @@ export const registerCompany = async (): Promise<{ success: boolean; error?: str
             }),
         });
 
-        if (!response.ok) {
-            const errorResponse = await response.json();
-            return { success: false, error: errorResponse.error || 'Erro ao chamar serviço de registro' };
-        }
-
         const result = await response.json();
 
-        if (!result.success) {
-            return { success: false, error: result.error || 'Erro ao cadastrar empresa' };
+        if (!response.ok || !result.success) {
+            return { success: false, error: result.error || 'Erro ao comunicar com serviço de registro' };
         }
 
         return { success: true };
@@ -521,15 +516,10 @@ export const uploadCertificate = async (file: File, password: string): Promise<{
             }),
         });
 
-        if (!response.ok) {
-            const errorResponse = await response.json();
-            return { success: false, error: errorResponse.error || 'Erro ao chamar serviço de upload' };
-        }
-
         const result = await response.json();
 
-        if (!result.success) {
-            return { success: false, error: result.error || 'Erro ao fazer upload do certificado' };
+        if (!response.ok || !result.success) {
+            return { success: false, error: result.error || 'Erro ao comunicar com serviço de upload de certificado' };
         }
 
         return {
