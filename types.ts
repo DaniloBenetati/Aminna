@@ -172,6 +172,7 @@ export interface Appointment {
   status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento';
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
+  recurrenceId?: string; // ID to track recurring appointment series
   pricePaid?: number;
   bookedPrice?: number; // Snapshot of price at booking time
   commissionRateSnapshot?: number; // Snapshot da comissão no momento do agendamento

@@ -45,6 +45,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalMunicipalRegistration?: string;
         fiscalSocialName?: string;
         fiscalFantasyName?: string;
+        fiscalVerified?: boolean;
     }>({
         name: '',
         phone: '',
@@ -59,7 +60,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalCnpj: '',
         fiscalMunicipalRegistration: '',
         fiscalSocialName: '',
-        fiscalFantasyName: ''
+        fiscalFantasyName: '',
+        fiscalVerified: false
     });
 
     // ... (rest of code)
@@ -386,7 +388,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                     fiscalCnpj: data.cnpj,
                     fiscalMunicipalRegistration: data.municipal_registration || '',
                     fiscalSocialName: data.social_name || '',
-                    fiscalFantasyName: data.fantasy_name || ''
+                    fiscalFantasyName: data.fantasy_name || '',
+                    fiscalVerified: !!data.verified
                 }));
             }
         } catch (error) {
@@ -431,7 +434,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 fantasy_name: formData.fiscalFantasyName || null,
                 service_percentage: servicePercentage,
                 active: true,
-                verified: false, // Admin needs to verify
+                verified: formData.fiscalVerified || false, // User can now verify
             };
 
             // Check if fiscal config already exists for this provider
@@ -1230,6 +1233,28 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500 mt-1">
                                             💡 O percentual da profissional será o mesmo do campo "% Comissão" acima ({((formData.commissionRate || 0.4) * 100).toFixed(0)}%)
                                         </p>
+                                    </div>
+                                    <div className="md:col-span-2 pt-2 border-t border-emerald-100 dark:border-emerald-900/40">
+                                        <label className="flex items-center gap-3 cursor-pointer group">
+                                            <div className="relative">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.fiscalVerified || false}
+                                                    onChange={e => setFormData({ ...formData, fiscalVerified: e.target.checked })}
+                                                    className="sr-only"
+                                                />
+                                                <div className={`w-10 h-6 rounded-full transition-colors ${formData.fiscalVerified ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-zinc-700'}`}></div>
+                                                <div className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform ${formData.fiscalVerified ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest">
+                                                    Dados Fiscais Verificados pelo Administrador
+                                                </p>
+                                                <p className="text-[9px] font-bold text-emerald-700/60 dark:text-emerald-500/60">
+                                                    Marque para liberar a emissão de nota fiscal para esta profissional.
+                                                </p>
+                                            </div>
+                                        </label>
                                     </div>
                                 </div>
 

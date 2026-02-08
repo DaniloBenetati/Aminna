@@ -60,6 +60,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [payments, setPayments] = useState<PaymentInfo[]>(appointment.payments || []);
     const [lines, setLines] = useState<ServiceLine[]>([]);
     const [appliedCoupon, setAppliedCoupon] = useState<string>(appointment.appliedCoupon || '');
+    const [isRecurring, setIsRecurring] = useState(false);
+    const [recurrenceFrequency, setRecurrenceFrequency] = useState<'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'>('WEEKLY');
+    const [recurrenceCount, setRecurrenceCount] = useState(4);
 
     const [appointmentTime, setAppointmentTime] = useState(appointment.time);
     const [appointmentDate, setAppointmentDate] = useState(appointment.date);
@@ -659,6 +662,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: l.startTime
         }));
 
+        const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
+
         const dataToSave = {
             time: lines[0].startTime,
             date: appointmentDate,
@@ -669,10 +674,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             booked_price: lines[0].unitPrice,
             main_service_products: lines[0].products,
             additional_services: extras,
-            applied_coupon: appliedCampaign?.couponCode,
+            applied_coupon: appliedCoupon,
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
-            payments: payments
+            payments: payments,
+            recurrence_id: recId
         };
 
         try {
@@ -691,37 +697,71 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const savedAppt = data?.[0];
             if (!savedAppt) throw new Error('No data returned from database');
 
+            let allSaved = [savedAppt];
+
+            // --- HANDLE RECURRENCE ---
+            if (isRecurring && isNew) {
+                const futureDates: string[] = [];
+                let current = new Date(appointmentDate + 'T12:00:00');
+
+                for (let i = 0; i < recurrenceCount; i++) {
+                    if (recurrenceFrequency === 'WEEKLY') current.setDate(current.getDate() + 7);
+                    else if (recurrenceFrequency === 'BIWEEKLY') current.setDate(current.getDate() + 14);
+                    else if (recurrenceFrequency === 'MONTHLY') current.setMonth(current.getMonth() + 1);
+                    futureDates.push(current.toISOString().split('T')[0]);
+                }
+
+                const bulkData = futureDates.map(d => ({
+                    ...dataToSave,
+                    date: d,
+                    status: 'Pendente' // Recurring future ones are usually pending
+                }));
+
+                const { data: bulkSaved, error: bulkError } = await supabase.from('appointments').insert(bulkData).select();
+                if (bulkError) console.error('Error creating future appointments:', bulkError);
+                if (bulkSaved) allSaved = [...allSaved, ...bulkSaved];
+            }
+
             onUpdateAppointments(prev => {
                 const exists = prev.find(a => a.id === appointment.id);
-                const updatedAppt = {
+
+                // Map all saved records to local state format
+                const newLocalAppts = allSaved.map(s => ({
                     ...appointment,
-                    id: savedAppt.id,
-                    customerId: savedAppt.customer_id,
-                    providerId: savedAppt.provider_id,
-                    serviceId: savedAppt.service_id,
-                    time: savedAppt.time,
-                    date: savedAppt.date,
-                    status: savedAppt.status as any,
-                    combinedServiceNames: savedAppt.combined_service_names,
-                    bookedPrice: savedAppt.booked_price,
-                    mainServiceProducts: savedAppt.main_service_products,
-                    additionalServices: savedAppt.additional_services,
-                    appliedCoupon: savedAppt.applied_coupon,
-                    discountAmount: savedAppt.discount_amount,
-                    pricePaid: savedAppt.price_paid,
-                    paymentMethod: savedAppt.payment_method,
-                    payments: savedAppt.payments || []
-                } as Appointment;
+                    id: s.id,
+                    customerId: s.customer_id,
+                    providerId: s.provider_id,
+                    serviceId: s.service_id,
+                    time: s.time,
+                    date: s.date,
+                    status: s.status as any,
+                    combinedServiceNames: s.combined_service_names,
+                    bookedPrice: s.booked_price,
+                    mainServiceProducts: s.main_service_products,
+                    additionalServices: s.additional_services,
+                    appliedCoupon: s.applied_coupon,
+                    discountAmount: s.discount_amount,
+                    pricePaid: s.price_paid,
+                    paymentMethod: s.payment_method,
+                    payments: s.payments || [],
+                    recurrenceId: s.recurrence_id
+                } as Appointment));
 
                 if (exists) {
-                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                    // Update the first one and add any new ones
+                    const mainResult = newLocalAppts[0];
+                    const others = newLocalAppts.slice(1);
+                    const updatedList = prev.map(a => a.id === appointment.id ? mainResult : a);
+                    return [...updatedList, ...others];
                 } else {
-                    return [...prev, updatedAppt];
+                    return [...prev, ...newLocalAppts];
                 }
             });
 
-
             onClose();
+            if (allSaved.length > 1) {
+                alert(`Agendamento e ${allSaved.length - 1} repetições criados com sucesso!`);
+            }
         } catch (error) {
             console.error('Error saving appointment:', error);
             alert('Erro ao salvar no banco de dados.');
@@ -1352,6 +1392,56 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 ))}
                             </div>
 
+                            {/* RECURENCE OPTIONS */}
+                            {mode === 'VIEW' && (
+                                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                            <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsRecurring(!isRecurring)}
+                                            className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                                        >
+                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                        </button>
+                                    </div>
+
+                                    {isRecurring && (
+                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="space-y-1">
+                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
+                                                <select
+                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                    value={recurrenceFrequency}
+                                                    onChange={e => setRecurrenceFrequency(e.target.value as any)}
+                                                >
+                                                    <option value="WEEKLY">Semanal (7 dias)</option>
+                                                    <option value="BIWEEKLY">Quinzenal (15 dias)</option>
+                                                    <option value="MONTHLY">Mensal (Mesmo dia)</option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max="24"
+                                                        className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                        value={recurrenceCount}
+                                                        onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
+                                                    />
+                                                    <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
                                 <div className="flex justify-between items-center px-1 mb-4">
                                     <div>
@@ -1830,9 +1920,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
-                                    <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">Atendimento Finalizado</span>
+                                    <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
                                 </div>
-                                <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {appointment.pricePaid?.toFixed(2) || '0.00'}</span>
+                                <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
                             </div>
 
                             <div className="space-y-3">
@@ -1887,9 +1977,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="flex items-center gap-2">
-                                                <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {totalValue.toFixed(2)}</span>
                                             </div>
                                         )}
                                     </div>
