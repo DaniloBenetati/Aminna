@@ -1314,15 +1314,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         size="w-6 h-6"
                                                     />
                                                     <select
-                                                        className={`bg-transparent border-none text-[11px] font-black p-1 outline-none w-full ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                        className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
                                                             ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
                                                             : 'text-slate-950 dark:text-white'
                                                             }`}
-                                                        style={{ colorScheme: 'dark' }}
                                                         value={line.providerId}
                                                         onChange={e => updateLine(line.id, 'providerId', e.target.value)}
                                                     >
-                                                        {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name.split(' ')[0]}</option>)}
+                                                        {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
                                                     </select>
                                                 </div>
                                             </div>
