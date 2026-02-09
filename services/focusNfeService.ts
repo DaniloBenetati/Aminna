@@ -174,39 +174,62 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         // 4. Generate unique reference for this NFSe
         const reference = `APPT-${params.appointmentId}-${Date.now()}`;
 
-        // 5. Prepare Focus NFe request (São Paulo - SP format)
+        // 5. Prepare Focus NFe Nacional request (São Paulo uses NFSe Nacional format)
+        // Following the official documentation example structure
         const professionalName = professionalConfig.socialName || professionalConfig.fantasyName || 'Profissional Parceiro';
+        const now = new Date();
+        const dataEmissao = now.toISOString(); // ISO format with timezone
+        const dataCompetencia = now.toISOString().split('T')[0]; // YYYY-MM-DD
 
-        const nfseRequest = {
-            data_emissao: new Date().toISOString().split('T')[0],
-            natureza_operacao: '1', // 1 = Tributação no município
-            prestador: {
-                cnpj: fiscalConfig.cnpj.replace(/\D/g, ''),
-                inscricao_municipal: fiscalConfig.municipalRegistration,
-                codigo_municipio: '3550308', // São Paulo/SP
-            },
-            tomador: {
-                cpf_cnpj: params.customerCpfCnpj?.replace(/\D/g, '') || '',
-                razao_social: params.customerName,
-                email: params.customerEmail || '',
-            },
-            servico: {
-                valor_servicos: params.totalValue.toFixed(2),
-                item_lista_servico: '06.02', // Código de serviço - ajustar conforme necessário
-                discriminacao: `${params.serviceDescription}\n\n` +
-                    `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
-                    `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
-                    `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
-                    `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`,
-                codigo_municipio: '3550308',
-            },
-            // Intermediário (Professional) - Required for Salão Parceiro
-            intermediario: {
-                cnpj: professionalConfig.cnpj.replace(/\D/g, ''),
-                razao_social: professionalName,
-                inscricao_municipal: professionalConfig.municipalRegistration,
-            },
+        const nfseRequest: any = {
+            data_emissao: dataEmissao,
+            data_competencia: dataCompetencia,
+            codigo_municipio_emissora: 3550308, // São Paulo/SP
+
+            // Prestador (following doc example - minimal required fields)
+            cnpj_prestador: fiscalConfig.cnpj.replace(/\D/g, ''),
+            codigo_opcao_simples_nacional: 1, // 1 = Não Optante (adjust as needed)
+            regime_especial_tributacao: 0, // 0 = Nenhum
+
+            // Service location and details
+            codigo_municipio_prestacao: 3550308,
+            codigo_tributacao_nacional_iss: '010602', // 6 digits format
+            descricao_servico: `${params.serviceDescription}\n\n` +
+                `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
+                `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
+                `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
+                `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`,
+            valor_servico: params.totalValue.toFixed(2), // String format like in example
+            tributacao_iss: 1, // 1 = Tributável
+            tipo_retencao_iss: 1, // 1 = Não retido
         };
+
+        // Add inscricao_municipal_prestador only if it exists (optional field)
+        if (fiscalConfig.municipalRegistration) {
+            nfseRequest.inscricao_municipal_prestador = fiscalConfig.municipalRegistration;
+        }
+
+        // Add tomador data if we have customer info
+        if (params.customerCpfCnpj) {
+            const cpfCnpj = params.customerCpfCnpj.replace(/\D/g, '');
+            if (cpfCnpj.length === 11) {
+                nfseRequest.cpf_tomador = cpfCnpj;
+            } else {
+                nfseRequest.cnpj_tomador = cpfCnpj;
+            }
+            nfseRequest.razao_social_tomador = params.customerName;
+            nfseRequest.codigo_municipio_tomador = 3550308; // Assuming São Paulo
+
+            if (params.customerEmail) {
+                nfseRequest.email_tomador = params.customerEmail;
+            }
+        }
+
+        // Add intermediario (Professional) - Required for Salão Parceiro
+        if (professionalConfig.cnpj) {
+            nfseRequest.cnpj_intermediario = professionalConfig.cnpj.replace(/\D/g, '');
+            nfseRequest.razao_social_intermediario = professionalName;
+        }
 
         // 6. Call Supabase Edge Function (bypasses CORS)
         const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/issue-nfse`;
@@ -233,6 +256,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
 
         if (!response.ok) {
             console.error('Edge Function HTTP error:', edgeResponse);
+            console.error('Full response object:', JSON.stringify(edgeResponse, null, 2));
             const errorMsg = edgeResponse.error ||
                 (edgeResponse.data && (edgeResponse.data.mensagem || JSON.stringify(edgeResponse.data))) ||
                 'Erro ao chamar Edge Function';
@@ -241,6 +265,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
 
         if (!edgeResponse.success) {
             console.error('Edge Function returned error:', edgeResponse);
+            console.error('Full error details:', JSON.stringify(edgeResponse, null, 2));
             const errorMsg = edgeResponse.error || edgeResponse.data?.mensagem || 'Erro desconhecido ao emitir NFSe';
             throw new Error(errorMsg);
         }

@@ -67,6 +67,10 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
+    // Scroll synchronization refs
+    const headerScrollRef = React.useRef<HTMLDivElement>(null);
+    const gridScrollRef = React.useRef<HTMLDivElement>(null);
+
     // Persistence Effects
     React.useEffect(() => {
         localStorage.setItem('agenda_zoom_level', zoomLevel.toString());
@@ -89,6 +93,30 @@ export const Agenda: React.FC<AgendaProps> = ({
             localStorage.setItem('agenda_time_view', timeView);
         }
     }, [timeView, isInitialized]);
+
+    // Sync scroll between header and grid
+    React.useEffect(() => {
+        const headerEl = headerScrollRef.current;
+        const gridEl = gridScrollRef.current;
+
+        if (!headerEl || !gridEl) return;
+
+        const syncHeaderScroll = () => {
+            if (gridEl) gridEl.scrollLeft = headerEl.scrollLeft;
+        };
+
+        const syncGridScroll = () => {
+            if (headerEl) headerEl.scrollLeft = gridEl.scrollLeft;
+        };
+
+        headerEl.addEventListener('scroll', syncHeaderScroll);
+        gridEl.addEventListener('scroll', syncGridScroll);
+
+        return () => {
+            headerEl.removeEventListener('scroll', syncHeaderScroll);
+            gridEl.removeEventListener('scroll', syncGridScroll);
+        };
+    }, []);
 
     // Helpers
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
@@ -694,7 +722,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center">
                             <Clock size={14} className="text-slate-400" />
                         </div>
-                        <div className="flex-1 overflow-x-auto scrollbar-hide flex">
+                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto scrollbar-hide flex">
                             {activeVisibileProviders.map(p => (
                                 <div
                                     key={p.id}
@@ -905,7 +933,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     ) : (
                         /* Time Slots (Day View) */
-                        <div className="flex-1 overflow-y-auto scrollbar-hide relative">
+                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto scrollbar-hide relative">
                             {hours.map(hour => (
                                 <div
                                     key={hour}
@@ -1044,9 +1072,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         {/* Status and Price for this record */}
                                                                                         <div className="flex justify-between items-center mt-1">
                                                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
-                                                                                                    ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                        ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
-                                                                                                            'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                                                                                                ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
+                                                                                                    ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
                                                                                                 }`}>
                                                                                                 {ca.status}
                                                                                             </span>

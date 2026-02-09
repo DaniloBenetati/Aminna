@@ -947,6 +947,37 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const refreshNFSeStatus = async () => {
+        try {
+            setNfseStatus('loading');
+            // Query for NFSe record for this appointment
+            const { data, error } = await supabase
+                .from('nfse_records')
+                .select('*')
+                .eq('appointment_id', appointment.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    // No record found
+                    setNfseStatus('idle');
+                    setNfseData(null);
+                } else {
+                    throw error;
+                }
+            } else if (data) {
+                setNfseData(data);
+                setNfseStatus('success');
+            }
+        } catch (error: any) {
+            console.error('Error refreshing NFSe status:', error);
+            setNfseError('Erro ao atualizar status da NFSe');
+            setNfseStatus('error');
+        }
+    };
+
     const handleIssueNFSe = () => {
         // If customer has no valid CPF (less than 11 chars or empty), prompt
         const hasValidCpf = customer.cpf && customer.cpf.replace(/\D/g, '').length === 11;
@@ -2079,23 +2110,33 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </button>
                                         </div>
                                     ) : (
-                                        <button
-                                            onClick={handleIssueNFSe}
-                                            disabled={nfseStatus === 'loading'}
-                                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                                        >
-                                            {nfseStatus === 'loading' ? (
-                                                <>
-                                                    <Sparkles size={14} className="animate-spin" />
-                                                    EMITINDO...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <FileText size={14} />
-                                                    EMITIR NFSE
-                                                </>
+                                        <div className="space-y-2">
+                                            <button
+                                                onClick={handleIssueNFSe}
+                                                disabled={nfseStatus === 'loading'}
+                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            >
+                                                {nfseStatus === 'loading' ? (
+                                                    <>
+                                                        <Sparkles size={14} className="animate-spin" />
+                                                        EMITINDO...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FileText size={14} />
+                                                        EMITIR NFSE
+                                                    </>
+                                                )}
+                                            </button>
+                                            {nfseStatus === 'loading' && (
+                                                <button
+                                                    onClick={refreshNFSeStatus}
+                                                    className="w-full text-[10px] text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-bold underline"
+                                                >
+                                                    Atualizar Status
+                                                </button>
                                             )}
-                                        </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

@@ -26,9 +26,10 @@ serve(async (req) => {
         const baseUrl = isSandbox ? 'https://homologacao.focusnfe.com.br' : 'https://api.focusnfe.com.br'
 
         const reference = nfseData.reference || `NFSE-${Date.now()}`
-        const apiUrl = `${baseUrl}/v2/nfse?ref=${reference}`
+        const apiUrl = `${baseUrl}/v2/nfsen?ref=${reference}` // NFSe Nacional endpoint
 
         console.log(`Calling Focus NFe API for NFSe issuance: ${apiUrl} (Env: ${environment})`)
+        console.log(`Request payload:`, JSON.stringify(nfseData.payload, null, 2))
 
         const response = await fetch(apiUrl, {
             method: 'POST',
@@ -37,11 +38,14 @@ serve(async (req) => {
         })
 
         const text = await response.text()
+        console.log(`Focus NFe response status: ${response.status}`)
+        console.log(`Focus NFe response body: ${text}`)
+
         let data
         try {
             data = JSON.parse(text)
         } catch (e) {
-            throw new Error(`Resposta inválida da Focus NFe (não é JSON). Status: ${response.status}. Corpo: ${text.substring(0, 100)}`)
+            throw new Error(`Resposta inválida da Focus NFe (não é JSON). Status: ${response.status}. Corpo: ${text.substring(0, 200)}`)
         }
 
         return new Response(JSON.stringify({
