@@ -34,6 +34,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       const customer = customers.find(c => c.id === selectedCustomerId);
       if (customer) {
         handleSelectCustomer(customer);
+        setIsEditing(true);
       }
     }
   }, [selectedCustomerId, customers]);
