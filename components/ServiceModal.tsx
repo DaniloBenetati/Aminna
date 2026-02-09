@@ -1756,8 +1756,41 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 <div className="space-y-4">
                                                     <div className="flex justify-between items-start">
                                                         <div className="min-w-0 flex-1">
-                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-none mb-1">{prv?.name}</p>
-                                                            <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase truncate">{srv?.name}</h4>
+                                                            {mode === 'EDIT_HISTORY' ? (
+                                                                <div className="space-y-2">
+                                                                    <div>
+                                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Profissional</label>
+                                                                        <select
+                                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
+                                                                            value={line.providerId}
+                                                                            onChange={(e) => updateLine(line.id, 'providerId', e.target.value)}
+                                                                        >
+                                                                            <option value="">Selecione...</option>
+                                                                            {activeProviders.map(p => (
+                                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Serviço</label>
+                                                                        <select
+                                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
+                                                                            value={line.serviceId}
+                                                                            onChange={(e) => updateLine(line.id, 'serviceId', e.target.value)}
+                                                                        >
+                                                                            <option value="">Selecione...</option>
+                                                                            {services.map(s => (
+                                                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-none mb-1">{prv?.name}</p>
+                                                                    <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase truncate">{srv?.name}</h4>
+                                                                </>
+                                                            )}
                                                         </div>
                                                         <div className="flex items-center gap-1">
                                                             {[1, 2, 3, 4, 5].map((s) => (
