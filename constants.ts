@@ -302,28 +302,28 @@ export const STOCK: StockItem[] = [
 // DYNAMIC SALES DATA (Populated for current month view)
 export const SALES: Sale[] = [
   // TODAY'S SALES FOR STRESS TEST
-  { id: 'stress-s1', date: getDynamicDate(0), customerId: 'c1', totalAmount: 45.90, paymentMethod: 'Dinheiro', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 'stress-s2', date: getDynamicDate(0), customerId: 'c2', totalAmount: 59.80, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 2, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 'stress-s3', date: getDynamicDate(0), customerId: 'c5', totalAmount: 45.90, paymentMethod: 'Pix', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 'stress-s4', date: getDynamicDate(0), customerId: 'c9', totalAmount: 59.90, paymentMethod: 'Dinheiro', items: [{ productId: 'st6', quantity: 1, unitPrice: 59.90, name: 'Camiseta Logo Aminna P' }] },
-  { id: 'stress-s5', date: getDynamicDate(0), customerId: 'c3', totalAmount: 29.90, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 1, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
+  { id: 'stress-s1', date: getDynamicDate(0), customerId: 'c1', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Dinheiro' },
+  { id: 'stress-s2', date: getDynamicDate(0), customerId: 'c2', productId: 'st5', quantity: 2, unitPrice: 29.90, totalPrice: 59.80, paymentMethod: 'Cartão' },
+  { id: 'stress-s3', date: getDynamicDate(0), customerId: 'c5', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Pix' },
+  { id: 'stress-s4', date: getDynamicDate(0), customerId: 'c9', productId: 'st6', quantity: 1, unitPrice: 59.90, totalPrice: 59.90, paymentMethod: 'Dinheiro' },
+  { id: 'stress-s5', date: getDynamicDate(0), customerId: 'c3', productId: 'st5', quantity: 1, unitPrice: 29.90, totalPrice: 29.90, paymentMethod: 'Cartão' },
 
   // PAST SALES
-  { id: 's1', date: getDynamicDate(1), customerId: 'c1', totalAmount: 45.90, paymentMethod: 'Pix', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's2', date: getDynamicDate(2), customerId: 'c5', totalAmount: 59.80, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 2, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's3', date: getDynamicDate(3), customerId: 'c9', totalAmount: 45.90, paymentMethod: 'Dinheiro', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's4', date: getDynamicDate(5), customerId: 'c12', totalAmount: 29.90, paymentMethod: 'Pix', items: [{ productId: 'st5', quantity: 1, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's5', date: getDynamicDate(6), customerId: 'c3', totalAmount: 91.80, paymentMethod: 'Cartão', items: [{ productId: 'st4', quantity: 2, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's6', date: getDynamicDate(8), customerId: 'c1', totalAmount: 29.90, paymentMethod: 'Pix', items: [{ productId: 'st5', quantity: 1, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's7', date: getDynamicDate(9), customerId: 'c7', totalAmount: 45.90, paymentMethod: 'Pix', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's8', date: getDynamicDate(10), customerId: 'c4', totalAmount: 29.90, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 1, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's9', date: getDynamicDate(11), customerId: 'c2', totalAmount: 45.90, paymentMethod: 'Dinheiro', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's10', date: getDynamicDate(12), customerId: 'c8', totalAmount: 89.70, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 3, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's11', date: getDynamicDate(14), customerId: 'c6', totalAmount: 45.90, paymentMethod: 'Pix', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's12', date: getDynamicDate(15), customerId: 'c13', totalAmount: 59.80, paymentMethod: 'Cartão', items: [{ productId: 'st5', quantity: 2, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's13', date: getDynamicDate(16), customerId: 'c14', totalAmount: 45.90, paymentMethod: 'Dinheiro', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] },
-  { id: 's14', date: getDynamicDate(18), customerId: 'c15', totalAmount: 29.90, paymentMethod: 'Pix', items: [{ productId: 'st5', quantity: 1, unitPrice: 29.90, name: 'Óleo de Cutícula' }] },
-  { id: 's15', date: getDynamicDate(20), customerId: 'c10', totalAmount: 45.90, paymentMethod: 'Cartão', items: [{ productId: 'st4', quantity: 1, unitPrice: 45.90, name: 'Creme Hidratante Mãos' }] }
+  { id: 's1', date: getDynamicDate(1), customerId: 'c1', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Pix' },
+  { id: 's2', date: getDynamicDate(2), customerId: 'c5', productId: 'st5', quantity: 2, unitPrice: 29.90, totalPrice: 59.80, paymentMethod: 'Cartão' },
+  { id: 's3', date: getDynamicDate(3), customerId: 'c9', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Dinheiro' },
+  { id: 's4', date: getDynamicDate(5), customerId: 'c12', productId: 'st5', quantity: 1, unitPrice: 29.90, totalPrice: 29.90, paymentMethod: 'Pix' },
+  { id: 's5', date: getDynamicDate(6), customerId: 'c3', productId: 'st4', quantity: 2, unitPrice: 45.90, totalPrice: 91.80, paymentMethod: 'Cartão' },
+  { id: 's6', date: getDynamicDate(8), customerId: 'c1', productId: 'st5', quantity: 1, unitPrice: 29.90, totalPrice: 29.90, paymentMethod: 'Pix' },
+  { id: 's7', date: getDynamicDate(9), customerId: 'c7', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Pix' },
+  { id: 's8', date: getDynamicDate(10), customerId: 'c4', productId: 'st5', quantity: 1, unitPrice: 29.90, totalPrice: 29.90, paymentMethod: 'Cartão' },
+  { id: 's9', date: getDynamicDate(11), customerId: 'c2', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Dinheiro' },
+  { id: 's10', date: getDynamicDate(12), customerId: 'c8', productId: 'st5', quantity: 3, unitPrice: 29.90, totalPrice: 89.70, paymentMethod: 'Cartão' },
+  { id: 's11', date: getDynamicDate(14), customerId: 'c6', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Pix' },
+  { id: 's12', date: getDynamicDate(15), customerId: 'c13', productId: 'st5', quantity: 2, unitPrice: 29.90, totalPrice: 59.80, paymentMethod: 'Cartão' },
+  { id: 's13', date: getDynamicDate(16), customerId: 'c14', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Dinheiro' },
+  { id: 's14', date: getDynamicDate(18), customerId: 'c15', productId: 'st5', quantity: 1, unitPrice: 29.90, totalPrice: 29.90, paymentMethod: 'Pix' },
+  { id: 's15', date: getDynamicDate(20), customerId: 'c10', productId: 'st4', quantity: 1, unitPrice: 45.90, totalPrice: 45.90, paymentMethod: 'Cartão' }
 ];
 
 export const PARTNERS: Partner[] = [
