@@ -581,7 +581,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                                                     <span className="text-[9px] font-bold text-slate-400 uppercase">{new Date(item.date).toLocaleDateString('pt-BR')}</span>
                                                                 </div>
 
-                                                                {item.rating && item.rating > 0 && (
+                                                                {!!item.rating && item.rating > 0 && (
                                                                     <div className="flex gap-0.5 mb-2 bg-slate-50 dark:bg-zinc-900/50 w-fit px-1.5 py-0.5 rounded-lg border border-slate-100 dark:border-zinc-800">
                                                                         {[...Array(5)].map((_, i) => (
                                                                             <Star key={i} size={10} className={i < item.rating! ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-700"} />
@@ -589,7 +589,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                                                     </div>
                                                                 )}
 
-                                                                {item.details && <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-relaxed mb-2">{item.details}</p>}
+                                                                {!!item.details && <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-relaxed mb-2">{item.details}</p>}
 
                                                                 {item.productsUsed && item.productsUsed.length > 0 && (
                                                                     <div className="mt-2 pt-2 border-t border-slate-50 dark:border-zinc-800/50">

@@ -112,6 +112,23 @@ const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
                     <button onClick={(e) => onWhatsApp(e, appointment)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
                 </div>
             )}
+
+            {/* Hover Popup (Full Info) */}
+            <div className="absolute left-full ml-2 top-0 w-48 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3 z-[1000] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 hidden md:block">
+                <div className="flex flex-col gap-1.5 whitespace-normal">
+                    <div className="flex items-center gap-2">
+                        <Avatar size="w-6 h-6" name={customer?.name || ''} src={customer?.avatar} />
+                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name}</span>
+                    </div>
+                    <div className="p-1 px-2 bg-slate-50 dark:bg-zinc-800 rounded-lg border border-slate-100 dark:border-zinc-700">
+                        <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-tight">{displayServiceName}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                        <span className="text-[8px] font-bold text-slate-400 uppercase">{displayTime}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest ${appointment.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{appointment.status}</span>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

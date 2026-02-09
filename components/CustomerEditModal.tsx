@@ -453,16 +453,16 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                 </div>
 
                                                 <h5 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight mb-1">{item.description}</h5>
-                                                {item.details && <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 leading-relaxed">{item.details}</p>}
+                                                {!!item.details && <p className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 leading-relaxed">{item.details}</p>}
 
-                                                {item.rating && (
+                                                {item.rating !== undefined && item.rating !== null && item.rating > 0 && (
                                                     <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
                                                         <div className="flex gap-0.5">
                                                             {[1, 2, 3, 4, 5].map(star => (
                                                                 <Star key={star} size={10} className={star <= item.rating! ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-700"} />
                                                             ))}
                                                         </div>
-                                                        {item.feedback && <span className="text-[10px] text-slate-400 italic font-medium">"{item.feedback}"</span>}
+                                                        {!!item.feedback && <span className="text-[10px] text-slate-400 italic font-medium">"{item.feedback}"</span>}
                                                     </div>
                                                 )}
                                                 {item.productsUsed && item.productsUsed.length > 0 && (
