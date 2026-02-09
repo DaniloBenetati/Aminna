@@ -30,10 +30,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     const [localEmail, setLocalEmail] = useState(customer.email || '');
     const [localBirthday, setLocalBirthday] = useState(customer.birthDate || '');
     const [localCpf, setLocalCpf] = useState(customer.cpf || '');
-    const [localSource, setLocalSource] = useState(customer.source || '');
+    const [localAcquisitionChannel, setLocalAcquisitionChannel] = useState(customer.acquisitionChannel || '');
     const [localAddress, setLocalAddress] = useState(customer.address || '');
     const [localObservations, setLocalObservations] = useState(customer.observations || '');
     const [localStatus, setLocalStatus] = useState(customer.status);
+    const [localIsBlocked, setLocalIsBlocked] = useState(customer.isBlocked || false);
     const [localBlockReason, setLocalBlockReason] = useState(customer.blockReason || '');
 
     // Preferences
@@ -58,12 +59,12 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 email: localEmail,
                 birth_date: localBirthday || null,
                 cpf: localCpf || null,
-                acquisition_channel: localSource || null,
+                acquisition_channel: localAcquisitionChannel || null,
                 address: localAddress || null,
                 observations: localObservations || null,
                 status: localStatus,
-                is_blocked: localStatus === 'Bloqueada',
-                block_reason: localStatus === 'Bloqueada' ? localBlockReason : null,
+                is_blocked: localIsBlocked,
+                block_reason: localIsBlocked ? localBlockReason : null,
                 preferences: updatedPreferences
             };
 
@@ -76,9 +77,17 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
 
             onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
                 ...c,
-                ...updatedData,
+                name: localName,
+                phone: localPhone,
+                email: localEmail,
                 birthDate: localBirthday,
-                blockReason: localBlockReason,
+                cpf: localCpf,
+                acquisitionChannel: localAcquisitionChannel,
+                address: localAddress,
+                observations: localObservations,
+                status: localStatus,
+                isBlocked: localIsBlocked,
+                blockReason: localIsBlocked ? localBlockReason : null,
                 preferences: updatedPreferences
             } as Customer : c));
 
@@ -93,10 +102,10 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     };
 
     const handleToggleBlock = async () => {
-        const newStatus = localStatus === 'Bloqueada' ? 'Ativo' : 'Bloqueada';
+        const nextIsBlocked = !localIsBlocked;
         let reason = localBlockReason;
 
-        if (newStatus === 'Bloqueada') {
+        if (nextIsBlocked) {
             const r = window.prompt('Informe o motivo do bloqueio:');
             if (r === null) return; // Cancelled
             reason = r;
@@ -108,15 +117,15 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
         try {
             const { error } = await supabase
                 .from('customers')
-                .update({ status: newStatus, block_reason: reason })
+                .update({ is_blocked: nextIsBlocked, block_reason: reason })
                 .eq('id', customer.id);
 
             if (error) throw error;
 
-            setLocalStatus(newStatus);
+            setLocalIsBlocked(nextIsBlocked);
             setLocalBlockReason(reason);
-            onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, status: newStatus, blockReason: reason } : c));
-            alert(newStatus === 'Bloqueada' ? 'Cliente bloqueada com sucesso.' : 'Cliente desbloqueada com sucesso.');
+            onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, isBlocked: nextIsBlocked, blockReason: reason } : c));
+            alert(nextIsBlocked ? 'Cliente bloqueada com sucesso.' : 'Cliente desbloqueada com sucesso.');
         } catch (error) {
             console.error('Error toggling block:', error);
             alert('Erro ao alterar status de bloqueio.');
@@ -127,10 +136,10 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
+            <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
 
                 {/* Header Profile Area */}
-                <div className="relative px-8 pt-10 pb-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row items-center gap-8">
+                <div className="relative px-8 pt-10 pb-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row items-center gap-6">
                     <button onClick={onClose} className="absolute top-6 left-6 p-2 text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
                         <ChevronLeft size={24} />
                     </button>
@@ -194,11 +203,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-8 bg-slate-50 dark:bg-zinc-950/50 scrollbar-hide">
+                <div className="flex-1 overflow-y-auto p-6 bg-slate-50 dark:bg-zinc-950/50 scrollbar-hide">
                     {activeTab === 'DADOS' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
                             {/* Personal Data Selection */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
                                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><Smartphone size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Dados Pessoais</h4>
@@ -224,7 +233,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Canal de Entrada</label>
                                         {editMode ? (
-                                            <select value={localSource} onChange={e => setLocalSource(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all">
+                                            <select value={localAcquisitionChannel} onChange={e => setLocalAcquisitionChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all">
                                                 <option value="">Selecione...</option>
                                                 <option value="WhatsApp">WhatsApp</option>
                                                 <option value="Instagram">Instagram</option>
@@ -233,14 +242,14 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                 <option value="Outro">Outro</option>
                                             </select>
                                         ) : (
-                                            <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localSource || 'Não informado'}</p>
+                                            <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localAcquisitionChannel || 'Não informado'}</p>
                                         )}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Contact Info */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
                                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><Smartphone size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Contatos</h4>
@@ -267,7 +276,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* Location */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
                                     <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><MapPin size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Localização</h4>
@@ -283,21 +292,21 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* Block Status */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3 text-slate-500">
                                         <div className="p-2 bg-slate-50 dark:bg-zinc-800 rounded-xl"><Ban size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Bloqueio de Cliente</h4>
                                     </div>
                                     {editMode && (
-                                        <button onClick={handleToggleBlock} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${localStatus === 'Bloqueada' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}>
-                                            {localStatus === 'Bloqueada' ? 'DESBLOQUEAR' : 'BLOQUEAR'}
+                                        <button onClick={handleToggleBlock} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${localIsBlocked ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}>
+                                            {localIsBlocked ? 'DESBLOQUEAR' : 'BLOQUEAR'}
                                         </button>
                                     )}
                                 </div>
                                 <div className="space-y-1">
-                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">STATUS: <span className={localStatus === 'Bloqueada' ? 'text-rose-600' : 'text-emerald-500'}>{localStatus.toUpperCase()}</span></p>
-                                    {localStatus === 'Bloqueada' && (
+                                    <p className="text-sm font-black text-slate-900 dark:text-white uppercase">STATUS: <span className={localIsBlocked ? 'text-rose-600' : 'text-emerald-500'}>{localIsBlocked ? 'BLOQUEADA' : localStatus.toUpperCase()}</span></p>
+                                    {localIsBlocked && (
                                         <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-2xl">
                                             <label className="text-[8px] font-black text-rose-400 uppercase mb-1 block">Motivo do bloqueio</label>
                                             <p className="text-xs font-black text-rose-900 dark:text-rose-200">{localBlockReason}</p>
@@ -307,7 +316,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* observations */}
-                            <div className="md:col-span-2 bg-black dark:bg-white p-8 rounded-[2.5rem] shadow-2xl space-y-6">
+                            <div className="md:col-span-2 bg-black dark:bg-white p-6 rounded-3xl shadow-2xl space-y-6">
                                 <div className="flex items-center gap-3 text-white dark:text-black">
                                     <FileText size={20} />
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Prontuário Estratégico</h4>
@@ -327,8 +336,8 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
 
                     {activeTab === 'PREFERENCIAS' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                     <div className="flex items-center gap-3 text-amber-600 mb-2">
                                         <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-xl"><Sparkles size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Favoritos & Restrições</h4>
@@ -363,7 +372,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                     <div className="flex items-center gap-3 text-emerald-600 mb-2">
                                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl"><Clock size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Agenda & Notas</h4>
@@ -404,7 +413,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {customer.history.length === 0 ? (
-                                <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-100 dark:border-zinc-800">
                                     <div className="bg-slate-50 dark:bg-zinc-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
                                         <Calendar size={32} />
                                     </div>
@@ -422,7 +431,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                 <div className="w-0.5 h-full min-h-[40px] bg-slate-100 dark:bg-zinc-800 mt-2 rounded-full" />
                                             </div>
 
-                                            <div className="flex-1 bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-all hover:shadow-md">
+                                            <div className="flex-1 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-all hover:shadow-md">
                                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-zinc-800 px-3 py-1 rounded-lg">

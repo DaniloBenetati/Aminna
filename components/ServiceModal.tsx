@@ -1304,7 +1304,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <Sparkles size={18} className="text-indigo-400" />
                             {mode === 'HISTORY' ? 'Detalhes do Pagamento' : mode === 'EDIT_HISTORY' ? 'Editar Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
                         </h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{customer.name}</p>
+                        <button
+                            onClick={() => setIsCustomerEditModalOpen(true)}
+                            className="flex items-center gap-2 group/name mt-0.5 hover:opacity-80 transition-all"
+                        >
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest group-hover/name:text-indigo-400 group-hover/name:underline">{customer.name}</p>
+                            <Edit3 size={10} className="text-slate-600 group-hover/name:text-indigo-400 opacity-0 group-hover/name:opacity-100 transition-all" />
+                        </button>
                     </div>
                     <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 border border-white/20"><ChevronDown size={20} /></button>
                 </div>
@@ -1359,29 +1365,31 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    <div className="min-w-0 flex-1 w-full">
-                        <button
-                            onClick={() => setIsCustomerEditModalOpen(true)}
-                            type="button"
-                            title="Editar Cliente"
-                            className="text-left group/name flex items-center gap-2 transition-colors cursor-pointer"
-                        >
-                            <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate group-hover/name:text-indigo-600 dark:group-hover/name:text-indigo-400 group-hover/name:underline underline-offset-4 decoration-2">{customer.name}</h2>
-                            <Edit3 size={14} className="text-slate-300 group-hover/name:text-indigo-500 opacity-0 group-hover/name:opacity-100 transition-all" />
-                        </button>
-                        <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
+                    {/* CUSTOMER SUMMARY SECTION */}
+                    <div className="flex flex-col md:flex-row items-center justify-between p-5 bg-white dark:bg-zinc-800/50 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm gap-4">
+                        <div className="flex items-center gap-4">
+                            <Avatar name={customer.name} src={customer.avatar} size="w-12 h-12" />
+                            <div className="min-w-0">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-0.5">Procedimento para</p>
+                                <h2 className="text-base font-black text-slate-950 dark:text-white uppercase truncate">{customer.name}</h2>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest ${customer.status === 'Novo' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30'}`}>
+                                {customer.status}
+                            </span>
                             {isAgendaMode && (
                                 <button
                                     onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                    className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                                    className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase border shadow-sm transition-all active:scale-95 ${status === 'Confirmado' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
                                 >
                                     {status}
                                 </button>
                             )}
                             {isGrouped && (
-                                <span className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-full text-[9px] font-black text-indigo-700 dark:text-indigo-300 uppercase">
-                                    ATENDIMENTO AGRUPADO
+                                <span className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                    Agrupado
                                 </span>
                             )}
                         </div>
