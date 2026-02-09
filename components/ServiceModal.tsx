@@ -1295,10 +1295,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-            <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
+            <div className={`bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full ${mode === 'HISTORY' ? 'max-w-2xl' : 'max-w-4xl'} overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300 transition-all ease-in-out`}>
 
                 {/* Header */}
-                <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
+                <div className="px-5 py-4 md:px-6 md:py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                     <div className="min-w-0 flex-1">
                         <h3 className="font-black text-xs text-indigo-400 uppercase tracking-[0.2em] mb-1">
                             {mode === 'HISTORY' ? 'Detalhes do Pagamento' : mode === 'EDIT_HISTORY' ? 'Editar Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
@@ -1322,7 +1322,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
 
                     {/* CUSTOMER BLOCKED WARNING */}
                     {customer.isBlocked && (
@@ -1530,8 +1530,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2 rounded-xl border border-slate-100 dark:border-zinc-700">
-                                        <div className="flex flex-col">
+                                    <div className="grid grid-cols-4 md:grid-cols-12 gap-3 items-end bg-slate-50/50 dark:bg-zinc-900/50 p-2 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                        <div className="flex flex-col col-span-1 md:col-span-2">
                                             <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Horário</label>
                                             <input
                                                 type="time"
@@ -1540,16 +1540,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 onChange={e => updateLine(line.id, 'startTime', e.target.value)}
                                             />
                                         </div>
-                                        <div className="flex flex-col flex-1">
+                                        <div className="flex flex-col col-span-3 md:col-span-4">
                                             <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 w-full">
                                                 <Avatar
                                                     src={providers.find(p => p.id === line.providerId)?.avatar}
                                                     name={providers.find(p => p.id === line.providerId)?.name || ''}
-                                                    size="w-5 h-5"
+                                                    size="w-5 h-5 flex-shrink-0"
                                                 />
                                                 <select
-                                                    className={`bg-white dark:bg-zinc-800 border-none text-[10px] font-black p-0 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                    className={`bg-white dark:bg-zinc-800 border-none text-[10px] font-black p-0 outline-none w-full rounded truncate ${customer.restrictedProviderIds?.includes(line.providerId)
                                                         ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
                                                         : 'text-slate-950 dark:text-white'
                                                         }`}
@@ -1561,16 +1561,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col col-span-1 md:col-span-2">
                                             <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
-                                            <div className="text-[10px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(0)}</div>
+                                            <div className="text-[10px] font-black text-slate-950 dark:text-white p-1 truncate">R$ {line.unitPrice.toFixed(0)}</div>
                                         </div>
 
-                                        <div className="flex flex-col">
+                                        <div className="flex flex-col col-span-1 md:col-span-2">
                                             <label className="text-[7px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
                                             <input
                                                 type="number"
-                                                className="bg-transparent border-none text-[10px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
+                                                className="bg-transparent border-none text-[10px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-full"
                                                 value={line.discount}
                                                 onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
                                             />
@@ -1578,7 +1578,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                            className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border transition-all text-[8px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                            className={`col-span-2 md:col-span-2 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border transition-all text-[8px] font-black uppercase h-[26px] ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
                                         >
                                             <Check size={11} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
                                         </button>
@@ -2158,7 +2158,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </button>
                         )}
 
-                        <div className="pt-2 flex flex-col gap-3">
+                        <div className="pt-2 flex flex-col md:flex-row gap-3">
                             {mode === 'EDIT_HISTORY' ? (
                                 <>
                                     <button
@@ -2189,23 +2189,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 )}
 
                 {mode === 'HISTORY' && (
-                    <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
+                    <div className="space-y-3 animate-in slide-in-from-right duration-300 pb-4">
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
+                                <div className="p-1.5 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={16} /></div>
                                 <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
                             </div>
-                            <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
+                            <span className="text-xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
                         </div>
 
-                        <div className="space-y-3">
-                            <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Detalhamento dos Serviços</h4>
+                        <div className="space-y-2">
+                            <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Detalhamento dos Serviços</h4>
                             <div className="space-y-2">
                                 {lines.map((line, idx) => {
                                     const srv = services.find(s => s.id === line.serviceId);
                                     const prv = providers.find(p => p.id === line.providerId);
                                     return (
-                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
                                             <div className="flex items-center gap-3">
                                                 <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                                                     <Sparkles size={16} />
@@ -2235,7 +2235,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-100 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-200 dark:border-zinc-700">
                             <div>
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
                                 <div className="space-y-1">
@@ -2283,7 +2283,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
 
                         {/* NFSe Section */}
-                        <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-3">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
                                     <div className="p-2 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-400 rounded-full">

@@ -46,17 +46,19 @@ interface DraggableAppointmentProps {
     service?: Service;
     displayTime: string;
     displayServiceName: string;
+    servicesList?: string[];
     cardHeight: number;
     topOffset: number;
     nfseRecords: NFSeRecord[];
     onClick: () => void;
     onWhatsApp: (e: React.MouseEvent, appt: Appointment) => void;
+    onEditCustomer: (e: React.MouseEvent, customer?: Customer) => void;
     rowHeight: number;
     zoomLevel: number;
 }
 
 const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
-    appointment, customer, service, displayTime, displayServiceName, cardHeight, topOffset, nfseRecords, onClick, onWhatsApp, rowHeight, zoomLevel
+    appointment, customer, service, displayTime, displayServiceName, servicesList, cardHeight, topOffset, nfseRecords, onClick, onWhatsApp, onEditCustomer, rowHeight, zoomLevel
 }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: appointment.id,
@@ -77,24 +79,44 @@ const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
             {...attributes}
             {...listeners}
             onClick={(e) => {
-                // Prevent drag activation on simple click if possible, though activationConstraint handles most of it
                 onClick();
             }}
-            className={`absolute left-1 right-1 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appointment.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+            className={`absolute left-1 right-1 group p-1 sm:p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm flex flex-col justify-start ${appointment.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                 appointment.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                     appointment.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                         'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                 } ${isDragging ? 'shadow-2xl ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-zinc-900' : ''}`}
             style={style}
         >
-            <div className="flex justify-between items-start">
-                <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name?.split(' ')[0] || 'Cliente'}</span>
-                <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
+            <div className="flex justify-between items-start w-full relative z-10">
+                <span
+                    onClick={(e) => onEditCustomer(e, customer)}
+                    className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[75%] hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline transition-colors block"
+                    title="Editar Cliente"
+                >
+                    {customer?.name?.split(' ')[0] || 'Cliente'}
+                </span>
+                <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400 flex-shrink-0">{displayTime.split(':')[1]}</span>
             </div>
-            <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
 
-            {cardHeight > 40 && (
-                <div className="flex justify-between items-center mt-1.5">
+            <div className="flex-1 flex flex-col justify-center min-h-0 w-full mt-0.5">
+                {servicesList && servicesList.length > 0 ? (
+                    <div className="flex flex-col gap-0.5 leading-none">
+                        {servicesList.map((srvName, idx) => (
+                            <div key={idx} className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate">
+                                {srvName}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate leading-tight">
+                        {displayServiceName}
+                    </div>
+                )}
+            </div>
+
+            {cardHeight > 35 && (
+                <div className="flex justify-between items-end mt-auto w-full pt-1">
                     <div className="flex items-center gap-1">
                         <span className={`w-2 h-2 rounded-full ${appointment.status === 'Confirmado' ? 'bg-emerald-500' :
                             appointment.status === 'Em Andamento' ? 'bg-blue-500' :
@@ -109,23 +131,34 @@ const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
                             })()
                         )}
                     </div>
-                    <button onClick={(e) => onWhatsApp(e, appointment)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
+                    <button onClick={(e) => onWhatsApp(e, appointment)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors ml-auto"><MessageCircle size={12} /></button>
                 </div>
             )}
 
             {/* Hover Popup (Full Info) */}
-            <div className="absolute left-full ml-2 top-0 w-48 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3 z-[1000] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 hidden md:block">
-                <div className="flex flex-col gap-1.5 whitespace-normal">
+            <div className="absolute left-full ml-2 top-0 w-56 bg-white dark:bg-zinc-900 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-800 p-3 z-[1000] pointer-events-none opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all duration-200 hidden md:block">
+                <div className="flex flex-col gap-2 whitespace-normal">
                     <div className="flex items-center gap-2">
-                        <Avatar size="w-6 h-6" name={customer?.name || ''} src={customer?.avatar} />
-                        <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name}</span>
+                        <Avatar size="w-8 h-8" name={customer?.name || ''} src={customer?.avatar} />
+                        <div>
+                            <span className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate block">{customer?.name}</span>
+                            <span className="text-[9px] text-slate-400">{customer?.phone}</span>
+                        </div>
                     </div>
-                    <div className="p-1 px-2 bg-slate-50 dark:bg-zinc-800 rounded-lg border border-slate-100 dark:border-zinc-700">
-                        <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-tight">{displayServiceName}</p>
+                    <div className="p-2 bg-slate-50 dark:bg-zinc-800 rounded-lg border border-slate-100 dark:border-zinc-700">
+                        {servicesList && servicesList.length > 0 ? (
+                            <ul className="list-disc list-inside">
+                                {servicesList.map((s, i) => (
+                                    <li key={i} className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-tight">{s}</li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-tight">{displayServiceName}</p>
+                        )}
                     </div>
-                    <div className="flex items-center justify-between mt-1">
-                        <span className="text-[8px] font-bold text-slate-400 uppercase">{displayTime}</span>
-                        <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest ${appointment.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{appointment.status}</span>
+                    <div className="flex items-center justify-between mt-1 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase">{displayTime}</span>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${appointment.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{appointment.status}</span>
                     </div>
                 </div>
             </div>
@@ -550,6 +583,10 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             // Check additional services
             const isExtraProvider = a.additionalServices?.some(s => {
+                // CRITICAL: If the additional service provider is the SAME as the main provider,
+                // we do NOT treat it as an "extra" here, because it will be grouped into the main card.
+                if (s.providerId === a.providerId) return false;
+
                 const extraTime = s.startTime || a.time;
                 const [extraHour, extraMin] = extraTime.split(':').map(Number);
                 const extraMinutes = extraHour * 60 + extraMin;
@@ -565,6 +602,13 @@ export const Agenda: React.FC<AgendaProps> = ({
     const handleAppointmentClick = (appt: Appointment) => {
         setSelectedAppointment(appt);
         setIsServiceModalOpen(true);
+    };
+
+    const handleEditCustomer = (e: React.MouseEvent, customer?: Customer) => {
+        e.stopPropagation();
+        if (customer && onNavigate) {
+            onNavigate(ViewState.CLIENTES, customer.id);
+        }
     };
 
     // QUICK REGISTER NEW CUSTOMER
@@ -1211,43 +1255,77 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             const customer = customers.find(c => c.id === appt.customerId);
                                                             const service = services.find(s => s.id === appt.serviceId);
 
-                                                            const duration = service?.durationMinutes || 30;
-                                                            const heightFactor = duration / 30;
-                                                            const cardHeight = (rowHeight * heightFactor) - 8;
-
+                                                            let cardHeight = 0;
                                                             let displayServiceName = '';
                                                             let displayTime = appt.time;
+                                                            let servicesList: string[] = [];
+                                                            let topOffset = 0;
 
                                                             if (appt.providerId === p.id) {
-                                                                displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                                // MAIN APPOINTMENT CARD (GROUPED)
+                                                                // This block handles the main service AND any additional services assigned to the SAME provider
                                                                 displayTime = appt.time;
-                                                            } else {
-                                                                const subService = appt.additionalServices?.find(s => s.providerId === p.id);
-                                                                if (subService) {
-                                                                    const srv = services.find(s => s.id === subService.serviceId);
-                                                                    displayServiceName = srv?.name || 'Serviço Extra';
-                                                                    displayTime = subService.startTime || appt.time;
-                                                                }
-                                                            }
 
-                                                            const [apptHour, apptMin] = displayTime.split(':').map(Number);
-                                                            const [slotHour, slotMin] = hour.split(':').map(Number);
-                                                            const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
-                                                            const topOffset = (minutesIntoSlot / 30) * rowHeight + 4;
+                                                                // 1. Add Main Service Duration & Name
+                                                                const mainDuration = service?.durationMinutes || 30;
+                                                                let totalDuration = mainDuration;
+                                                                servicesList.push(service?.name || 'Serviço');
+
+                                                                // 2. Add Extra Services assigned to THIS provider (Grouped)
+                                                                const myExtras = appt.additionalServices?.filter(s => s.providerId === p.id) || [];
+                                                                myExtras.forEach(extra => {
+                                                                    const srv = services.find(s => s.id === extra.serviceId);
+                                                                    totalDuration += srv?.durationMinutes || 30;
+                                                                    servicesList.push(srv?.name || 'Extra');
+                                                                });
+
+                                                                // Calculate Total Height
+                                                                const heightFactor = totalDuration / 30;
+                                                                cardHeight = (rowHeight * heightFactor) - 8;
+
+                                                                displayServiceName = servicesList.join(' + ');
+
+                                                                // Calculate Top Offset based on Main Time
+                                                                const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                                const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                                const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                                topOffset = (minutesIntoSlot / 30) * rowHeight + 4;
+
+                                                            } else {
+                                                                // EXTRA SERVICE CARD (Different Provider)
+                                                                const subService = appt.additionalServices?.find(s => s.providerId === p.id);
+
+                                                                if (!subService) return null;
+
+                                                                const srv = services.find(s => s.id === subService.serviceId);
+                                                                const duration = srv?.durationMinutes || 30;
+                                                                const heightFactor = duration / 30;
+                                                                cardHeight = (rowHeight * heightFactor) - 8;
+
+                                                                displayServiceName = srv?.name || 'Serviço Extra';
+                                                                displayTime = subService.startTime || appt.time;
+
+                                                                const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                                const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                                const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                                topOffset = (minutesIntoSlot / 30) * rowHeight + 4;
+                                                            }
 
                                                             return (
                                                                 <DraggableAppointment
-                                                                    key={appt.id}
+                                                                    key={appt.id + (appt.providerId === p.id ? '-main' : '-extra')}
                                                                     appointment={appt}
                                                                     customer={customer}
                                                                     service={service}
                                                                     displayTime={displayTime}
                                                                     displayServiceName={displayServiceName}
+                                                                    servicesList={servicesList}
                                                                     cardHeight={cardHeight}
                                                                     topOffset={topOffset}
                                                                     nfseRecords={nfseRecords}
                                                                     onClick={() => handleAppointmentClick(appt)}
                                                                     onWhatsApp={handleSendWhatsApp}
+                                                                    onEditCustomer={handleEditCustomer}
                                                                     rowHeight={rowHeight}
                                                                     zoomLevel={zoomLevel}
                                                                 />

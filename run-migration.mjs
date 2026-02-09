@@ -32,7 +32,7 @@ async function applyMigration() {
         console.log('4. Copy and paste this SQL:\n');
         console.log('--------- SQL START ---------');
         console.log('ALTER TABLE public.providers ADD COLUMN IF NOT EXISTS "order" INTEGER;');
-        console.log('ALTER TABLE public.providers ADD COLUMN IF NOT EXISTS commission_history JSONB DEFAULT \\'[]\\':jsonb;');
+        console.log("ALTER TABLE public.providers ADD COLUMN IF NOT EXISTS commission_history JSONB DEFAULT '[]'::jsonb;");
         console.log('CREATE INDEX IF NOT EXISTS idx_providers_order ON public.providers("order");');
         console.log('--------- SQL END ---------\n');
         console.log('5. Click "Run" or press Ctrl+Enter');
