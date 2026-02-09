@@ -6,16 +6,18 @@ import {
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
   Filter, UserPlus, History, Star, Megaphone, Ban, Users
 } from 'lucide-react';
-import { Customer, Appointment, CustomerHistoryItem } from '../types';
+import { Customer, Appointment, CustomerHistoryItem, Service } from '../types';
 
 interface ClientsProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   appointments?: Appointment[];
+  services?: Service[];
   userProfile: any;
+  selectedCustomerId: string | null;
 }
 
-export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], userProfile, selectedCustomerId }) => {
+export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -57,6 +59,29 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     c.phone.includes(searchTerm)
   );
 
+  const customerTimeline = useMemo(() => {
+    if (!selectedCustomer) return [];
+
+    // Convert appointments to history items
+    const appointmentHistory: CustomerHistoryItem[] = appointments
+      .filter(a => a.customerId === selectedCustomer.id && (a.status === 'Concluído' || a.status === 'Confirmado'))
+      .map(a => {
+        const service = services.find(s => s.id === a.serviceId);
+        return {
+          id: a.id,
+          date: a.date,
+          type: 'VISIT',
+          description: service?.name || 'Serviço',
+          details: `Status: ${a.status}`,
+          rating: 0
+        };
+      });
+
+    // Merge with manual history and sort by date descending
+    const merged = [...appointmentHistory, ...(selectedCustomer.history || [])];
+    return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [selectedCustomer, appointments, services]);
+
   const handleSelectCustomer = (customer: Customer) => {
     setSelectedCustomer(customer);
     setIsEditing(false);
@@ -68,8 +93,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     });
     setActiveTab('INFO');
     setLocalRestrictions(customer.preferences?.restrictions || '');
-    setLocalFavServices(customer.preferences?.favoriteServices.join(', ') || '');
-    setLocalPrefDays(customer.preferences?.preferredDays.join(', ') || '');
+    setLocalFavServices(customer.preferences?.favoriteServices?.join(', ') || '');
+    setLocalPrefDays(customer.preferences?.preferredDays?.join(', ') || '');
     setLocalPrefNotes(customer.preferences?.notes || '');
   };
 
@@ -188,8 +213,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         blockReason: customer.blockReason || ''
       });
       setLocalRestrictions(customer.preferences?.restrictions || '');
-      setLocalFavServices(customer.preferences?.favoriteServices.join(', ') || '');
-      setLocalPrefDays(customer.preferences?.preferredDays.join(', ') || '');
+      setLocalFavServices(customer.preferences?.favoriteServices?.join(', ') || '');
+      setLocalPrefDays(customer.preferences?.preferredDays?.join(', ') || '');
       setLocalPrefNotes(customer.preferences?.notes || '');
     }
     setIsEditing(false);
@@ -576,10 +601,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
                 {activeTab === 'HISTORY' && (
                   <div className="space-y-4 animate-in slide-in-from-bottom-2">
-                    {(!isNew && (formData.history?.length || 0) > 0) ? (
-                      formData.history?.map((h, i) => (
+                    {customerTimeline.length > 0 ? (
+                      customerTimeline.map((h, i) => (
                         <div key={h.id} className="relative pl-8">
-                          {i !== (formData.history?.length || 0) - 1 && <div className="absolute left-3.5 top-6 bottom-[-16px] w-0.5 bg-slate-100 dark:bg-zinc-700" />}
+                          {i !== customerTimeline.length - 1 && <div className="absolute left-3.5 top-6 bottom-[-16px] w-0.5 bg-slate-100 dark:bg-zinc-700" />}
                           <div className={`absolute left-0 top-1 w-7 h-7 rounded-full border-4 border-white dark:border-zinc-900 shadow-sm flex items-center justify-center ${h.type === 'VISIT' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'}`}>
                             <Check size={14} />
                           </div>

@@ -513,6 +513,7 @@ const App: React.FC = () => {
             customers={customers}
             setCustomers={setCustomers}
             appointments={appointments}
+            services={services}
             userProfile={simulatedProfile || userProfile}
             selectedCustomerId={selectedCustomerId}
           />
@@ -525,6 +526,8 @@ const App: React.FC = () => {
             leads={leads}
             setLeads={setLeads}
             providers={providers}
+            appointments={appointments}
+            services={services}
           />
         );
       case ViewState.PROFISSIONAIS:

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
 import { Users, Search, ArrowRightLeft, Star, Package, Clock, MessageSquare, AlertTriangle, Heart, Calendar, Check, ChevronLeft, Ticket, Briefcase, XCircle, Edit3, Save, X, Ban, ShieldAlert, HeartHandshake, Map, BarChart, Trophy, TrendingUp, Filter, Smartphone, UserPlus, CheckCircle2, ChevronRight, ArrowRight, MapPin, Phone, Mail, Contact, History, MessageCircle, AlertCircle, RefreshCw, PieChart as PieIcon, MousePointer2, Target, Zap, Lightbulb, FilterIcon } from 'lucide-react';
-import { Customer, CustomerHistoryItem, Lead, LeadStatus, Provider } from '../types';
+import { Customer, CustomerHistoryItem, Lead, LeadStatus, Provider, Appointment, Service } from '../types';
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, AreaChart, Area, Legend, FunnelChart, Funnel, LabelList } from 'recharts';
 
 interface CRMProps {
@@ -12,9 +12,11 @@ interface CRMProps {
     leads: Lead[];
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
     providers: Provider[];
+    appointments: Appointment[];
+    services: Service[];
 }
 
-export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLeads, providers }) => {
+export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLeads, providers, appointments, services }) => {
     // Main CRM Tab State
     const [crmView, setCrmView] = useState<'RELATIONSHIP' | 'JOURNEY' | 'REPORTS'>('JOURNEY');
 
@@ -351,6 +353,31 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
         };
     }, [leads]);
 
+    const customerTimeline = useMemo(() => {
+        if (!selectedCustomer) return [];
+
+        // Convert appointments to history items
+        const appointmentHistory: CustomerHistoryItem[] = appointments
+            .filter(a => a.customerId === selectedCustomer.id && (a.status === 'Concluído' || a.status === 'Confirmado'))
+            .map(a => {
+                const service = services.find(s => s.id === a.serviceId);
+                const provider = providers.find(p => p.id === a.providerId);
+                return {
+                    id: a.id,
+                    date: a.date,
+                    type: 'VISIT',
+                    description: service?.name || 'Serviço',
+                    providerId: a.providerId,
+                    details: `Atendimento com ${provider?.name || 'Profissional'}. Status: ${a.status}`,
+                    rating: 0 // Could be connected to a rating system later
+                };
+            });
+
+        // Merge with manual history and sort by date descending
+        const merged = [...appointmentHistory, ...(selectedCustomer.history || [])];
+        return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [selectedCustomer, appointments, services, providers]);
+
     const filteredLeads = useMemo(() => {
         if (!funnelSearch) return leads;
         const search = funnelSearch.toLowerCase();
@@ -533,10 +560,10 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                     <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/30 dark:bg-zinc-900/50 scrollbar-hide">
                                         {activeTab === 'TIMELINE' && (
                                             <div className="space-y-4">
-                                                {selectedCustomer.history.length > 0 ? (
-                                                    selectedCustomer.history.map((item, idx) => (
+                                                {customerTimeline.length > 0 ? (
+                                                    customerTimeline.map((item, idx) => (
                                                         <div key={item.id} className="relative pl-8">
-                                                            {idx !== selectedCustomer.history.length - 1 && (
+                                                            {idx !== customerTimeline.length - 1 && (
                                                                 <div className="absolute left-[13px] top-8 bottom-[-16px] w-[2px] bg-slate-200 dark:bg-zinc-800" />
                                                             )}
                                                             <div className={`absolute left-0 top-1 w-7 h-7 rounded-full flex items-center justify-center border-4 border-white dark:border-zinc-900 shadow-sm ${item.type === 'VISIT' ? 'bg-indigo-600 text-white' :
