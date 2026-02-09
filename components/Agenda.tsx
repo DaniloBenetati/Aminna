@@ -76,7 +76,10 @@ const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
             ref={setNodeRef}
             {...attributes}
             {...listeners}
-            onClick={onClick}
+            onClick={(e) => {
+                // Prevent drag activation on simple click if possible, though activationConstraint handles most of it
+                onClick();
+            }}
             className={`absolute left-1 right-1 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appointment.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                 appointment.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                     appointment.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
@@ -85,7 +88,7 @@ const DraggableAppointment: React.FC<DraggableAppointmentProps> = ({
             style={style}
         >
             <div className="flex justify-between items-start">
-                <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
+                <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name?.split(' ')[0] || 'Cliente'}</span>
                 <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
             </div>
             <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
@@ -1442,7 +1445,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <ServiceModal
                         appointment={selectedAppointment}
                         allAppointments={appointments}
-                        customer={customers.find(c => c.id === selectedAppointment.customerId) || customers[0]}
+                        customer={customers.find(c => c.id === selectedAppointment.customerId) || { id: 'temp', name: 'Cliente não encontrado', phone: '', status: 'Novo', registrationDate: '', totalSpent: 0, history: [], preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' } } as Customer}
                         onClose={() => { setIsServiceModalOpen(false); setSelectedAppointment(null); }}
                         onUpdateAppointments={setAppointments}
                         onUpdateCustomers={setCustomers}

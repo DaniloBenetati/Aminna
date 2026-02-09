@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo } from '../types';
 import { Avatar } from './Avatar';
+import { CustomerEditModal } from './CustomerEditModal';
 import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
 
@@ -87,6 +88,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [nfseData, setNfseData] = useState<any>(null);
     const [showCpfPrompt, setShowCpfPrompt] = useState(false);
     const [tempCpf, setTempCpf] = useState('');
+    const [isCustomerEditModalOpen, setIsCustomerEditModalOpen] = useState(false);
 
     const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY' | 'EDIT_HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
@@ -291,7 +293,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         if (restrictedLine) {
             const provider = providers.find(p => p.id === restrictedLine.providerId);
-            const reasonEntry = customer.history
+            const reasonEntry = (customer.history || [])
                 .filter(h => h.type === 'RESTRICTION' && h.providerId === restrictedLine.providerId)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
@@ -1357,1161 +1359,1179 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
-                        <div className="min-w-0 flex-1 w-full">
-                            <button
-                                onClick={onNavigateToCustomer}
-                                className="text-left hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
-                            >
-                                <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate hover:underline">{customer.name}</h2>
-                            </button>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
-                                {isAgendaMode && (
-                                    <button
-                                        onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                        className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
-                                    >
-                                        {status}
-                                    </button>
-                                )}
-                                {isGrouped && (
-                                    <span className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-full text-[9px] font-black text-indigo-700 dark:text-indigo-300 uppercase">
-                                        ATENDIMENTO AGRUPADO
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        {mode !== 'HISTORY' && (
-                            <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data</span>
-                                    <input
-                                        type="date"
-                                        className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[130px]"
-                                        value={appointmentDate}
-                                        onChange={e => setAppointmentDate(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Horário</span>
-                                    <input
-                                        type="time"
-                                        className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
-                                        value={appointmentTime}
-                                        onChange={e => {
-                                            const newTime = e.target.value;
-                                            setAppointmentTime(newTime);
-                                            if (lines.length > 0) {
-                                                updateLine(lines[0].id, 'startTime', newTime);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        {mode === 'HISTORY' && (
-                            <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
-                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
-                                <span className="text-sm font-black text-slate-950 dark:text-white">
-                                    {(() => {
-                                        const dateStr = appointment.paymentDate || appointment.date;
-                                        if (!dateStr) return '-';
-                                        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-                                        return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
-                                    })()}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    {mode === 'VIEW' && (
-                        <div className="space-y-5 animate-in fade-in duration-200">
-                            <div className="flex justify-between items-center px-1">
-                                <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
+                    <div className="min-w-0 flex-1 w-full">
+                        <button
+                            onClick={() => setIsCustomerEditModalOpen(true)}
+                            type="button"
+                            title="Editar Cliente"
+                            className="text-left group/name flex items-center gap-2 transition-colors cursor-pointer"
+                        >
+                            <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate group-hover/name:text-indigo-600 dark:group-hover/name:text-indigo-400 group-hover/name:underline underline-offset-4 decoration-2">{customer.name}</h2>
+                            <Edit3 size={14} className="text-slate-300 group-hover/name:text-indigo-500 opacity-0 group-hover/name:opacity-100 transition-all" />
+                        </button>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
+                            {isAgendaMode && (
                                 <button
-                                    type="button" onClick={addServiceLine}
-                                    className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                    onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
+                                    className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
                                 >
-                                    <Plus size={14} /> ADICIONAR EXTRA
+                                    {status}
                                 </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                {lines.map((line) => (
-                                    <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
-                                        {lines.length > 1 && (
-                                            <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
-                                        )}
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="space-y-0.5">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
-                                                <select
-                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
-                                                    style={{ colorScheme: 'dark' }}
-                                                    value={line.serviceId}
-                                                    onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
-                                                >
-                                                    {services
-                                                        .filter(s => {
-                                                            const provider = providers.find(p => p.id === line.providerId);
-                                                            if (!provider) return true;
-                                                            // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
-                                                            if (!provider.specialties || provider.specialties.length === 0) return true;
-                                                            // Filtra por nome do serviço
-                                                            return provider.specialties.includes(s.name);
-                                                        })
-                                                        .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
-                                                </select>
-                                            </div>
-
-                                            <div className="space-y-0.5 relative">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
-                                                <div className="relative">
-                                                    <Search size={12} className="absolute left-3 top-3 text-slate-400" />
-                                                    <input
-                                                        type="text"
-                                                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
-                                                        placeholder="Adicionar produto..."
-                                                        value={line.currentSearchTerm}
-                                                        onFocus={() => updateLine(line.id, 'showProductResults', true)}
-                                                        onChange={e => {
-                                                            updateLine(line.id, 'currentSearchTerm', e.target.value);
-                                                            updateLine(line.id, 'showProductResults', true);
-                                                        }}
-                                                    />
-                                                    {line.showProductResults && (
-                                                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
-                                                            {/* Use stock prop instead of STOCK constant */}
-                                                            {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
-                                                                <button
-                                                                    key={p.id} type="button"
-                                                                    onClick={() => {
-                                                                        addProductToLine(line.id, `[${p.code}] ${p.name}`);
-                                                                    }}
-                                                                    className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[10px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
-                                                                >
-                                                                    <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                                    {line.products.map((prod, idx) => (
-                                                        <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
-                                                            {prod}
-                                                            <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
-                                                                <X size={10} />
-                                                            </button>
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
-                                                <input
-                                                    type="time"
-                                                    className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
-                                                    value={line.startTime || appointmentTime}
-                                                    onChange={e => updateLine(line.id, 'startTime', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex flex-col flex-1">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar
-                                                        src={providers.find(p => p.id === line.providerId)?.avatar}
-                                                        name={providers.find(p => p.id === line.providerId)?.name || ''}
-                                                        size="w-6 h-6"
-                                                    />
-                                                    <select
-                                                        className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
-                                                            ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
-                                                            : 'text-slate-950 dark:text-white'
-                                                            }`}
-                                                        value={line.providerId}
-                                                        onChange={e => updateLine(line.id, 'providerId', e.target.value)}
-                                                    >
-                                                        {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
-                                                <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
-                                            </div>
-
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
-                                                <input
-                                                    type="number"
-                                                    className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
-                                                    value={line.discount}
-                                                    onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
-                                                />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
-                                            >
-                                                <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* RECURENCE OPTIONS */}
-                            {mode === 'VIEW' && (
-                                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                            <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setIsRecurring(!isRecurring)}
-                                            className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
-                                        >
-                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-
-                                    {isRecurring && (
-                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
-                                                <select
-                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                    value={recurrenceFrequency}
-                                                    onChange={e => setRecurrenceFrequency(e.target.value as any)}
-                                                >
-                                                    <option value="WEEKLY">Semanal (7 dias)</option>
-                                                    <option value="BIWEEKLY">Quinzenal (15 dias)</option>
-                                                    <option value="MONTHLY">Mensal (Mesmo dia)</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        max="24"
-                                                        className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                        value={recurrenceCount}
-                                                        onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
-                                                    />
-                                                    <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
                             )}
-
-                            <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                <div className="flex justify-between items-center px-1 mb-4">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                                            {isGrouped ? 'Valor Acumulado (Total no Dia)' : 'Valor Acumulado'}
-                                        </p>
-                                        <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
-                                    </div>
-                                </div>
-
-                                {customer.outstandingBalance && customer.outstandingBalance > 0 && (
-                                    <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
-                                        <input
-                                            type="checkbox"
-                                            id="payDebt"
-                                            checked={includeDebt}
-                                            onChange={(e) => setIncludeDebt(e.target.checked)}
-                                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
-                                        />
-                                        <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
-                                            Incluir Pagmento de Dívida Pendente
-                                        </label>
-                                        <span className="text-sm font-black text-rose-500">
-                                            + R$ {customer.outstandingBalance.toFixed(2)}
-                                        </span>
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col gap-2">
-                                    {isAgendaMode ? (
-                                        <>
-                                            {isCancelling ? (
-                                                <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
-                                                    <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                                                        <AlertTriangle size={12} /> Cancelamento de Agendamento
-                                                    </h4>
-                                                    <textarea
-                                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
-                                                        placeholder="Motivo obrigatório para o histórico..."
-                                                        value={cancellationReason}
-                                                        onChange={e => setCancellationReason(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setIsCancelling(false)}
-                                                            className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
-                                                        >
-                                                            Voltar
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleConfirmCancellation}
-                                                            className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
-                                                        >
-                                                            Confirmar Cancelamento
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex gap-2 w-full">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsCancelling(true)}
-                                                        className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
-                                                        title="Cancelar Agendamento"
-                                                    >
-                                                        <XCircle size={16} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (appointment.status === 'Em Andamento') {
-                                                                setMode('CHECKOUT');
-                                                            } else {
-                                                                handleStartService();
-                                                            }
-                                                        }}
-                                                        className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
-                                                    >
-                                                        {appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />}
-                                                        {appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleSave}
-                                                        disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                        className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                                    >
-                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />)}
-                                                        {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR')}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
-                                            <button
-                                                type="button"
-                                                onClick={handleStartService}
-                                                disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                            >
-                                                {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
-                                                {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => setMode('CHECKOUT')}
-                                                disabled={restrictionData.isRestricted}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                            >
-                                                {restrictionData.isRestricted ? 'BLOQUEADO' : 'IR PARA PAGAMENTO'}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
-                            {futureAppointments.length > 0 && (
-                                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
-                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                                <Calendar size={18} />
-                                            </div>
-                                            <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {futureAppointments.slice(0, 5).map(app => {
-                                                const s = services.find(serv => serv.id === app.serviceId);
-                                                return (
-                                                    <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
-                                                        <div
-                                                            className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
-                                                            onClick={() => onSelectAppointment && onSelectAppointment(app)}
-                                                            title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
-                                                        >
-                                                            <div className="flex flex-col flex-1 leading-tight">
-                                                                <div className="flex items-center gap-2 mb-0.5">
-                                                                    <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
-                                                                        {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
-                                                                    </span>
-                                                                    <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
-                                                                        {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
-                                                                    </span>
-                                                                </div>
-                                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
-                                                                    {app.combinedServiceNames || s?.name}
-                                                                </span>
-                                                            </div>
-                                                            {onSelectAppointment && (
-                                                                <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                            )}
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleFutureStatus(app.id, app.status)}
-                                                            className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
-                                                            title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
-                                                        ></button>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                </div>
+                            {isGrouped && (
+                                <span className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-full text-[9px] font-black text-indigo-700 dark:text-indigo-300 uppercase">
+                                    ATENDIMENTO AGRUPADO
+                                </span>
                             )}
+                        </div>
+                    </div>
+                    {mode !== 'HISTORY' && (
+                        <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data</span>
+                                <input
+                                    type="date"
+                                    className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[130px]"
+                                    value={appointmentDate}
+                                    onChange={e => setAppointmentDate(e.target.value)}
+                                />
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Horário</span>
+                                <input
+                                    type="time"
+                                    className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
+                                    value={appointmentTime}
+                                    onChange={e => {
+                                        const newTime = e.target.value;
+                                        setAppointmentTime(newTime);
+                                        if (lines.length > 0) {
+                                            updateLine(lines[0].id, 'startTime', newTime);
+                                        }
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
+                    {mode === 'HISTORY' && (
+                        <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
+                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
+                            <span className="text-sm font-black text-slate-950 dark:text-white">
+                                {(() => {
+                                    const dateStr = appointment.paymentDate || appointment.date;
+                                    if (!dateStr) return '-';
+                                    const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+                                    return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
+                                })()}
+                            </span>
+                        </div>
+                    )}
+                </div>
 
-                    {(mode === 'CHECKOUT' || mode === 'EDIT_HISTORY') && (
-                        <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                            <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
-                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
-                                <div className="text-right">
-                                    {appliedCampaign && (
-                                        <span className="block text-[10px] font-bold text-rose-500 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
+                {mode === 'VIEW' && (
+                    <div className="space-y-5 animate-in fade-in duration-200">
+                        <div className="flex justify-between items-center px-1">
+                            <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
+                            <button
+                                type="button" onClick={addServiceLine}
+                                className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                            >
+                                <Plus size={14} /> ADICIONAR EXTRA
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {lines.map((line) => (
+                                <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
+                                    {lines.length > 1 && (
+                                        <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
                                     )}
-                                    <span className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</span>
-                                </div>
-                            </div>
 
-                            {!isAgendaMode && (
-                                <div className="px-1">
-                                    <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 flex items-center gap-1.5"><Tag size={12} /> Cupom / Parceria</h4>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            placeholder="Código do cupom"
-                                            className="flex-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-xs font-black uppercase outline-none focus:border-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400"
-                                            value={couponCode}
-                                            onChange={(e) => setCouponCode(e.target.value)}
-                                            disabled={!!appliedCampaign}
-                                        />
-                                        {appliedCampaign ? (
-                                            <button onClick={handleRemoveCoupon} className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-4 rounded-xl font-black text-xs uppercase flex items-center gap-1 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
-                                                <X size={14} /> Remover
-                                            </button>
-                                        ) : (
-                                            <button onClick={handleApplyCoupon} className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 rounded-xl font-black text-xs uppercase hover:bg-black dark:hover:bg-slate-200 transition-colors">
-                                                Aplicar
-                                            </button>
-                                        )}
-                                    </div>
-                                    {appliedCampaign && (
-                                        <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-400 text-[10px] font-black uppercase">
-                                            <Check size={12} />
-                                            Cupom {appliedCampaign.couponCode} applied:
-                                            {appliedCampaign.discountType === 'PERCENTAGE' ? ` ${appliedCampaign.discountValue}% OFF` : ` R$ ${appliedCampaign.discountValue} OFF`}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="space-y-0.5">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
+                                            <select
+                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                style={{ colorScheme: 'dark' }}
+                                                value={line.serviceId}
+                                                onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
+                                            >
+                                                {services
+                                                    .filter(s => {
+                                                        const provider = providers.find(p => p.id === line.providerId);
+                                                        if (!provider) return true;
+                                                        // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
+                                                        if (!provider.specialties || provider.specialties.length === 0) return true;
+                                                        // Filtra por nome do serviço
+                                                        return provider.specialties.includes(s.name);
+                                                    })
+                                                    .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
+                                            </select>
                                         </div>
-                                    )}
-                                </div>
-                            )}
 
-                            <div className="space-y-3 px-1">
-                                <div className="flex justify-between items-center mb-2 px-1">
-                                    <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
-                                        <Sparkles size={12} /> Serviços & Avaliação
-                                    </h4>
-                                    <button
-                                        type="button" onClick={addServiceLine}
-                                        className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
-                                    >
-                                        <Plus size={10} /> Adicionar
-                                    </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                    {lines.map((line) => {
-                                        const srv = services.find(s => s.id === line.serviceId);
-                                        const prv = providers.find(p => p.id === line.providerId);
-
-                                        return (
-                                            <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
-                                                {lines.length > 1 && (
-                                                    <button
-                                                        onClick={() => removeServiceLine(line.id)}
-                                                        className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors p-1"
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                )}
-                                                <div className="space-y-4">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="min-w-0 flex-1">
-                                                            {mode === 'EDIT_HISTORY' ? (
-                                                                <div className="space-y-2">
-                                                                    <div>
-                                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Profissional</label>
-                                                                        <select
-                                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
-                                                                            value={line.providerId}
-                                                                            onChange={(e) => updateLine(line.id, 'providerId', e.target.value)}
-                                                                        >
-                                                                            <option value="">Selecione...</option>
-                                                                            {activeProviders.map(p => (
-                                                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Serviço</label>
-                                                                        <select
-                                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
-                                                                            value={line.serviceId}
-                                                                            onChange={(e) => updateLine(line.id, 'serviceId', e.target.value)}
-                                                                        >
-                                                                            <option value="">Selecione...</option>
-                                                                            {services.map(s => (
-                                                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <>
-                                                                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-none mb-1">{prv?.name}</p>
-                                                                    <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase truncate">{srv?.name}</h4>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1">
-                                                            {[1, 2, 3, 4, 5].map((s) => (
-                                                                <button
-                                                                    key={s}
-                                                                    type="button"
-                                                                    onClick={() => updateLine(line.id, 'rating', s)}
-                                                                    className="transition-transform active:scale-125"
-                                                                >
-                                                                    <Star
-                                                                        size={18}
-                                                                        className={s <= line.rating ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-800"}
-                                                                    />
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto Manual</label>
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
-                                                                    value={line.discount}
-                                                                    onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
-                                                                    placeholder="0.00"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                                    className={`p-2 rounded-xl border transition-colors ${line.isCourtesy ? 'bg-slate-900 dark:bg-white text-white dark:text-black border-slate-900 dark:border-white' : 'bg-white dark:bg-zinc-800 text-slate-300 border-slate-200 dark:border-zinc-700'}`}
-                                                                    title="Cortesia"
-                                                                >
-                                                                    <Check size={12} />
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Feedback Opcional</label>
-                                                            <input
-                                                                type="text"
-                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-bold text-slate-900 dark:text-white outline-none"
-                                                                placeholder="Elogios ou observações..."
-                                                                value={line.feedback}
-                                                                onChange={e => updateLine(line.id, 'feedback', e.target.value)}
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* NOVO: MATERIAIS UTILIZADOS NO CHECKOUT */}
-                                                    <div className="space-y-1 relative pt-2 border-t border-slate-50 dark:border-zinc-800/50">
-                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
-                                                        <div className="relative">
-                                                            <Search size={12} className="absolute left-3 top-3 text-slate-400" />
-                                                            <input
-                                                                type="text"
-                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400"
-                                                                placeholder="Adicionar material..."
-                                                                value={line.currentSearchTerm}
-                                                                onFocus={() => updateLine(line.id, 'showProductResults', true)}
-                                                                onChange={e => {
-                                                                    updateLine(line.id, 'currentSearchTerm', e.target.value);
-                                                                    updateLine(line.id, 'showProductResults', true);
+                                        <div className="space-y-0.5 relative">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                            <div className="relative">
+                                                <Search size={12} className="absolute left-3 top-3 text-slate-400" />
+                                                <input
+                                                    type="text"
+                                                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                    placeholder="Adicionar produto..."
+                                                    value={line.currentSearchTerm}
+                                                    onFocus={() => updateLine(line.id, 'showProductResults', true)}
+                                                    onChange={e => {
+                                                        updateLine(line.id, 'currentSearchTerm', e.target.value);
+                                                        updateLine(line.id, 'showProductResults', true);
+                                                    }}
+                                                />
+                                                {line.showProductResults && (
+                                                    <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
+                                                        {/* Use stock prop instead of STOCK constant */}
+                                                        {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                            <button
+                                                                key={p.id} type="button"
+                                                                onClick={() => {
+                                                                    addProductToLine(line.id, `[${p.code}] ${p.name}`);
                                                                 }}
-                                                            />
-                                                            {line.showProductResults && (
-                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
-                                                                    {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
-                                                                        <button
-                                                                            key={p.id} type="button"
-                                                                            onClick={() => addProductToLine(line.id, `[${p.code}] ${p.name}`)}
-                                                                            className="w-full text-left p-2 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[9px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
-                                                                        >
-                                                                            <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
-                                                                        </button>
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex flex-wrap gap-1 mt-2">
-                                                            {line.products.map((prod, idx) => (
-                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">
-                                                                    {prod}
-                                                                    <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
-                                                                        <X size={10} />
-                                                                    </button>
-                                                                </span>
-                                                            ))}
-                                                        </div>
+                                                                className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[10px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
+                                                            >
+                                                                <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
+                                                            </button>
+                                                        ))}
                                                     </div>
-                                                </div>
+                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                                {line.products.map((prod, idx) => (
+                                                    <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
+                                                        {prod}
+                                                        <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
+                                                            <X size={10} />
+                                                        </button>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            <div className="space-y-3 px-1">
-                                <div className="flex items-center justify-between ml-1">
-                                    <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            type="button" onClick={addPayment}
-                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
-                                        >
-                                            <Plus size={14} /> ADD PAGAMENTO
-                                        </button>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                        <div className="flex flex-col">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
+                                            <input
+                                                type="time"
+                                                className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
+                                                value={line.startTime || appointmentTime}
+                                                onChange={e => updateLine(line.id, 'startTime', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col flex-1">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                            <div className="flex items-center gap-2">
+                                                <Avatar
+                                                    src={providers.find(p => p.id === line.providerId)?.avatar}
+                                                    name={providers.find(p => p.id === line.providerId)?.name || ''}
+                                                    size="w-6 h-6"
+                                                />
+                                                <select
+                                                    className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                        ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
+                                                        : 'text-slate-950 dark:text-white'
+                                                        }`}
+                                                    value={line.providerId}
+                                                    onChange={e => updateLine(line.id, 'providerId', e.target.value)}
+                                                >
+                                                    {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col">
+                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
+                                            <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
+                                        </div>
+
+                                        <div className="flex flex-col">
+                                            <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
+                                            <input
+                                                type="number"
+                                                className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
+                                                value={line.discount}
+                                                onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
+                                            />
+                                        </div>
                                         <button
                                             type="button"
-                                            onClick={() => setMode('VIEW')}
-                                            className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
-                                            title="Voltar"
+                                            onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                            className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
                                         >
-                                            <ChevronLeft size={20} />
+                                            <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
                                         </button>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    {payments.map((payment, index) => {
-                                        const isCredit = payment.method.toLowerCase().includes('crédito');
-                                        const isCard = payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito');
-                                        return (
-                                            <div key={payment.id} className="space-y-2 animate-in slide-in-from-left duration-200">
-                                                <div className="flex gap-2">
-                                                    <select
-                                                        className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
-                                                        value={payment.method}
-                                                        onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
-                                                    >
-                                                        {paymentSettings.map(pay => (
-                                                            <option key={pay.id} value={pay.method}>
-                                                                {pay.method}
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                            ))}
+                        </div>
 
-                                                    {isCredit && (
-                                                        <select
-                                                            className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
-                                                            value={payment.installments || 1}
-                                                            onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
-                                                        >
-                                                            {[...Array(12)].map((_, i) => (
-                                                                <option key={i} value={i + 1}>{i + 1}x</option>
-                                                            ))}
-                                                        </select>
-                                                    )}
-
-                                                    <div className="relative flex-1">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
-                                                        <input
-                                                            type="number"
-                                                            className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
-                                                            value={payment.amount || ''}
-                                                            placeholder="0,00"
-                                                            onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                                                        />
-                                                    </div>
-                                                    {payments.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removePayment(payment.id)}
-                                                            className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    )}
-                                                </div>
-
-                                                {/* Card Brand Selector */}
-                                                {isCard && (
-                                                    <select
-                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
-                                                        value={payment.cardBrand || ''}
-                                                        onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
-                                                    >
-                                                        <option value="">Selecione a Bandeira</option>
-                                                        <option value="Visa">Visa</option>
-                                                        <option value="Mastercard">Mastercard</option>
-                                                        <option value="Elo">Elo</option>
-                                                        <option value="American Express">American Express</option>
-                                                        <option value="Hipercard">Hipercard</option>
-                                                        <option value="Outros">Outros</option>
-                                                    </select>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                <div className="flex gap-2 mt-4">
-                                    <div className={`flex-1 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - totalValue) < 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
-                                        <span className={`text-xs font-black ${Math.abs(totalPaid - totalValue) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            R$ {totalPaid.toFixed(2)} / R$ {totalValue.toFixed(2)}
-                                        </span>
+                        {/* RECURENCE OPTIONS */}
+                        {mode === 'VIEW' && (
+                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                        <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={handleCreateDebt}
-                                        disabled={isSaving || (lines.some(l => !l.serviceId || !l.providerId))}
-                                        className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
-                                        title="Registrar como Dívida (Fiado)"
+                                        onClick={() => setIsRecurring(!isRecurring)}
+                                        className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
                                     >
-                                        <Wallet size={14} />
-                                        <span>{isSaving ? '...' : 'FIADO'}</span>
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
                                     </button>
+                                </div>
+
+                                {isRecurring && (
+                                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
+                                            <select
+                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                value={recurrenceFrequency}
+                                                onChange={e => setRecurrenceFrequency(e.target.value as any)}
+                                            >
+                                                <option value="WEEKLY">Semanal (7 dias)</option>
+                                                <option value="BIWEEKLY">Quinzenal (15 dias)</option>
+                                                <option value="MONTHLY">Mensal (Mesmo dia)</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="24"
+                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                    value={recurrenceCount}
+                                                    onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
+                                                />
+                                                <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                            <div className="flex justify-between items-center px-1 mb-4">
+                                <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                        {isGrouped ? 'Valor Acumulado (Total no Dia)' : 'Valor Acumulado'}
+                                    </p>
+                                    <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
                                 </div>
                             </div>
 
-                            {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
-                            {/* EXIBIÇÃO DA DÍVIDA ANTERIOR COM CHECKBOX */}
                             {customer.outstandingBalance && customer.outstandingBalance > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIncludeDebt(!includeDebt)}
-                                    className={`w-full p-3 rounded-xl flex items-center justify-between transition-all border ${includeDebt ? 'bg-indigo-600 border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 hover:border-indigo-300'}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${includeDebt ? 'bg-white border-white text-indigo-600' : 'border-slate-300 dark:border-zinc-600'}`}>
-                                            {includeDebt && <Check size={14} strokeWidth={4} />}
-                                        </div>
-                                        <div className="flex flex-col items-start">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${includeDebt ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                Incluir Dívida Pendente
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <span className={`text-sm font-black ${includeDebt ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`}>
-                                        R$ {customer.outstandingBalance.toFixed(2)}
+                                <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
+                                    <input
+                                        type="checkbox"
+                                        id="payDebt"
+                                        checked={includeDebt}
+                                        onChange={(e) => setIncludeDebt(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                    />
+                                    <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
+                                        Incluir Pagmento de Dívida Pendente
+                                    </label>
+                                    <span className="text-sm font-black text-rose-500">
+                                        + R$ {customer.outstandingBalance.toFixed(2)}
                                     </span>
-                                </button>
+                                </div>
                             )}
 
-                            <div className="pt-2 flex flex-col gap-3">
-                                {mode === 'EDIT_HISTORY' ? (
+                            <div className="flex flex-col gap-2">
+                                {isAgendaMode ? (
                                     <>
-                                        <button
-                                            type="button"
-                                            onClick={handleSave}
-                                            disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                            className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
-                                        >
-                                            {isSaving ? 'SALVANDO...' : <><Check size={20} /> SALVAR ALTERAÇÕES</>}
-                                        </button>
-                                        <button onClick={() => setMode('HISTORY')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">CANCELAR</button>
+                                        {isCancelling ? (
+                                            <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
+                                                <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                                                    <AlertTriangle size={12} /> Cancelamento de Agendamento
+                                                </h4>
+                                                <textarea
+                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                                    placeholder="Motivo obrigatório para o histórico..."
+                                                    value={cancellationReason}
+                                                    onChange={e => setCancellationReason(e.target.value)}
+                                                    autoFocus
+                                                />
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsCancelling(false)}
+                                                        className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                    >
+                                                        Voltar
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleConfirmCancellation}
+                                                        className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
+                                                    >
+                                                        Confirmar Cancelamento
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2 w-full">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsCancelling(true)}
+                                                    className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                                    title="Cancelar Agendamento"
+                                                >
+                                                    <XCircle size={16} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        if (appointment.status === 'Em Andamento') {
+                                                            setMode('CHECKOUT');
+                                                        } else {
+                                                            handleStartService();
+                                                        }
+                                                    }}
+                                                    className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                                                >
+                                                    {appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />}
+                                                    {appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSave}
+                                                    disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                                    className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                >
+                                                    {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />)}
+                                                    {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR')}
+                                                </button>
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
-                                    <>
+                                    (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
                                         <button
                                             type="button"
-                                            onClick={handleFinishService}
-                                            disabled={restrictionData.isRestricted || customer.isBlocked}
-                                            className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                            onClick={handleStartService}
+                                            disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                            className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                         >
-                                            {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                                            {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
+                                            {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
                                         </button>
-                                        <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
-                                    </>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => setMode('CHECKOUT')}
+                                            disabled={restrictionData.isRestricted}
+                                            className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                        >
+                                            {restrictionData.isRestricted ? 'BLOQUEADO' : 'IR PARA PAGAMENTO'}
+                                        </button>
+                                    )
                                 )}
                             </div>
                         </div>
-                    )}
 
-                    {mode === 'HISTORY' && (
-                        <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
-                                    <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
-                                </div>
-                                <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
-                            </div>
-
-                            <div className="space-y-3">
-                                <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Detalhamento dos Serviços</h4>
-                                <div className="space-y-2">
-                                    {lines.map((line, idx) => {
-                                        const srv = services.find(s => s.id === line.serviceId);
-                                        const prv = providers.find(p => p.id === line.providerId);
-                                        return (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 flex-shrink-0">
-                                                        <Sparkles size={16} />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{srv?.name}</p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <p className="text-[9px] font-bold text-slate-500 uppercase">Prof: {prv?.name}</p>
-                                                            {line.rating > 0 && (
-                                                                <div className="flex gap-0.5 ml-1">
-                                                                    {[...Array(5)].map((_, i) => (
-                                                                        <Star key={i} size={8} className={i < line.rating ? "fill-amber-400 text-amber-400" : "text-slate-100 dark:text-zinc-800"} />
-                                                                    ))}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs font-black text-slate-900 dark:text-white">R$ {line.unitPrice.toFixed(2)}</p>
-                                                    {line.discount > 0 && <p className="text-[8px] font-bold text-rose-500 uppercase">- R$ {line.discount.toFixed(2)} DESC</p>}
-                                                    {line.isCourtesy && <span className="text-[8px] font-black bg-slate-900 text-white dark:bg-white dark:text-black px-1 rounded">CORTESIA</span>}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
-                                <div>
-                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
-                                    <div className="space-y-1">
-                                        {(appointment.payments && appointment.payments.length > 0) ? (
-                                            appointment.payments.map((p, pIdx) => (
-                                                <div key={pIdx} className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method}</span>
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
-                                                </div>
-                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {totalValue.toFixed(2)}</span>
-                                            </div>
-                                        )}
+                        {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
+                        {futureAppointments.length > 0 && (
+                            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                            <Calendar size={18} />
+                                        </div>
+                                        <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
                                     </div>
+                                    <div className="space-y-2">
+                                        {futureAppointments.slice(0, 5).map(app => {
+                                            const s = services.find(serv => serv.id === app.serviceId);
+                                            return (
+                                                <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
+                                                    <div
+                                                        className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
+                                                        onClick={() => onSelectAppointment && onSelectAppointment(app)}
+                                                        title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
+                                                    >
+                                                        <div className="flex flex-col flex-1 leading-tight">
+                                                            <div className="flex items-center gap-2 mb-0.5">
+                                                                <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
+                                                                    {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
+                                                                </span>
+                                                                <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
+                                                                    {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
+                                                                {app.combinedServiceNames || s?.name}
+                                                            </span>
+                                                        </div>
+                                                        {onSelectAppointment && (
+                                                            <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                        )}
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => toggleFutureStatus(app.id, app.status)}
+                                                        className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
+                                                        title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
+                                                    ></button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {(mode === 'CHECKOUT' || mode === 'EDIT_HISTORY') && (
+                    <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
+                        <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
+                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
+                            <div className="text-right">
+                                {appliedCampaign && (
+                                    <span className="block text-[10px] font-bold text-rose-500 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
+                                )}
+                                <span className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        {!isAgendaMode && (
+                            <div className="px-1">
+                                <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 mb-2 flex items-center gap-1.5"><Tag size={12} /> Cupom / Parceria</h4>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Código do cupom"
+                                        className="flex-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-xs font-black uppercase outline-none focus:border-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400"
+                                        value={couponCode}
+                                        onChange={(e) => setCouponCode(e.target.value)}
+                                        disabled={!!appliedCampaign}
+                                    />
+                                    {appliedCampaign ? (
+                                        <button onClick={handleRemoveCoupon} className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-4 rounded-xl font-black text-xs uppercase flex items-center gap-1 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
+                                            <X size={14} /> Remover
+                                        </button>
+                                    ) : (
+                                        <button onClick={handleApplyCoupon} className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 rounded-xl font-black text-xs uppercase hover:bg-black dark:hover:bg-slate-200 transition-colors">
+                                            Aplicar
+                                        </button>
+                                    )}
                                 </div>
                                 {appliedCampaign && (
-                                    <div>
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Cupom Aplicado</p>
-                                        <div className="flex items-center gap-2">
-                                            <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
-                                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
-                                            <span className="text-[9px] font-bold text-slate-400">(-R$ {appointment.discountAmount?.toFixed(2)})</span>
-                                        </div>
-                                    </div>
-                                )}
-                                {appointment.productsUsed && appointment.productsUsed.length > 0 && (
-                                    <div className="md:col-span-2 pt-2 border-t border-slate-200 dark:border-zinc-700 mt-1">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Produtos de Uso Interno</p>
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {appointment.productsUsed.map((p, i) => (
-                                                <span key={i} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase">{p}</span>
-                                            ))}
-                                        </div>
+                                    <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-400 text-[10px] font-black uppercase">
+                                        <Check size={12} />
+                                        Cupom {appliedCampaign.couponCode} applied:
+                                        {appliedCampaign.discountType === 'PERCENTAGE' ? ` ${appliedCampaign.discountValue}% OFF` : ` R$ ${appliedCampaign.discountValue} OFF`}
                                     </div>
                                 )}
                             </div>
+                        )}
 
-                            {/* NFSe Section */}
-                            <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <div className="p-2 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-400 rounded-full">
-                                            <FileText size={16} />
-                                        </div>
-                                        <span className="text-[10px] font-black text-purple-900 dark:text-purple-300 uppercase tracking-widest">Nota Fiscal Eletrônica (NFSe)</span>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
-                                    {nfseStatus === 'success' || (nfseData && nfseData.status === 'issued') ? (
-                                        <div className="space-y-3">
-                                            <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                                                <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
-                                                    <CheckCircle2 size={16} /> NFSe Emitida!
-                                                </p>
-                                                {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
-                                            </div>
+                        <div className="space-y-3 px-1">
+                            <div className="flex justify-between items-center mb-2 px-1">
+                                <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-1.5">
+                                    <Sparkles size={12} /> Serviços & Avaliação
+                                </h4>
+                                <button
+                                    type="button" onClick={addServiceLine}
+                                    className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                                >
+                                    <Plus size={10} /> Adicionar
+                                </button>
+                            </div>
 
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {nfseData?.pdf_url && (
-                                                    <button
-                                                        onClick={() => window.open(nfseData.pdf_url, '_blank')}
-                                                        className="py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                    >
-                                                        <FileText size={14} /> Baixar PDF
-                                                    </button>
-                                                )}
+                            <div className="space-y-2">
+                                {lines.map((line) => {
+                                    const srv = services.find(s => s.id === line.serviceId);
+                                    const prv = providers.find(p => p.id === line.providerId);
 
-                                                {nfseData?.pdf_url && (
-                                                    <button
-                                                        onClick={() => {
-                                                            const msg = `Olá ${customer.name.split(' ')[0]}, aqui está sua Nota Fiscal de Serviço (NFSe) da Aminna Barbearia: ${nfseData.pdf_url}`;
-                                                            const phone = customer.phone.replace(/\D/g, '');
-                                                            window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
-                                                        }}
-                                                        className="py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
-                                                    >
-                                                        <Smartphone size={14} /> WhatsApp
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ) : nfseStatus === 'error' ? (
-                                        <div>
-                                            <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-2">
-                                                ❌ {nfseError}
-                                            </p>
-                                            <button
-                                                onClick={handleIssueNFSe}
-                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                <FileText size={14} />
-                                                TENTAR NOVAMENTE
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <button
-                                                onClick={handleIssueNFSe}
-                                                disabled={nfseStatus === 'loading'}
-                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                                            >
-                                                {nfseStatus === 'loading' ? (
-                                                    <>
-                                                        <Sparkles size={14} className="animate-spin" />
-                                                        EMITINDO...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <FileText size={14} />
-                                                        EMITIR NFSE
-                                                    </>
-                                                )}
-                                            </button>
-                                            {nfseStatus === 'loading' && (
+                                    return (
+                                        <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
+                                            {lines.length > 1 && (
                                                 <button
-                                                    onClick={refreshNFSeStatus}
-                                                    className="w-full text-[10px] text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-bold underline"
+                                                    onClick={() => removeServiceLine(line.id)}
+                                                    className="absolute top-2 right-2 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors p-1"
                                                 >
-                                                    Atualizar Status
+                                                    <Trash2 size={14} />
                                                 </button>
                                             )}
+                                            <div className="space-y-4">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="min-w-0 flex-1">
+                                                        {mode === 'EDIT_HISTORY' ? (
+                                                            <div className="space-y-2">
+                                                                <div>
+                                                                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Profissional</label>
+                                                                    <select
+                                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
+                                                                        value={line.providerId}
+                                                                        onChange={(e) => updateLine(line.id, 'providerId', e.target.value)}
+                                                                    >
+                                                                        <option value="">Selecione...</option>
+                                                                        {activeProviders.map(p => (
+                                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Serviço</label>
+                                                                    <select
+                                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none uppercase"
+                                                                        value={line.serviceId}
+                                                                        onChange={(e) => updateLine(line.id, 'serviceId', e.target.value)}
+                                                                    >
+                                                                        <option value="">Selecione...</option>
+                                                                        {services.map(s => (
+                                                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase leading-none mb-1">{prv?.name}</p>
+                                                                <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase truncate">{srv?.name}</h4>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-1">
+                                                        {[1, 2, 3, 4, 5].map((s) => (
+                                                            <button
+                                                                key={s}
+                                                                type="button"
+                                                                onClick={() => updateLine(line.id, 'rating', s)}
+                                                                className="transition-transform active:scale-125"
+                                                            >
+                                                                <Star
+                                                                    size={18}
+                                                                    className={s <= line.rating ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-800"}
+                                                                />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <div>
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto Manual</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
+                                                                value={line.discount}
+                                                                onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
+                                                                placeholder="0.00"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                                                className={`p-2 rounded-xl border transition-colors ${line.isCourtesy ? 'bg-slate-900 dark:bg-white text-white dark:text-black border-slate-900 dark:border-white' : 'bg-white dark:bg-zinc-800 text-slate-300 border-slate-200 dark:border-zinc-700'}`}
+                                                                title="Cortesia"
+                                                            >
+                                                                <Check size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Feedback Opcional</label>
+                                                        <input
+                                                            type="text"
+                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-bold text-slate-900 dark:text-white outline-none"
+                                                            placeholder="Elogios ou observações..."
+                                                            value={line.feedback}
+                                                            onChange={e => updateLine(line.id, 'feedback', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* NOVO: MATERIAIS UTILIZADOS NO CHECKOUT */}
+                                                <div className="space-y-1 relative pt-2 border-t border-slate-50 dark:border-zinc-800/50">
+                                                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                                    <div className="relative">
+                                                        <Search size={12} className="absolute left-3 top-3 text-slate-400" />
+                                                        <input
+                                                            type="text"
+                                                            className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400"
+                                                            placeholder="Adicionar material..."
+                                                            value={line.currentSearchTerm}
+                                                            onFocus={() => updateLine(line.id, 'showProductResults', true)}
+                                                            onChange={e => {
+                                                                updateLine(line.id, 'currentSearchTerm', e.target.value);
+                                                                updateLine(line.id, 'showProductResults', true);
+                                                            }}
+                                                        />
+                                                        {line.showProductResults && (
+                                                            <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
+                                                                {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                                    <button
+                                                                        key={p.id} type="button"
+                                                                        onClick={() => addProductToLine(line.id, `[${p.code}] ${p.name}`)}
+                                                                        className="w-full text-left p-2 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[9px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
+                                                                    >
+                                                                        <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-1 mt-2">
+                                                        {line.products.map((prod, idx) => (
+                                                            <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">
+                                                                {prod}
+                                                                <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
+                                                                    <X size={10} />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 px-1">
+                            <div className="flex items-center justify-between ml-1">
+                                <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button" onClick={addPayment}
+                                        className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                    >
+                                        <Plus size={14} /> ADD PAGAMENTO
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setMode('VIEW')}
+                                        className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
+                                        title="Voltar"
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                {payments.map((payment, index) => {
+                                    const isCredit = payment.method.toLowerCase().includes('crédito');
+                                    const isCard = payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito');
+                                    return (
+                                        <div key={payment.id} className="space-y-2 animate-in slide-in-from-left duration-200">
+                                            <div className="flex gap-2">
+                                                <select
+                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
+                                                    value={payment.method}
+                                                    onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
+                                                >
+                                                    {paymentSettings.map(pay => (
+                                                        <option key={pay.id} value={pay.method}>
+                                                            {pay.method}
+                                                        </option>
+                                                    ))}
+                                                </select>
+
+                                                {isCredit && (
+                                                    <select
+                                                        className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
+                                                        value={payment.installments || 1}
+                                                        onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
+                                                    >
+                                                        {[...Array(12)].map((_, i) => (
+                                                            <option key={i} value={i + 1}>{i + 1}x</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+
+                                                <div className="relative flex-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
+                                                        value={payment.amount || ''}
+                                                        placeholder="0,00"
+                                                        onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                    />
+                                                </div>
+                                                {payments.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removePayment(payment.id)}
+                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {/* Card Brand Selector */}
+                                            {isCard && (
+                                                <select
+                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                                    value={payment.cardBrand || ''}
+                                                    onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
+                                                >
+                                                    <option value="">Selecione a Bandeira</option>
+                                                    <option value="Visa">Visa</option>
+                                                    <option value="Mastercard">Mastercard</option>
+                                                    <option value="Elo">Elo</option>
+                                                    <option value="American Express">American Express</option>
+                                                    <option value="Hipercard">Hipercard</option>
+                                                    <option value="Outros">Outros</option>
+                                                </select>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex gap-2 mt-4">
+                                <div className={`flex-1 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - totalValue) < 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
+                                    <span className={`text-xs font-black ${Math.abs(totalPaid - totalValue) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        R$ {totalPaid.toFixed(2)} / R$ {totalValue.toFixed(2)}
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleCreateDebt}
+                                    disabled={isSaving || (lines.some(l => !l.serviceId || !l.providerId))}
+                                    className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
+                                    title="Registrar como Dívida (Fiado)"
+                                >
+                                    <Wallet size={14} />
+                                    <span>{isSaving ? '...' : 'FIADO'}</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
+                        {/* EXIBIÇÃO DA DÍVIDA ANTERIOR COM CHECKBOX */}
+                        {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setIncludeDebt(!includeDebt)}
+                                className={`w-full p-3 rounded-xl flex items-center justify-between transition-all border ${includeDebt ? 'bg-indigo-600 border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 hover:border-indigo-300'}`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${includeDebt ? 'bg-white border-white text-indigo-600' : 'border-slate-300 dark:border-zinc-600'}`}>
+                                        {includeDebt && <Check size={14} strokeWidth={4} />}
+                                    </div>
+                                    <div className="flex flex-col items-start">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${includeDebt ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
+                                            Incluir Dívida Pendente
+                                        </span>
+                                    </div>
+                                </div>
+                                <span className={`text-sm font-black ${includeDebt ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`}>
+                                    R$ {customer.outstandingBalance.toFixed(2)}
+                                </span>
+                            </button>
+                        )}
+
+                        <div className="pt-2 flex flex-col gap-3">
+                            {mode === 'EDIT_HISTORY' ? (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleSave}
+                                        disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                        className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                                    >
+                                        {isSaving ? 'SALVANDO...' : <><Check size={20} /> SALVAR ALTERAÇÕES</>}
+                                    </button>
+                                    <button onClick={() => setMode('HISTORY')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">CANCELAR</button>
+                                </>
+                            ) : (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleFinishService}
+                                        disabled={restrictionData.isRestricted || customer.isBlocked}
+                                        className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                    >
+                                        {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                                    </button>
+                                    <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {mode === 'HISTORY' && (
+                    <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
+                                <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
+                            </div>
+                            <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
+                        </div>
+
+                        <div className="space-y-3">
+                            <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Detalhamento dos Serviços</h4>
+                            <div className="space-y-2">
+                                {lines.map((line, idx) => {
+                                    const srv = services.find(s => s.id === line.serviceId);
+                                    const prv = providers.find(p => p.id === line.providerId);
+                                    return (
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                                    <Sparkles size={16} />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{srv?.name}</p>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-[9px] font-bold text-slate-500 uppercase">Prof: {prv?.name}</p>
+                                                        {line.rating > 0 && (
+                                                            <div className="flex gap-0.5 ml-1">
+                                                                {[...Array(5)].map((_, i) => (
+                                                                    <Star key={i} size={8} className={i < line.rating ? "fill-amber-400 text-amber-400" : "text-slate-100 dark:text-zinc-800"} />
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs font-black text-slate-900 dark:text-white">R$ {line.unitPrice.toFixed(2)}</p>
+                                                {line.discount > 0 && <p className="text-[8px] font-bold text-rose-500 uppercase">- R$ {line.discount.toFixed(2)} DESC</p>}
+                                                {line.isCourtesy && <span className="text-[8px] font-black bg-slate-900 text-white dark:bg-white dark:text-black px-1 rounded">CORTESIA</span>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                            <div>
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
+                                <div className="space-y-1">
+                                    {(appointment.payments && appointment.payments.length > 0) ? (
+                                        appointment.payments.map((p, pIdx) => (
+                                            <div key={pIdx} className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method}</span>
+                                                </div>
+                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
+                                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                            </div>
+                                            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {totalValue.toFixed(2)}</span>
                                         </div>
                                     )}
                                 </div>
                             </div>
-
-                            <div className="pt-2 flex gap-3">
-                                <button
-                                    onClick={() => setMode('EDIT_HISTORY')}
-                                    className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
-                                >
-                                    Editar
-                                </button>
-                                <button onClick={onClose} className="flex-1 py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
-                                    Fechar Histórico
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-            </div>
-            {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
-            {isCancelling && (
-                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-10">
-                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
-                                <X size={40} className="animate-pulse" />
-                            </div>
-                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Cancelar Atendimento?
-                            </h3>
-                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                                Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
-                            </p>
-                            <div className="mb-6">
-                                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                                    Justificativa do Cancelamento *
-                                </label>
-                                <textarea
-                                    value={cancellationReason}
-                                    onChange={(e) => setCancellationReason(e.target.value)}
-                                    placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
-                                    rows={3}
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setIsCancelling(false)}
-                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
-                                >
-                                    Não, Manter
-                                </button>
-                                <button
-                                    onClick={handleConfirmCancellation}
-                                    disabled={isSaving}
-                                    className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* CUSTOM DEBT CONFIRMATION MODAL ("FIADO") */}
-            {showDebtConfirmModal && (
-                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-10">
-                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
-                                <AlertTriangle size={40} className="animate-pulse" />
-                            </div>
-
-                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Atenção: Registro de "Fiado"
-                            </h3>
-
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
-                                <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
-                                </p>
-
-                                <div className="flex flex-col items-center gap-1 py-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Pendente</span>
-                                    <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
+                            {appliedCampaign && (
+                                <div>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Cupom Aplicado</p>
+                                    <div className="flex items-center gap-2">
+                                        <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                                        <span className="text-[9px] font-bold text-slate-400">(-R$ {appointment.discountAmount?.toFixed(2)})</span>
+                                    </div>
                                 </div>
+                            )}
+                            {appointment.productsUsed && appointment.productsUsed.length > 0 && (
+                                <div className="md:col-span-2 pt-2 border-t border-slate-200 dark:border-zinc-700 mt-1">
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">Produtos de Uso Interno</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {appointment.productsUsed.map((p, i) => (
+                                            <span key={i} className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded text-[8px] font-bold text-slate-600 dark:text-slate-400 uppercase">{p}</span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
 
-                                <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
-                                    💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
-                                </p>
+                        {/* NFSe Section */}
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="p-2 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-400 rounded-full">
+                                        <FileText size={16} />
+                                    </div>
+                                    <span className="text-[10px] font-black text-purple-900 dark:text-purple-300 uppercase tracking-widest">Nota Fiscal Eletrônica (NFSe)</span>
+                                </div>
                             </div>
+                            <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
+                                {nfseStatus === 'success' || (nfseData && nfseData.status === 'issued') ? (
+                                    <div className="space-y-3">
+                                        <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
+                                            <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
+                                                <CheckCircle2 size={16} /> NFSe Emitida!
+                                            </p>
+                                            {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
+                                        </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setShowDebtConfirmModal(false)}
-                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={() => handleCreateDebt(true)}
-                                    className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    <Save size={16} /> Confirmar
-                                </button>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {nfseData?.pdf_url && (
+                                                <button
+                                                    onClick={() => window.open(nfseData.pdf_url, '_blank')}
+                                                    className="py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                >
+                                                    <FileText size={14} /> Baixar PDF
+                                                </button>
+                                            )}
+
+                                            {nfseData?.pdf_url && (
+                                                <button
+                                                    onClick={() => {
+                                                        const msg = `Olá ${customer.name.split(' ')[0]}, aqui está sua Nota Fiscal de Serviço (NFSe) da Aminna Barbearia: ${nfseData.pdf_url}`;
+                                                        const phone = customer.phone.replace(/\D/g, '');
+                                                        window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                    }}
+                                                    className="py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                >
+                                                    <Smartphone size={14} /> WhatsApp
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : nfseStatus === 'error' ? (
+                                    <div>
+                                        <p className="text-xs font-bold text-rose-600 dark:text-rose-400 mb-2">
+                                            ❌ {nfseError}
+                                        </p>
+                                        <button
+                                            onClick={handleIssueNFSe}
+                                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <FileText size={14} />
+                                            TENTAR NOVAMENTE
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <button
+                                            onClick={handleIssueNFSe}
+                                            disabled={nfseStatus === 'loading'}
+                                            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            {nfseStatus === 'loading' ? (
+                                                <>
+                                                    <Sparkles size={14} className="animate-spin" />
+                                                    EMITINDO...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FileText size={14} />
+                                                    EMITIR NFSE
+                                                </>
+                                            )}
+                                        </button>
+                                        {nfseStatus === 'loading' && (
+                                            <button
+                                                onClick={refreshNFSeStatus}
+                                                className="w-full text-[10px] text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-bold underline"
+                                            >
+                                                Atualizar Status
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
-            {/* CPF PROMPT MODAL */}
-            {showCpfPrompt && (
-                <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-8">
-                            <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
-                                <User size={32} />
-                            </div>
 
-                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-2 leading-tight">
-                                Cliente sem CPF
-                            </h3>
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
-                                Deseja informar o CPF para a nota fiscal? Se informar, ele ficará salvo no cadastro.
-                            </p>
-
-                            <input
-                                type="text"
-                                placeholder="000.000.000-00"
-                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
-                                value={tempCpf}
-                                onChange={e => {
-                                    // Simple mask
-                                    let v = e.target.value.replace(/\D/g, '');
-                                    if (v.length > 11) v = v.substring(0, 11);
-                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                                    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-                                    setTempCpf(v);
-                                }}
-                                autoFocus
-                            />
-
-                            <div className="flex flex-col gap-3">
-                                <button
-                                    onClick={handleSaveCpfAndIssue}
-                                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                >
-                                    Salvar CPF e Emitir
-                                </button>
-                                <button
-                                    onClick={handleSkipCpf}
-                                    className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
-                                >
-                                    Emitir sem CPF (Consumidor)
-                                </button>
-                            </div>
+                        <div className="pt-2 flex gap-3">
+                            <button
+                                onClick={() => setMode('EDIT_HISTORY')}
+                                className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
+                            >
+                                Editar
+                            </button>
+                            <button onClick={onClose} className="flex-1 py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+                                Fechar Histórico
+                            </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+
+
+                {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
+                {
+                    isCancelling && (
+                        <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                                <div className="p-8 text-center pt-10">
+                                    <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
+                                        <X size={40} className="animate-pulse" />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                        Cancelar Atendimento?
+                                    </h3>
+                                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                                        Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
+                                    </p>
+                                    <div className="mb-6">
+                                        <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                            Justificativa do Cancelamento *
+                                        </label>
+                                        <textarea
+                                            value={cancellationReason}
+                                            onChange={(e) => setCancellationReason(e.target.value)}
+                                            placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
+                                            className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+                                            rows={3}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setIsCancelling(false)}
+                                            className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                        >
+                                            Não, Manter
+                                        </button>
+                                        <button
+                                            onClick={handleConfirmCancellation}
+                                            disabled={isSaving}
+                                            className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        >
+                                            {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+
+                {/* CUSTOM DEBT CONFIRMATION MODAL ("FIADO") */}
+                {
+                    showDebtConfirmModal && (
+                        <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                                <div className="p-8 text-center pt-10">
+                                    <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
+                                        <AlertTriangle size={40} className="animate-pulse" />
+                                    </div>
+
+                                    <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                        Atenção: Registro de "Fiado"
+                                    </h3>
+
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
+                                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                            Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
+                                        </p>
+
+                                        <div className="flex flex-col items-center gap-1 py-2">
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Pendente</span>
+                                            <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
+                                        </div>
+
+                                        <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
+                                            💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <button
+                                            onClick={() => setShowDebtConfirmModal(false)}
+                                            className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={() => handleCreateDebt(true)}
+                                            className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        >
+                                            <Save size={16} /> Confirmar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+                {/* CPF PROMPT MODAL */}
+                {
+                    showCpfPrompt && (
+                        <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                                <div className="p-8 text-center pt-8">
+                                    <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                        <User size={32} />
+                                    </div>
+
+                                    <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-2 leading-tight">
+                                        Cliente sem CPF
+                                    </h3>
+                                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
+                                        Deseja informar o CPF para a nota fiscal? Se informar, ele ficará salvo no cadastro.
+                                    </p>
+
+                                    <input
+                                        type="text"
+                                        placeholder="000.000.000-00"
+                                        className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
+                                        value={tempCpf}
+                                        onChange={e => {
+                                            // Simple mask
+                                            let v = e.target.value.replace(/\D/g, '');
+                                            if (v.length > 11) v = v.substring(0, 11);
+                                            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                            v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                            v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                                            setTempCpf(v);
+                                        }}
+                                        autoFocus
+                                    />
+
+                                    <div className="flex flex-col gap-3">
+                                        <button
+                                            onClick={handleSaveCpfAndIssue}
+                                            className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                        >
+                                            Salvar CPF e Emitir
+                                        </button>
+                                        <button
+                                            onClick={handleSkipCpf}
+                                            className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                        >
+                                            Emitir sem CPF (Consumidor)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )
+                }
+                {/* Customer Edit Modal */}
+                {isCustomerEditModalOpen && (
+                    <CustomerEditModal
+                        customer={customer}
+                        onClose={() => setIsCustomerEditModalOpen(false)}
+                        onUpdateCustomers={onUpdateCustomers}
+                        services={services}
+                        providers={providers}
+                    />
+                )}
+            </div>
         </div>
     );
 };
