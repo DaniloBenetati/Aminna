@@ -941,7 +941,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     style={{ minHeight: `${rowHeight}px` }}
                                 >
                                     {/* Time Column */}
-                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-10 transition-colors">
+                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-colors">
                                         {hour}
                                     </div>
 
