@@ -339,12 +339,27 @@ export const Agenda: React.FC<AgendaProps> = ({
     }); // 08:00 to 20:00 in 30min slots
 
     const getCellAppointments = (providerId: string, timeSlot: string) => {
-        return gridAppointments.filter(a => {
-            const isMainProvider = a.providerId === providerId && a.time.startsWith(timeSlot);
+        // Parse slot time to get hour and minute
+        const [slotHour, slotMin] = timeSlot.split(':').map(Number);
+        const slotStartMinutes = slotHour * 60 + slotMin;
+        const slotEndMinutes = slotStartMinutes + 30; // Each slot is 30 minutes
 
+        return gridAppointments.filter(a => {
+            // Check main provider
+            const [apptHour, apptMin] = a.time.split(':').map(Number);
+            const apptMinutes = apptHour * 60 + apptMin;
+            const isMainProvider = a.providerId === providerId &&
+                apptMinutes >= slotStartMinutes &&
+                apptMinutes < slotEndMinutes;
+
+            // Check additional services
             const isExtraProvider = a.additionalServices?.some(s => {
                 const extraTime = s.startTime || a.time;
-                return s.providerId === providerId && extraTime.startsWith(timeSlot);
+                const [extraHour, extraMin] = extraTime.split(':').map(Number);
+                const extraMinutes = extraHour * 60 + extraMin;
+                return s.providerId === providerId &&
+                    extraMinutes >= slotStartMinutes &&
+                    extraMinutes < slotEndMinutes;
             });
 
             return isMainProvider || isExtraProvider;
@@ -993,6 +1008,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             }
                                                         }
 
+                                                        // Calculate top offset based on actual appointment time within the slot
+                                                        const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                        const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                        const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                        const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
+
                                                         return (
                                                             <div
                                                                 key={appt.id}
@@ -1004,7 +1025,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     }`}
                                                                 style={{
                                                                     height: `${cardHeight}px`,
-                                                                    top: '4px' // Padding from top of slot
+                                                                    top: `${topOffset}px`
                                                                 }}
                                                             >
                                                                 <div className="flex justify-between items-start">
