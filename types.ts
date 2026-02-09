@@ -311,6 +311,7 @@ export interface PaymentInfo {
   method: string;
   amount: number;
   installments?: number;
+  cardBrand?: string; // Bandeira do cartão (Visa, Mastercard, Elo, etc.)
 }
 
 export interface PaymentSetting {

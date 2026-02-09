@@ -1880,50 +1880,70 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="space-y-2">
                                     {payments.map((payment, index) => {
                                         const isCredit = payment.method.toLowerCase().includes('crédito');
+                                        const isCard = payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito');
                                         return (
-                                            <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
-                                                <select
-                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
-                                                    value={payment.method}
-                                                    onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
-                                                >
-                                                    {paymentSettings.map(pay => (
-                                                        <option key={pay.id} value={pay.method}>
-                                                            {pay.method}
-                                                        </option>
-                                                    ))}
-                                                </select>
-
-                                                {isCredit && (
+                                            <div key={payment.id} className="space-y-2 animate-in slide-in-from-left duration-200">
+                                                <div className="flex gap-2">
                                                     <select
-                                                        className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
-                                                        value={payment.installments || 1}
-                                                        onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
+                                                        className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
+                                                        value={payment.method}
+                                                        onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                     >
-                                                        {[...Array(12)].map((_, i) => (
-                                                            <option key={i} value={i + 1}>{i + 1}x</option>
+                                                        {paymentSettings.map(pay => (
+                                                            <option key={pay.id} value={pay.method}>
+                                                                {pay.method}
+                                                            </option>
                                                         ))}
                                                     </select>
-                                                )}
 
-                                                <div className="relative flex-1">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
-                                                    <input
-                                                        type="number"
-                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
-                                                        value={payment.amount || ''}
-                                                        placeholder="0,00"
-                                                        onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                                                    />
+                                                    {isCredit && (
+                                                        <select
+                                                            className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
+                                                            value={payment.installments || 1}
+                                                            onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
+                                                        >
+                                                            {[...Array(12)].map((_, i) => (
+                                                                <option key={i} value={i + 1}>{i + 1}x</option>
+                                                            ))}
+                                                        </select>
+                                                    )}
+
+                                                    <div className="relative flex-1">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                        <input
+                                                            type="number"
+                                                            className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
+                                                            value={payment.amount || ''}
+                                                            placeholder="0,00"
+                                                            onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                        />
+                                                    </div>
+                                                    {payments.length > 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removePayment(payment.id)}
+                                                            className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    )}
                                                 </div>
-                                                {payments.length > 1 && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removePayment(payment.id)}
-                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+
+                                                {/* Card Brand Selector */}
+                                                {isCard && (
+                                                    <select
+                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                                        value={payment.cardBrand || ''}
+                                                        onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
                                                     >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                        <option value="">Selecione a Bandeira</option>
+                                                        <option value="Visa">Visa</option>
+                                                        <option value="Mastercard">Mastercard</option>
+                                                        <option value="Elo">Elo</option>
+                                                        <option value="American Express">American Express</option>
+                                                        <option value="Hipercard">Hipercard</option>
+                                                        <option value="Outros">Outros</option>
+                                                    </select>
                                                 )}
                                             </div>
                                         );
