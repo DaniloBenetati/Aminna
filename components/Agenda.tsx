@@ -23,10 +23,11 @@ interface AgendaProps {
     providers: Provider[];
     stock: StockItem[];
     nfseRecords: NFSeRecord[];
+    isLoadingData?: boolean;
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, isLoadingData
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -640,6 +641,36 @@ export const Agenda: React.FC<AgendaProps> = ({
             </div>
         );
     };
+
+
+    // Loading skeleton
+    if (isLoadingData && appointments.length === 0) {
+        return (
+            <div className="flex h-full gap-4 p-4 pb-20 md:p-4 font-sans">
+                <div className="flex-1 flex flex-col space-y-4 min-w-0">
+                    <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm animate-pulse">
+                        <div className="h-12 bg-slate-200 dark:bg-zinc-800 rounded-2xl w-full"></div>
+                    </div>
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex-1">
+                        <div className="space-y-4">
+                            <div className="h-8 bg-slate-200 dark:bg-zinc-800 rounded-xl w-1/3 animate-pulse"></div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {[1, 2, 3, 4, 5, 6].map(i => (
+                                    <div key={i} className="h-32 bg-slate-100 dark:bg-zinc-800 rounded-2xl animate-pulse"></div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="mt-8 text-center">
+                            <div className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 dark:text-slate-500">
+                                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                Carregando agenda...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex h-full gap-4 p-4 pb-20 md:p-4 font-sans">

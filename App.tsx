@@ -540,6 +540,7 @@ const App: React.FC = () => {
             stock={stock}
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
+            isLoadingData={isLoadingData}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -556,6 +557,7 @@ const App: React.FC = () => {
             stock={stock}
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
+            isLoadingData={isLoadingData}
           />
         );
       case ViewState.SERVICOS:

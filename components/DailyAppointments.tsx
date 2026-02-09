@@ -20,9 +20,10 @@ interface DailyAppointmentsProps {
   providers: Provider[];
   stock: StockItem[];
   nfseRecords: NFSeRecord[];
+  isLoadingData?: boolean;
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, isLoadingData }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -206,6 +207,35 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         return 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800';
     }
   };
+
+  // Loading skeleton
+  if (isLoadingData && appointments.length === 0) {
+    return (
+      <div className="space-y-4 h-full flex flex-col pb-24 md:pb-0 font-sans text-slate-900 dark:text-white">
+        <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm animate-pulse">
+          <div className="h-12 bg-slate-200 dark:bg-zinc-800 rounded-2xl w-full"></div>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="bg-slate-100 dark:bg-zinc-800 p-3 rounded-2xl h-16 animate-pulse"></div>
+          ))}
+        </div>
+        <div className="flex-1 bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+          <div className="space-y-3">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="h-20 bg-slate-100 dark:bg-zinc-800 rounded-2xl animate-pulse"></div>
+            ))}
+          </div>
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center gap-2 text-sm font-bold text-slate-400 dark:text-slate-500">
+              <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              Carregando atendimentos...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 h-full flex flex-col pb-24 md:pb-0 font-sans text-slate-900 dark:text-white">
