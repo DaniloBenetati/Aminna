@@ -1298,7 +1298,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
 
                 {/* Header */}
-                <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
+                <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                     <div className="min-w-0 flex-1">
                         <h3 className="font-black text-xs text-indigo-400 uppercase tracking-[0.2em] mb-1">
                             {mode === 'HISTORY' ? 'Detalhes do Pagamento' : mode === 'EDIT_HISTORY' ? 'Editar Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
@@ -1322,7 +1322,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-y-auto p-5 md:p-8 space-y-6 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
+                <div className="flex-1 overflow-y-auto p-5 md:p-6 space-y-4 bg-slate-50 dark:bg-zinc-900 scrollbar-hide">
 
                     {/* CUSTOMER BLOCKED WARNING */}
                     {customer.isBlocked && (
@@ -1371,86 +1371,61 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    {/* CUSTOMER SUMMARY SECTION */}
-                    <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-white dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700/50 rounded-2xl shadow-sm gap-4">
-                        <button
-                            onClick={() => setIsCustomerEditModalOpen(true)}
-                            type="button"
-                            className="flex items-center gap-3 group/profile hover:opacity-80 transition-all text-left"
-                        >
-                            <div className="relative">
-                                <Avatar name={customer.name} src={customer.avatar} size="w-10 h-10" />
-                                <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-zinc-800 rounded-full" />
-                            </div>
+                    {/* CUSTOMER & APPOINTMENT MINI-HEADER */}
+                    <div className="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700/50 rounded-2xl shadow-sm gap-3">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                            <Avatar name={customer.name} src={customer.avatar} size="w-8 h-8" />
                             <div className="min-w-0">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                    <span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest ${customer.status === 'Novo' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30'}`}>
+                                <h2 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight truncate max-w-[150px]">{customer.name}</h2>
+                                <div className="flex items-center gap-1.5">
+                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${customer.status === 'Novo' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30'}`}>
                                         {customer.status}
                                     </span>
-                                    {customer.isBlocked && (
-                                        <span className="bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-widest">Bloqueada</span>
+                                    {isGrouped && (
+                                        <span className="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest border border-indigo-100">Agrupado</span>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <h2 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover/profile:text-indigo-600 dark:group-hover/profile:text-indigo-400 transition-colors uppercase truncate max-w-[150px]">{customer.name}</h2>
-                                    <ChevronLeft size={10} className="text-slate-300 dark:text-slate-600 rotate-180 group-hover/profile:translate-x-1 transition-transform" />
-                                </div>
                             </div>
-                        </button>
+                        </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-shrink-0">
                             {isAgendaMode && (
                                 <button
                                     onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase border shadow-sm transition-all active:scale-95 flex items-center gap-2 ${status === 'Confirmado' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-white dark:bg-zinc-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-600'}`}
+                                    className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase border shadow-sm transition-all active:scale-95 flex items-center gap-1.5 ${status === 'Confirmado' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-white dark:bg-zinc-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-600'}`}
                                 >
                                     <div className={`w-1.5 h-1.5 rounded-full ${status === 'Confirmado' ? 'bg-white animate-pulse' : 'bg-slate-300 dark:bg-slate-500'}`} />
                                     {status}
                                 </button>
                             )}
-                            {isGrouped && (
-                                <span className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-lg text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
-                                    Agrupado
-                                </span>
-                            )}
                         </div>
                     </div>
                     {mode !== 'HISTORY' && (
-                        <div className="flex items-center gap-3 w-full bg-slate-50 dark:bg-black/20 p-2 rounded-2xl border border-slate-100 dark:border-zinc-800">
-                            <div className="flex-1 flex items-center gap-3 bg-white dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-50 dark:border-zinc-700/50 shadow-sm">
-                                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-lg">
-                                    <Calendar size={16} />
-                                </div>
-                                <div className="flex-1">
-                                    <span className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-none mb-1">Data</span>
-                                    <input
-                                        type="date"
-                                        className="text-xs font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none w-full appearance-none cursor-pointer"
-                                        value={appointmentDate}
-                                        onChange={e => setAppointmentDate(e.target.value)}
-                                    />
-                                </div>
+                        <div className="flex items-center gap-2 w-full bg-white dark:bg-black/20 p-1.5 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2 border-r border-slate-100 dark:border-zinc-700">
+                                <Calendar size={14} className="text-indigo-600 flex-shrink-0" />
+                                <input
+                                    type="date"
+                                    className="text-[11px] font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none w-full appearance-none cursor-pointer"
+                                    value={appointmentDate}
+                                    onChange={e => setAppointmentDate(e.target.value)}
+                                />
                             </div>
-                            <div className="flex-1 flex items-center gap-3 bg-white dark:bg-zinc-800 p-2.5 rounded-xl border border-slate-50 dark:border-zinc-700/50 shadow-sm">
-                                <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 rounded-lg">
-                                    <Clock size={16} />
-                                </div>
-                                <div className="flex-1">
-                                    <span className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block leading-none mb-1">Horário</span>
-                                    <input
-                                        type="time"
-                                        className="text-xs font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none w-full appearance-none cursor-pointer"
-                                        value={appointmentTime}
-                                        onChange={e => {
-                                            const newTime = e.target.value;
-                                            setAppointmentTime(newTime);
-                                            if (lines.length > 0) {
-                                                // @ts-ignore
-                                                updateLine(lines[0].id, 'startTime', newTime);
-                                            }
-                                        }}
-                                    />
-                                </div>
+                            <div className="flex-1 flex items-center gap-2 px-3 py-2">
+                                <Clock size={14} className="text-amber-600 flex-shrink-0" />
+                                <input
+                                    type="time"
+                                    className="text-[11px] font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none w-full appearance-none cursor-pointer"
+                                    value={appointmentTime}
+                                    onChange={e => {
+                                        const newTime = e.target.value;
+                                        setAppointmentTime(newTime);
+                                        if (lines.length > 0) {
+                                            // @ts-ignore
+                                            updateLine(lines[0].id, 'startTime', newTime);
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
                     )}
@@ -1483,16 +1458,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                         <div className="space-y-3">
                             {lines.map((line) => (
-                                <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
+                                <div key={line.id} className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-3 relative group">
                                     {lines.length > 1 && (
                                         <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
                                     )}
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <div className="space-y-0.5">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
+                                            <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                             <select
-                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5 text-[11px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
                                                 style={{ colorScheme: 'dark' }}
                                                 value={line.serviceId}
                                                 onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
@@ -1511,7 +1486,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
 
                                         <div className="space-y-0.5 relative">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                            <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
                                             <div className="relative">
                                                 <Search size={12} className="absolute left-3 top-3 text-slate-400" />
                                                 <input
@@ -1555,26 +1530,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2 rounded-xl border border-slate-100 dark:border-zinc-700">
                                         <div className="flex flex-col">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
+                                            <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Horário</label>
                                             <input
                                                 type="time"
-                                                className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
+                                                className="bg-transparent border-none text-[10px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
                                                 value={line.startTime || appointmentTime}
                                                 onChange={e => updateLine(line.id, 'startTime', e.target.value)}
                                             />
                                         </div>
                                         <div className="flex flex-col flex-1">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                            <div className="flex items-center gap-2">
+                                            <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                            <div className="flex items-center gap-1.5">
                                                 <Avatar
                                                     src={providers.find(p => p.id === line.providerId)?.avatar}
                                                     name={providers.find(p => p.id === line.providerId)?.name || ''}
-                                                    size="w-6 h-6"
+                                                    size="w-5 h-5"
                                                 />
                                                 <select
-                                                    className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                    className={`bg-white dark:bg-zinc-800 border-none text-[10px] font-black p-0 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
                                                         ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
                                                         : 'text-slate-950 dark:text-white'
                                                         }`}
@@ -1587,15 +1562,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
 
                                         <div className="flex flex-col">
-                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
-                                            <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
+                                            <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
+                                            <div className="text-[10px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(0)}</div>
                                         </div>
 
                                         <div className="flex flex-col">
-                                            <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
+                                            <label className="text-[7px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
                                             <input
                                                 type="number"
-                                                className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
+                                                className="bg-transparent border-none text-[10px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
                                                 value={line.discount}
                                                 onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
                                             />
@@ -1603,9 +1578,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                            className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                            className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl border transition-all text-[8px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
                                         >
-                                            <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
+                                            <Check size={11} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
                                         </button>
                                     </div>
                                 </div>
