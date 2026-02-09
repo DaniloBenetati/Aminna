@@ -85,7 +85,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [showCpfPrompt, setShowCpfPrompt] = useState(false);
     const [tempCpf, setTempCpf] = useState('');
 
-    const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
+    const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY' | 'EDIT_HISTORY'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
         if (appointment.status === 'Em Andamento' && source === 'DAILY') return 'CHECKOUT';
         return 'VIEW';
@@ -1200,7 +1200,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     <div>
                         <h3 className="font-black text-lg uppercase tracking-tight flex items-center gap-2">
                             <Sparkles size={18} className="text-indigo-400" />
-                            {mode === 'HISTORY' ? 'Detalhes do Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
+                            {mode === 'HISTORY' ? 'Detalhes do Pagamento' : mode === 'EDIT_HISTORY' ? 'Editar Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
                         </h3>
                         <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{customer.name}</p>
                     </div>
@@ -1681,7 +1681,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    {mode === 'CHECKOUT' && (
+                    {(mode === 'CHECKOUT' || mode === 'EDIT_HISTORY') && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
                             <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
                                 <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
@@ -1995,15 +1995,31 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             )}
 
                             <div className="pt-2 flex flex-col gap-3">
-                                <button
-                                    type="button"
-                                    onClick={handleFinishService}
-                                    disabled={restrictionData.isRestricted || customer.isBlocked}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
-                                >
-                                    {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
-                                </button>
-                                <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
+                                {mode === 'EDIT_HISTORY' ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={handleSave}
+                                            disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                            className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                                        >
+                                            {isSaving ? 'SALVANDO...' : <><Check size={20} /> SALVAR ALTERAÇÕES</>}
+                                        </button>
+                                        <button onClick={() => setMode('HISTORY')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">CANCELAR</button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={handleFinishService}
+                                            disabled={restrictionData.isRestricted || customer.isBlocked}
+                                            className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                        >
+                                            {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                                        </button>
+                                        <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -2191,8 +2207,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 </div>
                             </div>
 
-                            <div className="pt-2">
-                                <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+                            <div className="pt-2 flex gap-3">
+                                <button
+                                    onClick={() => setMode('EDIT_HISTORY')}
+                                    className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
+                                >
+                                    Editar
+                                </button>
+                                <button onClick={onClose} className="flex-1 py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
                                     Fechar Histórico
                                 </button>
                             </div>
