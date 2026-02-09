@@ -56,13 +56,14 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 name: localName,
                 phone: localPhone,
                 email: localEmail,
-                birth_date: localBirthday,
-                cpf: localCpf,
-                source: localSource,
-                address: localAddress,
-                observations: localObservations,
+                birth_date: localBirthday || null,
+                cpf: localCpf || null,
+                acquisition_channel: localSource || null,
+                address: localAddress || null,
+                observations: localObservations || null,
                 status: localStatus,
-                block_reason: localBlockReason,
+                is_blocked: localStatus === 'Bloqueada',
+                block_reason: localStatus === 'Bloqueada' ? localBlockReason : null,
                 preferences: updatedPreferences
             };
 
