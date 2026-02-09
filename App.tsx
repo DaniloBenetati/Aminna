@@ -120,8 +120,40 @@ const App: React.FC = () => {
         }
       }
 
-      // 1. Providers
-      const { data: providersData } = await supabase.from('providers').select('*');
+      // 1. Parallel Fetching for non-batched/filtered data
+      const [
+        { data: providersData },
+        { data: servicesData },
+        { data: stockData },
+        { data: usageLogsData },
+        { data: campaignsData },
+        { data: pantryItemsData },
+        { data: pantryLogsData },
+        { data: leadsData },
+        { data: partnersData },
+        { data: expenseCategoriesData },
+        { data: paymentSettingsData },
+        { data: commissionSettingsData },
+        { data: suppliersData },
+        { data: nfseRecordsData }
+      ] = await Promise.all([
+        supabase.from('providers').select('*'),
+        supabase.from('services').select('*'),
+        supabase.from('stock_items').select('*'),
+        supabase.from('usage_logs').select('*'),
+        supabase.from('campaigns').select('*'),
+        supabase.from('pantry_items').select('*'),
+        supabase.from('pantry_logs').select('*'),
+        supabase.from('leads').select('*'),
+        supabase.from('partners').select('*'),
+        supabase.from('expense_categories').select('*'),
+        supabase.from('payment_settings').select('*'),
+        supabase.from('commission_settings').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('nfse_records').select('*')
+      ]);
+
+      // Map and Set Providers
       if (providersData) {
         const mappedProviders = providersData.map((p: any) => ({
           id: p.id,
@@ -138,27 +170,16 @@ const App: React.FC = () => {
           order: p.order,
           commissionHistory: p.commission_history || []
         }));
-
-        // Deduplicate by phone number - keep the most recent (last) record
         const deduplicatedProviders = mappedProviders.reduce((acc: any[], current: any) => {
-          // Find existing provider with same phone
           const existingIndex = acc.findIndex(p => p.phone && p.phone === current.phone);
-
-          if (existingIndex >= 0) {
-            // Replace if current has more complete data or is the same/newer
-            acc[existingIndex] = current;
-          } else {
-            acc.push(current);
-          }
-
+          if (existingIndex >= 0) acc[existingIndex] = current;
+          else acc.push(current);
           return acc;
         }, []);
-
         setProviders(deduplicatedProviders);
       }
 
-      // 2. Services
-      const { data: servicesData } = await supabase.from('services').select('*');
+      // Map and Set Services
       if (servicesData) {
         setServices(servicesData.map((s: any) => ({
           id: s.id,
@@ -171,10 +192,7 @@ const App: React.FC = () => {
         })));
       }
 
-      // 3. Stock
-      const { data: stockData } = await supabase.from('stock_items').select('*');
-      const { data: usageLogsData } = await supabase.from('usage_logs').select('*');
-
+      // Map and Set Stock
       if (stockData) {
         setStock(stockData.map((s: any) => ({
           id: s.id,
@@ -201,75 +219,54 @@ const App: React.FC = () => {
         })));
       }
 
-      // 3b. Partners
-      const { data: partnersData } = await supabase.from('partners').select('*');
-      if (partnersData) {
-        setPartners(partnersData.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          socialMedia: p.social_media,
-          category: p.category,
-          phone: p.phone,
-          email: p.email,
-          document: p.document,
-          address: p.address,
-          partnershipType: p.partnership_type,
-          pixKey: p.pix_key,
-          notes: p.notes,
-          active: p.active
-        })));
-      }
-
-      // 4. Pantry
-      const { data: pantryData } = await supabase.from('pantry_items').select('*');
-      if (pantryData) {
-        setPantryItems(pantryData.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          unit: p.unit,
-          category: p.category,
-          quantity: p.quantity,
-          minQuantity: p.min_quantity,
-          costPrice: p.cost_price,
-          referencePrice: p.reference_price
-        })));
-      }
-
-      const { data: logsData } = await supabase.from('pantry_logs').select('*');
-      if (logsData) {
-        setPantryLogs(logsData.map((l: any) => ({
-          id: l.id,
-          date: l.date,
-          time: l.time,
-          itemId: l.item_id,
-          quantity: l.quantity,
-          appointmentId: l.appointment_id,
-          customerId: l.customer_id,
-          providerId: l.provider_id,
-          costAtMoment: l.cost_at_moment,
-          referenceAtMoment: l.reference_at_moment
-        })));
-      }
-
-      // 5. Campaigns
-      const { data: campaignsData } = await supabase.from('campaigns').select('*');
+      // Map and Set Campaigns
       if (campaignsData) {
         setCampaigns(campaignsData.map((c: any) => ({
           id: c.id,
-          partnerId: c.partner_id,
           name: c.name,
-          couponCode: c.coupon_code,
           discountType: c.discount_type,
           discountValue: c.discount_value,
           startDate: c.start_date,
           endDate: c.end_date,
-          useCount: c.use_count,
-          maxUses: c.max_uses,
-          totalRevenueGenerated: c.total_revenue_generated
+          active: c.active,
+          couponCode: c.coupon_code,
+          conditions: c.conditions
         })));
       }
 
-      // 6. Customers - Fetch ALL with pagination
+      // Map and Set Other States from Promise.all
+      if (pantryItemsData) setPantryItems(pantryItemsData.map((p: any) => ({ ...p, name: p.name })));
+      if (pantryLogsData) setPantryLogs(pantryLogsData.map((l: any) => ({ ...l, date: l.date })));
+      if (leadsData) setLeads(leadsData.map((l: any) => ({ ...l, createdAt: l.created_at })));
+      if (partnersData) setPartners(partnersData);
+      if (expenseCategoriesData) setExpenseCategories(expenseCategoriesData);
+      if (paymentSettingsData) setPaymentSettings(paymentSettingsData.map((p: any) => ({ ...p, maxInstallments: p.max_installments })));
+      if (commissionSettingsData) setCommissionSettings(commissionSettingsData);
+      if (suppliersData) setSuppliers(suppliersData);
+      if (nfseRecordsData) {
+        setNfseRecords(nfseRecordsData.map((r: any) => ({
+          id: r.id,
+          appointmentId: r.appointment_id,
+          providerId: r.provider_id,
+          customerId: r.customer_id,
+          nfseNumber: r.nfse_number,
+          verificationCode: r.verification_code,
+          totalValue: r.total_value,
+          salonValue: r.salon_value,
+          professionalValue: r.professional_value,
+          professionalCnpj: r.professional_cnpj,
+          serviceDescription: r.service_description,
+          focusResponse: r.focus_response,
+          xmlUrl: r.xml_url,
+          pdfUrl: r.pdf_url,
+          errorMessage: r.error_message,
+          retryCount: r.retry_count,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at
+        })));
+      }
+
+      // 2. Fetch Customers - Batch fetching
       let allCustomers: any[] = [];
       let page = 0;
       const pageSize = 1000;
@@ -300,43 +297,29 @@ const App: React.FC = () => {
         setCustomers(allCustomers.map((c: any) => ({
           id: c.id,
           name: c.name,
-          phone: c.phone,
           email: c.email,
+          phone: c.phone || '',
+          cpf: c.cpf,
           birthDate: c.birth_date,
-          registrationDate: c.registration_date,
-          lastVisit: c.last_visit,
-          totalSpent: c.total_spent,
-          status: c.status,
-          assignedProviderId: c.assigned_provider_id,
+          address: c.address,
           preferences: c.preferences,
-          history: [], // TODO fetch history
-          acquisitionChannel: c.acquisition_channel,
-          isBlocked: c.is_blocked,
-          blockReason: c.block_reason
+          totalSpent: c.total_spent,
+          lastVisit: c.last_visit,
+          outstandingBalance: c.outstanding_balance,
+          history: c.history || [],
+          status: c.status || 'Ativo',
+          blockReason: c.block_reason,
+          packageName: c.package_name,
+          packageSessions: c.package_sessions,
+          packageSessionsUsed: c.package_sessions_used
         })));
       }
 
-      // 6b. Leads
-      const { data: leadsData } = await supabase.from('leads').select('*');
-      if (leadsData) {
-        setLeads(leadsData.map((l: any) => ({
-          id: l.id,
-          name: l.name,
-          phone: l.phone,
-          source: l.source,
-          status: l.status,
-          createdAt: l.created_at,
-          updatedAt: l.updated_at,
-          notes: l.notes,
-          lostReason: l.lost_reason,
-          value: l.value,
-          serviceInterest: l.service_interest,
-          temperature: l.temperature,
-          tags: l.tags || []
-        })));
-      }
+      // 3. Fetch Appointments - Filtered by date range (last 3 months)
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const minDate = threeMonthsAgo.toISOString().split('T')[0];
 
-      // 7. Appointments (fetch ALL in batches due to Supabase 1000-row limit)
       let allAppts: any[] = [];
       let apptStart = 0;
       const apptStep = 1000;
@@ -346,6 +329,7 @@ const App: React.FC = () => {
         const { data: apptBatch, error } = await supabase
           .from('appointments')
           .select('*')
+          .gte('date', minDate)
           .range(apptStart, apptStart + apptStep - 1)
           .order('date', { ascending: true });
 
@@ -365,115 +349,42 @@ const App: React.FC = () => {
       }
 
       if (allAppts.length > 0) {
-        const mappedAppointments = allAppts.map((a: any) => ({
+        setAppointments(allAppts.map((a: any) => ({
           id: a.id,
           customerId: a.customer_id,
-          serviceId: a.service_id,
           providerId: a.provider_id,
+          serviceId: a.service_id,
           date: a.date,
           time: a.time,
           status: a.status,
-          notes: a.notes,
-          price: a.price,
-          commissionRate: a.commission_rate,
-          pricePaid: a.price_paid,
           paymentMethod: a.payment_method,
           payments: a.payments || [],
-          paymentDate: a.payment_date,
-          combinedServiceNames: a.combined_service_names,
-          bookedPrice: a.booked_price,
-          mainServiceProducts: a.main_service_products,
+          amount: a.amount,
+          commissionRate: a.commission_rate,
+          observation: a.observation,
+          rating: a.rating,
+          feedback: a.feedback,
           additionalServices: a.additional_services,
+          combinedServiceNames: a.combined_service_names,
           appliedCoupon: a.applied_coupon,
-          discountAmount: a.discount_amount,
-          nfseRecordId: a.nfse_record_id
-        }));
-
-        setAppointments(mappedAppointments);
-      }
-
-      // 7b. NFSe Records
-      const { data: nfseData } = await supabase.from('nfse_records').select('*');
-      if (nfseData) {
-        setNfseRecords(nfseData.map((n: any) => ({
-          id: n.id,
-          appointmentId: n.appointment_id,
-          providerId: n.provider_id,
-          customerId: n.customer_id,
-          reference: n.reference,
-          nfseNumber: n.nfse_number,
-          verificationCode: n.verification_code,
-          status: n.status,
-          totalValue: n.total_value,
-          salonValue: n.salon_value,
-          professionalValue: n.professional_value,
-          professionalCnpj: n.professional_cnpj,
-          serviceDescription: n.service_description,
-          focusResponse: n.focus_response,
-          xmlUrl: n.xml_url,
-          pdfUrl: n.pdf_url,
-          errorMessage: n.error_message,
-          retryCount: n.retry_count,
-          lastRetryAt: n.last_retry_at,
-          cancelledAt: n.cancelled_at,
-          cancellationReason: n.cancellation_reason,
-          issuedAt: n.issued_at,
-          createdAt: n.created_at,
-          updatedAt: n.updated_at
+          createdAt: a.created_at,
+          updatedAt: a.updated_at
         })));
       }
 
-      // 8. Sales
-      const { data: salesData } = await supabase.from('sales').select('*');
+      // 4. Fetch Sales - Filtered by date range (last 3 months)
+      const { data: salesData } = await supabase.from('sales').select('*').gte('date', minDate);
       if (salesData) {
         setSales(salesData.map((s: any) => ({
           id: s.id,
           customerId: s.customer_id,
-          totalAmount: s.total_amount,
+          items: s.items || [],
+          total: s.total,
           date: s.date,
           paymentMethod: s.payment_method,
-          items: s.items || [],
-          payments: s.payments || []
-        })));
-      }
-
-      // 9. Settings
-      const { data: commData } = await supabase.from('commission_settings').select('*');
-      setCommissionSettings(commData ? commData.map((c: any) => ({
-        id: c.id,
-        startDay: c.start_day,
-        endDay: c.end_day,
-        paymentDay: c.payment_day
-      })) : []);
-
-      const { data: payData } = await supabase.from('payment_settings').select('*');
-      setPaymentSettings(payData ? payData.map((p: any) => ({
-        id: p.id,
-        method: p.method,
-        iconName: p.icon_name,
-        fee: p.fee,
-        days: p.days,
-        color: p.color
-      })) : []);
-
-      const { data: catData } = await supabase.from('expense_categories').select('*');
-      setExpenseCategories(catData ? catData.map((e: any) => ({
-        id: e.id,
-        name: e.name,
-        dreClass: e.dre_class,
-        isSystem: e.is_system
-      })) : []);
-
-      const { data: supsData } = await supabase.from('suppliers').select('*');
-      if (supsData) {
-        setSuppliers(supsData.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          category: s.category,
-          document: s.document,
-          phone: s.phone,
-          email: s.email,
-          active: s.active
+          payments: s.payments || [],
+          status: s.status,
+          createdAt: s.created_at
         })));
       }
 

@@ -1,10 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText } from 'lucide-react';
-import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo } from '../types';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText } from 'lucide-react';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
+
+const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
 interface ServiceLine {
     id: string;
@@ -20,6 +22,7 @@ interface ServiceLine {
     isEditingInCheckout?: boolean;
     unitPrice: number;
     startTime: string;
+    appointmentId?: string; // Tracks original appointment for merged services
 }
 
 interface ServiceModalProps {
@@ -37,6 +40,7 @@ interface ServiceModalProps {
     providers: Provider[];
     stock: StockItem[];
     customers: Customer[];
+    onNavigate?: (view: ViewState, payload?: any) => void;
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -53,7 +57,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     paymentSettings,
     providers,
     stock,
-    customers
+    customers,
+    onNavigate
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -85,11 +90,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [showCpfPrompt, setShowCpfPrompt] = useState(false);
     const [tempCpf, setTempCpf] = useState('');
 
-    const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY'>(() => {
+    const [mode, setMode] = useState<'VIEW' | 'CHECKOUT' | 'CANCEL' | 'HISTORY' | 'CLIENT_EDIT'>(() => {
         if (appointment.status === 'Concluído') return 'HISTORY';
         if (appointment.status === 'Em Andamento' && source === 'DAILY') return 'CHECKOUT';
         return 'VIEW';
     });
+
+    const [editCustomerName, setEditCustomerName] = useState(customer.name);
+    const [editCustomerPhone, setEditCustomerPhone] = useState(customer.phone);
+    const [previousMode, setPreviousMode] = useState<typeof mode>(mode);
 
     const futureAppointments = useMemo(() => {
         // Use local date for comparison to avoid timezone issues with toISOString()
@@ -139,7 +148,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             rating: 5,
             feedback: '',
             unitPrice: appointment.bookedPrice || mainService?.price || 0,
-            startTime: appointment.time
+            startTime: appointment.time,
+            appointmentId: appointment.id
         }];
 
         if (appointment.additionalServices) {
@@ -156,10 +166,60 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     rating: 5,
                     feedback: '',
                     unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
-                    startTime: extra.startTime || appointment.time // Fallback to appointment time if not set
+                    startTime: extra.startTime || appointment.time,
+                    appointmentId: appointment.id
                 });
             });
         }
+
+        // AUTO-MERGE: Find other appointments for the same client on the same day
+        const related = allAppointments.filter(a =>
+            a.customerId === appointment.customerId &&
+            a.date === appointment.date &&
+            a.status !== 'Cancelado' &&
+            a.status !== 'Concluído' &&
+            a.id !== appointment.id
+        );
+
+        related.forEach((rel, rIdx) => {
+            const relService = services.find(s => s.id === rel.serviceId);
+            initialLines.push({
+                id: `rel-${rIdx}`,
+                serviceId: rel.serviceId,
+                providerId: rel.providerId,
+                products: rel.mainServiceProducts || [],
+                currentSearchTerm: '',
+                discount: rel.discountAmount || 0,
+                isCourtesy: rel.isCourtesy || false,
+                showProductResults: false,
+                rating: 5,
+                feedback: '',
+                unitPrice: rel.bookedPrice || relService?.price || 0,
+                startTime: rel.time,
+                appointmentId: rel.id
+            });
+
+            if (rel.additionalServices) {
+                rel.additionalServices.forEach((extra, eIdx) => {
+                    initialLines.push({
+                        id: `rel-${rIdx}-extra-${eIdx}`,
+                        serviceId: extra.serviceId,
+                        providerId: extra.providerId,
+                        products: extra.products || [],
+                        currentSearchTerm: '',
+                        discount: extra.discount,
+                        isCourtesy: extra.isCourtesy,
+                        showProductResults: false,
+                        rating: 5,
+                        feedback: '',
+                        unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
+                        startTime: extra.startTime || rel.time,
+                        appointmentId: rel.id
+                    });
+                });
+            }
+        });
+
         setLines(initialLines);
         setPayments(appointment.payments || [{ id: '1', method: appointment.paymentMethod || 'Pix', amount: 0 }]);
 
@@ -558,6 +618,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         if (await checkForCustomerConflictAndMerge()) return;
 
         setIsSaving(true);
+        const isReFinalizing = appointment.status === 'Concluído';
+        const previousPricePaid = appointment.price_paid || appointment.pricePaid || 0;
+        const priceDifference = isReFinalizing ? (totalValue - previousPricePaid) : totalValue;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const allProductsUsed = lines.flatMap(l => l.products);
@@ -590,9 +653,28 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         };
 
         try {
+            // 0. Identify secondary appointments to "cancel/merge"
+            const secondaryAppointmentIds = Array.from(new Set(
+                lines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id)
+            ));
+
             // 1. Update Appointment
             const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
             if (apptError) throw apptError;
+
+            // 1.1 Handle Secondary Appointments (Auto-Merge)
+            if (secondaryAppointmentIds.length > 0) {
+                const { error: secondaryError } = await supabase
+                    .from('appointments')
+                    .update({
+                        status: 'Cancelado',
+                        combined_service_names: '[MESCLADO ATENDIMENTO PRINCIPAL]'
+                    })
+                    .in('id', secondaryAppointmentIds);
+                if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
+            }
 
             // 2. Create Sale Record REMOVED (Prevents DRE duplication)
             // The appointment record itself is sufficient for Service revenue.
@@ -611,7 +693,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
-                total_spent: customer.totalSpent + totalValue,
+                total_spent: customer.totalSpent + priceDifference,
                 outstanding_balance: newOutstandingBalance
             }).eq('id', customer.id);
             if (custError) throw custError;
@@ -635,11 +717,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     payments: payments
                 } as Appointment;
 
-                if (exists) {
-                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
-                } else {
-                    return [...prev, updatedAppt];
-                }
+                return prev.map(a => {
+                    if (a.id === appointment.id) return updatedAppt;
+                    if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' };
+                    return a;
+                });
             });
 
             onUpdateCustomers(prev => prev.map(c => {
@@ -662,8 +744,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     return {
                         ...c,
                         lastVisit: dischargeDate,
-                        totalSpent: c.totalSpent + totalValue,
-                        history: [...newEntries, ...c.history]
+                        totalSpent: c.totalSpent + priceDifference,
+                        history: isReFinalizing ? c.history : [...newEntries, ...c.history]
                     };
                 }
                 return c;
@@ -717,6 +799,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         };
 
         try {
+            // 0. Identify secondary appointments to "cancel/merge"
+            const secondaryAppointmentIds = Array.from(new Set(
+                lines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id)
+            ));
+
             const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
 
             let result;
@@ -724,6 +813,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 result = await supabase.from('appointments').insert([dataToSave]).select();
             } else {
                 result = await supabase.from('appointments').update(dataToSave).eq('id', appointment.id).select();
+            }
+
+            // 1.1 Handle Secondary Appointments (Auto-Merge)
+            if (secondaryAppointmentIds.length > 0) {
+                const { error: secondaryError } = await supabase
+                    .from('appointments')
+                    .update({
+                        status: 'Cancelado',
+                        combined_service_names: '[MESCLADO ATENDIMENTO PRINCIPAL]'
+                    })
+                    .in('id', secondaryAppointmentIds);
+                if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
             }
 
             const { data, error } = result;
@@ -761,7 +862,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const exists = prev.find(a => a.id === appointment.id);
 
                 // Map all saved records to local state format
-                const newLocalAppts = allSaved.map(s => ({
+                let newLocalAppts = allSaved.map(s => ({
                     ...appointment,
                     id: s.id,
                     customerId: s.customer_id,
@@ -786,8 +887,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     // Update the first one and add any new ones
                     const mainResult = newLocalAppts[0];
                     const others = newLocalAppts.slice(1);
-                    const updatedList = prev.map(a => a.id === appointment.id ? mainResult : a);
-                    return [...updatedList, ...others];
+                    return prev.map(a => {
+                        if (a.id === appointment.id) return mainResult;
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' };
+                        return a;
+                    }).concat(others);
                 } else {
                     return [...prev, ...newLocalAppts];
                 }
@@ -803,6 +907,42 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const handleUpdateCustomer = async () => {
+        if (!editCustomerName.trim()) {
+            alert('O nome do cliente é obrigatório');
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('customers')
+                .update({
+                    name: editCustomerName.trim(),
+                    phone: editCustomerPhone.trim()
+                })
+                .eq('id', customer.id);
+
+            if (error) throw error;
+
+            alert('Cliente atualizado com sucesso');
+
+            // Update local state by calling onUpdateCustomers
+            if (onUpdateCustomers) {
+                onUpdateCustomers();
+            }
+
+            // Return to previous mode
+            setMode(previousMode);
+        } catch (error) {
+            console.error('Error updating customer:', error);
+            alert('Erro ao atualizar cliente');
+        }
+    };
+
+    const handleBackFromEdit = () => {
+        setMode(previousMode);
     };
 
     const handleCreateDebt = async (forced = false) => {
@@ -1062,36 +1202,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: apptError } = await supabase.from('appointments').update({ status: 'Cancelado' }).eq('id', appointment.id);
             if (apptError) throw apptError;
 
-            // 2. Fetch current customer data to get existing observations
-            const { data: customerData, error: fetchError } = await supabase
-                .from('customers')
-                .select('observations')
-                .eq('id', customer.id)
-                .single();
-
-            if (fetchError) throw fetchError;
-
-            // 3. Append cancellation to observations
             const today = new Date().toISOString().split('T')[0];
-            const providerName = providers.find(p => p.id === appointment.providerId)?.name || 'Profissional não identificado';
-            const serviceName = services.find(s => s.id === appointment.serviceId)?.name || 'Serviço não identificado';
 
-            const cancellationNote = `[${today}] CANCELAMENTO: ${serviceName} com ${providerName} - Motivo: ${cancellationReason}`;
-            const updatedObservations = customerData?.observations
-                ? `${cancellationNote}\n\n${customerData.observations}`
-                : cancellationNote;
+            // 2. Update local state for appointments
+            const secondaryAppointmentIds = Array.from(new Set(
+                lines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id)
+            ));
 
-            // 4. Update customer observations in database
-            const { error: updateError } = await supabase
-                .from('customers')
-                .update({ observations: updatedObservations })
-                .eq('id', customer.id);
+            if (secondaryAppointmentIds.length > 0) {
+                await supabase
+                    .from('appointments')
+                    .update({ status: 'Cancelado' })
+                    .in('id', secondaryAppointmentIds);
+            }
 
-            if (updateError) throw updateError;
-
-            // 5. Update local state for appointments
             onUpdateAppointments(prev => prev.map(a =>
-                a.id === appointment.id ? { ...a, status: 'Cancelado' } : a
+                (a.id === appointment.id || secondaryAppointmentIds.includes(a.id))
+                    ? { ...a, status: 'Cancelado' }
+                    : a
             ));
 
             // 6. Update local state for customers (both observations and history)
@@ -1107,7 +1237,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     };
                     return {
                         ...c,
-                        observations: updatedObservations,
                         history: [cancelEntry, ...c.history]
                     };
                 }
@@ -1202,7 +1331,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <Sparkles size={18} className="text-indigo-400" />
                             {mode === 'HISTORY' ? 'Detalhes do Pagamento' : (isAgendaMode ? 'Editar Agendamento' : 'Atendimento')}
                         </h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-0.5">{customer.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{customer.name}</p>
+                            {onNavigate && (
+                                <button
+                                    onClick={() => {
+                                        setEditCustomerName(customer.name);
+                                        setEditCustomerPhone(customer.phone);
+                                        setPreviousMode(mode);
+                                        setMode('CLIENT_EDIT');
+                                    }}
+                                    className="p-1 text-slate-500 hover:text-indigo-400 transition-colors"
+                                    title="Editar Cliente"
+                                >
+                                    <PencilLine size={12} />
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <button onClick={onClose} className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-90 border border-white/20"><ChevronDown size={20} /></button>
                 </div>
@@ -1257,428 +1402,477 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
-                        <div className="min-w-0 flex-1 w-full">
-                            <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
-                            <div className="flex items-center gap-2 mt-0.5">
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
-                                {isAgendaMode && (
-                                    <button
-                                        onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                        className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
-                                    >
-                                        {status}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                        {mode !== 'HISTORY' && (
-                            <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data</span>
-                                    <input
-                                        type="date"
-                                        className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[130px]"
-                                        value={appointmentDate}
-                                        onChange={e => setAppointmentDate(e.target.value)}
-                                    />
-                                </div>
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Horário</span>
-                                    <input
-                                        type="time"
-                                        className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
-                                        value={appointmentTime}
-                                        onChange={e => {
-                                            const newTime = e.target.value;
-                                            setAppointmentTime(newTime);
-                                            if (lines.length > 0) {
-                                                updateLine(lines[0].id, 'startTime', newTime);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        {mode === 'HISTORY' && (
-                            <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
-                                <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
-                                <span className="text-sm font-black text-slate-950 dark:text-white">
-                                    {(() => {
-                                        const dateStr = appointment.paymentDate || appointment.date;
-                                        if (!dateStr) return '-';
-                                        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-                                        return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
-                                    })()}
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    {mode === 'VIEW' && (
-                        <div className="space-y-5 animate-in fade-in duration-200">
-                            <div className="flex justify-between items-center px-1">
-                                <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
-                                <button
-                                    type="button" onClick={addServiceLine}
-                                    className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
-                                >
-                                    <Plus size={14} /> ADICIONAR EXTRA
-                                </button>
-                            </div>
-
-                            <div className="space-y-3">
-                                {lines.map((line) => (
-                                    <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
-                                        {lines.length > 1 && (
-                                            <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
-                                        )}
-
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                            <div className="space-y-0.5">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
-                                                <select
-                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
-                                                    style={{ colorScheme: 'dark' }}
-                                                    value={line.serviceId}
-                                                    onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
-                                                >
-                                                    {services
-                                                        .filter(s => {
-                                                            const provider = providers.find(p => p.id === line.providerId);
-                                                            if (!provider) return true;
-                                                            // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
-                                                            if (!provider.specialties || provider.specialties.length === 0) return true;
-                                                            // Filtra por nome do serviço
-                                                            return provider.specialties.includes(s.name);
-                                                        })
-                                                        .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
-                                                </select>
-                                            </div>
-
-                                            <div className="space-y-0.5 relative">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
-                                                <div className="relative">
-                                                    <Search size={12} className="absolute left-3 top-3 text-slate-400" />
-                                                    <input
-                                                        type="text"
-                                                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
-                                                        placeholder="Adicionar produto..."
-                                                        value={line.currentSearchTerm}
-                                                        onFocus={() => updateLine(line.id, 'showProductResults', true)}
-                                                        onChange={e => {
-                                                            updateLine(line.id, 'currentSearchTerm', e.target.value);
-                                                            updateLine(line.id, 'showProductResults', true);
-                                                        }}
-                                                    />
-                                                    {line.showProductResults && (
-                                                        <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
-                                                            {/* Use stock prop instead of STOCK constant */}
-                                                            {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
-                                                                <button
-                                                                    key={p.id} type="button"
-                                                                    onClick={() => {
-                                                                        addProductToLine(line.id, `[${p.code}] ${p.name}`);
-                                                                    }}
-                                                                    className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[10px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
-                                                                >
-                                                                    <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-wrap gap-1.5 mt-2">
-                                                    {line.products.map((prod, idx) => (
-                                                        <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
-                                                            {prod}
-                                                            <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
-                                                                <X size={10} />
-                                                            </button>
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
-                                                <input
-                                                    type="time"
-                                                    className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
-                                                    value={line.startTime || appointmentTime}
-                                                    onChange={e => updateLine(line.id, 'startTime', e.target.value)}
-                                                />
-                                            </div>
-                                            <div className="flex flex-col flex-1">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                                <div className="flex items-center gap-2">
-                                                    <Avatar
-                                                        src={providers.find(p => p.id === line.providerId)?.avatar}
-                                                        name={providers.find(p => p.id === line.providerId)?.name || ''}
-                                                        size="w-6 h-6"
-                                                    />
-                                                    <select
-                                                        className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
-                                                            ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
-                                                            : 'text-slate-950 dark:text-white'
-                                                            }`}
-                                                        value={line.providerId}
-                                                        onChange={e => updateLine(line.id, 'providerId', e.target.value)}
-                                                    >
-                                                        {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
-                                                    </select>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
-                                                <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
-                                            </div>
-
-                                            <div className="flex flex-col">
-                                                <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
-                                                <input
-                                                    type="number"
-                                                    className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
-                                                    value={line.discount}
-                                                    onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
-                                                />
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
-                                            >
-                                                <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
-                                            </button>
-                                        </div>
+                    {mode === 'CLIENT_EDIT' ? (
+                        <div className="space-y-6 animate-in slide-in-from-right duration-300">
+                            <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-900 dark:border-white/10 shadow-2xl">
+                                <div className="space-y-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nome do Cliente</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            value={editCustomerName}
+                                            onChange={(e) => setEditCustomerName(e.target.value)}
+                                            placeholder="Nome completo"
+                                            autoFocus
+                                        />
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Telefone / WhatsApp</label>
+                                        <input
+                                            type="text"
+                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            value={editCustomerPhone}
+                                            onChange={(e) => setEditCustomerPhone(e.target.value)}
+                                            placeholder="(00) 00000-0000"
+                                        />
+                                    </div>
 
-                            {/* RECURENCE OPTIONS */}
-                            {mode === 'VIEW' && (
-                                <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                            <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
-                                        </div>
+                                    <div className="grid grid-cols-2 gap-3 pt-4">
                                         <button
-                                            type="button"
-                                            onClick={() => setIsRecurring(!isRecurring)}
-                                            className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                                            onClick={handleBackFromEdit}
+                                            className="py-4 bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-800 transition-all"
                                         >
-                                            <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={handleUpdateCustomer}
+                                            className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Save size={16} /> Salvar Alterações
                                         </button>
                                     </div>
-
-                                    {isRecurring && (
-                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
-                                                <select
-                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                    value={recurrenceFrequency}
-                                                    onChange={e => setRecurrenceFrequency(e.target.value as any)}
-                                                >
-                                                    <option value="WEEKLY">Semanal (7 dias)</option>
-                                                    <option value="BIWEEKLY">Quinzenal (15 dias)</option>
-                                                    <option value="MONTHLY">Mensal (Mesmo dia)</option>
-                                                </select>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        min="1"
-                                                        max="24"
-                                                        className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                        value={recurrenceCount}
-                                                        onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
-                                                    />
-                                                    <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
-                            )}
-
-                            <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                <div className="flex justify-between items-center px-1 mb-4">
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
-                                        <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
+                                <div className="min-w-0 flex-1 w-full">
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
+                                        {isAgendaMode && (
+                                            <button
+                                                onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
+                                                className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                                            >
+                                                {status}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-
-                                {customer.outstandingBalance && customer.outstandingBalance > 0 && (
-                                    <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
-                                        <input
-                                            type="checkbox"
-                                            id="payDebt"
-                                            checked={includeDebt}
-                                            onChange={(e) => setIncludeDebt(e.target.checked)}
-                                            className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
-                                        />
-                                        <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
-                                            Incluir Pagmento de Dívida Pendente
-                                        </label>
-                                        <span className="text-sm font-black text-rose-500">
-                                            + R$ {customer.outstandingBalance.toFixed(2)}
+                                {mode !== 'HISTORY' && (
+                                    <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data</span>
+                                            <input
+                                                type="date"
+                                                className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[130px]"
+                                                value={appointmentDate}
+                                                onChange={e => setAppointmentDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Horário</span>
+                                            <input
+                                                type="time"
+                                                className="text-base font-black text-slate-950 dark:text-white bg-transparent border-none p-0 outline-none text-right appearance-none cursor-pointer min-w-[85px]"
+                                                value={appointmentTime}
+                                                onChange={e => {
+                                                    const newTime = e.target.value;
+                                                    setAppointmentTime(newTime);
+                                                    if (lines.length > 0) {
+                                                        updateLine(lines[0].id, 'startTime', newTime);
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                {mode === 'HISTORY' && (
+                                    <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
+                                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
+                                        <span className="text-sm font-black text-slate-950 dark:text-white">
+                                            {(() => {
+                                                const dateStr = appointment.paymentDate || appointment.date;
+                                                if (!dateStr) return '-';
+                                                const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+                                                return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
+                                            })()}
                                         </span>
                                     </div>
                                 )}
-
-                                <div className="flex flex-col gap-2">
-                                    {isAgendaMode ? (
-                                        <>
-                                            {isCancelling ? (
-                                                <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
-                                                    <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
-                                                        <AlertTriangle size={12} /> Cancelamento de Agendamento
-                                                    </h4>
-                                                    <textarea
-                                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
-                                                        placeholder="Motivo obrigatório para o histórico..."
-                                                        value={cancellationReason}
-                                                        onChange={e => setCancellationReason(e.target.value)}
-                                                        autoFocus
-                                                    />
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setIsCancelling(false)}
-                                                            className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
-                                                        >
-                                                            Voltar
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleConfirmCancellation}
-                                                            className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
-                                                        >
-                                                            Confirmar Cancelamento
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="flex gap-2 w-full">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsCancelling(true)}
-                                                        className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
-                                                        title="Cancelar Agendamento"
-                                                    >
-                                                        <XCircle size={16} />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (appointment.status === 'Em Andamento') {
-                                                                setMode('CHECKOUT');
-                                                            } else {
-                                                                handleStartService();
-                                                            }
-                                                        }}
-                                                        className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
-                                                    >
-                                                        {appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />}
-                                                        {appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleSave}
-                                                        disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                        className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                                    >
-                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />)}
-                                                        {isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR')}
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </>
-                                    ) : (
-                                        (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
-                                            <button
-                                                type="button"
-                                                onClick={handleStartService}
-                                                disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                            >
-                                                {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
-                                                {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
-                                            </button>
-                                        ) : (
-                                            <button
-                                                type="button"
-                                                onClick={() => setMode('CHECKOUT')}
-                                                disabled={restrictionData.isRestricted}
-                                                className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
-                                            >
-                                                {restrictionData.isRestricted ? 'BLOQUEADO' : 'IR PARA PAGAMENTO'}
-                                            </button>
-                                        )
-                                    )}
-                                </div>
                             </div>
 
-                            {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
-                            {futureAppointments.length > 0 && (
-                                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
-                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
-                                                <Calendar size={18} />
-                                            </div>
-                                            <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
-                                        </div>
-                                        <div className="space-y-2">
-                                            {futureAppointments.slice(0, 5).map(app => {
-                                                const s = services.find(serv => serv.id === app.serviceId);
-                                                return (
-                                                    <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
-                                                        <div
-                                                            className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
-                                                            onClick={() => onSelectAppointment && onSelectAppointment(app)}
-                                                            title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
+                            {mode === 'VIEW' && (
+                                <div className="space-y-5 animate-in fade-in duration-200">
+                                    <div className="flex justify-between items-center px-1">
+                                        <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
+                                        <button
+                                            type="button" onClick={addServiceLine}
+                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                        >
+                                            <Plus size={14} /> ADICIONAR EXTRA
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {lines.map((line) => (
+                                            <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
+                                                {lines.length > 1 && (
+                                                    <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
+                                                )}
+
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    <div className="space-y-0.5">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
+                                                        <select
+                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                            style={{ colorScheme: 'dark' }}
+                                                            value={line.serviceId}
+                                                            onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
                                                         >
-                                                            <div className="flex flex-col flex-1 leading-tight">
-                                                                <div className="flex items-center gap-2 mb-0.5">
-                                                                    <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
-                                                                        {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
-                                                                    </span>
-                                                                    <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
-                                                                        {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
-                                                                    </span>
+                                                            {services
+                                                                .filter(s => {
+                                                                    const provider = providers.find(p => p.id === line.providerId);
+                                                                    if (!provider) return true;
+                                                                    // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
+                                                                    if (!provider.specialties || provider.specialties.length === 0) return true;
+                                                                    // Filtra por nome do serviço
+                                                                    return provider.specialties.includes(s.name);
+                                                                })
+                                                                .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
+                                                        </select>
+                                                    </div>
+
+                                                    <div className="space-y-0.5 relative">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Materiais Utilizados</label>
+                                                        <div className="relative">
+                                                            <Search size={12} className="absolute left-3 top-3 text-slate-400" />
+                                                            <input
+                                                                type="text"
+                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                                placeholder="Adicionar produto..."
+                                                                value={line.currentSearchTerm}
+                                                                onFocus={() => updateLine(line.id, 'showProductResults', true)}
+                                                                onChange={e => {
+                                                                    updateLine(line.id, 'currentSearchTerm', e.target.value);
+                                                                    updateLine(line.id, 'showProductResults', true);
+                                                                }}
+                                                            />
+                                                            {line.showProductResults && (
+                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
+                                                                    {/* Use stock prop instead of STOCK constant */}
+                                                                    {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
+                                                                        <button
+                                                                            key={p.id} type="button"
+                                                                            onClick={() => {
+                                                                                addProductToLine(line.id, `[${p.code}] ${p.name}`);
+                                                                            }}
+                                                                            className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-zinc-700 text-[10px] font-black text-slate-950 dark:text-white border-b border-slate-50 dark:border-zinc-700 last:border-none"
+                                                                        >
+                                                                            <span className="text-indigo-600 dark:text-indigo-400">[{p.code}]</span> {p.name}
+                                                                        </button>
+                                                                    ))}
                                                                 </div>
-                                                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
-                                                                    {app.combinedServiceNames || s?.name}
-                                                                </span>
-                                                            </div>
-                                                            {onSelectAppointment && (
-                                                                <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                                                             )}
                                                         </div>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => toggleFutureStatus(app.id, app.status)}
-                                                            className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
-                                                            title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
-                                                        ></button>
+                                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                                            {line.products.map((prod, idx) => (
+                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
+                                                                    {prod}
+                                                                    <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
+                                                                        <X size={10} />
+                                                                    </button>
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     </div>
-                                                );
-                                            })}
+                                                </div>
+
+                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
+                                                        <input
+                                                            type="time"
+                                                            className="bg-transparent border-none text-[11px] font-black text-slate-950 dark:text-white p-1 outline-none w-full"
+                                                            value={line.startTime || appointmentTime}
+                                                            onChange={e => updateLine(line.id, 'startTime', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div className="flex flex-col flex-1">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar
+                                                                src={providers.find(p => p.id === line.providerId)?.avatar}
+                                                                name={providers.find(p => p.id === line.providerId)?.name || ''}
+                                                                size="w-6 h-6"
+                                                            />
+                                                            <select
+                                                                className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                                    ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
+                                                                    : 'text-slate-950 dark:text-white'
+                                                                    }`}
+                                                                value={line.providerId}
+                                                                onChange={e => updateLine(line.id, 'providerId', e.target.value)}
+                                                            >
+                                                                {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
+                                                        <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
+                                                    </div>
+
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
+                                                        <input
+                                                            type="number"
+                                                            className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
+                                                            value={line.discount}
+                                                            onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                                        className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                                    >
+                                                        <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* RECURENCE OPTIONS */}
+                                    {mode === 'VIEW' && (
+                                        <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                                    <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsRecurring(!isRecurring)}
+                                                    className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                                </button>
+                                            </div>
+
+                                            {isRecurring && (
+                                                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
+                                                        <select
+                                                            className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                            value={recurrenceFrequency}
+                                                            onChange={e => setRecurrenceFrequency(e.target.value as any)}
+                                                        >
+                                                            <option value="WEEKLY">Semanal (7 dias)</option>
+                                                            <option value="BIWEEKLY">Quinzenal (15 dias)</option>
+                                                            <option value="MONTHLY">Mensal (Mesmo dia)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                max="24"
+                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                                value={recurrenceCount}
+                                                                onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
+                                                            />
+                                                            <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                        <div className="flex justify-between items-center px-1 mb-4">
+                                            <div>
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
+                                                <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
+                                            </div>
+                                        </div>
+
+                                        {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                                            <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id="payDebt"
+                                                    checked={includeDebt}
+                                                    onChange={(e) => setIncludeDebt(e.target.checked)}
+                                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                                />
+                                                <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
+                                                    Incluir Pagmento de Dívida Pendente
+                                                </label>
+                                                <span className="text-sm font-black text-rose-500">
+                                                    + R$ {customer.outstandingBalance.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        <div className="flex flex-col gap-2">
+                                            {isAgendaMode ? (
+                                                <>
+                                                    {isCancelling ? (
+                                                        <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
+                                                            <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <AlertTriangle size={12} /> Cancelamento de Agendamento
+                                                            </h4>
+                                                            <textarea
+                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                                                placeholder="Motivo obrigatório para o histórico..."
+                                                                value={cancellationReason}
+                                                                onChange={e => setCancellationReason(e.target.value)}
+                                                                autoFocus
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsCancelling(false)}
+                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                                >
+                                                                    Voltar
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleConfirmCancellation}
+                                                                    className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
+                                                                >
+                                                                    Confirmar Cancelamento
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex gap-2 w-full">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setIsCancelling(true)}
+                                                                className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                                                title="Cancelar Agendamento"
+                                                            >
+                                                                <XCircle size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (appointment.status === 'Concluído' || appointment.status === 'Em Andamento') {
+                                                                        setMode('CHECKOUT');
+                                                                    } else {
+                                                                        handleStartService();
+                                                                    }
+                                                                }}
+                                                                className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                                                            >
+                                                                {appointment.status === 'Concluído' ? <CreditCard size={16} /> : (appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />)}
+                                                                {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : (appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR')}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={appointment.status === 'Concluído' ? () => setMode('HISTORY') : handleSave}
+                                                                disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                                                className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                            >
+                                                                {appointment.status === 'Concluído' ? <ArrowLeft size={16} /> : (isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />))}
+                                                                {appointment.status === 'Concluído' ? 'VOLTAR HISTÓRICO' : (isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR'))}
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleStartService}
+                                                        disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                                        className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                    >
+                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
+                                                        {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setMode('CHECKOUT')}
+                                                        disabled={restrictionData.isRestricted}
+                                                        className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                    >
+                                                        {restrictionData.isRestricted ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : 'IR PARA PAGAMENTO')}
+                                                    </button>
+                                                )
+                                            )}
                                         </div>
                                     </div>
+
+                                    {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
+                                    {futureAppointments.length > 0 && (
+                                        <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
+                                            <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
+                                                <div className="flex items-center gap-2 mb-3">
+                                                    <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                                        <Calendar size={18} />
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {futureAppointments.slice(0, 5).map(app => {
+                                                        const s = services.find(serv => serv.id === app.serviceId);
+                                                        return (
+                                                            <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
+                                                                <div
+                                                                    className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
+                                                                    onClick={() => onSelectAppointment && onSelectAppointment(app)}
+                                                                    title={onSelectAppointment ? "Clique para editar este agendamento" : ""}
+                                                                >
+                                                                    <div className="flex flex-col flex-1 leading-tight">
+                                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                                            <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
+                                                                                {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
+                                                                            </span>
+                                                                            <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
+                                                                                {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase truncate max-w-[200px]">
+                                                                            {app.combinedServiceNames || s?.name}
+                                                                        </span>
+                                                                    </div>
+                                                                    {onSelectAppointment && (
+                                                                        <ArrowRight size={14} className="ml-2 text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                                    )}
+                                                                </div>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleFutureStatus(app.id, app.status)}
+                                                                    className={`w-2 h-7 rounded-full transition-all active:scale-90 ml-3 ${app.status === 'Confirmado' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-amber-400'}`}
+                                                                    title={app.status === 'Confirmado' ? 'Confirmado' : 'Pendente'}
+                                                                ></button>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
-                        </div>
+                        </>
                     )}
 
                     {mode === 'CHECKOUT' && (
@@ -1906,6 +2100,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </select>
                                                 )}
 
+                                                {(payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito')) && (
+                                                    <select
+                                                        className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                                        value={payment.cardBrand || ''}
+                                                        onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
+                                                    >
+                                                        <option value="">BANDEIRA</option>
+                                                        {CARD_BRANDS.map(brand => (
+                                                            <option key={brand} value={brand}>{brand}</option>
+                                                        ))}
+                                                    </select>
+                                                )}
+
                                                 <div className="relative flex-1">
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                     <input
@@ -1981,9 +2188,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     disabled={restrictionData.isRestricted || customer.isBlocked}
                                     className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
                                 >
-                                    {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : <><Check size={20} /> FINALIZAR ATENDIMENTO</>}
+                                    {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>)}
                                 </button>
-                                <button onClick={() => setMode('VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">REVISAR DADOS</button>
+                                <button onClick={() => setMode(appointment.status === 'Concluído' ? 'HISTORY' : 'VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">
+                                    {appointment.status === 'Concluído' ? 'CANCELAR EDIÇÃO' : 'REVISAR DADOS'}
+                                </button>
                             </div>
                         </div>
                     )}
@@ -2044,7 +2253,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 <div key={pIdx} className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method}</span>
+                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method} {p.cardBrand ? `(${p.cardBrand})` : ''}</span>
                                                     </div>
                                                     <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
                                                 </div>
@@ -2171,7 +2380,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 </div>
                             </div>
 
-                            <div className="pt-2">
+                            <div className="pt-2 flex flex-col gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode('VIEW')}
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-slate-200 dark:border-zinc-700"
+                                >
+                                    <Edit3 size={18} /> EDITAR ATENDIMENTO
+                                </button>
                                 <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
                                     Fechar Histórico
                                 </button>

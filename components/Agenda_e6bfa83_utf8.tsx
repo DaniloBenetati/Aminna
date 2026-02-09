@@ -1,12 +1,12 @@
-
-import React, { useState, useMemo, useEffect } from 'react';
+﻿
+import React, { useState, useMemo } from 'react';
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
     Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, ViewState } from '../types';
+import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
 import { Avatar } from './Avatar';
 
@@ -23,11 +23,10 @@ interface AgendaProps {
     providers: Provider[];
     stock: StockItem[];
     nfseRecords: NFSeRecord[];
-    onNavigate: (view: ViewState, payload?: any) => void;
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, onNavigate
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -39,15 +38,12 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
     const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
-    const [visibleServiceIds, setVisibleServiceIds] = useState<string[]>([]);
-
-    const activeProviders = useMemo(() => providers.filter((p: Provider) => p.active), [providers]);
 
     // DEBUG: Track selectedProviderId changes
     React.useEffect(() => {
-        console.log('🔴 selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
+        console.log('­ƒö┤ selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
         if (selectedProviderId !== 'all' && !providers.some(p => p.id === selectedProviderId)) {
-            console.error('❌ INVALID selectedProviderId! Not "all" and not a valid provider ID');
+            console.error('ÔØî INVALID selectedProviderId! Not "all" and not a valid provider ID');
         }
     }, [selectedProviderId, providers]);
     const [sidebarSearch, setSidebarSearch] = useState('');
@@ -138,7 +134,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Período Personalizado";
+        if (timeView === 'custom') return "Per├¡odo Personalizado";
         if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         return dateRef.getFullYear().toString();
@@ -168,7 +164,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
     }, [timeView, dateRef, customRange]);
 
-
+    const activeProviders = useMemo(() => providers.filter(p => p.active), [providers]);
 
     // Filter Appointments for the GRID (Always shows dateRef day or start of custom range)
     const gridDateStr = timeView === 'custom' ? customRange.start : formatDate(dateRef);
@@ -191,19 +187,15 @@ export const Agenda: React.FC<AgendaProps> = ({
             // else: "All" selected and no providers checked = show all (isProvider stays true)
 
             const isNotCancelled = a.status !== 'Cancelado';
-
-            // Service Filter
-            const isService = visibleServiceIds.length === 0 || visibleServiceIds.includes(a.serviceId);
-
             let isSearchMatch = true;
             if (searchTerm) {
                 const customer = customers.find(c => c.id === a.customerId);
                 isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             }
 
-            return isDate && isProvider && isNotCancelled && isSearchMatch && isService;
+            return isDate && isProvider && isNotCancelled && isSearchMatch;
         });
-    }, [appointments, gridDateStr, selectedProviderId, visibleProviderIds, searchTerm, customers, visibleServiceIds]);
+    }, [appointments, gridDateStr, selectedProviderId, visibleProviderIds, searchTerm, customers]);
 
     const activeVisibileProviders = useMemo(() => {
         const filtered = selectedProviderId === 'all'
@@ -216,7 +208,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Confirmation Logic (Uses Range)
     // Confirmation Logic (Uses Range)
     const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
-        const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
+        const validApps = apps.filter(a => a.status !== 'Conclu├¡do' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -227,19 +219,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                 const hour = parseInt(hourStr) % 12 || 12;
                 const min = parseInt(minStr);
                 const clocks: Record<number, string[]> = {
-                    1: ['🕐', '🕜'], 2: ['🕑', '🕝'], 3: ['🕒', '🕞'],
-                    4: ['🕓', '🕟'], 5: ['🕔', '🕠'], 6: ['🕕', '🕡'],
-                    7: ['🕖', '🕢'], 8: ['🕗', '🕣'], 9: ['🕘', '🕤'],
-                    10: ['🕙', '🕥'], 11: ['🕚', '🕦'], 12: ['🕛', '🕧']
+                    1: ['­ƒòÉ', '­ƒò£'], 2: ['­ƒòæ', '­ƒòØ'], 3: ['­ƒòÆ', '­ƒò×'],
+                    4: ['­ƒòô', '­ƒòƒ'], 5: ['­ƒòö', '­ƒòá'], 6: ['­ƒòò', '­ƒòí'],
+                    7: ['­ƒòû', '­ƒòó'], 8: ['­ƒòù', '­ƒòú'], 9: ['­ƒòÿ', '­ƒòñ'],
+                    10: ['­ƒòÖ', '­ƒòÑ'], 11: ['­ƒòÜ', '­ƒòª'], 12: ['­ƒòø', '­ƒòº']
                 };
                 return clocks[hour][min >= 30 ? 1 : 0];
-            } catch { return '⏰'; }
+            } catch { return 'ÔÅ░'; }
         };
 
         const firstName = customer.name.split(' ')[0];
         const isPlural = sortedApps.length > 1;
 
-        let message = `Olá, ${firstName}! ✨\n`;
+        let message = `Ol├í, ${firstName}! Ô£¿\n`;
         message += isPlural
             ? `Passando para confirmar seus atendimentos na Aminna:\n`
             : `Passando para confirmar seu atendimento na Aminna:\n`;
@@ -255,14 +247,14 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         Object.keys(appsByDay).forEach(day => {
-            message += `\n📅 ${day}\n`;
+            message += `\n­ƒôà ${day}\n`;
 
             const dayApps = appsByDay[day];
             const confirmed = dayApps.filter(a => a.status === 'Confirmado');
             const pending = dayApps.filter(a => a.status === 'Pendente');
 
             if (confirmed.length > 0) {
-                message += `\n✅ Confirmado: \n`;
+                message += `\nÔ£à Confirmado: \n`;
                 confirmed.forEach(a => {
                     const srv = services.find(s => s.id === a.serviceId);
                     const p = providers.find(prov => prov.id === a.providerId);
@@ -274,7 +266,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             }
 
             if (pending.length > 0) {
-                message += `\n⏳ Pendente: \n`;
+                message += `\nÔÅ│ Pendente: \n`;
                 pending.forEach(a => {
                     const srv = services.find(s => s.id === a.serviceId);
                     const p = providers.find(prov => prov.id === a.providerId);
@@ -289,12 +281,12 @@ export const Agenda: React.FC<AgendaProps> = ({
         const hasPending = sortedApps.some(a => a.status === 'Pendente');
         if (hasPending) {
             message += isPlural
-                ? `\nPodemos confirmar os atendimentos pendentes? 🥰`
-                : `\nPodemos confirmar o seu atendimento pendente? 🥰`;
+                ? `\nPodemos confirmar os atendimentos pendentes? ­ƒÑ░`
+                : `\nPodemos confirmar o seu atendimento pendente? ­ƒÑ░`;
         } else {
-            message += `\nEstamos te aguardando com carinho. 🥰\n`;
-            message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
-            message += `Obrigada! 😊`;
+            message += `\nEstamos te aguardando com carinho. ­ƒÑ░\n`;
+            message += `Se n├úo puder comparecer, por favor nos avise com anteced├¬ncia.\n\n`;
+            message += `Obrigada! ­ƒÿè`;
         }
         return message;
     };
@@ -313,13 +305,13 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const whatsappList = useMemo(() => {
+        // Filter by RANGE for the list
         const rangeApps = appointments.filter(a =>
             a.date >= rangeStart &&
             a.date <= rangeEnd &&
             a.status !== 'Cancelado' &&
-            a.status !== 'Concluído' &&
-            (selectedProviderId === 'all' || a.providerId === selectedProviderId) &&
-            (visibleServiceIds.length === 0 || visibleServiceIds.includes(a.serviceId))
+            a.status !== 'Conclu├¡do' &&
+            (selectedProviderId === 'all' || a.providerId === selectedProviderId)
         );
 
         const grouped: Record<string, Appointment[]> = {};
@@ -329,9 +321,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         return grouped;
-    }, [appointments, rangeStart, rangeEnd, selectedProviderId, visibleServiceIds]);
-
-
+    }, [appointments, rangeStart, rangeEnd, selectedProviderId]);
 
     const toggleAppointmentStatus = (apptId: string) => {
         setAppointments(prev => prev.map(a => {
@@ -377,8 +367,6 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const handleAppointmentClick = (appt: Appointment) => {
-        // Automatically open the appointment. 
-        // ServiceModal will handle auto-loading other appointments for the same client/day.
         setSelectedAppointment(appt);
         setIsServiceModalOpen(true);
     };
@@ -402,7 +390,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 registration_date: new Date().toISOString().split('T')[0],
                 status: 'Novo',
                 total_spent: 0,
-                acquisition_channel: 'Agendamento Rápido'
+                acquisition_channel: 'Agendamento R├ípido'
             };
 
             const { data, error } = await supabase
@@ -426,7 +414,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     status: 'Novo',
                     history: [],
                     preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' },
-                    acquisitionChannel: 'Agendamento Rápido'
+                    acquisitionChannel: 'Agendamento R├ípido'
                 };
 
                 setCustomers(prev => [...prev, newCustomer]);
@@ -466,7 +454,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         if (!draftAppointment) return;
 
         if (customer.isBlocked) {
-            alert(`🚫 CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'Não informado'}\n\nNão é possível realizar agendamentos para clientes bloqueadas.`);
+            alert(`­ƒÜ½ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'N├úo informado'}\n\nN├úo ├® poss├¡vel realizar agendamentos para clientes bloqueadas.`);
             return;
         }
 
@@ -484,7 +472,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         if (matchedLead) {
-            const confirmConversion = window.confirm(`⚠️ ESTE CLIENTE É UM LEAD ATIVO DO CRM!\n\nEste agendamento irá converter o lead "${matchedLead.name}" e movê-lo para o status "CONVERTIDO".\n\nDeseja confirmar o agendamento e a conversão?`);
+            const confirmConversion = window.confirm(`ÔÜá´©Å ESTE CLIENTE ├ë UM LEAD ATIVO DO CRM!\n\nEste agendamento ir├í converter o lead "${matchedLead.name}" e mov├¬-lo para o status "CONVERTIDO".\n\nDeseja confirmar o agendamento e a convers├úo?`);
 
             if (!confirmConversion) return;
 
@@ -509,10 +497,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                 .filter(h => h.type === 'RESTRICTION' && h.providerId === draftAppointment.providerId)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-            const reason = restrictionEntry?.details || "Motivo não registrado.";
+            const reason = restrictionEntry?.details || "Motivo n├úo registrado.";
 
             // ALERT THE USER, BUT DO NOT BLOCK
-            alert(`🚫 RESTRIÇÃO DE ATENDIMENTO\n\nA cliente possui restrição com ${providerName}.\n${reason}\n\nO sistema selecionará outra profissional disponível automaticamente.`);
+            alert(`­ƒÜ½ RESTRI├ç├âO DE ATENDIMENTO\n\nA cliente possui restri├º├úo com ${providerName}.\n${reason}\n\nO sistema selecionar├í outra profissional dispon├¡vel automaticamente.`);
 
             // Auto-switch to a valid provider (First active provider not in restriction list)
             const fallbackProvider = activeProviders.find(p =>
@@ -538,48 +526,6 @@ export const Agenda: React.FC<AgendaProps> = ({
         setSelectedAppointment(newAppt);
         setIsCustomerSelectionOpen(false);
         setIsServiceModalOpen(true);
-    };
-
-    const handleAppointmentDrop = async (e: React.DragEvent, targetProviderId: string, targetTime: string) => {
-        e.preventDefault();
-        const appointmentId = e.dataTransfer.getData('appointmentId');
-        if (!appointmentId) return;
-
-        const appt = appointments.find(a => a.id === appointmentId);
-        if (!appt) return;
-
-        // If nothing changed, do nothing
-        if (appt.providerId === targetProviderId && appt.time === targetTime) return;
-
-        // Don't allow moving concluded or cancelled appointments
-        if (appt.status === 'Concluído' || appt.status === 'Cancelado') {
-            alert('Não é possível mover atendimentos finalizados ou cancelados.');
-            return;
-        }
-
-        try {
-            const { error } = await supabase
-                .from('appointments')
-                .update({
-                    provider_id: targetProviderId,
-                    time: targetTime
-                })
-                .eq('id', appointmentId);
-
-            if (error) throw error;
-
-            setAppointments(prev => prev.map(a =>
-                a.id === appointmentId
-                    ? { ...a, providerId: targetProviderId, time: targetTime }
-                    : a
-            ));
-
-            // Feedback visual opcional
-            console.log(`Appointment ${appointmentId} moved to ${targetProviderId} at ${targetTime}`);
-        } catch (error) {
-            console.error('Error moving appointment:', error);
-            alert('Erro ao mover agendamento. Tente novamente.');
-        }
     };
 
     const filteredCustomersForSelection = customers.filter(c =>
@@ -642,8 +588,10 @@ export const Agenda: React.FC<AgendaProps> = ({
         );
 
         const toggleProvider = (id: string) => {
+            console.log('­ƒöº toggleProvider called with ID:', id, 'Type:', typeof id);
             setVisibleProviderIds(prev => {
                 const newValue = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
+                console.log('­ƒôØ visibleProviderIds updated:', prev, 'ÔåÆ', newValue);
                 return newValue;
             });
         };
@@ -665,8 +613,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto px-5 py-3 scrollbar-hide space-y-2">
-                    {/* Remove "Todos" providers checkbox as requested */}
-
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                            type="checkbox"
+                            checked={visibleProviderIds.length > 0 && visibleProviderIds.length === activeProviders.length}
+                            onChange={() => setVisibleProviderIds(visibleProviderIds.length === activeProviders.length ? [] : activeProviders.map(p => p.id))}
+                            className="w-4 h-4 rounded border-2 border-slate-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">Todos</span>
+                    </label>
 
                     <div className="space-y-2 pt-2 border-t border-slate-50 dark:border-zinc-800">
                         {filteredProvidersBySearch.map(p => (
@@ -678,32 +633,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     className="w-3.5 h-3.5 rounded border-2 border-slate-200 dark:border-zinc-700 text-indigo-500 focus:ring-indigo-500"
                                 />
                                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase">{p.name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="px-5 py-3 border-t border-slate-100 dark:border-zinc-800">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Serviços</h3>
-                    <div className="max-h-40 overflow-y-auto scrollbar-hide space-y-2">
-                        <label className="flex items-center gap-3 cursor-pointer group">
-                            <input
-                                type="checkbox"
-                                checked={visibleServiceIds.length === 0}
-                                onChange={() => setVisibleServiceIds([])}
-                                className="w-4 h-4 rounded border-2 border-slate-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500"
-                            />
-                            <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">Todos</span>
-                        </label>
-                        {services.map(s => (
-                            <label key={s.id} className="flex items-center gap-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={visibleServiceIds.includes(s.id)}
-                                    onChange={() => setVisibleServiceIds(prev => prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id])}
-                                    className="w-3.5 h-3.5 rounded border-2 border-slate-200 dark:border-zinc-700 text-indigo-500 focus:ring-indigo-500"
-                                />
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase">{s.name}</span>
                             </label>
                         ))}
                     </div>
@@ -733,7 +662,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
                                     className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
-                                    {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
+                                    {v === 'day' ? 'Dia' : v === 'month' ? 'M├¬s' : v === 'year' ? 'Ano' : 'Per├¡odo'}
                                 </button>
                             ))}
                         </div>
@@ -757,6 +686,18 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
+                        <div className="relative flex-1 md:min-w-[200px]">
+                            <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <select
+                                value={selectedProviderId}
+                                onChange={(e) => setSelectedProviderId(e.target.value)}
+                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase appearance-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="all">Todas Profissionais</option>
+                                {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
 
                         <div className="relative flex-1 md:min-w-[200px]">
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -773,7 +714,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             onClick={() => setIsWhatsAppModalOpen(true)}
                             className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                         >
-                            <MessageCircle size={16} /> Confirmações
+                            <MessageCircle size={16} /> Confirma├º├Áes
                         </button>
 
                         <button
@@ -855,11 +796,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                     const monthApps = appointments.filter(a => {
                                         const appDate = a.date.split('-');
-                                        const isService = visibleServiceIds.length === 0 || visibleServiceIds.includes(a.serviceId);
-                                        const isProvider = selectedProviderId === 'all'
-                                            ? (visibleProviderIds.length === 0 || visibleProviderIds.includes(a.providerId))
-                                            : (a.providerId === selectedProviderId);
-                                        return parseInt(appDate[0]) === year && parseInt(appDate[1]) === (i + 1) && a.status !== 'Cancelado' && isProvider && isService;
+                                        return parseInt(appDate[0]) === year && parseInt(appDate[1]) === (i + 1) && a.status !== 'Cancelado' && (selectedProviderId === 'all' || a.providerId === selectedProviderId);
                                     });
 
                                     const isCurrentMonth = new Date().getMonth() === i && new Date().getFullYear() === year;
@@ -901,7 +838,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
+                                                        <span>{monthApps.filter(a => a.status === 'Conclu├¡do').length} Feitos</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
@@ -917,7 +854,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     ) : timeView === 'month' ? (
                         <div className="flex-1 p-6 overflow-y-auto">
                             <div className="grid grid-cols-7 gap-4 h-full min-h-[500px]">
-                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S├íb'].map(day => (
                                     <div key={day} className="text-center font-black text-slate-400 uppercase text-xs mb-2">
                                         {day}
                                     </div>
@@ -937,15 +874,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     // Days of month
                                     for (let day = 1; day <= daysInMonth; day++) {
                                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                        const dayApps = appointments.filter(a => {
-                                            const isProvider = selectedProviderId === 'all'
-                                                ? (visibleProviderIds.length === 0 || visibleProviderIds.includes(a.providerId))
-                                                : (a.providerId === selectedProviderId);
-                                            return a.date === dateStr &&
-                                                a.status !== 'Cancelado' &&
-                                                isProvider &&
-                                                (visibleServiceIds.length === 0 || visibleServiceIds.includes(a.serviceId));
-                                        });
+                                        const dayApps = appointments.filter(a =>
+                                            a.date === dateStr &&
+                                            a.status !== 'Cancelado' &&
+                                            (selectedProviderId === 'all' || a.providerId === selectedProviderId)
+                                        );
 
                                         const isToday = new Date().toISOString().split('T')[0] === dateStr;
 
@@ -962,7 +895,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                 <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                                     {dayApps.slice(0, 3).map(app => (
-                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                     ))}
                                                     {dayApps.length > 3 && (
                                                         <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
@@ -993,7 +926,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex justify-between items-center">
                                                                             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
                                                                             <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
-                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
+                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
                                                                         </div>
                                                                         <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
                                                                         <div className="flex items-center gap-1.5">
@@ -1036,11 +969,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     key={`${p.id}-${hour}`}
                                                     className="flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-all duration-300"
                                                     style={{ width: `${160 * zoomLevel}px` }}
-                                                    onDragOver={(e) => {
-                                                        e.preventDefault();
-                                                        e.dataTransfer.dropEffect = 'move';
-                                                    }}
-                                                    onDrop={(e) => handleAppointmentDrop(e, p.id, hour)}
                                                 >
                                                     {/* Add Button on Hover */}
                                                     <button
@@ -1069,13 +997,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         let displayTime = appt.time;
 
                                                         if (appt.providerId === p.id) {
-                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Servi├ºo';
                                                             displayTime = appt.time;
                                                         } else {
                                                             const subService = appt.additionalServices?.find(s => s.providerId === p.id);
                                                             if (subService) {
                                                                 const srv = services.find(s => s.id === subService.serviceId);
-                                                                displayServiceName = srv?.name || 'Serviço Extra';
+                                                                displayServiceName = srv?.name || 'Servi├ºo Extra';
                                                                 displayTime = subService.startTime || appt.time;
                                                             }
                                                         }
@@ -1089,15 +1017,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         return (
                                                             <div
                                                                 key={appt.id}
-                                                                draggable={appt.status !== 'Concluído' && appt.status !== 'Cancelado'}
-                                                                onDragStart={(e) => {
-                                                                    e.dataTransfer.setData('appointmentId', appt.id);
-                                                                    e.dataTransfer.effectAllowed = 'move';
-                                                                }}
                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                 className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
+                                                                        appt.status === 'Conclu├¡do' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
                                                                 style={{
@@ -1117,10 +1040,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex items-center gap-1">
                                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
                                                                                 appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                    appt.status === 'Conclu├¡do' ? 'bg-slate-500' :
                                                                                         'bg-amber-400'
                                                                                 }`}></span>
-                                                                            {appt.status === 'Concluído' && (
+                                                                            {appt.status === 'Conclu├¡do' && (
                                                                                 (() => {
                                                                                     const record = nfseRecords.find(r => r.appointmentId === appt.id);
                                                                                     if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
@@ -1160,7 +1083,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-start mb-2">
                                                                                             <div className="flex-1">
                                                                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
-                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {ca.duration || 30} min</p>
+                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} ÔÇó {ca.duration || 30} min</p>
                                                                                             </div>
                                                                                             <div className="text-right">
                                                                                                 <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
@@ -1171,7 +1094,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-center mt-1">
                                                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
                                                                                                 ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                    ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                    ca.status === 'Conclu├¡do' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
                                                                                                         'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
                                                                                                 }`}>
                                                                                                 {ca.status}
@@ -1236,7 +1159,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             {isQuickRegisterOpen ? (
                                 <div className="p-4 bg-indigo-50 dark:bg-zinc-900 border-b border-indigo-100 dark:border-zinc-800 animate-in slide-in-from-top-2">
                                     <div className="flex justify-between items-center mb-3">
-                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
+                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro R├ípido</h4>
                                         <button onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
                                     </div>
                                     <form onSubmit={handleQuickRegister} className="flex flex-col gap-3">
@@ -1327,10 +1250,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                                        <MessageCircle size={18} className="text-emerald-400" /> Confirmações
+                                        <MessageCircle size={18} className="text-emerald-400" /> Confirma├º├Áes
                                     </h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">
-                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} at├® {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
                                 <button onClick={() => setIsWhatsAppModalOpen(false)} className="text-white hover:text-slate-300"><X size={24} /></button>
@@ -1386,7 +1309,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 }) : (
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
                                         <CheckCircle2 size={48} className="mx-auto mb-2 opacity-20" />
-                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no período</p>
+                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per├¡odo</p>
                                     </div>
                                 )}
                             </div>
@@ -1411,10 +1334,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                         providers={providers}
                         stock={stock}
                         customers={customers}
-                        onNavigate={onNavigate}
                     />
                 )}
-
             </div>
         </div >
     );

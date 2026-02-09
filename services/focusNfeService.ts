@@ -234,6 +234,8 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         // 6. Call Supabase Edge Function (bypasses CORS)
         const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/issue-nfse`;
 
+        console.log('🚀 [FOCUS NFE] Calling Edge Function...', { url: edgeFunctionUrl, payload: { nfseData: { reference, payload: nfseRequest }, environment: fiscalConfig.focusNfeEnvironment } });
+
         const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
@@ -249,23 +251,23 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             }),
         });
 
-        console.log('Edge Function response status:', response.status);
+        console.log('📡 [FOCUS NFE] Edge Function Status:', response.status);
 
         const edgeResponse = await response.json();
         console.log('Edge Function response data:', edgeResponse);
 
         if (!response.ok) {
-            console.error('Edge Function HTTP error:', edgeResponse);
-            console.error('Full response object:', JSON.stringify(edgeResponse, null, 2));
+            console.error('❌ [FOCUS NFE] Edge Function HTTP error:', response.status);
+            console.error('📋 Full response object:', JSON.stringify(edgeResponse, null, 2));
             const errorMsg = edgeResponse.error ||
                 (edgeResponse.data && (edgeResponse.data.mensagem || JSON.stringify(edgeResponse.data))) ||
-                'Erro ao chamar Edge Function';
+                `Erro ao chamar Edge Function (Status: ${response.status})`;
             throw new Error(errorMsg);
         }
 
         if (!edgeResponse.success) {
-            console.error('Edge Function returned error:', edgeResponse);
-            console.error('Full error details:', JSON.stringify(edgeResponse, null, 2));
+            console.error('❌ [FOCUS NFE] Edge Function returned success=false:', edgeResponse);
+            console.error('📋 Full error details:', JSON.stringify(edgeResponse, null, 2));
             const errorMsg = edgeResponse.error || edgeResponse.data?.mensagem || 'Erro desconhecido ao emitir NFSe';
             throw new Error(errorMsg);
         }
