@@ -6,7 +6,7 @@ import {
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord } from '../types';
+import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
 import { Avatar } from './Avatar';
 
@@ -1369,7 +1369,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         onNavigateToCustomer={() => {
                             setIsServiceModalOpen(false);
                             setSelectedAppointment(null);
-                            if (onNavigate) onNavigate('CLIENTES');
+                            if (onNavigate) onNavigate(ViewState.CLIENTES, selectedAppointment.customerId);
                         }}
                     />
                 )}

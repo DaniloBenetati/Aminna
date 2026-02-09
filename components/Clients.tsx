@@ -15,7 +15,7 @@ interface ClientsProps {
   userProfile: any;
 }
 
-export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], userProfile }) => {
+export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], userProfile, selectedCustomerId }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -28,6 +28,15 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [localFavServices, setLocalFavServices] = useState('');
   const [localPrefDays, setLocalPrefDays] = useState('');
   const [localPrefNotes, setLocalPrefNotes] = useState('');
+
+  React.useEffect(() => {
+    if (selectedCustomerId) {
+      const customer = customers.find(c => c.id === selectedCustomerId);
+      if (customer) {
+        handleSelectCustomer(customer);
+      }
+    }
+  }, [selectedCustomerId, customers]);
 
   const clientStats = useMemo(() => {
     const totalSpent = customers.reduce((acc, c) => acc + (c.totalSpent || 0), 0);

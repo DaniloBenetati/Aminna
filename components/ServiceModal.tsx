@@ -200,7 +200,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
         };
         fetchNFSe();
-    }, [appointment, services, campaigns, source]);
+    }, [appointment, services, campaigns, source, allAppointments, customers]);
 
     const totalPaid = useMemo(() => {
         return payments.reduce((acc, p) => acc + p.amount, 0);

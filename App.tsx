@@ -27,9 +27,14 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('currentView');
     return (saved as ViewState) || ViewState.DASHBOARD;
   });
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('currentView', currentView);
+    // Clear selected customer when moving away from CLIENTES
+    if (currentView !== ViewState.CLIENTES) {
+      setSelectedCustomerId(null);
+    }
   }, [currentView]);
 
   // GLOBAL STATE: Initialized empty, populated from Supabase
@@ -503,7 +508,15 @@ const App: React.FC = () => {
           />
         );
       case ViewState.CLIENTES:
-        return <Clients customers={customers} setCustomers={setCustomers} appointments={appointments} userProfile={simulatedProfile || userProfile} />;
+        return (
+          <Clients
+            customers={customers}
+            setCustomers={setCustomers}
+            appointments={appointments}
+            userProfile={simulatedProfile || userProfile}
+            selectedCustomerId={selectedCustomerId}
+          />
+        );
       case ViewState.CRM:
         return (
           <CRM
@@ -541,7 +554,12 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
-            onNavigate={setCurrentView}
+            onNavigate={(view, payload) => {
+              if (view === ViewState.CLIENTES && typeof payload === 'string') {
+                setSelectedCustomerId(payload);
+              }
+              setCurrentView(view);
+            }}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -559,7 +577,12 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
-            onNavigate={setCurrentView}
+            onNavigate={(view, payload) => {
+              if (view === ViewState.CLIENTES && typeof payload === 'string') {
+                setSelectedCustomerId(payload);
+              }
+              setCurrentView(view);
+            }}
           />
         );
       case ViewState.SERVICOS:

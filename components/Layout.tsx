@@ -259,7 +259,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 overflow-auto pt-20 md:pt-0 ${isFluidView && currentView === ViewState.AGENDA ? 'p-0' : 'md:pt-10 md:px-8 md:pb-8 p-4'}`}>
+      <main className={`flex-1 ${isFluidView ? 'overflow-hidden' : 'overflow-auto'} pt-20 md:pt-0 ${isFluidView && currentView === ViewState.AGENDA ? 'p-0' : 'md:pt-10 md:px-8 md:pb-8 p-4'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">

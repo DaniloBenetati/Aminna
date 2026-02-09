@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, Clock, Fingerprint, RefreshCw, CheckCircle2, Loader2, AlertCircle, Play, Check
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord } from '../types';
+import { ViewState, Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
 import { issueNFSe } from '../services/focusNfeService';
 
@@ -410,7 +410,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           customers={customers}
           onNavigateToCustomer={() => {
             setSelectedAppointmentForService(null);
-            if (onNavigate) onNavigate('CLIENTES');
+            if (onNavigate) onNavigate(ViewState.CLIENTES, selectedAppointmentForService.customerId);
           }}
         />
       )}
