@@ -541,6 +541,7 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
+            onNavigate={setCurrentView}
           />
         );
       case ViewState.DAILY_APPOINTMENTS:
@@ -558,6 +559,7 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
+            onNavigate={setCurrentView}
           />
         );
       case ViewState.SERVICOS:

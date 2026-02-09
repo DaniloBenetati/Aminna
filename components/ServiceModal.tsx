@@ -20,6 +20,7 @@ interface ServiceLine {
     isEditingInCheckout?: boolean;
     unitPrice: number;
     startTime: string;
+    parentAppointmentId: string;
 }
 
 interface ServiceModalProps {
@@ -37,6 +38,7 @@ interface ServiceModalProps {
     providers: Provider[];
     stock: StockItem[];
     customers: Customer[];
+    onNavigateToCustomer?: () => void;
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -53,7 +55,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     paymentSettings,
     providers,
     stock,
-    customers
+    customers,
+    onNavigateToCustomer
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -126,40 +129,54 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         else if (appointment.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
         else setMode('VIEW');
 
-        const mainService = services.find(s => s.id === appointment.serviceId);
-        const initialLines: ServiceLine[] = [{
-            id: 'main',
-            serviceId: appointment.serviceId,
-            providerId: appointment.providerId,
-            products: appointment.mainServiceProducts || [],
-            currentSearchTerm: '',
-            discount: appointment.discountAmount || 0,
-            isCourtesy: appointment.isCourtesy || false,
-            showProductResults: false,
-            rating: 5,
-            feedback: '',
-            unitPrice: appointment.bookedPrice || mainService?.price || 0,
-            startTime: appointment.time
-        }];
+        // Grouping: find all appointments for this customer on this same date
+        const relatedSameDay = allAppointments.filter(a =>
+            a.customerId === appointment.customerId &&
+            a.date === appointment.date &&
+            a.status !== 'Cancelado'
+        ).sort((a, b) => a.time.localeCompare(b.time));
 
-        if (appointment.additionalServices) {
-            appointment.additionalServices.forEach((extra, idx) => {
-                initialLines.push({
-                    id: `extra-${idx}`,
-                    serviceId: extra.serviceId,
-                    providerId: extra.providerId,
-                    products: extra.products || [],
-                    currentSearchTerm: '',
-                    discount: extra.discount,
-                    isCourtesy: extra.isCourtesy,
-                    showProductResults: false,
-                    rating: 5,
-                    feedback: '',
-                    unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
-                    startTime: extra.startTime || appointment.time // Fallback to appointment time if not set
-                });
+        const initialLines: ServiceLine[] = [];
+
+        relatedSameDay.forEach((appt) => {
+            const mainService = services.find(s => s.id === appt.serviceId);
+            initialLines.push({
+                id: `main-${appt.id}`,
+                serviceId: appt.serviceId,
+                providerId: appt.providerId,
+                products: appt.mainServiceProducts || [],
+                currentSearchTerm: '',
+                discount: appt.discountAmount || 0,
+                isCourtesy: appt.isCourtesy || false,
+                showProductResults: false,
+                rating: 5,
+                feedback: '',
+                unitPrice: appt.bookedPrice || mainService?.price || 0,
+                startTime: appt.time,
+                parentAppointmentId: appt.id
             });
-        }
+
+            if (appt.additionalServices) {
+                appt.additionalServices.forEach((extra, idx) => {
+                    initialLines.push({
+                        id: `extra-${appt.id}-${idx}`,
+                        serviceId: extra.serviceId,
+                        providerId: extra.providerId,
+                        products: extra.products || [],
+                        currentSearchTerm: '',
+                        discount: extra.discount,
+                        isCourtesy: extra.isCourtesy,
+                        showProductResults: false,
+                        rating: 5,
+                        feedback: '',
+                        unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
+                        startTime: extra.startTime || appt.time,
+                        parentAppointmentId: appt.id
+                    });
+                });
+            }
+        });
+
         setLines(initialLines);
         setPayments(appointment.payments || [{ id: '1', method: appointment.paymentMethod || 'Pix', amount: 0 }]);
 
@@ -240,6 +257,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         return Math.max(0, total);
     }, [lines, appliedCampaign, includeDebt, customer.outstandingBalance]);
+
+    const isGrouped = useMemo(() => {
+        const ids = new Set(lines.map(l => l.parentAppointmentId).filter(id => id && id !== ''));
+        return ids.size > 1;
+    }, [lines]);
 
     // Auto-fill payment amount if single payment method
     useEffect(() => {
@@ -559,40 +581,54 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
-        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+        const dischargeDate = new Date().toISOString().split('T')[0];
         const allProductsUsed = lines.flatMap(l => l.products);
 
-        const extras = lines.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
-            isCourtesy: l.isCourtesy,
-            discount: l.discount,
-            bookedPrice: l.unitPrice,
-            products: l.products,
-            startTime: l.startTime
-        }));
-
-        const dischargeDate = new Date().toISOString().split('T')[0];
-
-        const updatedData = {
-            status: 'Concluído',
-            price_paid: totalValue,
-            payment_date: dischargeDate,
-            payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
-            products_used: allProductsUsed,
-            combined_service_names: combinedNames,
-            booked_price: lines[0].unitPrice,
-            main_service_products: lines[0].products,
-            additional_services: extras,
-            applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount,
-            payments: payments
-        };
+        // Group lines by parentAppointmentId
+        const appointmentGroups = new Map<string, ServiceLine[]>();
+        lines.forEach(line => {
+            const apptId = line.parentAppointmentId || appointment.id;
+            const list = appointmentGroups.get(apptId) || [];
+            list.push(line);
+            appointmentGroups.set(apptId, list);
+        });
 
         try {
-            // 1. Update Appointment
-            const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
-            if (apptError) throw apptError;
+            // 1. Update all related appointments
+            for (const [apptId, apptLines] of appointmentGroups.entries()) {
+                const isMainAppt = apptId === appointment.id;
+                const combinedNames = apptLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+                const mainLine = apptLines[0];
+                const extras = apptLines.slice(1).map(l => ({
+                    serviceId: l.serviceId,
+                    providerId: l.providerId,
+                    isCourtesy: l.isCourtesy,
+                    discount: l.discount,
+                    bookedPrice: l.unitPrice,
+                    products: l.products,
+                    startTime: l.startTime
+                }));
+
+                const updatedData = {
+                    status: 'Concluído',
+                    price_paid: isMainAppt ? totalValue : 0,
+                    payment_date: dischargeDate,
+                    payment_method: isMainAppt ? (payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod)) : 'Agrupado',
+                    products_used: apptLines.flatMap(l => l.products),
+                    combined_service_names: combinedNames,
+                    service_id: mainLine.serviceId,
+                    provider_id: mainLine.providerId,
+                    booked_price: mainLine.unitPrice,
+                    main_service_products: mainLine.products,
+                    additional_services: extras,
+                    applied_coupon: isMainAppt ? appliedCampaign?.couponCode : null,
+                    discount_amount: isMainAppt ? couponDiscountAmount : 0,
+                    payments: isMainAppt ? payments : []
+                };
+
+                const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', apptId);
+                if (apptError) throw apptError;
+            }
 
             // 2. Create Sale Record REMOVED (Prevents DRE duplication)
             // The appointment record itself is sufficient for Service revenue.
@@ -617,41 +653,54 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (custError) throw custError;
 
             onUpdateAppointments(prev => {
-                const exists = prev.find(a => a.id === appointment.id);
-                const updatedAppt = {
-                    ...appointment,
-                    ...(exists || {}),
-                    status: 'Concluído',
-                    pricePaid: totalValue,
-                    paymentDate: dischargeDate,
-                    paymentMethod: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
-                    productsUsed: allProductsUsed,
-                    combinedServiceNames: combinedNames,
-                    bookedPrice: lines[0].unitPrice,
-                    mainServiceProducts: lines[0].products,
-                    additionalServices: extras,
-                    appliedCoupon: appliedCampaign?.couponCode,
-                    discountAmount: couponDiscountAmount,
-                    payments: payments
-                } as Appointment;
+                let updated = prev;
+                for (const [apptId, apptLines] of appointmentGroups.entries()) {
+                    const isMainAppt = apptId === appointment.id;
+                    const combinedNames = apptLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+                    const mainLine = apptLines[0];
+                    const extras = apptLines.slice(1).map(l => ({
+                        serviceId: l.serviceId,
+                        providerId: l.providerId,
+                        isCourtesy: l.isCourtesy,
+                        discount: l.discount,
+                        bookedPrice: l.unitPrice,
+                        products: l.products,
+                        startTime: l.startTime
+                    }));
 
-                if (exists) {
-                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
-                } else {
-                    return [...prev, updatedAppt];
+                    const updatedAppt = {
+                        ...(prev.find(a => a.id === apptId) || appointment),
+                        id: apptId,
+                        status: 'Concluído',
+                        pricePaid: isMainAppt ? totalValue : 0,
+                        paymentDate: dischargeDate,
+                        paymentMethod: isMainAppt ? (payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod)) : 'Agrupado',
+                        productsUsed: apptLines.flatMap(l => l.products),
+                        combinedServiceNames: combinedNames,
+                        bookedPrice: mainLine.unitPrice,
+                        mainServiceProducts: mainLine.products,
+                        additionalServices: extras,
+                        appliedCoupon: isMainAppt ? appliedCampaign?.couponCode : null,
+                        discountAmount: isMainAppt ? couponDiscountAmount : 0,
+                        payments: isMainAppt ? payments : []
+                    } as Appointment;
+
+                    updated = updated.map(a => a.id === apptId ? updatedAppt : a);
                 }
+                return updated;
             });
 
             onUpdateCustomers(prev => prev.map(c => {
                 if (c.id === customer.id) {
                     const newEntries: CustomerHistoryItem[] = lines.map(line => {
                         const s = services.find(srv => srv.id === line.serviceId);
+                        const lineIsMainAppt = line.parentAppointmentId === appointment.id;
                         return {
                             id: `${Date.now()}-${line.id}`,
                             date: dischargeDate,
                             type: 'VISIT',
                             description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
-                            details: `Pagamento: ${paymentMethod}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
+                            details: `Pagamento: ${lineIsMainAppt ? paymentMethod : 'Agrupado'}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
                             rating: line.rating,
                             feedback: line.feedback,
                             providerId: line.providerId,
@@ -686,56 +735,73 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
-        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
-        const extras = lines.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
-            isCourtesy: l.isCourtesy,
-            discount: l.discount,
-            bookedPrice: l.unitPrice,
-            products: l.products,
-            startTime: l.startTime
-        }));
-
-        const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
-
-        const dataToSave = {
-            time: lines[0].startTime,
-            date: appointmentDate,
-            status: status,
-            combined_service_names: combinedNames,
-            service_id: lines[0].serviceId,
-            provider_id: lines[0].providerId,
-            booked_price: lines[0].unitPrice,
-            main_service_products: lines[0].products,
-            additional_services: extras,
-            applied_coupon: appliedCoupon,
-            discount_amount: couponDiscountAmount,
-            customer_id: customer.id,
-            payments: payments,
-            recurrence_id: recId
-        };
+        const appointmentGroups = new Map<string, ServiceLine[]>();
+        lines.forEach(line => {
+            const apptId = line.parentAppointmentId || appointment.id;
+            const list = appointmentGroups.get(apptId) || [];
+            list.push(line);
+            appointmentGroups.set(apptId, list);
+        });
 
         try {
-            const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+            let allSavedResult: any[] = [];
 
-            let result;
-            if (isNew) {
-                result = await supabase.from('appointments').insert([dataToSave]).select();
-            } else {
-                result = await supabase.from('appointments').update(dataToSave).eq('id', appointment.id).select();
+            for (const [apptId, apptLines] of appointmentGroups.entries()) {
+                const isMainAppt = apptId === appointment.id;
+                const combinedNames = apptLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+                const mainLine = apptLines[0];
+                const extras = apptLines.slice(1).map(l => ({
+                    serviceId: l.serviceId,
+                    providerId: l.providerId,
+                    isCourtesy: l.isCourtesy,
+                    discount: l.discount,
+                    bookedPrice: l.unitPrice,
+                    products: l.products,
+                    startTime: l.startTime
+                }));
+
+                const recId = isRecurring && isMainAppt ? `rec-${Date.now()}` : (isMainAppt ? appointment.recurrenceId : null);
+
+                const dataToSave = {
+                    time: mainLine.startTime,
+                    date: appointmentDate,
+                    status: status,
+                    combined_service_names: combinedNames,
+                    service_id: mainLine.serviceId,
+                    provider_id: mainLine.providerId,
+                    booked_price: mainLine.unitPrice,
+                    main_service_products: mainLine.products,
+                    additional_services: extras,
+                    applied_coupon: isMainAppt ? appliedCoupon : null,
+                    discount_amount: isMainAppt ? couponDiscountAmount : 0,
+                    customer_id: customer.id,
+                    payments: isMainAppt ? payments : [],
+                    recurrence_id: recId,
+                    price_paid: isMainAppt ? totalValue : 0,
+                    payment_method: isMainAppt ? (payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod)) : 'Agrupado',
+                    payment_date: isMainAppt ? (appointment.paymentDate || appointmentDate) : null
+                };
+
+                const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(apptId);
+
+                let result;
+                if (isNew) {
+                    result = await supabase.from('appointments').insert([dataToSave]).select();
+                } else {
+                    result = await supabase.from('appointments').update(dataToSave).eq('id', apptId).select();
+                }
+
+                if (result.error) throw result.error;
+                if (result.data) allSavedResult = [...allSavedResult, ...result.data];
             }
 
-            const { data, error } = result;
-            if (error) throw error;
+            let allSaved = allSavedResult;
 
-            const savedAppt = data?.[0];
-            if (!savedAppt) throw new Error('No data returned from database');
+            // --- HANDLE RECURRENCE (Main Appt Only) ---
+            const mainSaved = allSaved.find(s => s.id === appointment.id) || allSaved[0];
+            const isMainNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
 
-            let allSaved = [savedAppt];
-
-            // --- HANDLE RECURRENCE ---
-            if (isRecurring && isNew) {
+            if (isRecurring && isMainNew && mainSaved) {
                 const futureDates: string[] = [];
                 let current = new Date(appointmentDate + 'T12:00:00');
 
@@ -746,10 +812,42 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     futureDates.push(current.toISOString().split('T')[0]);
                 }
 
+                // We use the dataToSave from the main appointment
+                const mainLines = lines.filter(l => (l.parentAppointmentId || appointment.id) === appointment.id);
+                const combinedNames = mainLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+                const extras = mainLines.slice(1).map(l => ({
+                    serviceId: l.serviceId,
+                    providerId: l.providerId,
+                    isCourtesy: l.isCourtesy,
+                    discount: l.discount,
+                    bookedPrice: l.unitPrice,
+                    products: l.products,
+                    startTime: l.startTime
+                }));
+
+                const recurrenceDataToSave = {
+                    time: mainLines[0].startTime,
+                    date: appointmentDate, // Will be overridden
+                    status: 'Pendente',
+                    combined_service_names: combinedNames,
+                    service_id: mainLines[0].serviceId,
+                    provider_id: mainLines[0].providerId,
+                    booked_price: mainLines[0].unitPrice,
+                    main_service_products: mainLines[0].products,
+                    additional_services: extras,
+                    applied_coupon: appliedCoupon,
+                    discount_amount: couponDiscountAmount,
+                    customer_id: customer.id,
+                    payments: [],
+                    recurrence_id: mainSaved.recurrence_id,
+                    price_paid: 0,
+                    payment_method: null,
+                    payment_date: null
+                };
+
                 const bulkData = futureDates.map(d => ({
-                    ...dataToSave,
-                    date: d,
-                    status: 'Pendente' // Recurring future ones are usually pending
+                    ...recurrenceDataToSave,
+                    date: d
                 }));
 
                 const { data: bulkSaved, error: bulkError } = await supabase.from('appointments').insert(bulkData).select();
@@ -758,44 +856,45 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
 
             onUpdateAppointments(prev => {
-                const exists = prev.find(a => a.id === appointment.id);
+                let updated = prev;
 
-                // Map all saved records to local state format
-                const newLocalAppts = allSaved.map(s => ({
-                    ...appointment,
-                    id: s.id,
-                    customerId: s.customer_id,
-                    providerId: s.provider_id,
-                    serviceId: s.service_id,
-                    time: s.time,
-                    date: s.date,
-                    status: s.status as any,
-                    combinedServiceNames: s.combined_service_names,
-                    bookedPrice: s.booked_price,
-                    mainServiceProducts: s.main_service_products,
-                    additionalServices: s.additional_services,
-                    appliedCoupon: s.applied_coupon,
-                    discountAmount: s.discount_amount,
-                    pricePaid: s.price_paid,
-                    paymentMethod: s.payment_method,
-                    payments: s.payments || [],
-                    recurrenceId: s.recurrence_id
-                } as Appointment));
+                allSaved.forEach(s => {
+                    const exists = prev.find(a => a.id === s.id);
+                    const updatedAppt = {
+                        ...(exists || appointment),
+                        id: s.id,
+                        customerId: s.customer_id,
+                        providerId: s.provider_id,
+                        serviceId: s.service_id,
+                        time: s.time,
+                        date: s.date,
+                        status: s.status as any,
+                        combinedServiceNames: s.combined_service_names,
+                        bookedPrice: s.booked_price,
+                        mainServiceProducts: s.main_service_products,
+                        additionalServices: s.additional_services,
+                        appliedCoupon: s.applied_coupon,
+                        discountAmount: s.discount_amount,
+                        pricePaid: s.price_paid,
+                        paymentMethod: s.payment_method,
+                        paymentDate: s.payment_date,
+                        payments: s.payments || [],
+                        recurrenceId: s.recurrence_id
+                    } as Appointment;
 
-                if (exists) {
-                    // Update the first one and add any new ones
-                    const mainResult = newLocalAppts[0];
-                    const others = newLocalAppts.slice(1);
-                    const updatedList = prev.map(a => a.id === appointment.id ? mainResult : a);
-                    return [...updatedList, ...others];
-                } else {
-                    return [...prev, ...newLocalAppts];
-                }
+                    if (exists) {
+                        updated = updated.map(a => a.id === s.id ? updatedAppt : a);
+                    } else {
+                        updated = [...updated, updatedAppt];
+                    }
+                });
+
+                return updated;
             });
 
             onClose();
-            if (allSaved.length > 1) {
-                alert(`Agendamento e ${allSaved.length - 1} repetições criados com sucesso!`);
+            if (allSaved.length > appointmentGroups.size) {
+                alert(`Agendamento e ${allSaved.length - appointmentGroups.size} repetições criados com sucesso!`);
             }
         } catch (error) {
             console.error('Error saving appointment:', error);
@@ -1140,7 +1239,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: services[0].price
+            unitPrice: services[0].price,
+            parentAppointmentId: appointment.id
         }]);
     };
 
@@ -1259,7 +1359,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
                         <div className="min-w-0 flex-1 w-full">
-                            <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
+                            <button
+                                onClick={onNavigateToCustomer}
+                                className="text-left hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                            >
+                                <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate hover:underline">{customer.name}</h2>
+                            </button>
                             <div className="flex items-center gap-2 mt-0.5">
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
                                 {isAgendaMode && (
@@ -1269,6 +1374,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     >
                                         {status}
                                     </button>
+                                )}
+                                {isGrouped && (
+                                    <span className="ml-2 px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900 border border-indigo-200 dark:border-indigo-800 rounded-full text-[9px] font-black text-indigo-700 dark:text-indigo-300 uppercase">
+                                        ATENDIMENTO AGRUPADO
+                                    </span>
                                 )}
                             </div>
                         </div>
@@ -1511,7 +1621,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
                                 <div className="flex justify-between items-center px-1 mb-4">
                                     <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">
+                                            {isGrouped ? 'Valor Acumulado (Total no Dia)' : 'Valor Acumulado'}
+                                        </p>
                                         <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
                                     </div>
                                 </div>

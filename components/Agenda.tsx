@@ -24,10 +24,11 @@ interface AgendaProps {
     stock: StockItem[];
     nfseRecords: NFSeRecord[];
     isLoadingData?: boolean;
+    onNavigate?: (view: any) => void;
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, isLoadingData
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, isLoadingData, onNavigate
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -1365,6 +1366,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                         providers={providers}
                         stock={stock}
                         customers={customers}
+                        onNavigateToCustomer={() => {
+                            setIsServiceModalOpen(false);
+                            setSelectedAppointment(null);
+                            if (onNavigate) onNavigate('CLIENTES');
+                        }}
                     />
                 )}
             </div>

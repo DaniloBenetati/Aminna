@@ -326,7 +326,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             phone: '',
             specialty: '',
             specialties: [],
-            commissionRate: 0.5,
+            commissionRate: 0.4,
             commissionHistory: [],
             pixKey: '',
             birthDate: '',

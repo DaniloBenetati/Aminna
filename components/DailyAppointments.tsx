@@ -21,9 +21,10 @@ interface DailyAppointmentsProps {
   stock: StockItem[];
   nfseRecords: NFSeRecord[];
   isLoadingData?: boolean;
+  onNavigate?: (view: any) => void;
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, isLoadingData }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, isLoadingData, onNavigate }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -402,11 +403,15 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           onSelectAppointment={(app) => setSelectedAppointmentForService(app)}
           services={services}
           campaigns={campaigns}
-          source="DAILY" // Explicitly setting source to DAILY
+          source="DAILY"
           paymentSettings={paymentSettings}
           providers={providers}
           stock={stock}
           customers={customers}
+          onNavigateToCustomer={() => {
+            setSelectedAppointmentForService(null);
+            if (onNavigate) onNavigate('CLIENTES');
+          }}
         />
       )}
     </div>
