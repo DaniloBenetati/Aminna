@@ -477,6 +477,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (result.error) throw result.error;
             const savedAppt = result.data;
 
+            // Auto-start next appointment for same customer on same day
+            const nextAppointment = allAppointments
+                .filter(a =>
+                    a.id !== appointment.id &&
+                    a.customerId === customer.id &&
+                    a.date === appointmentDate &&
+                    (a.status === 'Pendente' || a.status === 'Confirmado') &&
+                    a.time > lines[0].startTime
+                )
+                .sort((a, b) => a.time.localeCompare(b.time))[0];
+
+            if (nextAppointment) {
+                await supabase.from('appointments').update({
+                    status: 'Em Andamento'
+                }).eq('id', nextAppointment.id);
+            }
+
             onUpdateAppointments(prev => {
                 const updatedAppt = {
                     ...appointment,
@@ -493,8 +510,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     payments: payments
                 } as Appointment;
 
+                let updated = prev;
+
                 if (!isNew) {
-                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                    updated = prev.map(a => a.id === appointment.id ? updatedAppt : a);
                 } else {
                     // Remove temp ID if it exists and add new, or just add new
                     // If isNew, the previous ID was local. We should remove the local draft if it was in the list?
@@ -504,8 +523,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     // safely add to list.
                     // Check if we need to replace a temp one:
                     const filtered = prev.filter(a => a.id !== appointment.id);
-                    return [...filtered, updatedAppt];
+                    updated = [...filtered, updatedAppt];
                 }
+
+                // Update next appointment status if it exists
+                if (nextAppointment) {
+                    updated = updated.map(a =>
+                        a.id === nextAppointment.id
+                            ? { ...a, status: 'Em Andamento' }
+                            : a
+                    );
+                }
+
+                return updated;
             });
             onClose();
         } catch (error) {
