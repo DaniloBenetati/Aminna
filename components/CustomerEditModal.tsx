@@ -213,7 +213,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Dados Pessoais</h4>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Nascimento</label>
                                         {editMode ? (
@@ -255,7 +255,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Contatos</h4>
                                 </div>
 
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">WhatsApp / Celular</label>
                                         {editMode ? (

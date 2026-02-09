@@ -1463,7 +1463,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
                                     )}
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-0.5">
                                             <label className="text-[7px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                             <select
@@ -1940,7 +1940,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-2">
+                                                <div className="grid grid-cols-2 gap-3">
                                                     <div>
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto Manual</label>
                                                         <div className="flex items-center gap-2">
