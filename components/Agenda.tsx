@@ -1340,24 +1340,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 <div className="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800">
                                                                                     <p className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Profissionais Preferidos</p>
                                                                                     <div className="flex flex-wrap gap-2">
-                                                                                        {cust.assignedProviderIds.map(pid => {
-                                                                                            const p = providers.find(pr => pr.id === pid);
-                                                                                            if (!p) return null;
-                                                                                            return (
-                                                                                                <div key={pid} className="flex items-center gap-1.5 bg-slate-800/50 dark:bg-zinc-800/50 pl-2 rounded-full overflow-hidden border border-slate-700/50" title={p.name}>
-                                                                                                    <span className="text-[9px] font-black text-slate-200 uppercase truncate max-w-[80px]">{p.name.split(' ')[0]}</span>
-                                                                                                    <div className="h-5 w-5 rounded-full overflow-hidden flex-shrink-0">
-                                                                                                        {p.avatar ? (
-                                                                                                            <img src={p.avatar} alt={p.name} className="h-full w-full object-cover" />
-                                                                                                        ) : (
-                                                                                                            <div className="h-full w-full flex items-center justify-center text-[7px] font-black text-slate-300">
-                                                                                                                {p.name.charAt(0)}
-                                                                                                            </div>
-                                                                                                        )}
-                                                                                                    </div>
-                                                                                                </div>
-                                                                                            );
-                                                                                        })}
+                                                                                         {cust.assignedProviderIds.map(pid => {
+                                                                                             const p = providers.find(pr => pr.id === pid);
+                                                                                             if (!p) return null;
+                                                                                             return (
+                                                                                                 <div key={pid} className="flex items-center px-2.5 py-0.5 bg-[#FF007F] rounded-full shadow-sm" title={p.name}>
+                                                                                                     <span className="text-[9px] font-black text-white uppercase truncate">{p.name.split(' ')[0]}</span>
+                                                                                                 </div>
+                                                                                             );
+                                                                                         })}
                                                                                     </div>
                                                                                 </div>
                                                                             );

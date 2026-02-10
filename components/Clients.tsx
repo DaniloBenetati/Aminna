@@ -718,11 +718,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               const p = providers.find(pr => pr.id === pid);
                               if (!p) return null;
                               return (
-                                <div key={pid} className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 pl-3 rounded-full overflow-hidden">
-                                  <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 py-1">{p.name}</span>
-                                  <div className="w-8 h-8 bg-slate-200 dark:bg-zinc-700">
-                                    {p.avatar ? <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black">{p.name.charAt(0)}</div>}
-                                  </div>
+                                <div key={pid} className="flex items-center px-4 py-1 bg-[#FF007F] rounded-full shadow-sm" title={p.name}>
+                                  <span className="text-[10px] font-black uppercase text-white py-1">{p.name}</span>
                                 </div>
                               );
                             })
