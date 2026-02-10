@@ -1126,32 +1126,39 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         const customer = customers.find(c => c.id === appt.customerId);
                                                         const service = services.find(s => s.id === appt.serviceId);
 
-                                                        // Calculate height based on duration
-                                                        // Base height is rowHeight (for 30 mins)
-                                                        // If it's 60 mins, height is rowHeight * 2
-                                                        const duration = service?.durationMinutes || 30;
+                                                        const [sH, sM] = hour.split(':').map(Number);
+                                                        const sStart = sH * 60 + sM;
+                                                        const sEnd = sStart + 30;
+
+                                                        const [mH, mM] = appt.time.split(':').map(Number);
+                                                        const mStart = mH * 60 + mM;
+                                                        const isMainInSlot = appt.providerId === p.id && mStart >= sStart && mStart < sEnd;
+
+                                                        const extraInSlot = appt.additionalServices?.find(s => {
+                                                            const [exH, exM] = (s.startTime || appt.time).split(':').map(Number);
+                                                            const exStart = exH * 60 + exM;
+                                                            return s.providerId === p.id && exStart >= sStart && exStart < sEnd;
+                                                        });
+
+                                                        const matchedService = isMainInSlot ? service : (extraInSlot ? services.find(s => s.id === extraInSlot.serviceId) : service);
+                                                        const duration = matchedService?.durationMinutes || 30;
                                                         const heightFactor = duration / 30;
-                                                        const cardHeight = (rowHeight * heightFactor) - 8; // Subtract padding
+                                                        const cardHeight = (rowHeight * heightFactor) - 8;
 
                                                         let displayServiceName = '';
                                                         let displayTime = appt.time;
 
-                                                        if (appt.providerId === p.id) {
+                                                        if (isMainInSlot) {
                                                             displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
                                                             displayTime = appt.time;
-                                                        } else {
-                                                            const subService = appt.additionalServices?.find(s => s.providerId === p.id);
-                                                            if (subService) {
-                                                                const srv = services.find(s => s.id === subService.serviceId);
-                                                                displayServiceName = srv?.name || 'Serviço Extra';
-                                                                displayTime = subService.startTime || appt.time;
-                                                            }
+                                                        } else if (extraInSlot) {
+                                                            displayServiceName = matchedService?.name || 'Serviço Extra';
+                                                            displayTime = extraInSlot.startTime || appt.time;
                                                         }
 
-                                                        // Calculate top offset based on actual appointment time within the slot
-                                                        const [apptHour, apptMin] = displayTime.split(':').map(Number);
-                                                        const [slotHour, slotMin] = hour.split(':').map(Number);
-                                                        const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                        const [aH, aM] = displayTime.split(':').map(Number);
+                                                        const aMinutes = aH * 60 + aM;
+                                                        const minutesIntoSlot = (aMinutes - sStart);
                                                         const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
 
                                                         return (
@@ -1247,7 +1254,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                 }`}>
                                                                                                 {ca.status}
                                                                                             </span>
-                                                                                            <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
+                                                                                            <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                                                                                                R$ {(() => {
+                                                                                                    const mainPrice = ca.bookedPrice || services.find(s => s.id === ca.serviceId)?.price || 0;
+                                                                                                    const extrasPrice = ca.additionalServices?.reduce((acc, s) => acc + (s.bookedPrice || services.find(srv => srv.id === s.serviceId)?.price || 0), 0) || 0;
+                                                                                                    return (mainPrice + extrasPrice).toFixed(0);
+                                                                                                })()}
+                                                                                            </p>
                                                                                         </div>
                                                                                     </div>
                                                                                 );
@@ -1260,7 +1273,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
                                                                             R$ {gridAppointments
                                                                                 .filter(a => a.customerId === appt.customerId)
-                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                .reduce((acc, a) => {
+                                                                                    const mainPrice = a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0;
+                                                                                    const extrasPrice = a.additionalServices?.reduce((subAcc, s) => subAcc + (s.bookedPrice || services.find(srv => srv.id === s.serviceId)?.price || 0), 0) || 0;
+                                                                                    return acc + mainPrice + extrasPrice;
+                                                                                }, 0)
                                                                                 .toFixed(0)}
                                                                         </p>
                                                                     </div>

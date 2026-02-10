@@ -1709,11 +1709,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <div className="flex justify-between items-center px-1 mb-4">
                                             <div>
                                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
-                                                <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</p>
+                                                <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {(totalValue || 0).toFixed(2)}</p>
                                             </div>
                                         </div>
 
-                                        {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                                        {customer.outstandingBalance > 0 && (
                                             <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
                                                 <input
                                                     type="checkbox"
@@ -1726,7 +1726,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     Incluir Pagmento de Dívida Pendente
                                                 </label>
                                                 <span className="text-sm font-black text-rose-500">
-                                                    + R$ {customer.outstandingBalance.toFixed(2)}
+                                                    + R$ {(customer.outstandingBalance || 0).toFixed(2)}
                                                 </span>
                                             </div>
                                         )}
