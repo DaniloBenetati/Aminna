@@ -345,7 +345,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                   <div className="min-w-0 flex-1">
                     <p className="font-black text-slate-950 dark:text-white truncate leading-tight uppercase text-sm md:text-sm tracking-tight">{customer.name}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${customer.status === 'VIP' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>{customer.status}</span>
+                      <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${customer.status === 'VIP' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>
+                        {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) ? 'Regular' : customer.status}
+                      </span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">{customer.phone}</p>
                       {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
                         <div className="flex -space-x-1.5 ml-2">
@@ -405,7 +407,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       <h3 className="text-lg md:text-2xl font-black text-slate-950 dark:text-white truncate leading-tight uppercase tracking-tight">{formData.name}</h3>
                     )}
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-[9px] font-black text-slate-400 uppercase border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-zinc-800">{formData.status}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-zinc-800">
+                        {formData.status === 'Novo' && (Number(formData.totalSpent || 0) > 0 || (formData.history || []).length > 0 || appointments.some(a => a.customerId === formData.id && a.status === 'Concluído')) ? 'Regular' : formData.status}
+                      </span>
                       {!isEditing && formData.acquisitionChannel && (
                         <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase border border-indigo-100 dark:border-indigo-900 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20">
                           Via {formData.acquisitionChannel}

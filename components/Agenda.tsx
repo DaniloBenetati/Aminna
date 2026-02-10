@@ -43,6 +43,22 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const activeProviders = useMemo(() => providers.filter((p: Provider) => p.active), [providers]);
 
+    // Set of IDs for customers who aren't "New" (have spent money, manual history, or completed appointments)
+    const regularCustomerIds = useMemo(() => {
+        const set = new Set<string>();
+        // 1. Any completed appointment in the current view/last 3 months
+        appointments.forEach(a => {
+            if (a.status === 'Concluído') set.add(a.customerId);
+        });
+        // 2. Any customer with recorded spending or manual history
+        customers.forEach(c => {
+            if (Number(c.totalSpent || 0) > 0 || (c.history || []).length > 0) {
+                set.add(c.id);
+            }
+        });
+        return set;
+    }, [appointments, customers]);
+
     // DEBUG: Track selectedProviderId changes
     React.useEffect(() => {
         console.log('🔴 selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
@@ -1206,8 +1222,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 }}
                                                             >
                                                                 <div className={appt.status === 'Concluído' ? 'opacity-60' : ''}>
-                                                                    <div className="flex justify-between items-start">
-                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
+                                                                    <div className="flex justify-between items-start gap-1">
+                                                                        <div className="flex items-center gap-1 min-w-0">
+                                                                            <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name.split(' ')[0]}</span>
+                                                                            {customer?.status === 'Novo' && !regularCustomerIds.has(customer.id) && (
+                                                                                <span className="flex-shrink-0 animate-pulse bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm">NOVO</span>
+                                                                            )}
+                                                                        </div>
                                                                         <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                     </div>
                                                                     <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
@@ -1239,7 +1260,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
                                                                         <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
                                                                         <div>
-                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                                {customer?.status === 'Novo' && !regularCustomerIds.has(customer.id) && (
+                                                                                    <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Cliente Nova</span>
+                                                                                )}
+                                                                            </div>
                                                                             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
                                                                                 <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
                                                                             </p>
@@ -1491,7 +1517,12 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                     return (
                                         <div key={customerId} className="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700">
-                                            <h4 className="font-black text-slate-900 dark:text-white uppercase text-xs mb-2">{customer.name}</h4>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <h4 className="font-black text-slate-900 dark:text-white uppercase text-xs">{customer.name}</h4>
+                                                {customer.status === 'Novo' && !regularCustomerIds.has(customer.id) && (
+                                                    <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">Novo</span>
+                                                )}
+                                            </div>
                                             <div className="space-y-2 mb-4">
                                                 {sortedApps.map(app => (
                                                     <div key={app.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-900/50 p-2 rounded-xl border border-slate-100 dark:border-zinc-700">

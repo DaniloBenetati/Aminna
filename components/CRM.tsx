@@ -486,7 +486,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                                     customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/30 text-rose-900 dark:text-rose-400 border-rose-200 dark:border-rose-800' :
                                                         'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-zinc-700'
                                                     }`}>
-                                                    {customer.status}
+                                                    {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) ? 'Regular' : customer.status}
                                                 </span>
                                             </div>
                                         </div>
@@ -861,7 +861,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                                         <RechartsBarChart data={reports.lostReasons} layout="vertical">
                                             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} strokeOpacity={0.1} />
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase' }} axisLine={false} tickLine={false} />
+                                            <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 9, fontWeight: 800 }} axisLine={false} tickLine={false} />
                                             <Tooltip cursor={{ fill: 'transparent' }} />
                                             <Bar dataKey="value" fill="#f43f5e" radius={[0, 8, 8, 0]} barSize={24}>
                                                 {reports.lostReasons.map((entry, index) => (

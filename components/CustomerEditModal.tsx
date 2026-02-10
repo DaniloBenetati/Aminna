@@ -146,7 +146,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
 
                     <div className="relative group">
                         <Avatar name={localName} size="w-24 h-24" />
-                        <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-white dark:border-zinc-900 ${localStatus === 'Ativo' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                        <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full border-4 border-white dark:border-zinc-900 ${localStatus !== 'Risco de Churn' && !localIsBlocked ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                     </div>
 
                     <div className="text-center md:text-left flex-1 space-y-2">
@@ -161,8 +161,10 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                 <h2 className="text-3xl font-black text-slate-950 dark:text-white uppercase tracking-tight">{localName}</h2>
                             )}
                             <div className="flex items-center gap-2 justify-center md:justify-start">
-                                <span className="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">{customer.status === 'Novo' ? 'NOVO' : 'CLIENTE'}</span>
-                                {customer.source === 'Via Importação Excel' && (
+                                <span className="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                    {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0) ? 'CLIENTE' : (customer.status === 'Novo' ? 'NOVO' : 'CLIENTE')}
+                                </span>
+                                {customer.acquisitionChannel === 'Via Importação Excel' && (
                                     <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">VIA IMPORTAÇÃO EXCEL</span>
                                 )}
                             </div>
@@ -483,6 +485,6 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

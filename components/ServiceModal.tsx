@@ -693,7 +693,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + priceDifference,
-                outstanding_balance: newOutstandingBalance
+                outstanding_balance: newOutstandingBalance,
+                status: customer.status === 'Novo' ? 'Regular' : customer.status
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -718,7 +719,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                 return prev.map(a => {
                     if (a.id === appointment.id) return updatedAppt;
-                    if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' };
+                    if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
                     return a;
                 });
             });
@@ -749,6 +750,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         ...c,
                         lastVisit: dischargeDate,
                         totalSpent: c.totalSpent + priceDifference,
+                        status: c.status === 'Novo' ? 'Regular' : c.status,
                         history: isReFinalizing ? c.history : [...newEntries, ...c.history]
                     };
                 }
@@ -893,7 +895,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     const others = newLocalAppts.slice(1);
                     return prev.map(a => {
                         if (a.id === appointment.id) return mainResult;
-                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' };
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
                         return a;
                     }).concat(others);
                 } else {
