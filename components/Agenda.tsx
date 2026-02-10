@@ -70,6 +70,8 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [rowHeight, setRowHeight] = useState(() => Number(localStorage.getItem('agenda_row_height')) || 100);
     const [searchTerm, setSearchTerm] = useState('');
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [draggedAppId, setDraggedAppId] = useState<string | null>(null);
+    const [dragOverCell, setDragOverCell] = useState<{ providerId: string; hour: string } | null>(null);
 
     // Scroll synchronization refs
     const headerScrollRef = React.useRef<HTMLDivElement>(null);
@@ -1102,13 +1104,30 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             return (
                                                 <div
                                                     key={`${p.id}-${hour}`}
-                                                    className="flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-all duration-300"
+                                                    className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-200 ${dragOverCell?.providerId === p.id && dragOverCell?.hour === hour
+                                                        ? 'bg-indigo-100/50 dark:bg-indigo-900/40 ring-2 ring-indigo-500 ring-inset z-20'
+                                                        : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
+                                                        }`}
                                                     style={{ width: `${160 * zoomLevel}px` }}
                                                     onDragOver={(e) => {
                                                         e.preventDefault();
                                                         e.dataTransfer.dropEffect = 'move';
                                                     }}
-                                                    onDrop={(e) => handleAppointmentDrop(e, p.id, hour)}
+                                                    onDragEnter={(e) => {
+                                                        e.preventDefault();
+                                                        setDragOverCell({ providerId: p.id, hour });
+                                                    }}
+                                                    onDragLeave={(e) => {
+                                                        e.preventDefault();
+                                                        // Only clear if it's the current cell
+                                                        if (dragOverCell?.providerId === p.id && dragOverCell?.hour === hour) {
+                                                            setDragOverCell(null);
+                                                        }
+                                                    }}
+                                                    onDrop={(e) => {
+                                                        setDragOverCell(null);
+                                                        handleAppointmentDrop(e, p.id, hour);
+                                                    }}
                                                 >
                                                     {/* Add Button on Hover */}
                                                     <button
@@ -1166,12 +1185,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 key={appt.id}
                                                                 draggable={appt.status !== 'Concluído' && appt.status !== 'Cancelado'}
                                                                 onDragStart={(e) => {
+                                                                    setDraggedAppId(appt.id);
                                                                     e.dataTransfer.setData('appointmentId', appt.id);
                                                                     e.dataTransfer.setData('sourceProviderId', p.id); // Track where it came from
                                                                     e.dataTransfer.effectAllowed = 'move';
                                                                 }}
+                                                                onDragEnd={() => {
+                                                                    setDraggedAppId(null);
+                                                                    setDragOverCell(null);
+                                                                }}
                                                                 onClick={() => handleAppointmentClick(appt)}
-                                                                className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${draggedAppId === appt.id ? 'opacity-40 scale-95 shadow-none' : ''} ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                                                                         appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
