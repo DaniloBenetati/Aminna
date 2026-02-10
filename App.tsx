@@ -121,12 +121,65 @@ const App: React.FC = () => {
         }
       }
 
-      // 1. Parallel Fetching for non-batched/filtered data
       // Optimization: Filter logs and records by date (last 3 months) to prevent slow loading
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
       const minDate = threeMonthsAgo.toISOString().split('T')[0];
 
+      // Helper function to fetch customers in parallel batches
+      const fetchCustomers = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('customers')
+          .select('*', { count: 'exact', head: true });
+
+        if (countError || count === null) {
+          console.error('Error getting customers count:', countError);
+          return [];
+        }
+
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('customers')
+            .select('*')
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+        );
+
+        const results = await Promise.all(promises);
+        const allCustomers = results.flatMap(r => r.data || []);
+        return allCustomers;
+      };
+
+      // Helper function to fetch appointments in parallel batches
+      const fetchAppointments = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) {
+          console.error('Error getting appointments count:', countError);
+          return [];
+        }
+
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('appointments')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: true })
+        );
+
+        const results = await Promise.all(promises);
+        const allAppts = results.flatMap(r => r.data || []);
+        return allAppts;
+      };
+
+      // 1. Parallel Execution
       const [
         { data: providersData },
         { data: servicesData },
@@ -141,7 +194,10 @@ const App: React.FC = () => {
         { data: paymentSettingsData },
         { data: commissionSettingsData },
         { data: suppliersData },
-        { data: nfseRecordsData }
+        { data: nfseRecordsData },
+        fetchedCustomers,
+        fetchedAppointments,
+        { data: salesData }
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
@@ -156,8 +212,20 @@ const App: React.FC = () => {
         supabase.from('payment_settings').select('*'),
         supabase.from('commission_settings').select('*'),
         supabase.from('suppliers').select('*'),
-        supabase.from('nfse_records').select('*').gte('created_at', minDate)
+        supabase.from('nfse_records').select('*').gte('created_at', minDate),
+        fetchCustomers(),
+        fetchAppointments(),
+        supabase.from('sales').select('*').gte('date', minDate)
       ]);
+
+      console.log('📊 [DATA FETCH] Results:', {
+        providers: providersData?.length || 0,
+        services: servicesData?.length || 0,
+        customers: fetchedCustomers?.length || 0,
+        appointments: fetchedAppointments?.length || 0,
+        sales: salesData?.length || 0,
+        nfse: nfseRecordsData?.length || 0
+      });
 
       // Map and Set Providers
       if (providersData) {
@@ -229,18 +297,21 @@ const App: React.FC = () => {
       if (campaignsData) {
         setCampaigns(campaignsData.map((c: any) => ({
           id: c.id,
+          partnerId: c.partner_id,
           name: c.name,
+          couponCode: c.coupon_code,
           discountType: c.discount_type,
           discountValue: c.discount_value,
           startDate: c.start_date,
           endDate: c.end_date,
-          active: c.active,
-          couponCode: c.coupon_code,
-          conditions: c.conditions
+          useCount: c.use_count || 0,
+          maxUses: c.max_uses || 0,
+          totalRevenueGenerated: c.total_revenue_generated || 0
         })));
       }
 
-      // Map and Set Other States from Promise.all
+
+      // Map and Set Other States
       if (pantryItemsData) setPantryItems(pantryItemsData.map((p: any) => ({ ...p, name: p.name })));
       if (pantryLogsData) setPantryLogs(pantryLogsData.map((l: any) => ({ ...l, date: l.date })));
       if (leadsData) setLeads(leadsData.map((l: any) => ({ ...l, createdAt: l.created_at })));
@@ -262,6 +333,7 @@ const App: React.FC = () => {
           professionalValue: r.professional_value,
           professionalCnpj: r.professional_cnpj,
           serviceDescription: r.service_description,
+          status: r.status,
           focusResponse: r.focus_response,
           xmlUrl: r.xml_url,
           pdfUrl: r.pdf_url,
@@ -270,37 +342,12 @@ const App: React.FC = () => {
           createdAt: r.created_at,
           updatedAt: r.updated_at
         })));
+
       }
 
-      // 2. Fetch Customers - Batch fetching
-      let allCustomers: any[] = [];
-      let page = 0;
-      const pageSize = 1000;
-      let hasMore = true;
-
-      while (hasMore) {
-        const { data: batch, error } = await supabase
-          .from('customers')
-          .select('*')
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-
-        if (error) {
-          console.error('Error fetching customers batch:', error);
-          hasMore = false;
-        } else if (batch) {
-          allCustomers = [...allCustomers, ...batch];
-          if (batch.length < pageSize) {
-            hasMore = false;
-          } else {
-            page++;
-          }
-        } else {
-          hasMore = false;
-        }
-      }
-
-      if (allCustomers.length > 0) {
-        setCustomers(allCustomers.map((c: any) => ({
+      // Set Customers
+      if (fetchedCustomers && fetchedCustomers.length > 0) {
+        setCustomers(fetchedCustomers.map((c: any) => ({
           id: c.id,
           name: c.name,
           email: c.email,
@@ -319,44 +366,15 @@ const App: React.FC = () => {
           assignedProviderIds: c.assigned_provider_ids || [],
           packageName: c.package_name,
           packageSessions: c.package_sessions,
-          packageSessionsUsed: c.package_sessions_used
+          packageSessionsUsed: c.package_sessions_used,
+          registrationDate: c.created_at
         })));
+
       }
 
-      // 3. Fetch Appointments - Filtered by date range (last 3 months)
-      // minDate is already defined above
-
-
-      let allAppts: any[] = [];
-      let apptStart = 0;
-      const apptStep = 1000;
-      let apptHasMore = true;
-
-      while (apptHasMore) {
-        const { data: apptBatch, error } = await supabase
-          .from('appointments')
-          .select('*')
-          .gte('date', minDate)
-          .range(apptStart, apptStart + apptStep - 1)
-          .order('date', { ascending: true });
-
-        if (error) {
-          console.error('❌ Error fetching appointments batch:', error);
-          apptHasMore = false;
-        } else if (apptBatch && apptBatch.length > 0) {
-          allAppts = [...allAppts, ...apptBatch];
-          if (apptBatch.length < apptStep) {
-            apptHasMore = false;
-          } else {
-            apptStart += apptStep;
-          }
-        } else {
-          apptHasMore = false;
-        }
-      }
-
-      if (allAppts.length > 0) {
-        setAppointments(allAppts.map((a: any) => ({
+      // Set Appointments
+      if (fetchedAppointments && fetchedAppointments.length > 0) {
+        setAppointments(fetchedAppointments.map((a: any) => ({
           id: a.id,
           customerId: a.customer_id,
           providerId: a.provider_id,
@@ -379,20 +397,21 @@ const App: React.FC = () => {
         })));
       }
 
-      // 4. Fetch Sales - Filtered by date range (last 3 months)
-      const { data: salesData } = await supabase.from('sales').select('*').gte('date', minDate);
+      // Set Sales
       if (salesData) {
         setSales(salesData.map((s: any) => ({
           id: s.id,
           customerId: s.customer_id,
           items: s.items || [],
           total: s.total,
+          totalAmount: s.total,
           date: s.date,
           paymentMethod: s.payment_method,
           payments: s.payments || [],
           status: s.status,
           createdAt: s.created_at
         })));
+
       }
 
     } catch (error) {

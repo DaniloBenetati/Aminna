@@ -231,86 +231,55 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             nfseRequest.razao_social_intermediario = professionalName;
         }
 
-        // 6. Call Supabase Edge Function (bypasses CORS)
-        const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/issue-nfse`;
-
-        // Get current session to use valid JWT
-        // ATTEMPT REFRESH FIRST to ensure we don't send a stale token
-        let { data: { session } } = await supabase.auth.getSession();
-
-        // Check for expiry or refresh if needed
-        if (session) {
-            const expiresAt = session.expires_at; // timestamp
-            const now = Math.floor(Date.now() / 1000);
-
-            // Log for debugging
-            if (expiresAt) {
-                const diff = expiresAt - now;
-                console.log(`[FOCUS NFE] Token expires at ${expiresAt}, now is ${now}. Diff: ${diff}s`);
-
-                // If token is expiring in less than 5 minutes (300s), refresh it
-                if (diff < 300) {
-                    console.log('[FOCUS NFE] Token expiring soon, refreshing session...');
-                    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-                    if (refreshError) {
-                        console.error('❌ [FOCUS NFE] Failed to refresh session:', refreshError);
-                    } else if (refreshData.session) {
-                        console.log('✅ [FOCUS NFE] Session refreshed successfully.');
-                        session = refreshData.session;
-                    }
-                }
-            } else {
-                console.log('[FOCUS NFE] Token has no expiration time.');
+        // 6. Get session and inspect JWT for diagnostics (identifying project mismatches)
+        const { data: { session } } = await supabase.auth.getSession();
+        const jwt = session?.access_token;
+        if (jwt) {
+            try {
+                const payload = JSON.parse(atob(jwt.split('.')[1]));
+                console.log('🎫 [FOCUS NFE] Current Token Claims:', {
+                    iss: payload.iss,
+                    ref: payload.ref,
+                    sub: payload.sub,
+                    expires: new Date(payload.exp * 1000).toLocaleString()
+                });
+            } catch (e) {
+                console.error('Failed to parse JWT payload', e);
             }
         }
 
-        if (!session?.access_token) {
-            console.error('❌ [FOCUS NFE] No active session found. Cannot issue NFSe.');
-            throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
-        }
-
-        const jwt = session.access_token;
-
-        console.log('🚀 [FOCUS NFE] Calling Edge Function...', {
-            url: edgeFunctionUrl,
-            payload: { nfseData: { reference, payload: nfseRequest }, environment: fiscalConfig.focusNfeEnvironment },
-            hasAuth: !!jwt,
-            tokenPrefix: jwt.substring(0, 10) + '...'
+        console.log('🚀 [FOCUS NFE] Invoking Edge Function via Supabase SDK...', {
+            payload: {
+                nfseData: { reference, payload: nfseRequest },
+                environment: fiscalConfig.focusNfeEnvironment
+            },
+            hasSession: !!session
         });
 
-        const response = await fetch(edgeFunctionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${jwt}`,
-            },
-            body: JSON.stringify({
+        const { data: edgeResponse, error: invokeError } = await supabase.functions.invoke('issue-nfse', {
+            body: {
                 nfseData: {
                     reference: reference,
                     payload: nfseRequest
                 },
                 environment: fiscalConfig.focusNfeEnvironment
-            }),
+            },
+            headers: {
+                'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY
+            }
         });
 
-        console.log('📡 [FOCUS NFE] Edge Function Status:', response.status);
-
-        const edgeResponse = await response.json();
-        console.log('Edge Function response data:', edgeResponse);
-
-        if (!response.ok) {
-            console.error('❌ [FOCUS NFE] Edge Function HTTP error:', response.status);
-            console.error('📋 Full response object:', JSON.stringify(edgeResponse, null, 2));
-            const errorMsg = edgeResponse.error ||
-                (edgeResponse.data && (edgeResponse.data.mensagem || JSON.stringify(edgeResponse.data))) ||
-                `Erro ao chamar Edge Function (Status: ${response.status})`;
-            throw new Error(errorMsg);
+        if (invokeError) {
+            console.error('❌ [FOCUS NFE] Edge Function Invocation Error:', invokeError);
+            throw new Error(`Erro ao chamar função: ${invokeError.message}`);
         }
 
-        if (!edgeResponse.success) {
+        console.log('📡 [FOCUS NFE] Edge Function Response:', edgeResponse);
+
+        if (!edgeResponse || !edgeResponse.success) {
             console.error('❌ [FOCUS NFE] Edge Function returned success=false:', edgeResponse);
             console.error('📋 Full error details:', JSON.stringify(edgeResponse, null, 2));
-            const errorMsg = edgeResponse.error || edgeResponse.data?.mensagem || 'Erro desconhecido ao emitir NFSe';
+            const errorMsg = edgeResponse?.error || edgeResponse?.data?.mensagem || 'Erro desconhecido ao emitir NFSe';
             throw new Error(errorMsg);
         }
 
