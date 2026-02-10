@@ -177,7 +177,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             a.customerId === appointment.customerId &&
             a.date === appointment.date &&
             a.status !== 'Cancelado' &&
-            a.status !== 'Concluído' &&
             a.id !== appointment.id
         );
 
@@ -619,7 +618,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
         const isReFinalizing = appointment.status === 'Concluído';
-        const previousPricePaid = appointment.price_paid || appointment.pricePaid || 0;
+        const previousPricePaid = appointment.pricePaid || 0;
         const priceDifference = isReFinalizing ? (totalValue - previousPricePaid) : totalValue;
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -875,7 +874,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     serviceId: s.service_id,
                     time: s.time,
                     date: s.date,
-                    status: s.status as any,
+                    status: s.status as Appointment['status'],
                     combinedServiceNames: s.combined_service_names,
                     bookedPrice: s.booked_price,
                     mainServiceProducts: s.main_service_products,
@@ -935,7 +934,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             // Update local state by calling onUpdateCustomers
             if (onUpdateCustomers) {
-                onUpdateCustomers();
+                onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, name: editCustomerName.trim(), phone: editCustomerPhone.trim() } : c));
             }
 
             // Return to previous mode
@@ -1259,7 +1258,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const toggleFutureStatus = (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'Confirmado' ? 'Pendente' : 'Confirmado';
-        onUpdateAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as any } : a));
+        onUpdateAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as Appointment['status'] } : a));
     };
 
     const addServiceLine = () => {
@@ -1274,7 +1273,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: services[0].price
+            unitPrice: services[0].price,
+            startTime: appointment.time
         }]);
     };
 
@@ -2151,7 +2151,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={handleCreateDebt}
+                                        onClick={() => handleCreateDebt()}
                                         disabled={isSaving || (lines.some(l => !l.serviceId || !l.providerId))}
                                         className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
                                         title="Registrar como Dívida (Fiado)"

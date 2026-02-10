@@ -1166,7 +1166,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                 className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
+                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
                                                                 style={{
@@ -1174,32 +1174,34 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     top: `${topOffset}px`
                                                                 }}
                                                             >
-                                                                <div className="flex justify-between items-start">
-                                                                    <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
-                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
-                                                                </div>
-                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
-
-                                                                {/* Only show bottom info if height allows */}
-                                                                {cardHeight > 40 && (
-                                                                    <div className="flex justify-between items-center mt-1.5">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                                        'bg-amber-400'
-                                                                                }`}></span>
-                                                                            {appt.status === 'Concluído' && (
-                                                                                (() => {
-                                                                                    const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                                                                                    if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
-                                                                                    return null;
-                                                                                })()
-                                                                            )}
-                                                                        </div>
-                                                                        <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
+                                                                <div className={appt.status === 'Concluído' ? 'opacity-60' : ''}>
+                                                                    <div className="flex justify-between items-start">
+                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
+                                                                        <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                     </div>
-                                                                )}
+                                                                    <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
+
+                                                                    {/* Only show bottom info if height allows */}
+                                                                    {cardHeight > 40 && (
+                                                                        <div className="flex justify-between items-center mt-1.5">
+                                                                            <div className="flex items-center gap-1">
+                                                                                <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                                    appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                        appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                            'bg-amber-400'
+                                                                                    }`}></span>
+                                                                                {appt.status === 'Concluído' && (
+                                                                                    (() => {
+                                                                                        const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                        if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                        return null;
+                                                                                    })()
+                                                                                )}
+                                                                            </div>
+                                                                            <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
 
                                                                 {/* HOVER TOOLTIP */}
                                                                 <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
@@ -1270,19 +1272,22 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             return (
                                                                                 <div className="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800">
                                                                                     <p className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Profissionais Preferidos</p>
-                                                                                    <div className="flex -space-x-2 overflow-hidden">
+                                                                                    <div className="flex flex-wrap gap-2">
                                                                                         {cust.assignedProviderIds.map(pid => {
                                                                                             const p = providers.find(pr => pr.id === pid);
                                                                                             if (!p) return null;
                                                                                             return (
-                                                                                                <div key={pid} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-900 bg-slate-200 dark:bg-zinc-700 overflow-hidden" title={p.name}>
-                                                                                                    {p.avatar ? (
-                                                                                                        <img src={p.avatar} alt={p.name} className="h-full w-full object-cover" />
-                                                                                                    ) : (
-                                                                                                        <div className="h-full w-full flex items-center justify-center text-[8px] font-black text-slate-500 dark:text-slate-300">
-                                                                                                            {p.name.charAt(0)}
-                                                                                                        </div>
-                                                                                                    )}
+                                                                                                <div key={pid} className="flex items-center gap-1.5 bg-slate-800/50 dark:bg-zinc-800/50 pl-2 rounded-full overflow-hidden border border-slate-700/50" title={p.name}>
+                                                                                                    <span className="text-[9px] font-black text-slate-200 uppercase truncate max-w-[80px]">{p.name.split(' ')[0]}</span>
+                                                                                                    <div className="h-5 w-5 rounded-full overflow-hidden flex-shrink-0">
+                                                                                                        {p.avatar ? (
+                                                                                                            <img src={p.avatar} alt={p.name} className="h-full w-full object-cover" />
+                                                                                                        ) : (
+                                                                                                            <div className="h-full w-full flex items-center justify-center text-[7px] font-black text-slate-300">
+                                                                                                                {p.name.charAt(0)}
+                                                                                                            </div>
+                                                                                                        )}
+                                                                                                    </div>
                                                                                                 </div>
                                                                                             );
                                                                                         })}
