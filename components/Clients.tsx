@@ -6,18 +6,21 @@ import {
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
   Filter, UserPlus, History, Star, Megaphone, Ban, Users
 } from 'lucide-react';
-import { Customer, Appointment, CustomerHistoryItem, Service } from '../types';
+import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile } from '../types';
 
 interface ClientsProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   appointments?: Appointment[];
   services?: Service[];
-  userProfile: any;
+  userProfile: UserProfile | null;
   selectedCustomerId: string | null;
+  returnView?: ViewState | null;
+  onNavigate?: (view: ViewState, payload?: any) => void;
+  providers?: Provider[];
 }
 
-export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId }) => {
+export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -30,6 +33,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [localFavServices, setLocalFavServices] = useState('');
   const [localPrefDays, setLocalPrefDays] = useState('');
   const [localPrefNotes, setLocalPrefNotes] = useState('');
+  const [localAssignedProviderIds, setLocalAssignedProviderIds] = useState<string[]>([]);
 
   React.useEffect(() => {
     if (selectedCustomerId) {
@@ -67,13 +71,43 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       .filter(a => a.customerId === selectedCustomer.id && (a.status === 'Concluído' || a.status === 'Confirmado'))
       .map(a => {
         const service = services.find(s => s.id === a.serviceId);
+
+        // Determine Service Description
+        let description = a.combinedServiceNames;
+        if (!description) {
+          description = service?.name || 'Serviço';
+          if (a.additionalServices && a.additionalServices.length > 0) {
+            const extraNames = a.additionalServices.map(ex => services.find(s => s.id === ex.serviceId)?.name).filter(Boolean).join(' + ');
+            if (extraNames) description += ` + ${extraNames}`;
+          }
+        }
+
+        // Determine Price & Payment Details
+        let details = '';
+        if (a.status === 'Concluído') {
+          const price = a.pricePaid !== undefined ? `R$ ${a.pricePaid.toFixed(2)}` : (a.bookedPrice ? `R$ ${a.bookedPrice.toFixed(2)}` : '');
+          const payment = a.payments && a.payments.length > 0
+            ? a.payments.map(p => `${p.method}: R$${p.amount.toFixed(2)}`).join(', ')
+            : (a.paymentMethod || 'Não informado');
+
+          details = `Valor: ${price} | Pagamento: ${payment}`;
+        } else {
+          details = `Status: ${a.status}`;
+        }
+
+        // Collect Products
+        const products = a.productsUsed || [];
+
         return {
           id: a.id,
           date: a.date,
           type: 'VISIT',
-          description: service?.name || 'Serviço',
-          details: `Status: ${a.status}`,
-          rating: 0
+          description: description,
+          providerId: a.providerId,
+          details: details,
+          productsUsed: products,
+          rating: a.rating,
+          feedback: a.feedback
         };
       });
 
@@ -96,6 +130,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     setLocalFavServices(customer.preferences?.favoriteServices?.join(', ') || '');
     setLocalPrefDays(customer.preferences?.preferredDays?.join(', ') || '');
     setLocalPrefNotes(customer.preferences?.notes || '');
+    setLocalAssignedProviderIds(customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : []));
   };
 
   const handleNewCustomer = () => {
@@ -106,7 +141,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       blockReason: '',
       preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
     });
+
     setLocalRestrictions(''); setLocalFavServices(''); setLocalPrefDays(''); setLocalPrefNotes('');
+    setLocalAssignedProviderIds([]);
     setSelectedCustomer(null); setIsEditing(true); setIsNew(true); setActiveTab('INFO');
   };
 
@@ -154,7 +191,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         block_reason: formData.blockReason,
         status: 'Novo',
         registration_date: newItem.registrationDate,
-        total_spent: 0
+        total_spent: 0,
+        assigned_provider_ids: localAssignedProviderIds
       }).select().single();
 
       if (error) {
@@ -163,16 +201,21 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return;
       }
 
-      const clientWithId = { ...newItem, id: data.id };
+      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds };
       setCustomers(prev => [...prev, clientWithId]);
       setSelectedCustomer(clientWithId);
+
+      if (returnView && onNavigate) {
+        onNavigate(returnView);
+      }
     } else if (selectedCustomer) {
       const updatedCustomer = {
         ...selectedCustomer,
         ...formData,
         preferences: updatedPreferences,
         isBlocked: formData.isBlocked,
-        blockReason: formData.blockReason
+        blockReason: formData.blockReason,
+        assignedProviderIds: localAssignedProviderIds
       } as Customer;
 
       // Update Supabase
@@ -187,7 +230,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         acquisition_channel: formData.acquisitionChannel,
         preferences: updatedPreferences,
         is_blocked: formData.isBlocked,
-        block_reason: formData.blockReason
+        block_reason: formData.blockReason,
+        assigned_provider_ids: localAssignedProviderIds
       }).eq('id', selectedCustomer.id);
 
       if (error) {
@@ -198,6 +242,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
       setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? updatedCustomer : c));
       setSelectedCustomer(updatedCustomer);
+
+      if (returnView && onNavigate) {
+        onNavigate(returnView);
+      }
     }
     setIsEditing(false); setIsNew(false);
   };
@@ -216,6 +264,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       setLocalFavServices(customer.preferences?.favoriteServices?.join(', ') || '');
       setLocalPrefDays(customer.preferences?.preferredDays?.join(', ') || '');
       setLocalPrefNotes(customer.preferences?.notes || '');
+      setLocalAssignedProviderIds(customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : []));
     }
     setIsEditing(false);
     setIsNew(false);
@@ -298,7 +347,24 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${customer.status === 'VIP' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>{customer.status}</span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">{customer.phone}</p>
-                      {customer.isBlocked && <Ban size={12} className="text-rose-600 dark:text-rose-400" />}
+                      {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
+                        <div className="flex -space-x-1.5 ml-2">
+                          {customer.assignedProviderIds.map(pid => {
+                            const p = providers?.find(pr => pr.id === pid);
+                            if (!p) return null;
+                            return (
+                              <div key={pid} className="w-4 h-4 rounded-full border border-white dark:border-zinc-800 overflow-hidden" title={p.name}>
+                                {p.avatar ? (
+                                  <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-[7px] font-black text-indigo-700 dark:text-indigo-300">{p.name.charAt(0)}</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {customer.isBlocked && <Ban size={12} className="text-rose-600 dark:text-rose-400 ml-1" />}
                     </div>
                   </div>
                   <ChevronRight size={18} className="text-slate-300 dark:text-zinc-600" />
@@ -315,7 +381,14 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
               {/* Profile Header */}
               <div className="p-4 md:p-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-3 flex-shrink-0 sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm z-20 transition-all">
                 <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1">
-                  <button type="button" onClick={() => { setSelectedCustomer(null); setIsEditing(false); }} className="p-2 -ml-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-all"><ChevronLeft size={24} /></button>
+                  <button type="button" onClick={() => {
+                    if (returnView && onNavigate) {
+                      onNavigate(returnView);
+                    } else {
+                      setSelectedCustomer(null);
+                      setIsEditing(false);
+                    }
+                  }} className="p-2 -ml-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-all"><ChevronLeft size={24} /></button>
                   <div className={`w-12 h-12 md:w-14 md:h-14 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-black flex-shrink-0 shadow-sm ${isEditing ? 'hidden md:flex' : 'flex'}`}>
                     <User size={24} className="md:w-7 md:h-7" />
                   </div>
@@ -337,6 +410,23 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase border border-indigo-100 dark:border-indigo-900 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20">
                           Via {formData.acquisitionChannel}
                         </span>
+                      )}
+                      {formData.assignedProviderIds && formData.assignedProviderIds.length > 0 && (
+                        <div className="flex -space-x-2">
+                          {formData.assignedProviderIds.map(pid => {
+                            const p = providers.find(pr => pr.id === pid);
+                            if (!p) return null;
+                            return (
+                              <div key={pid} className="w-5 h-5 rounded-full border border-white dark:border-zinc-900 overflow-hidden" title={p.name}>
+                                {p.avatar ? (
+                                  <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full bg-slate-200 dark:bg-zinc-700 flex items-center justify-center text-[8px] font-black">{p.name.charAt(0)}</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                       {formData.isBlocked && <span className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 dark:border-rose-900 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20">BLOQUEADA</span>}
                     </div>
@@ -563,21 +653,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         )}
                       </div>
 
-                      {/* Agenda Preferida - Match Screenshot */}
-                      <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700 shadow-sm space-y-3">
-                        <h4 className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-[0.1em] flex items-center gap-2">
-                          <Calendar size={18} /> AGENDA PREFERIDA
-                        </h4>
-                        {isEditing ? (
-                          <input
-                            className="w-full text-base md:text-sm font-black text-slate-950 dark:text-white bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-4 md:p-3 outline-none focus:border-slate-500"
-                            placeholder="Sextas pela manhã..."
-                            value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)}
-                          />
-                        ) : (
-                          <p className="text-sm font-black text-slate-950 dark:text-white">{localPrefDays || 'Sem preferência'}</p>
-                        )}
-                      </div>
+
 
                       {/* Notas de Estilo - Match Screenshot */}
                       <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700 shadow-sm space-y-3">
@@ -596,6 +672,62 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         )}
                       </div>
                     </div>
+
+                    {/* PROFISSIONAIS PREFERIDOS */}
+                    <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700 shadow-sm space-y-4">
+                      <label className="block text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-[0.1em] mb-2 flex items-center gap-2">
+                        <Users size={18} /> PROFISSIONAIS PREFERIDOS
+                      </label>
+                      {isEditing ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                          {providers.filter(p => p.active).map(provider => {
+                            const isSelected = localAssignedProviderIds.includes(provider.id);
+                            return (
+                              <button
+                                type="button"
+                                key={provider.id}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setLocalAssignedProviderIds(prev => prev.filter(id => id !== provider.id));
+                                  } else {
+                                    setLocalAssignedProviderIds(prev => [...prev, provider.id]);
+                                  }
+                                }}
+                                className={`p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${isSelected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' : 'border-slate-100 dark:border-zinc-700 hover:border-slate-300'}`}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-700 overflow-hidden flex-shrink-0">
+                                  {provider.avatar ? <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black">{provider.name.charAt(0)}</div>}
+                                </div>
+                                <div className="text-left min-w-0">
+                                  <p className={`text-xs font-black uppercase truncate ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-900 dark:text-gray-400'}`}>{provider.name}</p>
+                                  <p className="text-[9px] text-slate-500 uppercase">{provider.specialty}</p>
+                                </div>
+                                {isSelected && <div className="w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center ml-auto"><Check size={8} /></div>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {localAssignedProviderIds.length > 0 ? (
+                            localAssignedProviderIds.map(pid => {
+                              const p = providers.find(pr => pr.id === pid);
+                              if (!p) return null;
+                              return (
+                                <div key={pid} className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 pr-3 rounded-full overflow-hidden">
+                                  <div className="w-8 h-8 bg-slate-200 dark:bg-zinc-700">
+                                    {p.avatar ? <img src={p.avatar} alt={p.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black">{p.name.charAt(0)}</div>}
+                                  </div>
+                                  <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 py-1">{p.name}</span>
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-sm font-black text-slate-400 dark:text-slate-600 italic">Nenhum profissional preferencial atribuído.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
@@ -613,7 +745,36 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               <h5 className="text-xs font-black text-slate-950 dark:text-white uppercase">{h.description}</h5>
                               <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(h.date).toLocaleDateString()}</span>
                             </div>
-                            {h.details && <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium italic">"{h.details}"</p>}
+
+                            {/* Provider Info */}
+                            {(() => {
+                              const pName = providers.find(p => p.id === h.providerId)?.name;
+                              return pName ? (
+                                <p className="text-[9px] font-bold text-slate-600 dark:text-slate-300 uppercase mb-1">
+                                  Profissional: <span className="text-indigo-600 dark:text-indigo-400">{pName}</span>
+                                </p>
+                              ) : null;
+                            })()}
+
+                            {h.details && <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mb-1">{h.details}</p>}
+
+                            {/* Products Used */}
+                            {h.productsUsed && h.productsUsed.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {h.productsUsed.map((prod, idx) => (
+                                  <span key={idx} className="text-[8px] font-bold uppercase bg-slate-100 dark:bg-zinc-700 text-slate-500 dark:text-slate-300 px-1.5 py-0.5 rounded">
+                                    {prod}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Feedback */}
+                            {h.feedback && (
+                              <div className="mt-2 text-[9px] italic text-slate-400 border-l-2 border-slate-200 pl-2">
+                                "{h.feedback}" {h.rating ? `(${h.rating}⭐)` : ''}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))

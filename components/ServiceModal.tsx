@@ -139,7 +139,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const initialLines: ServiceLine[] = [{
             id: 'main',
             serviceId: appointment.serviceId,
-            providerId: appointment.providerId,
+            providerId: appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id || '',
             products: appointment.mainServiceProducts || [],
             currentSearchTerm: '',
             discount: appointment.discountAmount || 0,
@@ -728,12 +728,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 if (c.id === customer.id) {
                     const newEntries: CustomerHistoryItem[] = lines.map(line => {
                         const s = services.find(srv => srv.id === line.serviceId);
+                        const price = line.unitPrice - (line.discount || 0);
+                        const paymentStr = payments.length > 0
+                            ? payments.map(p => `${p.method}: R$${p.amount.toFixed(2)}`).join(', ')
+                            : (paymentMethod || 'Não informado');
+
                         return {
                             id: `${Date.now()}-${line.id}`,
                             date: dischargeDate,
-                            type: 'VISIT',
+                            type: 'VISIT' as 'VISIT',
                             description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
-                            details: `Pagamento: ${paymentMethod}${line.feedback ? ` | Feedback: ${line.feedback}` : ''}`,
+                            details: `Valor: R$ ${price.toFixed(2)} | Pagamento: ${paymentStr}`,
                             rating: line.rating,
                             feedback: line.feedback,
                             providerId: line.providerId,
@@ -1261,7 +1266,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setLines([...lines, {
             id: Date.now().toString(),
             serviceId: services[0].id,
-            providerId: providers.filter(p => p.active)[0].id,
+            providerId: customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id,
             products: [],
             currentSearchTerm: '',
             discount: 0,
@@ -1336,10 +1341,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             {onNavigate && (
                                 <button
                                     onClick={() => {
-                                        setEditCustomerName(customer.name);
-                                        setEditCustomerPhone(customer.phone);
-                                        setPreviousMode(mode);
-                                        setMode('CLIENT_EDIT');
+                                        if (onNavigate) {
+                                            const returnView = source === 'DAILY' ? ViewState.DAILY_APPOINTMENTS : ViewState.AGENDA;
+                                            onNavigate(ViewState.CLIENTES, { id: customer.id, returnTo: returnView });
+                                        }
                                     }}
                                     className="p-1 text-slate-500 hover:text-indigo-400 transition-colors"
                                     title="Editar Cliente"

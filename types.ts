@@ -104,6 +104,7 @@ export interface Customer {
   isBlocked?: boolean;
   blockReason?: string;
   assignedProviderId?: string;
+  assignedProviderIds?: string[]; // Lista de IDs de profissionais
   restrictedProviderIds?: string[]; // Lista de IDs de profissionais bloqueados para esta cliente
   history: CustomerHistoryItem[];
   preferences?: CustomerPreferences;
@@ -197,6 +198,8 @@ export interface Appointment {
     products?: string[]; // Lista de produtos vinculados a este serviço extra
   }[];
   combinedServiceNames?: string;
+  rating?: number;
+  feedback?: string;
 }
 
 export interface ChatMessage {

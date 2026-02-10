@@ -21,7 +21,7 @@ interface DailyAppointmentsProps {
   stock: StockItem[];
   nfseRecords: NFSeRecord[];
   isLoadingData?: boolean;
-  onNavigate?: (view: any) => void;
+  onNavigate?: (view: ViewState, payload?: any) => void;
 }
 
 export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, isLoadingData, onNavigate }) => {
@@ -408,6 +408,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           providers={providers}
           stock={stock}
           customers={customers}
+          onNavigate={onNavigate}
           onNavigateToCustomer={() => {
             setSelectedAppointmentForService(null);
             if (onNavigate) onNavigate(ViewState.CLIENTES, selectedAppointmentForService.customerId);

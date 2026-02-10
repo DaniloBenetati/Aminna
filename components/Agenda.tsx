@@ -182,11 +182,11 @@ export const Agenda: React.FC<AgendaProps> = ({
             if (selectedProviderId !== 'all') {
                 // Specific provider selected
                 isProvider = a.providerId === selectedProviderId ||
-                    a.additionalServices?.some(s => s.providerId === selectedProviderId);
+                    (a.additionalServices?.some(s => s.providerId === selectedProviderId) ?? false);
             } else if (visibleProviderIds.length > 0) {
                 // "All" selected but specific providers checked in sidebar
                 isProvider = visibleProviderIds.includes(a.providerId) ||
-                    a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId));
+                    (a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId)) ?? false);
             }
             // else: "All" selected and no providers checked = show all (isProvider stays true)
 
@@ -543,13 +543,14 @@ export const Agenda: React.FC<AgendaProps> = ({
     const handleAppointmentDrop = async (e: React.DragEvent, targetProviderId: string, targetTime: string) => {
         e.preventDefault();
         const appointmentId = e.dataTransfer.getData('appointmentId');
+        const sourceProviderId = e.dataTransfer.getData('sourceProviderId');
         if (!appointmentId) return;
 
         const appt = appointments.find(a => a.id === appointmentId);
         if (!appt) return;
 
         // If nothing changed, do nothing
-        if (appt.providerId === targetProviderId && appt.time === targetTime) return;
+        if (appt.providerId === targetProviderId && appt.time === targetTime && (!sourceProviderId || sourceProviderId === appt.providerId)) return;
 
         // Don't allow moving concluded or cancelled appointments
         if (appt.status === 'Concluído' || appt.status === 'Cancelado') {
@@ -558,24 +559,89 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
 
         try {
+            // Calculate time difference (delta) in minutes
+            const [oldHour, oldMin] = appt.time.split(':').map(Number);
+            const [newHour, newMin] = targetTime.split(':').map(Number);
+
+            const oldTotalMinutes = oldHour * 60 + oldMin;
+            const newTotalMinutes = newHour * 60 + newMin;
+            const deltaMinutes = newTotalMinutes - oldTotalMinutes;
+
+            let updatePayload: any = {};
+            let localUpdate: any = {};
+
+            // CHECK: Are we moving an ADDITIONAL service?
+            const additionalServiceIndex = appt.additionalServices?.findIndex(s => s.providerId === sourceProviderId);
+
+            if (additionalServiceIndex !== undefined && additionalServiceIndex >= 0 && sourceProviderId !== appt.providerId) {
+                // YES - Moving an additional service
+                // Only update THIS service's provider and time
+
+                const updatedServices = [...(appt.additionalServices || [])];
+                updatedServices[additionalServiceIndex] = {
+                    ...updatedServices[additionalServiceIndex],
+                    providerId: targetProviderId,
+                    startTime: targetTime // Set explicit time
+                };
+
+                updatePayload = { additional_services: updatedServices };
+                localUpdate = { additionalServices: updatedServices };
+
+                console.log(`Moving Additional Service index ${additionalServiceIndex} from ${sourceProviderId} to ${targetProviderId}`);
+
+            } else {
+                // NO - Moving Main Appointment (or logic defaults to main)
+                // Applies Delta to everything
+
+                let updatedAdditionalServices = appt.additionalServices;
+
+                if (deltaMinutes !== 0 && appt.additionalServices && appt.additionalServices.length > 0) {
+                    updatedAdditionalServices = appt.additionalServices.map(service => {
+                        const [sHour, sMin] = (service.startTime || appt.time).split(':').map(Number);
+                        const currentTotal = sHour * 60 + sMin;
+                        const newTotal = currentTotal + deltaMinutes;
+
+                        const h = Math.floor(newTotal / 60);
+                        const m = newTotal % 60;
+                        const newTime = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+                        return {
+                            ...service,
+                            startTime: newTime
+                        };
+                    });
+                }
+
+                updatePayload = {
+                    provider_id: targetProviderId,
+                    time: targetTime,
+                    additional_services: updatedAdditionalServices
+                };
+
+                localUpdate = {
+                    providerId: targetProviderId,
+                    time: targetTime,
+                    additionalServices: updatedAdditionalServices
+                };
+                console.log(`Moving Main Appointment from ${sourceProviderId} to ${targetProviderId}`);
+            }
+
             const { error } = await supabase
                 .from('appointments')
-                .update({
-                    provider_id: targetProviderId,
-                    time: targetTime
-                })
+                .update(updatePayload)
                 .eq('id', appointmentId);
 
             if (error) throw error;
 
             setAppointments(prev => prev.map(a =>
                 a.id === appointmentId
-                    ? { ...a, providerId: targetProviderId, time: targetTime }
+                    ? { ...a, ...localUpdate }
                     : a
             ));
 
             // Feedback visual opcional
-            console.log(`Appointment ${appointmentId} moved to ${targetProviderId} at ${targetTime}`);
+            console.log(`Appointment ${appointmentId} updated successfully`);
+
         } catch (error) {
             console.error('Error moving appointment:', error);
             alert('Erro ao mover agendamento. Tente novamente.');
@@ -796,7 +862,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center">
                             <Clock size={14} className="text-slate-400" />
                         </div>
-                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto scrollbar-hide flex">
+                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto scrollbar-hide flex pb-1">
                             {activeVisibileProviders.map(p => (
                                 <div
                                     key={p.id}
@@ -804,11 +870,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     style={{ width: `${160 * zoomLevel}px` }}
                                 >
                                     <div className="flex justify-center mb-1">
-                                        <Avatar src={p.avatarUrl || p.avatar} name={p.name} size="w-8 h-8" />
+                                        <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
                                     </div>
                                     <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
                                 </div>
                             ))}
+                            {/* Spacer */}
+                            <div className="flex-shrink-0 w-8"></div>
                         </div>
                         {/* Zoom Controls */}
                         <div className="flex items-center gap-1 px-3 border-l border-slate-200 dark:border-zinc-800">
@@ -1015,7 +1083,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     ) : (
                         /* Time Slots (Day View) */
-                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto scrollbar-hide relative">
+                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto relative">
                             {hours.map(hour => (
                                 <div
                                     key={hour}
@@ -1092,6 +1160,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 draggable={appt.status !== 'Concluído' && appt.status !== 'Cancelado'}
                                                                 onDragStart={(e) => {
                                                                     e.dataTransfer.setData('appointmentId', appt.id);
+                                                                    e.dataTransfer.setData('sourceProviderId', p.id); // Track where it came from
                                                                     e.dataTransfer.effectAllowed = 'move';
                                                                 }}
                                                                 onClick={() => handleAppointmentClick(appt)}
@@ -1160,7 +1229,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-start mb-2">
                                                                                             <div className="flex-1">
                                                                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
-                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {ca.duration || 30} min</p>
+                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {mainSrv?.durationMinutes || 30} min</p>
                                                                                             </div>
                                                                                             <div className="text-right">
                                                                                                 <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
@@ -1193,6 +1262,36 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 .toFixed(0)}
                                                                         </p>
                                                                     </div>
+
+                                                                    {/* Preferred Professionals Section */}
+                                                                    {(() => {
+                                                                        const cust = customers.find(c => c.id === appt.customerId);
+                                                                        if (cust?.assignedProviderIds && cust.assignedProviderIds.length > 0) {
+                                                                            return (
+                                                                                <div className="mt-3 pt-3 border-t border-slate-100 dark:border-zinc-800">
+                                                                                    <p className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-2">Profissionais Preferidos</p>
+                                                                                    <div className="flex -space-x-2 overflow-hidden">
+                                                                                        {cust.assignedProviderIds.map(pid => {
+                                                                                            const p = providers.find(pr => pr.id === pid);
+                                                                                            if (!p) return null;
+                                                                                            return (
+                                                                                                <div key={pid} className="inline-block h-6 w-6 rounded-full ring-2 ring-white dark:ring-zinc-900 bg-slate-200 dark:bg-zinc-700 overflow-hidden" title={p.name}>
+                                                                                                    {p.avatar ? (
+                                                                                                        <img src={p.avatar} alt={p.name} className="h-full w-full object-cover" />
+                                                                                                    ) : (
+                                                                                                        <div className="h-full w-full flex items-center justify-center text-[8px] font-black text-slate-500 dark:text-slate-300">
+                                                                                                            {p.name.charAt(0)}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                        return null;
+                                                                    })()}
                                                                 </div>
                                                             </div>
                                                         );
@@ -1200,6 +1299,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 </div>
                                             );
                                         })}
+                                        {/* Spacer */}
+                                        <div className="flex-shrink-0 w-8"></div>
                                     </div>
                                 </div>
                             ))}

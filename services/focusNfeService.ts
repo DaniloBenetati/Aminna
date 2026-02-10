@@ -234,13 +234,55 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         // 6. Call Supabase Edge Function (bypasses CORS)
         const edgeFunctionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/issue-nfse`;
 
-        console.log('🚀 [FOCUS NFE] Calling Edge Function...', { url: edgeFunctionUrl, payload: { nfseData: { reference, payload: nfseRequest }, environment: fiscalConfig.focusNfeEnvironment } });
+        // Get current session to use valid JWT
+        // ATTEMPT REFRESH FIRST to ensure we don't send a stale token
+        let { data: { session } } = await supabase.auth.getSession();
+
+        // Check for expiry or refresh if needed
+        if (session) {
+            const expiresAt = session.expires_at; // timestamp
+            const now = Math.floor(Date.now() / 1000);
+
+            // Log for debugging
+            if (expiresAt) {
+                const diff = expiresAt - now;
+                console.log(`[FOCUS NFE] Token expires at ${expiresAt}, now is ${now}. Diff: ${diff}s`);
+
+                // If token is expiring in less than 5 minutes (300s), refresh it
+                if (diff < 300) {
+                    console.log('[FOCUS NFE] Token expiring soon, refreshing session...');
+                    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+                    if (refreshError) {
+                        console.error('❌ [FOCUS NFE] Failed to refresh session:', refreshError);
+                    } else if (refreshData.session) {
+                        console.log('✅ [FOCUS NFE] Session refreshed successfully.');
+                        session = refreshData.session;
+                    }
+                }
+            } else {
+                console.log('[FOCUS NFE] Token has no expiration time.');
+            }
+        }
+
+        if (!session?.access_token) {
+            console.error('❌ [FOCUS NFE] No active session found. Cannot issue NFSe.');
+            throw new Error('Usuário não autenticado. Por favor, faça login novamente.');
+        }
+
+        const jwt = session.access_token;
+
+        console.log('🚀 [FOCUS NFE] Calling Edge Function...', {
+            url: edgeFunctionUrl,
+            payload: { nfseData: { reference, payload: nfseRequest }, environment: fiscalConfig.focusNfeEnvironment },
+            hasAuth: !!jwt,
+            tokenPrefix: jwt.substring(0, 10) + '...'
+        });
 
         const response = await fetch(edgeFunctionUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+                'Authorization': `Bearer ${jwt}`,
             },
             body: JSON.stringify({
                 nfseData: {

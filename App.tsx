@@ -17,7 +17,7 @@ import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
-import { NFSeTestButton } from './components/NFSeTestButton';
+
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
@@ -60,6 +60,7 @@ const App: React.FC = () => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [simulatedProfile, setSimulatedProfile] = useState<UserProfile | null>(null);
+  const [returnView, setReturnView] = useState<ViewState | null>(null);
 
   // THEME STATE
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -121,6 +122,11 @@ const App: React.FC = () => {
       }
 
       // 1. Parallel Fetching for non-batched/filtered data
+      // Optimization: Filter logs and records by date (last 3 months) to prevent slow loading
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const minDate = threeMonthsAgo.toISOString().split('T')[0];
+
       const [
         { data: providersData },
         { data: servicesData },
@@ -140,17 +146,17 @@ const App: React.FC = () => {
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
         supabase.from('stock_items').select('*'),
-        supabase.from('usage_logs').select('*'),
+        supabase.from('usage_logs').select('*').gte('date', minDate),
         supabase.from('campaigns').select('*'),
         supabase.from('pantry_items').select('*'),
-        supabase.from('pantry_logs').select('*'),
+        supabase.from('pantry_logs').select('*').gte('date', minDate),
         supabase.from('leads').select('*'),
         supabase.from('partners').select('*'),
         supabase.from('expense_categories').select('*'),
         supabase.from('payment_settings').select('*'),
         supabase.from('commission_settings').select('*'),
         supabase.from('suppliers').select('*'),
-        supabase.from('nfse_records').select('*')
+        supabase.from('nfse_records').select('*').gte('created_at', minDate)
       ]);
 
       // Map and Set Providers
@@ -309,6 +315,8 @@ const App: React.FC = () => {
           history: c.history || [],
           status: c.status || 'Ativo',
           blockReason: c.block_reason,
+          assignedProviderId: c.assigned_provider_id,
+          assignedProviderIds: c.assigned_provider_ids || [],
           packageName: c.package_name,
           packageSessions: c.package_sessions,
           packageSessionsUsed: c.package_sessions_used
@@ -316,9 +324,8 @@ const App: React.FC = () => {
       }
 
       // 3. Fetch Appointments - Filtered by date range (last 3 months)
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      const minDate = threeMonthsAgo.toISOString().split('T')[0];
+      // minDate is already defined above
+
 
       let allAppts: any[] = [];
       let apptStart = 0;
@@ -427,6 +434,9 @@ const App: React.FC = () => {
             services={services}
             userProfile={simulatedProfile || userProfile}
             selectedCustomerId={selectedCustomerId}
+            returnView={returnView}
+            onNavigate={setCurrentView}
+            providers={providers}
           />
         );
       case ViewState.CRM:
@@ -469,8 +479,15 @@ const App: React.FC = () => {
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
             onNavigate={(view, payload) => {
-              if (view === ViewState.CLIENTES && typeof payload === 'string') {
-                setSelectedCustomerId(payload);
+              if (view === ViewState.CLIENTES) {
+                if (typeof payload === 'string') {
+                  setSelectedCustomerId(payload);
+                } else if (payload && typeof payload === 'object' && payload.id) {
+                  setSelectedCustomerId(payload.id);
+                  if (payload.returnTo) {
+                    setReturnView(payload.returnTo);
+                  }
+                }
               }
               setCurrentView(view);
             }}
@@ -492,8 +509,15 @@ const App: React.FC = () => {
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
             onNavigate={(view, payload) => {
-              if (view === ViewState.CLIENTES && typeof payload === 'string') {
-                setSelectedCustomerId(payload);
+              if (view === ViewState.CLIENTES) {
+                if (typeof payload === 'string') {
+                  setSelectedCustomerId(payload);
+                } else if (payload && typeof payload === 'object' && payload.id) {
+                  setSelectedCustomerId(payload.id);
+                  if (payload.returnTo) {
+                    setReturnView(payload.returnTo);
+                  }
+                }
               }
               setCurrentView(view);
             }}
@@ -547,7 +571,7 @@ const App: React.FC = () => {
       onStopSimulation={() => setSimulatedProfile(null)}
     >
       {renderView()}
-      <NFSeTestButton />
+
     </Layout>
   );
 };
