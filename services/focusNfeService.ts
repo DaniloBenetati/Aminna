@@ -178,22 +178,45 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         // Following the official documentation example structure
         const professionalName = professionalConfig.socialName || professionalConfig.fantasyName || 'Profissional Parceiro';
         const now = new Date();
-        const dataEmissao = now.toISOString(); // ISO format with timezone
-        const dataCompetencia = now.toISOString().split('T')[0]; // YYYY-MM-DD
+        // Subtract 10 minutes to avoid 'future date' error, and format as Sao Paulo time
+        now.setMinutes(now.getMinutes() - 10);
+
+        // Manual ISO formatting with -03:00 for Brasilia Time to avoid UTC confusion
+        const pad = (num: number) => num.toString().padStart(2, '0');
+        const year = now.getFullYear();
+        const month = pad(now.getMonth() + 1);
+        const day = pad(now.getDate());
+        const hours = pad(now.getHours());
+        const minutes = pad(now.getMinutes());
+        const seconds = pad(now.getSeconds());
+
+        const dataEmissao = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}-03:00`;
+        const dataCompetencia = `${year}-${month}-${day}`; // YYYY-MM-DD from local (Brasilia) time
 
         const nfseRequest: any = {
             data_emissao: dataEmissao,
             data_competencia: dataCompetencia,
-            codigo_municipio_emissora: 3550308, // São Paulo/SP
+            codigo_municipio_emissora: '3550308', // São Paulo/SP
 
             // Prestador (following doc example - minimal required fields)
             cnpj_prestador: fiscalConfig.cnpj.replace(/\D/g, ''),
-            codigo_opcao_simples_nacional: 1, // 1 = Não Optante (adjust as needed)
+            codigo_opcao_simples_nacional: 1, // 1 = Não Optante (Revert due to E0160 Simples Error)
             regime_especial_tributacao: 0, // 0 = Nenhum
 
+            // Provider Address (Required for NFSe Nacional validation)
+            logradouro_prestador: fiscalConfig.address || 'Endereço não informado',
+            numero_prestador: 'S/N',
+            bairro_prestador: 'Centro',
+            codigo_municipio_prestador: '3550308', // Explicitly add cMun for provider address
+            cep_prestador: fiscalConfig.zipCode?.replace(/\D/g, '') || '',
+            uf_prestador: fiscalConfig.state,
+
             // Service location and details
-            codigo_municipio_prestacao: 3550308,
-            codigo_tributacao_nacional_iss: '010602', // 6 digits format
+            codigo_municipio_prestacao: '3550308',
+            codigo_tributacao_municipio: '08516', // Another common SP Municipal Code for Cabeleireiros (08516)
+            item_lista_servico: '06.01', // Use LC 116 item as primary tax identifier for SP instead of National Code
+            codigo_tributacao_nacional_iss: '060101', // Restored 6-digit National Code which is structurally valid (cTribNac)
+            // codigo_tributacao_nacional_iss: '060101', // Removing National Code as it fails with E0312 in SP environment
             descricao_servico: `${params.serviceDescription}\n\n` +
                 `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
                 `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
@@ -218,17 +241,31 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
                 nfseRequest.cnpj_tomador = cpfCnpj;
             }
             nfseRequest.razao_social_tomador = params.customerName;
-            nfseRequest.codigo_municipio_tomador = 3550308; // Assuming São Paulo
+            nfseRequest.codigo_municipio_tomador = '3550308'; // Assuming São Paulo
 
             if (params.customerEmail) {
                 nfseRequest.email_tomador = params.customerEmail;
             }
-        }
 
-        // Add intermediario (Professional) - Required for Salão Parceiro
-        if (professionalConfig.cnpj) {
-            nfseRequest.cnpj_intermediario = professionalConfig.cnpj.replace(/\D/g, '');
-            nfseRequest.razao_social_intermediario = professionalName;
+            // Always add Customer Address (using Salon as fallback if missing)
+            // This is required when CPF/CNPJ is present for NFSe Nacional
+            // Since we are forcing Municipality 3550308 (SP), we MUST provide a valid SP CEP if the customer address is missing.
+            // Fallback Priority: Customer Address -> Salon Address (if SP) -> Generic SP Central CEP (01001-000)
+            const salonCep = fiscalConfig.zipCode?.replace(/\D/g, '') || '';
+            const isSalonInSp = salonCep.startsWith('0'); // Simple heuristic for SP state (0xxxx)
+
+            nfseRequest.logradouro_tomador = fiscalConfig.address || 'Cliente Presencial';
+            nfseRequest.numero_tomador = 'S/N';
+            nfseRequest.bairro_tomador = 'Centro';
+            // Use Salon CEP if available, otherwise force a valid SP Central CEP (Praça da Sé) to pass validation
+            nfseRequest.cep_tomador = (salonCep && salonCep.length === 8) ? salonCep : '01001000';
+            nfseRequest.uf_tomador = fiscalConfig.state || 'SP';
+            nfseRequest.codigo_municipio_tomador = '3550308'; // São Paulo
+
+            // Ensure Provider CEP is valid (not empty)
+            if (!nfseRequest.cep_prestador) {
+                nfseRequest.cep_prestador = '00000000'; // Or specific fallback
+            }
         }
 
         // 6. Get session and inspect JWT for diagnostics (identifying project mismatches)

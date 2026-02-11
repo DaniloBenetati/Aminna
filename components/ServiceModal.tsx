@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -1169,11 +1169,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 .limit(1)
                 .single();
 
-            if (error && error.code !== 'PGRST116') throw error;
+            console.log('🔍 [NFSe Debug] Fetching record for appointment:', appointment.id);
+            if (error) console.log('❌ [NFSe Debug] Fetch error:', error);
+            if (data) console.log('✅ [NFSe Debug] Record found:', data);
 
             let record = data;
 
             if (!record && error?.code === 'PGRST116') {
+                console.log('⚠️ [NFSe Debug] No record found (PGRST116)');
                 setNfseStatus('idle');
                 setNfseData(null);
                 return;
@@ -1188,7 +1191,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
 
             setNfseData(record);
-            setNfseStatus('success');
+            if (record && record.status === 'error') {
+                setNfseError(typeof record.error_message === 'string' ? record.error_message : JSON.stringify(record.error_message) || 'Erro na emissão');
+                setNfseStatus('error');
+            } else {
+                setNfseStatus('success');
+            }
         } catch (error: any) {
             console.error('Error refreshing NFSe status:', error);
             setNfseError('Erro ao atualizar status da NFSe');
@@ -2380,6 +2388,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 </p>
                                                 {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
                                             </div>
+
+                                            {/* Show refresh button if processing */}
+                                            {nfseData?.status !== 'issued' && (
+                                                <button
+                                                    onClick={refreshNFSeStatus}
+                                                    disabled={nfseStatus === 'loading'}
+                                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                >
+                                                    <RefreshCw size={14} className={nfseStatus === 'loading' ? 'animate-spin' : ''} />
+                                                    {nfseStatus === 'loading' ? 'Verificando...' : 'Atualizar Status'}
+                                                </button>
+                                            )}
 
                                             <div className="grid grid-cols-2 gap-2">
                                                 {nfseData?.pdf_url && (

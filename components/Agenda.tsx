@@ -39,10 +39,21 @@ export const Agenda: React.FC<AgendaProps> = ({
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
-    const [dateRef, setDateRef] = useState(new Date());
+    // Helper to get local date object (midnight) to strictly avoid UTC shifts
+    const getLocalMidnight = () => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    };
+
+    const getLocalDateString = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const [dateRef, setDateRef] = useState(getLocalMidnight());
     const [customRange, setCustomRange] = useState({
-        start: new Date().toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
+        start: getLocalDateString(),
+        end: getLocalDateString()
     });
 
     const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
