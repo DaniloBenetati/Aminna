@@ -1,46 +1,64 @@
-// Simple script to apply the missing database columns directly
+// Script to verify Supabase connection and Full Schema Synchronization
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://eedazqhgvvelcjurigla.supabase.co';
-const supabaseKey = 'sb_publishable_s9Liw_EHf5u10063n2-HVA_njRpfSb1';
+const supabaseKey = 'sb_publishable_s9Liw_EHf5u10063n2-HVA_njRpfSb1'; // Anon key
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function applyMigration() {
-    console.log('🔧 Applying database migration...\n');
+async function verifySystem() {
+    console.log('🔌 Testing Connection to Supabase...');
+    console.log('   URL:', supabaseUrl);
 
     try {
-        // First, check if the columns already exist by trying to query them
-        console.log('📊 Checking current database schema...');
-        const { data: testData, error: testError } = await supabase
-            .from('providers')
-            .select('id, order, commission_history')
-            .limit(1);
+        // 1. Basic Connection & Providers Check
+        const { data: providers, error: connError } = await supabase.from('providers').select('count', { count: 'exact', head: true });
 
-        if (!testError) {
-            console.log('✅ Columns already exist! Migration may have been applied previously.');
-            console.log('   The database schema is correct.');
-            return;
+        if (connError) {
+            throw new Error(`Connection Failed: ${connError.message}`);
+        }
+        console.log('✅ Connection Successful!');
+        console.log(`   Found ${providers?.length ?? 'active'} providers.`);
+
+        console.log('\n📊 Verifying Schema Sync (Checking key tables and columns)...');
+
+        const checks = [
+            { table: 'appointments', column: 'end_time', name: 'Agenda Fix (end_time)' },
+            { table: 'providers', column: 'custom_durations', name: 'Agenda Fix (custom_durations)' },
+            { table: 'leads', column: 'id', name: 'CRM Module (leads table)' },
+            { table: 'campaigns', column: 'id', name: 'Marketing Module (campaigns table)' },
+            { table: 'expenses', column: 'id', name: 'Finance Module (expenses table)' },
+            { table: 'stock_items', column: 'id', name: 'Stock Module (stock_items table)' },
+            { table: 'expense_categories', column: 'id', name: 'Settings (expense_categories)' },
+            { table: 'payment_settings', column: 'id', name: 'Settings (payment_settings)' },
+            { table: 'commission_settings', column: 'id', name: 'Settings (commission_settings)' }
+        ];
+
+        let allGood = true;
+
+        for (const check of checks) {
+            const { error } = await supabase.from(check.table).select(check.column).limit(1);
+            if (error) {
+                console.log(`❌ Missing: ${check.name} - Table/Column not found.`);
+                console.log(`   Error: ${error.message}`);
+                allGood = false;
+            } else {
+                console.log(`✅ Verified: ${check.name}`);
+            }
         }
 
-        // If we get here, the columns don't exist
-        console.log('⚠️  Columns missing. Manual migration required.\n');
-        console.log('Please follow these steps:\n');
-        console.log('1. Open your Supabase Dashboard: https://supabase.com/dashboard/project/eedazqhgvvelcjurigla');
-        console.log('2. Navigate to: SQL Editor (in the left sidebar)');
-        console.log('3. Click "New Query"');
-        console.log('4. Copy and paste this SQL:\n');
-        console.log('--------- SQL START ---------');
-        console.log('ALTER TABLE public.providers ADD COLUMN IF NOT EXISTS "order" INTEGER;');
-        console.log('ALTER TABLE public.providers ADD COLUMN IF NOT EXISTS commission_history JSONB DEFAULT \\'[]\\':jsonb;');
-        console.log('CREATE INDEX IF NOT EXISTS idx_providers_order ON public.providers("order");');
-        console.log('--------- SQL END ---------\n');
-        console.log('5. Click "Run" or press Ctrl+Enter');
-        console.log('6. Run this script again to verify\n');
+        if (allGood) {
+            console.log('\n✨ EXCELLENT! The database is fully synchronized.');
+            console.log('   All modules (Agenda, CRM, Finance, Stock) should work correctly.');
+        } else {
+            console.log('\n⚠️  SOME PARTS ARE MISSING.');
+            console.log('   Please run the "full_schema_sync.sql" script in your Supabase Dashboard.');
+        }
 
     } catch (error) {
-        console.error('❌ Error:', error.message);
+        console.error('\n❌ CRITICAL ERROR:', error.message);
+        console.log('   Please check your internet connection or Supabase project status.');
     }
 }
 
-applyMigration();
+verifySystem();

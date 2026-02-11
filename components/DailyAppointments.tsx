@@ -46,7 +46,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
       .filter(a => {
         const isDateMatch = a.date === dateStr && a.status !== 'Cancelado';
         const customer = customers.find(c => c.id === a.customerId);
-        const isSearchMatch = customer?.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : 'CLIENTE AVULSA'.toLowerCase().includes(searchTerm.toLowerCase());
         const isStatusMatch = statusFilter === 'all' || a.status === statusFilter;
         return isDateMatch && isSearchMatch && isStatusMatch;
       })
@@ -108,11 +108,11 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         const result = await issueNFSe({
           appointmentId: appt.id,
           customerId: appt.customerId,
-          customerName: customer.name,
+          customerName: customer?.name || 'CLIENTE AVULSA',
           customerCpfCnpj: customer.cpf,
           customerEmail: customer.email,
           providerId: appt.providerId,
-          totalValue: appt.pricePaid || appt.price || service.price,
+          totalValue: appt.pricePaid || appt.bookedPrice || service.price,
           serviceDescription: appt.combinedServiceNames || service.name
         });
 
@@ -120,12 +120,12 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           successCount++;
         } else {
           failedCount++;
-          errors.push(`${customer.name}: ${result.error || 'Erro desconhecido'}`);
+          errors.push(`${customer?.name || 'CLIENTE AVULSA'}: ${result.error || 'Erro desconhecido'}`);
         }
       } catch (error: any) {
         console.error(`Error issuing batch NFSe for appt ${appt.id}:`, error);
         failedCount++;
-        errors.push(`${customer.name}: ${error.message || 'Erro desconhecido'}`);
+        errors.push(`${customer?.name || 'CLIENTE AVULSA'}: ${error.message || 'Erro desconhecido'}`);
       }
     }
 
@@ -153,7 +153,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
   }, [appointments, selectedDate]);
 
   const handleSendWhatsApp = (appt: Appointment) => {
-    const customer = customers.find(c => c.id === appt.customerId);
+    const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
     const service = services.find(s => s.id === appt.serviceId);
     if (!customer || !service) return;
 
@@ -177,7 +177,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
 
     const clock = getClockEmoji(appt.time);
     const appDateBr = new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR');
-    const firstName = customer.name.split(' ')[0];
+    const firstName = (customer?.name || 'CLIENTE AVULSA').split(' ')[0];
 
     // Clean time display (e.g., 18:00 -> 18h)
     const displayTime = appt.time.endsWith(':00') ? appt.time.split(':')[0] + 'h' : appt.time.replace(':', 'h');
@@ -311,7 +311,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         </div>
 
         {filteredAppointments.length > 0 ? filteredAppointments.map(appt => {
-          const customer = customers.find(c => c.id === appt.customerId);
+          const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
           const service = services.find(s => s.id === appt.serviceId);
           const hasRestriction = !!customer?.preferences?.restrictions;
 
@@ -396,7 +396,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         <ServiceModal
           appointment={selectedAppointmentForService}
           allAppointments={appointments}
-          customer={customers.find(c => c.id === selectedAppointmentForService.customerId)!}
+          customer={customers.find(c => c.id?.toLowerCase() === selectedAppointmentForService.customerId?.toLowerCase())!}
           onClose={() => setSelectedAppointmentForService(null)}
           onUpdateAppointments={setAppointments}
           onUpdateCustomers={setCustomers}
@@ -409,10 +409,6 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           stock={stock}
           customers={customers}
           onNavigate={onNavigate}
-          onNavigateToCustomer={() => {
-            setSelectedAppointmentForService(null);
-            if (onNavigate) onNavigate(ViewState.CLIENTES, selectedAppointmentForService.customerId);
-          }}
         />
       )}
     </div>

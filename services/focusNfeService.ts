@@ -286,7 +286,12 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         const focusResponse: FocusNFeResponse = edgeResponse.data;
 
         // 7. Create NFSe record in database
-        const nfseStatus = edgeResponse.success ? NFSeStatus.PROCESSING : NFSeStatus.ERROR;
+        let nfseStatus = edgeResponse.success ? NFSeStatus.PROCESSING : NFSeStatus.ERROR;
+
+        // Check if already authorized (common in Sandbox or synchronous processing)
+        if (edgeResponse.success && focusResponse && focusResponse.status === 'autorizado') {
+            nfseStatus = NFSeStatus.ISSUED;
+        }
 
         const { data: nfseRecord, error: dbError } = await supabase
             .from('nfse_records')
@@ -361,16 +366,28 @@ export const queryNFSeStatus = async (nfseRecordId: string): Promise<{ success: 
         }
 
         // Query Focus NFe API
-        const apiUrl = `${getFocusNfeUrl(fiscalConfig.focusNfeEnvironment)}/v2/nfse/${nfseRecord.reference}`;
-
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Basic ${btoa(fiscalConfig.focusNfeToken + ':')}`,
+        // Query Focus NFe API via Edge Function Proxy
+        const { data: edgeResponse, error: invokeError } = await supabase.functions.invoke('issue-nfse', {
+            body: {
+                nfseData: { reference: nfseRecord.reference },
+                environment: fiscalConfig.focusNfeEnvironment,
+                action: 'get'
             },
+            headers: {
+                'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY
+            }
         });
 
-        const focusResponse: FocusNFeResponse = await response.json();
+        if (invokeError) {
+            console.error('Error invoking query function:', invokeError);
+            throw new Error(invokeError.message);
+        }
+
+        if (!edgeResponse || !edgeResponse.success) {
+            throw new Error(edgeResponse?.error || 'Erro ao consultar status da NFSe');
+        }
+
+        const focusResponse = edgeResponse.data;
 
         // Update record
         const updates: any = {
@@ -423,20 +440,26 @@ export const cancelNFSe = async (nfseRecordId: string, reason: string): Promise<
             return { success: false, error: 'NFSe não pode ser cancelada' };
         }
 
-        const apiUrl = `${getFocusNfeUrl(fiscalConfig.focusNfeEnvironment)}/v2/nfse/${nfseRecord.reference}`;
-
-        const response = await fetch(apiUrl, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Basic ${btoa(fiscalConfig.focusNfeToken + ':')}`,
+        const { data: edgeResponse, error: invokeError } = await supabase.functions.invoke('issue-nfse', {
+            body: {
+                nfseData: {
+                    reference: nfseRecord.reference,
+                    payload: { justificativa: reason }
+                },
+                environment: fiscalConfig.focusNfeEnvironment,
+                action: 'cancel'
             },
-            body: JSON.stringify({ justificativa: reason }),
+            headers: {
+                'apikey': (import.meta as any).env.VITE_SUPABASE_ANON_KEY
+            }
         });
 
-        if (!response.ok) {
-            const error = await response.json();
-            return { success: false, error: error.mensagem || 'Erro ao cancelar NFSe' };
+        if (invokeError) {
+            throw new Error(invokeError.message);
+        }
+
+        if (!edgeResponse || !edgeResponse.success) {
+            return { success: false, error: edgeResponse?.error || 'Erro ao cancelar NFSe' };
         }
 
         await supabase
@@ -574,6 +597,7 @@ export const uploadCertificate = async (file: File, password: string): Promise<{
 // Export service functions
 export const focusNfeService = {
     issueNFSe,
+    queryNFSeStatus,
     cancelNFSe,
     registerCompany,
     uploadCertificate

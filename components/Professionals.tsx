@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers } from 'lucide-react';
+import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
 
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -46,6 +46,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalSocialName?: string;
         fiscalFantasyName?: string;
         fiscalVerified?: boolean;
+        customDurations?: Record<string, number>;
     }>({
         name: '',
         phone: '',
@@ -56,6 +57,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         birthDate: '',
         active: true,
         workDays: [1, 2, 3, 4, 5, 6], // Default Mon-Sat
+        customDurations: {},
         // Fiscal data
         fiscalCnpj: '',
         fiscalMunicipalRegistration: '',
@@ -111,8 +113,13 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     const removeSpecialty = (spec: string) => {
         const currentSpecs = formData.specialties || [];
         const filtered = currentSpecs.filter(s => s !== spec);
+
+        // Also remove custom duration if it exists
+        const newDurations = { ...(formData.customDurations || {}) };
+        delete newDurations[spec];
+
         // Do NOT change the Title (specialty) when removing a service
-        setFormData({ ...formData, specialties: filtered });
+        setFormData({ ...formData, specialties: filtered, customDurations: newDurations });
     };
 
     const handleAddGroup = (category: string) => {
@@ -308,7 +315,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 active: p.active,
                 work_days: p.workDays,
                 avatar: p.avatar,
-                order: p.order
+                order: p.order,
+                custom_durations: p.customDurations || {}
             }));
             await supabase.from('providers').upsert(dbUpdates);
         } else {
@@ -336,7 +344,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             fiscalCnpj: '',
             fiscalMunicipalRegistration: '',
             fiscalSocialName: '',
-            fiscalFantasyName: ''
+            fiscalFantasyName: '',
+            customDurations: {}
         });
         setIsModalOpen(true);
     };
@@ -409,7 +418,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             fiscalCnpj: '', // Reset first
             fiscalMunicipalRegistration: '',
             fiscalSocialName: '',
-            fiscalFantasyName: ''
+            fiscalFantasyName: '',
+            customDurations: provider.customDurations || {}
         });
 
         // Fetch specific fiscal data
@@ -480,6 +490,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             active: formData.active,
             work_days: formData.workDays || [],
             avatar: formData.avatar,
+            custom_durations: formData.customDurations || {},
             order: editingProvider ? undefined : providers.length // Set last order for new items (undefined for updates to ignore)
         };
 
@@ -1038,22 +1049,50 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             </div>
                                         </div>
 
-                                        {/* List */}
                                         <div>
                                             <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase mb-2 ml-1">Selecionados ({formData.specialties?.length || 0})</label>
-                                            <div className="flex flex-wrap gap-2 min-h-[40px]">
-                                                {formData.specialties && formData.specialties.length > 0 ? formData.specialties.map(spec => (
-                                                    <span key={spec} className="bg-indigo-600 text-white pl-3 pr-2 py-1.5 rounded-lg text-[10px] font-black uppercase flex items-center gap-2 shadow-sm animate-in zoom-in duration-200">
-                                                        {spec}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removeSpecialty(spec)}
-                                                            className="bg-white/20 hover:bg-white/40 rounded-full p-0.5 transition-colors"
-                                                        >
-                                                            <X size={12} />
-                                                        </button>
-                                                    </span>
-                                                )) : (
+                                            <div className="flex flex-col gap-2">
+                                                {formData.specialties && formData.specialties.length > 0 ? formData.specialties.map(spec => {
+                                                    const service = services.find(s => s.name === spec);
+                                                    const defaultDur = service?.durationMinutes || 30;
+                                                    const customDur = formData.customDurations?.[spec];
+
+                                                    return (
+                                                        <div key={spec} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2.5 rounded-xl animate-in zoom-in duration-200 shadow-sm">
+                                                            <div className="flex items-center gap-2 overflow-hidden">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeSpecialty(spec)}
+                                                                    className="bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 p-1.5 rounded-lg hover:bg-rose-100 transition-colors flex-shrink-0"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                                <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate">{spec}</span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                                                                <div className="relative">
+                                                                    <Clock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder={defaultDur.toString()}
+                                                                        value={customDur || ''}
+                                                                        onChange={e => {
+                                                                            const val = e.target.value ? parseInt(e.target.value) : undefined;
+                                                                            const newDurs = { ...(formData.customDurations || {}) };
+                                                                            if (val === undefined) delete newDurs[spec];
+                                                                            else newDurs[spec] = val;
+                                                                            setFormData({ ...formData, customDurations: newDurs });
+                                                                        }}
+                                                                        className="w-20 pl-8 pr-2 py-1.5 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-lg text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all"
+                                                                        title="Duração personalizada (minutos)"
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[8px] font-bold text-slate-400 uppercase">min</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }) : (
                                                     <span className="text-sm font-bold text-slate-400 italic py-2">Nenhum serviço vinculado.</span>
                                                 )}
                                             </div>

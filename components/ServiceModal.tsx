@@ -8,6 +8,22 @@ import { focusNfeService } from '../services/focusNfeService';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
+const calculateEndTime = (startTime: string, durationMinutes: number, provider?: Provider, serviceName?: string) => {
+    if (!startTime) return '';
+
+    // Use professional-specific duration if available
+    let duration = durationMinutes;
+    if (provider && serviceName && provider.customDurations && provider.customDurations[serviceName]) {
+        duration = provider.customDurations[serviceName];
+    }
+
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+};
+
 interface ServiceLine {
     id: string;
     serviceId: string;
@@ -22,6 +38,7 @@ interface ServiceLine {
     isEditingInCheckout?: boolean;
     unitPrice: number;
     startTime: string;
+    endTime: string;
     appointmentId?: string; // Tracks original appointment for merged services
 }
 
@@ -149,6 +166,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             feedback: '',
             unitPrice: appointment.bookedPrice || mainService?.price || 0,
             startTime: appointment.time,
+            endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
             appointmentId: appointment.id
         }];
 
@@ -167,6 +185,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     feedback: '',
                     unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
                     startTime: extra.startTime || appointment.time,
+                    endTime: extra.endTime || (() => {
+                        const srv = services.find(s => s.id === extra.serviceId);
+                        const prv = activeProviders.find(p => p.id === extra.providerId);
+                        return srv ? calculateEndTime(extra.startTime || appointment.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || appointment.time);
+                    })(),
                     appointmentId: appointment.id
                 });
             });
@@ -195,6 +218,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 feedback: '',
                 unitPrice: rel.bookedPrice || relService?.price || 0,
                 startTime: rel.time,
+                endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
                 appointmentId: rel.id
             });
 
@@ -213,6 +237,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         feedback: '',
                         unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
                         startTime: extra.startTime || rel.time,
+                        endTime: extra.endTime || (services.find(s => s.id === extra.serviceId) ? calculateEndTime(extra.startTime || rel.time, services.find(s => s.id === extra.serviceId)!.durationMinutes) : (extra.startTime || rel.time)),
                         appointmentId: rel.id
                     });
                 });
@@ -504,7 +529,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount: l.discount,
             bookedPrice: l.unitPrice,
             products: l.products,
-            startTime: l.startTime
+            startTime: l.startTime,
+            endTime: l.endTime
         }));
 
         const dataToSave = {
@@ -520,7 +546,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
-            payments: payments
+            payments: payments,
+            end_time: lines[0].endTime
         };
 
         try {
@@ -566,7 +593,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
-                    payments: payments
+                    payments: payments,
+                    endTime: lines[0].endTime
                 } as Appointment;
 
                 let updated = prev;
@@ -631,7 +659,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount: l.discount,
             bookedPrice: l.unitPrice,
             products: l.products,
-            startTime: l.startTime
+            startTime: l.startTime,
+            endTime: l.endTime
         }));
 
         const dischargeDate = new Date().toISOString().split('T')[0];
@@ -648,7 +677,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
-            payments: payments
+            payments: payments,
+            end_time: lines[0].endTime
         };
 
         try {
@@ -714,7 +744,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
-                    payments: payments
+                    payments: payments,
+                    endTime: lines[0].endTime
                 } as Appointment;
 
                 return prev.map(a => {
@@ -782,7 +813,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount: l.discount,
             bookedPrice: l.unitPrice,
             products: l.products,
-            startTime: l.startTime
+            startTime: l.startTime,
+            endTime: l.endTime
         }));
 
         const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
@@ -801,7 +833,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
             payments: payments,
-            recurrence_id: recId
+            recurrence_id: recId,
+            end_time: lines[0].endTime
         };
 
         try {
@@ -886,7 +919,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     pricePaid: s.price_paid,
                     paymentMethod: s.payment_method,
                     payments: s.payments || [],
-                    recurrenceId: s.recurrence_id
+                    recurrenceId: s.recurrence_id,
+                    endTime: s.end_time
                 } as Appointment));
 
                 if (exists) {
@@ -1135,18 +1169,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 .limit(1)
                 .single();
 
-            if (error) {
-                if (error.code === 'PGRST116') {
-                    // No record found
-                    setNfseStatus('idle');
-                    setNfseData(null);
-                } else {
-                    throw error;
-                }
-            } else if (data) {
-                setNfseData(data);
-                setNfseStatus('success');
+            if (error && error.code !== 'PGRST116') throw error;
+
+            let record = data;
+
+            if (!record && error?.code === 'PGRST116') {
+                setNfseStatus('idle');
+                setNfseData(null);
+                return;
             }
+
+            if (record && record.status !== 'issued' && record.status !== 'cancelled') {
+                try {
+                    await focusNfeService.queryNFSeStatus(record.id);
+                    const { data: updated } = await supabase.from('nfse_records').select('*').eq('id', record.id).single();
+                    if (updated) record = updated;
+                } catch (e) { console.error('Silent update failed', e); }
+            }
+
+            setNfseData(record);
+            setNfseStatus('success');
         } catch (error: any) {
             console.error('Error refreshing NFSe status:', error);
             setNfseError('Erro ao atualizar status da NFSe');
@@ -1276,7 +1318,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             rating: 5,
             feedback: '',
             unitPrice: services[0].price,
-            startTime: appointment.time
+            startTime: appointment.time,
+            endTime: calculateEndTime(appointment.time, services[0].durationMinutes)
         }]);
     };
 
@@ -1287,19 +1330,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const updateLine = (id: string, field: keyof ServiceLine, value: any) => {
-        setLines(prev => prev.map((l, index) => {
-            if (l.id === id) {
-                const updated = { ...l, [field]: value };
-                if (field === 'serviceId') {
-                    const newService = services.find(s => s.id === value);
-                    updated.unitPrice = newService?.price || 0;
+        setLines(lines.map(line => {
+            if (line.id !== id) return line;
+            const updated = { ...line, [field]: value };
+
+            // AUTO-RECALCULATE END TIME if Service, Provider, or StartTime changes
+            if (field === 'serviceId' || field === 'providerId' || field === 'startTime') {
+                const srv = services.find(s => s.id === (field === 'serviceId' ? value : line.serviceId));
+                const prv = activeProviders.find(p => p.id === (field === 'providerId' ? value : line.providerId));
+                const start = field === 'startTime' ? value : line.startTime;
+
+                if (srv) {
+                    updated.endTime = calculateEndTime(start, srv.durationMinutes, prv, srv.name);
+                    updated.unitPrice = srv.price;
                 }
-                if (index === 0 && field === 'startTime') {
+
+                if (field === 'startTime' && line.id === 'main') {
                     setAppointmentTime(value);
                 }
-                return updated;
             }
-            return l;
+            return updated;
         }));
     };
 
@@ -1610,6 +1660,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             onChange={e => updateLine(line.id, 'startTime', e.target.value)}
                                                         />
                                                     </div>
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Término</label>
+                                                        <input
+                                                            type="time"
+                                                            className="bg-transparent border-none text-[11px] font-black text-indigo-600 dark:text-indigo-400 p-1 outline-none w-full font-black"
+                                                            value={line.endTime}
+                                                            onChange={e => updateLine(line.id, 'endTime', e.target.value)}
+                                                        />
+                                                    </div>
                                                     <div className="flex flex-col flex-1">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
                                                         <div className="flex items-center gap-2">
@@ -1715,7 +1774,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </div>
                                         </div>
 
-                                        {customer.outstandingBalance > 0 && (
+                                        {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
                                             <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
                                                 <input
                                                     type="checkbox"
@@ -2311,9 +2370,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
                                     {nfseStatus === 'success' || (nfseData && nfseData.status === 'issued') ? (
                                         <div className="space-y-3">
-                                            <div className="text-center p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-800">
-                                                <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2">
-                                                    <CheckCircle2 size={16} /> NFSe Emitida!
+                                            <div className={`text-center p-2 rounded-xl border ${nfseData?.status === 'issued'
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800'
+                                                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800'
+                                                }`}>
+                                                <p className={`text-xs font-black flex items-center justify-center gap-2 ${nfseData?.status === 'issued' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                                    }`}>
+                                                    {nfseData?.status === 'issued' ? <><CheckCircle2 size={16} /> NFSe Emitida!</> : <><Sparkles size={16} className="animate-spin" /> Em Processamento...</>}
                                                 </p>
                                                 {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
                                             </div>

@@ -6,15 +6,8 @@ import {
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig } from '../types';
+import { Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord } from '../types';
 import { ServiceModal } from './ServiceModal';
-
-const getDuration = (start: string, end?: string, defaultDuration: number = 30) => {
-    if (!end) return defaultDuration;
-    const [startH, startM] = start.split(':').map(Number);
-    const [endH, endM] = end.split(':').map(Number);
-    return (endH * 60 + endM) - (startH * 60 + startM);
-};
 import { Avatar } from './Avatar';
 
 interface AgendaProps {
@@ -30,12 +23,10 @@ interface AgendaProps {
     providers: Provider[];
     stock: StockItem[];
     nfseRecords: NFSeRecord[];
-    fiscalConfig?: FiscalConfig;
-    onNavigate?: (view: ViewState, payload?: any) => void;
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, fiscalConfig, onNavigate
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -47,8 +38,6 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const [selectedProviderId, setSelectedProviderId] = useState<string>('all');
     const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
-    const [visibleServiceIds, setVisibleServiceIds] = useState<string[]>([]);
-    const [serviceSidebarSearch, setServiceSidebarSearch] = useState('');
 
     // DEBUG: Track selectedProviderId changes
     React.useEffect(() => {
@@ -145,7 +134,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Período Personalizado";
+        if (timeView === 'custom') return "Per├¡odo Personalizado";
         if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         return dateRef.getFullYear().toString();
@@ -185,35 +174,28 @@ export const Agenda: React.FC<AgendaProps> = ({
             const isDate = a.date === gridDateStr;
 
             // Provider filter: if visibleProviderIds is empty, show ALL providers
-            let isProvider: boolean = true;
+            let isProvider = true;
             if (selectedProviderId !== 'all') {
                 // Specific provider selected
                 isProvider = a.providerId === selectedProviderId ||
-                    !!(a.additionalServices?.some(s => s.providerId === selectedProviderId));
+                    a.additionalServices?.some(s => s.providerId === selectedProviderId);
             } else if (visibleProviderIds.length > 0) {
                 // "All" selected but specific providers checked in sidebar
                 isProvider = visibleProviderIds.includes(a.providerId) ||
-                    !!(a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId)));
+                    a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId));
             }
             // else: "All" selected and no providers checked = show all (isProvider stays true)
 
             const isNotCancelled = a.status !== 'Cancelado';
             let isSearchMatch = true;
             if (searchTerm) {
-                const customer = customers.find(c => c.id?.toLowerCase() === a.customerId?.toLowerCase());
+                const customer = customers.find(c => c.id === a.customerId);
                 isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             }
 
-            // Service filter: if visibleServiceIds is empty, show ALL services
-            let isService: boolean = true;
-            if (visibleServiceIds.length > 0) {
-                isService = visibleServiceIds.includes(a.serviceId) ||
-                    !!(a.additionalServices?.some(s => visibleServiceIds.includes(s.serviceId)));
-            }
-
-            return isDate && isProvider && isNotCancelled && isSearchMatch && isService;
+            return isDate && isProvider && isNotCancelled && isSearchMatch;
         });
-    }, [appointments, gridDateStr, selectedProviderId, visibleProviderIds, searchTerm, customers, visibleServiceIds]);
+    }, [appointments, gridDateStr, selectedProviderId, visibleProviderIds, searchTerm, customers]);
 
     const activeVisibileProviders = useMemo(() => {
         const filtered = selectedProviderId === 'all'
@@ -226,7 +208,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Confirmation Logic (Uses Range)
     // Confirmation Logic (Uses Range)
     const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
-        const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
+        const validApps = apps.filter(a => a.status !== 'Conclu├¡do' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -243,13 +225,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                     10: ['­ƒòÖ', '­ƒòÑ'], 11: ['­ƒòÜ', '­ƒòª'], 12: ['­ƒòø', '­ƒòº']
                 };
                 return clocks[hour][min >= 30 ? 1 : 0];
-            } catch { return '⏰'; }
+            } catch { return 'ÔÅ░'; }
         };
 
         const firstName = customer.name.split(' ')[0];
         const isPlural = sortedApps.length > 1;
 
-        let message = `Olá, ${firstName}! ✨\n`;
+        let message = `Ol├í, ${firstName}! Ô£¿\n`;
         message += isPlural
             ? `Passando para confirmar seus atendimentos na Aminna:\n`
             : `Passando para confirmar seu atendimento na Aminna:\n`;
@@ -311,7 +293,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const handleSendWhatsApp = (e: React.MouseEvent, appt: Appointment) => {
         e.stopPropagation();
-        const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+        const customer = customers.find(c => c.id === appt.customerId);
         if (!customer) return;
 
         // Message for ONLY this specific appointment
@@ -328,7 +310,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             a.date >= rangeStart &&
             a.date <= rangeEnd &&
             a.status !== 'Cancelado' &&
-            a.status !== 'Concluído' &&
+            a.status !== 'Conclu├¡do' &&
             (selectedProviderId === 'all' || a.providerId === selectedProviderId)
         );
 
@@ -408,7 +390,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 registration_date: new Date().toISOString().split('T')[0],
                 status: 'Novo',
                 total_spent: 0,
-                acquisition_channel: 'Agendamento Rápido'
+                acquisition_channel: 'Agendamento R├ípido'
             };
 
             const { data, error } = await supabase
@@ -432,7 +414,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     status: 'Novo',
                     history: [],
                     preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' },
-                    acquisitionChannel: 'Agendamento Rápido'
+                    acquisitionChannel: 'Agendamento R├ípido'
                 };
 
                 setCustomers(prev => [...prev, newCustomer]);
@@ -478,8 +460,6 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         // --- LEAD CONVERSION LOGIC ---
         // Check if this customer corresponds to an existing Lead based on Phone
-        const canIssueNFSe = !!(fiscalConfig?.autoIssueNfse);
-        const salaoParceiroEnabled = !!(fiscalConfig?.salaoParceiroEnabled);
         const matchedLead = leads.find(l => {
             const leadPhone = l.phone.replace(/\D/g, '');
             const customerPhone = customer.phone.replace(/\D/g, '');
@@ -525,7 +505,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             // Auto-switch to a valid provider (First active provider not in restriction list)
             const fallbackProvider = activeProviders.find(p =>
                 p.id !== draftAppointment.providerId &&
-                !(customer.restrictedProviderIds || []).includes(p.id)
+                !customer.restrictedProviderIds?.includes(p.id)
             );
 
             if (fallbackProvider) {
@@ -661,118 +641,64 @@ export const Agenda: React.FC<AgendaProps> = ({
         );
     };
 
-    const ServiceFilter = () => {
-        const filteredServicesBySearch = services.filter(s =>
-            s.name.toLowerCase().includes(serviceSidebarSearch.toLowerCase()) ||
-            s.category?.toLowerCase().includes(serviceSidebarSearch.toLowerCase())
-        );
-
-        const toggleService = (id: string) => {
-            setVisibleServiceIds(prev =>
-                prev.includes(id) ? prev.filter(sid => sid !== id) : [...prev, id]
-            );
-        };
-
-        return (
-            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
-                <div className="px-5 py-3 border-b border-slate-100 dark:border-zinc-800">
-                    <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Serviços</h3>
-                    <div className="relative">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Pesquisar..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
-                            value={serviceSidebarSearch}
-                            onChange={e => setServiceSidebarSearch(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-5 py-3 scrollbar-hide space-y-2">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                        <input
-                            type="checkbox"
-                            checked={visibleServiceIds.length > 0 && visibleServiceIds.length === services.length}
-                            onChange={() => setVisibleServiceIds(visibleServiceIds.length === services.length ? [] : services.map(s => s.id))}
-                            className="w-4 h-4 rounded border-2 border-slate-300 dark:border-zinc-600 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 group-hover:text-indigo-600 transition-colors">Todos</span>
-                    </label>
-
-                    <div className="space-y-2 pt-2 border-t border-slate-50 dark:border-zinc-800">
-                        {filteredServicesBySearch.map(s => (
-                            <label key={s.id} className="flex items-center gap-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={visibleServiceIds.includes(s.id)}
-                                    onChange={() => toggleService(s.id)}
-                                    className="w-3.5 h-3.5 rounded border-2 border-slate-200 dark:border-zinc-700 text-indigo-500 focus:ring-indigo-500"
-                                />
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase">{s.name}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="flex h-full gap-4 p-4 pb-20 md:p-4 font-sans">
             {/* Sidebar (Left) */}
             <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
                 <ProviderFilter />
-                <ServiceFilter />
             </div>
 
             <div className="flex-1 flex flex-col space-y-4 min-w-0">
                 {/* Header Controls (Date & New) */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className={`p-3 rounded-full transition-all border shadow-sm ${isSidebarOpen ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
-                            title="Alternar Filtros"
-                        >
-                            <Filter size={18} />
-                        </button>
 
-                        {/* Date Filters */}
-                        <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
-                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
-                                {(['day', 'month', 'year', 'custom'] as const).map(v => (
-                                    <button
-                                        key={v}
-                                        onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                        className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                                    >
-                                        {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {timeView === 'custom' ? (
-                                <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
-                                    <CalendarRange size={16} className="text-slate-400" />
-                                    <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                                    <span className="text-slate-300">-</span>
-                                    <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                                    <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
-                                    <div className="flex flex-col items-center min-w-[140px]">
-                                        <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
-                                    </div>
-                                    <button onClick={() => navigateDate('next')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
-                                </div>
-                            )}
+                    {/* Date Filters */}
+                    <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
+                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                            {(['day', 'month', 'year', 'custom'] as const).map(v => (
+                                <button
+                                    key={v}
+                                    onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                >
+                                    {v === 'day' ? 'Dia' : v === 'month' ? 'M├¬s' : v === 'year' ? 'Ano' : 'Per├¡odo'}
+                                </button>
+                            ))}
                         </div>
+
+                        {timeView === 'custom' ? (
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
+                                <CalendarRange size={16} className="text-slate-400" />
+                                <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                                <span className="text-slate-300">-</span>
+                                <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                                <div className="flex flex-col items-center min-w-[140px]">
+                                    <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
+                                </div>
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
+                        <div className="relative flex-1 md:min-w-[200px]">
+                            <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <select
+                                value={selectedProviderId}
+                                onChange={(e) => setSelectedProviderId(e.target.value)}
+                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase appearance-none"
+                                style={{ colorScheme: 'dark' }}
+                            >
+                                <option value="all">Todas Profissionais</option>
+                                {activeProviders.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            </select>
+                        </div>
+
                         <div className="relative flex-1 md:min-w-[200px]">
                             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
@@ -788,7 +714,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             onClick={() => setIsWhatsAppModalOpen(true)}
                             className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                         >
-                            <MessageCircle size={16} /> Confirmações
+                            <MessageCircle size={16} /> Confirma├º├Áes
                         </button>
 
                         <button
@@ -819,7 +745,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     style={{ width: `${160 * zoomLevel}px` }}
                                 >
                                     <div className="flex justify-center mb-1">
-                                        <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
+                                        <Avatar src={p.avatarUrl || p.avatar} name={p.name} size="w-8 h-8" />
                                     </div>
                                     <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
                                 </div>
@@ -836,7 +762,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </button>
                             <button
                                 onClick={() => setRowHeight(prev => Math.min(200, prev + 10))}
-                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-200"
+                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-slate-200"
                                 title="Aumentar Altura"
                             >
                                 <ZoomIn size={14} />
@@ -912,7 +838,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
+                                                        <span>{monthApps.filter(a => a.status === 'Conclu├¡do').length} Feitos</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
@@ -928,7 +854,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     ) : timeView === 'month' ? (
                         <div className="flex-1 p-6 overflow-y-auto">
                             <div className="grid grid-cols-7 gap-4 h-full min-h-[500px]">
-                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S├íb'].map(day => (
                                     <div key={day} className="text-center font-black text-slate-400 uppercase text-xs mb-2">
                                         {day}
                                     </div>
@@ -969,7 +895,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                 <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                                     {dayApps.slice(0, 3).map(app => (
-                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                     ))}
                                                     {dayApps.length > 3 && (
                                                         <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
@@ -1000,7 +926,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex justify-between items-center">
                                                                             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
                                                                             <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
-                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
+                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
                                                                         </div>
                                                                         <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
                                                                         <div className="flex items-center gap-1.5">
@@ -1057,31 +983,28 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     </button>
 
                                                     {slotAppointments.map(appt => {
-                                                        const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+                                                        const customer = customers.find(c => c.id === appt.customerId);
                                                         const service = services.find(s => s.id === appt.serviceId);
-
-                                                        let displayServiceName: string = '';
-                                                        let displayTime: string = '';
-                                                        let cardHeight: number = 0;
 
                                                         // Calculate height based on duration
                                                         // Base height is rowHeight (for 30 mins)
                                                         // If it's 60 mins, height is rowHeight * 2
+                                                        const duration = service?.durationMinutes || 30;
+                                                        const heightFactor = duration / 30;
+                                                        const cardHeight = (rowHeight * heightFactor) - 8; // Subtract padding
+
+                                                        let displayServiceName = '';
+                                                        let displayTime = appt.time;
+
                                                         if (appt.providerId === p.id) {
-                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Servi├ºo';
                                                             displayTime = appt.time;
-                                                            const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
-                                                            const factor = dur / 30;
-                                                            cardHeight = (rowHeight * factor) - 8;
                                                         } else {
                                                             const subService = appt.additionalServices?.find(s => s.providerId === p.id);
                                                             if (subService) {
                                                                 const srv = services.find(s => s.id === subService.serviceId);
-                                                                displayServiceName = srv?.name || 'Serviço Extra';
+                                                                displayServiceName = srv?.name || 'Servi├ºo Extra';
                                                                 displayTime = subService.startTime || appt.time;
-                                                                const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
-                                                                const factor = dur / 30;
-                                                                cardHeight = (rowHeight * factor) - 8;
                                                             }
                                                         }
 
@@ -1097,7 +1020,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                 className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
+                                                                        appt.status === 'Conclu├¡do' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
                                                                 style={{
@@ -1106,16 +1029,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 }}
                                                             >
                                                                 <div className="flex justify-between items-start">
-                                                                    <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                        {customer?.status === 'Novo' && !(Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) && (
-                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
-                                                                        )}
-                                                                        {(customer?.assignedProviderIds?.some(id => id.toLowerCase() === p.id.toLowerCase()) ||
-                                                                            (customer?.assignedProviderId && customer.assignedProviderId.toLowerCase() === p.id.toLowerCase())) && (
-                                                                                <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
-                                                                            )}
-                                                                    </div>
+                                                                    <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
                                                                     <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                 </div>
                                                                 <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
@@ -1126,10 +1040,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex items-center gap-1">
                                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
                                                                                 appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                    appt.status === 'Conclu├¡do' ? 'bg-slate-500' :
                                                                                         'bg-amber-400'
                                                                                 }`}></span>
-                                                                            {appt.status === 'Concluído' && (
+                                                                            {appt.status === 'Conclu├¡do' && (
                                                                                 (() => {
                                                                                     const record = nfseRecords.find(r => r.appointmentId === appt.id);
                                                                                     if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
@@ -1146,7 +1060,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
                                                                         <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
                                                                         <div>
-                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'CLIENTE AVULSA'}</p>
+                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
                                                                             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
                                                                                 <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
                                                                             </p>
@@ -1169,7 +1083,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-start mb-2">
                                                                                             <div className="flex-1">
                                                                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
-                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {getDuration(ca.time, ca.endTime, mainSrv?.durationMinutes)} min</p>
+                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} ÔÇó {ca.duration || 30} min</p>
                                                                                             </div>
                                                                                             <div className="text-right">
                                                                                                 <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
@@ -1180,7 +1094,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-center mt-1">
                                                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
                                                                                                 ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                    ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                    ca.status === 'Conclu├¡do' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
                                                                                                         'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
                                                                                                 }`}>
                                                                                                 {ca.status}
@@ -1202,23 +1116,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 .toFixed(0)}
                                                                         </p>
                                                                     </div>
-
-                                                                    {customer?.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
-                                                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                                                            <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-3">Profissionais Preferidos</p>
-                                                                            <div className="flex flex-wrap gap-2">
-                                                                                {customer.assignedProviderIds.map(pid => {
-                                                                                    const prov = providers.find(p => p.id === pid);
-                                                                                    if (!prov) return null;
-                                                                                    return (
-                                                                                        <span key={pid} className="bg-[#FF007F] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-sm">
-                                                                                            {prov.name}
-                                                                                        </span>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
@@ -1262,7 +1159,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             {isQuickRegisterOpen ? (
                                 <div className="p-4 bg-indigo-50 dark:bg-zinc-900 border-b border-indigo-100 dark:border-zinc-800 animate-in slide-in-from-top-2">
                                     <div className="flex justify-between items-center mb-3">
-                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
+                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro R├ípido</h4>
                                         <button onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
                                     </div>
                                     <form onSubmit={handleQuickRegister} className="flex flex-col gap-3">
@@ -1353,10 +1250,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                                        <MessageCircle size={18} className="text-emerald-400" /> Confirmações
+                                        <MessageCircle size={18} className="text-emerald-400" /> Confirma├º├Áes
                                     </h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">
-                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} at├® {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
                                 <button onClick={() => setIsWhatsAppModalOpen(false)} className="text-white hover:text-slate-300"><X size={24} /></button>
@@ -1412,7 +1309,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 }) : (
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
                                         <CheckCircle2 size={48} className="mx-auto mb-2 opacity-20" />
-                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no período</p>
+                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per├¡odo</p>
                                     </div>
                                 )}
                             </div>
@@ -1437,7 +1334,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                         providers={providers}
                         stock={stock}
                         customers={customers}
-                        onNavigate={onNavigate}
                     />
                 )}
             </div>

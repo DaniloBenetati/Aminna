@@ -55,6 +55,7 @@ export interface Provider {
   active: boolean;
   order?: number; // Para ordenação personalizada
   workDays?: number[]; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+  customDurations?: Record<string, number>; // serviceId or serviceName -> duration in minutes
 }
 
 export interface PriceHistoryItem {
@@ -170,6 +171,7 @@ export interface Appointment {
   date: string; // Data agendada
   paymentDate?: string; // Data real do pagamento (Baixa)
   time: string;
+  endTime?: string;
   status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento';
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
@@ -195,6 +197,7 @@ export interface Appointment {
     bookedPrice?: number; // Snapshot for extras
     commissionRateSnapshot?: number; // Snapshot for extras commission
     startTime?: string; // Horário específico do serviço extra
+    endTime?: string; // Horário de término do serviço extra
     products?: string[]; // Lista de produtos vinculados a este serviço extra
   }[];
   combinedServiceNames?: string;
