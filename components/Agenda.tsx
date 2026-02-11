@@ -140,6 +140,16 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
     }, []);
 
+    const scrollGrid = (direction: 'left' | 'right') => {
+        const gridEl = gridScrollRef.current;
+        if (!gridEl) return;
+        const scrollAmount = 300 * zoomLevel;
+        gridEl.scrollBy({
+            left: direction === 'left' ? -scrollAmount : scrollAmount,
+            behavior: 'smooth'
+        });
+    };
+
     // Helpers
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -730,7 +740,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     return (
-        <div className="flex h-full gap-4 p-4 pb-20 md:p-4 font-sans">
+        <div className="flex h-full gap-4 p-4 pb-20 md:pb-0 font-sans">
             {/* Sidebar (Left) */}
             <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
@@ -822,7 +832,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center">
                             <Clock size={14} className="text-slate-400" />
                         </div>
-                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto scrollbar-hide flex">
+                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide flex">
                             {activeVisibileProviders.map(p => (
                                 <div
                                     key={p.id}
@@ -869,6 +879,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </button>
                         </div>
                     </div>
+
+
 
                     {/* Annual View Grid */}
                     {timeView === 'year' ? (
@@ -1033,7 +1045,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     ) : (
                         /* Time Slots (Day View) */
-                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto scrollbar-hide relative">
+                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto relative">
                             {hours.map(hour => (
                                 <div
                                     key={hour}

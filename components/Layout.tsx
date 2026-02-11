@@ -79,6 +79,8 @@ export const Layout: React.FC<LayoutProps> = ({
     return userProfile.permissions.tabs.includes(item.id);
   });
 
+
+
   const handleNavigate = (view: ViewState) => {
     onNavigate(view);
     setIsMobileMenuOpen(false);
@@ -280,6 +282,8 @@ export const Layout: React.FC<LayoutProps> = ({
           {children}
         </div>
       </main>
+
+
     </div>
   );
 };
