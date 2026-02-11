@@ -574,6 +574,42 @@ export const Agenda: React.FC<AgendaProps> = ({
         c.phone.includes(customerSearchTerm)
     );
 
+    const handleBlockProfessional = (providerId: string) => {
+        const provider = providers.find(p => p.id === providerId);
+        const name = provider?.name || 'Profissional';
+        const dateLabel = getDateLabel();
+
+        // Check if already blocked
+        const isBlocked = appointments.some(a =>
+            a.providerId === providerId &&
+            a.date === gridDateStr &&
+            a.customerId === 'INTERNAL_BLOCK'
+        );
+
+        if (isBlocked) {
+            if (window.confirm(`Deseja DESBLOQUEAR a agenda de ${name} para o dia ${dateLabel}?`)) {
+                setAppointments(prev => prev.filter(a =>
+                    !(a.providerId === providerId && a.date === gridDateStr && a.customerId === 'INTERNAL_BLOCK')
+                ));
+            }
+            return;
+        }
+
+        if (window.confirm(`Deseja BLOQUEAR a agenda de ${name} para o dia ${dateLabel}?\n\nIsso marcará o profissional como ausente/indisponível.`)) {
+            const blockAppt: Appointment = {
+                id: `BLOCK-${providerId}-${gridDateStr}`,
+                customerId: 'INTERNAL_BLOCK',
+                providerId: providerId,
+                serviceId: 'INTERNAL_BLOCK',
+                date: gridDateStr,
+                time: '00:00',
+                endTime: '23:59',
+                status: 'Cancelado'
+            };
+            setAppointments(prev => [...prev, blockAppt]);
+        }
+    };
+
     const MiniCalendar = () => {
         const [viewDate, setViewDate] = useState(new Date(dateRef));
         const month = viewDate.getMonth();
@@ -833,18 +869,38 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <Clock size={14} className="text-slate-400" />
                         </div>
                         <div ref={headerScrollRef} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide flex">
-                            {activeVisibileProviders.map(p => (
-                                <div
-                                    key={p.id}
-                                    className="flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all"
-                                    style={{ width: `${160 * zoomLevel}px` }}
-                                >
-                                    <div className="flex justify-center mb-1">
-                                        <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
+                            {activeVisibileProviders.map(p => {
+                                const isBlocked = appointments.some(a =>
+                                    a.providerId === p.id &&
+                                    a.date === gridDateStr &&
+                                    a.customerId === 'INTERNAL_BLOCK'
+                                );
+
+                                return (
+                                    <div
+                                        key={p.id}
+                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200/50 dark:bg-zinc-800/50' : ''}`}
+                                        style={{ width: `${160 * zoomLevel}px` }}
+                                    >
+                                        <div className="flex justify-center mb-1">
+                                            <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
+                                        </div>
+                                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
+
+                                        {/* Block/Unblock Toggle */}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                            className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
+                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
+                                                }`}
+                                        >
+                                            {isBlocked ? <Check size={8} /> : <Ban size={8} />}
+                                            {isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                        </button>
                                     </div>
-                                    <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         {/* Zoom Controls */}
                         <div className="flex items-center gap-1 px-3 border-l border-slate-200 dark:border-zinc-800">
@@ -1060,24 +1116,48 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     {/* Provider Columns */}
                                     <div className="flex-1 flex">
                                         {activeVisibileProviders.map(p => {
+                                            const isBlocked = appointments.some(a =>
+                                                a.providerId === p.id &&
+                                                a.date === gridDateStr &&
+                                                a.customerId === 'INTERNAL_BLOCK'
+                                            );
+
+                                            if (isBlocked && hour === '12:00') {
+                                                // Show a marker for the block only once per column to avoid clutter
+                                                // although we'll gray out the whole column
+                                            }
+
                                             const slotAppointments = getCellAppointments(p.id, hour);
                                             return (
                                                 <div
                                                     key={`${p.id}-${hour}`}
-                                                    className="flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-all duration-300"
+                                                    className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
+                                                            ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
+                                                            : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
+                                                        }`}
                                                     style={{ width: `${160 * zoomLevel}px` }}
                                                 >
+                                                    {isBlocked && hour === '12:00' && (
+                                                        <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
+                                                            <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-4 py-2 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
+                                                                <p className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     {/* Add Button on Hover */}
-                                                    <button
-                                                        onClick={() => handleNewAppointment({
-                                                            providerId: p.id,
-                                                            date: gridDateStr,
-                                                            time: hour
-                                                        })}
-                                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
-                                                    >
-                                                        <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
-                                                    </button>
+                                                    {!isBlocked && (
+                                                        <button
+                                                            onClick={() => handleNewAppointment({
+                                                                providerId: p.id,
+                                                                date: gridDateStr,
+                                                                time: hour
+                                                            })}
+                                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
+                                                        >
+                                                            <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
+                                                        </button>
+                                                    )}
 
                                                     {slotAppointments.map(appt => {
                                                         const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
