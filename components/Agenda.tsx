@@ -574,39 +574,78 @@ export const Agenda: React.FC<AgendaProps> = ({
         c.phone.includes(customerSearchTerm)
     );
 
-    const handleBlockProfessional = (providerId: string) => {
-        const provider = providers.find(p => p.id === providerId);
-        const name = provider?.name || 'Profissional';
+    const handleBlockProfessional = async (providerId: string) => {
+        const name = providers.find(p => p.id === providerId)?.name || 'Profissional';
         const dateLabel = getDateLabel();
 
-        // Check if already blocked
-        const isBlocked = appointments.some(a =>
+        // Check if already blocked (locally or in DB)
+        const block = appointments.find(a =>
             a.providerId === providerId &&
             a.date === gridDateStr &&
-            a.customerId === 'INTERNAL_BLOCK'
+            (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
         );
 
-        if (isBlocked) {
+        if (block) {
             if (window.confirm(`Deseja DESBLOQUEAR a agenda de ${name} para o dia ${dateLabel}?`)) {
-                setAppointments(prev => prev.filter(a =>
-                    !(a.providerId === providerId && a.date === gridDateStr && a.customerId === 'INTERNAL_BLOCK')
-                ));
+                // Optimistic update
+                setAppointments(prev => prev.filter(a => a.id !== block.id));
+
+                // Persistence: Delete from DB if it has a real ID
+                if (!block.id.startsWith('BLOCK-')) {
+                    try {
+                        const { error } = await supabase.from('appointments').delete().eq('id', block.id);
+                        if (error) throw error;
+                    } catch (error) {
+                        console.error('Error unblocking provider:', error);
+                        alert('Erro ao desbloquear no banco de dados.');
+                    }
+                }
             }
             return;
         }
 
         if (window.confirm(`Deseja BLOQUEAR a agenda de ${name} para o dia ${dateLabel}?\n\nIsso marcará o profissional como ausente/indisponível.`)) {
+            const tempId = `BLOCK-${providerId}-${gridDateStr}`;
+
+            // Local draft for immediate feedback
             const blockAppt: Appointment = {
-                id: `BLOCK-${providerId}-${gridDateStr}`,
+                id: tempId,
                 customerId: 'INTERNAL_BLOCK',
                 providerId: providerId,
                 serviceId: 'INTERNAL_BLOCK',
                 date: gridDateStr,
                 time: '00:00',
                 endTime: '23:59',
-                status: 'Cancelado'
+                status: 'Cancelado',
+                combinedServiceNames: 'BLOQUEIO_INTERNO'
             };
             setAppointments(prev => [...prev, blockAppt]);
+
+            try {
+                const { data, error } = await supabase.from('appointments').insert([{
+                    customer_id: null,
+                    provider_id: providerId,
+                    service_id: null,
+                    date: gridDateStr,
+                    time: '00:00',
+                    end_time: '23:59',
+                    status: 'Cancelado',
+                    combined_service_names: 'BLOQUEIO_INTERNO'
+                }]).select().single();
+
+                if (error) throw error;
+
+                // Sync local state with DB ID
+                setAppointments(prev => prev.map(a => a.id === tempId ? {
+                    ...a,
+                    id: data.id,
+                    customerId: data.customer_id || 'INTERNAL_BLOCK'
+                } : a));
+            } catch (error) {
+                console.error('Error blocking provider:', error);
+                setAppointments(prev => prev.filter(a => a.id !== tempId));
+                alert('Erro ao bloquear no banco de dados.');
+            }
         }
     };
 
@@ -873,13 +912,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 const isBlocked = appointments.some(a =>
                                     a.providerId === p.id &&
                                     a.date === gridDateStr &&
-                                    a.customerId === 'INTERNAL_BLOCK'
+                                    (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
                                 );
 
                                 return (
                                     <div
                                         key={p.id}
-                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200/50 dark:bg-zinc-800/50' : ''}`}
+                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-300 dark:bg-zinc-800' : ''}`}
                                         style={{ width: `${160 * zoomLevel}px` }}
                                     >
                                         <div className="flex justify-center mb-1">
@@ -891,8 +930,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
                                             className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
-                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
+                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
                                                 }`}
                                         >
                                             {isBlocked ? <Check size={8} /> : <Ban size={8} />}
@@ -1119,7 +1158,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             const isBlocked = appointments.some(a =>
                                                 a.providerId === p.id &&
                                                 a.date === gridDateStr &&
-                                                a.customerId === 'INTERNAL_BLOCK'
+                                                (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
                                             );
 
                                             if (isBlocked && hour === '12:00') {
@@ -1132,15 +1171,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div
                                                     key={`${p.id}-${hour}`}
                                                     className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
-                                                            ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
-                                                            : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
+                                                        ? 'bg-slate-300/40 dark:bg-zinc-800/60 cursor-not-allowed'
+                                                        : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
                                                         }`}
                                                     style={{ width: `${160 * zoomLevel}px` }}
                                                 >
                                                     {isBlocked && hour === '12:00' && (
                                                         <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                            <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-4 py-2 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
-                                                                <p className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                            <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-3 py-1 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
+                                                                <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
                                                             </div>
                                                         </div>
                                                     )}
