@@ -208,7 +208,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             numero_prestador: 'S/N',
             bairro_prestador: 'Centro',
             codigo_municipio_prestador: '3550308', // Explicitly add cMun for provider address
-            cep_prestador: fiscalConfig.zipCode?.replace(/\D/g, '') || '',
+            cep_prestador: fiscalConfig.zipCode?.replace(/\D/g, '') || '00000000',
             uf_prestador: fiscalConfig.state,
 
             // Service location and details
@@ -262,10 +262,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             nfseRequest.uf_tomador = fiscalConfig.state || 'SP';
             nfseRequest.codigo_municipio_tomador = '3550308'; // São Paulo
 
-            // Ensure Provider CEP is valid (not empty)
-            if (!nfseRequest.cep_prestador) {
-                nfseRequest.cep_prestador = '00000000'; // Or specific fallback
-            }
+
         }
 
         // 6. Get session and inspect JWT for diagnostics (identifying project mismatches)

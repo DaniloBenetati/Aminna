@@ -113,6 +113,8 @@ export interface Customer {
   observations?: string;
   acquisitionChannel?: string; // Novo campo: Canal de Entrada
   outstandingBalance?: number; // Saldo Devedor
+  isVip?: boolean; // Cliente VIP
+  vipDiscountPercent?: number; // Percentual de desconto VIP (0-100)
 }
 
 export interface CustomerHistoryItem {
@@ -199,6 +201,8 @@ export interface Appointment {
     startTime?: string; // Horário específico do serviço extra
     endTime?: string; // Horário de término do serviço extra
     products?: string[]; // Lista de produtos vinculados a este serviço extra
+    clientName?: string; // Nome do cliente (para acompanhantes)
+    clientPhone?: string; // Telefone do cliente (para acompanhantes)
   }[];
   combinedServiceNames?: string;
   rating?: number;

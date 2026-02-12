@@ -192,7 +192,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         status: 'Novo',
         registration_date: newItem.registrationDate,
         total_spent: 0,
-        assigned_provider_ids: localAssignedProviderIds
+        assigned_provider_ids: localAssignedProviderIds,
+        restricted_provider_ids: formData.restrictedProviderIds || [],
+        is_vip: formData.isVip || false,
+        vip_discount_percent: formData.vipDiscountPercent || 0
       }).select().single();
 
       if (error) {
@@ -201,7 +204,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return;
       }
 
-      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds };
+      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds, restrictedProviderIds: formData.restrictedProviderIds || [], isVip: formData.isVip || false, vipDiscountPercent: formData.vipDiscountPercent || 0 };
       setCustomers(prev => [...prev, clientWithId]);
       setSelectedCustomer(clientWithId);
 
@@ -215,7 +218,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         preferences: updatedPreferences,
         isBlocked: formData.isBlocked,
         blockReason: formData.blockReason,
-        assignedProviderIds: localAssignedProviderIds
+        assignedProviderIds: localAssignedProviderIds,
+        restrictedProviderIds: formData.restrictedProviderIds || [],
+        isVip: formData.isVip || false,
+        vipDiscountPercent: formData.vipDiscountPercent || 0
       } as Customer;
 
       // Update Supabase
@@ -231,7 +237,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         preferences: updatedPreferences,
         is_blocked: formData.isBlocked,
         block_reason: formData.blockReason,
-        assigned_provider_ids: localAssignedProviderIds
+        assigned_provider_ids: localAssignedProviderIds,
+        assigned_provider_id: localAssignedProviderIds?.[0] || null,
+        is_vip: formData.isVip,
+        vip_discount_percent: formData.vipDiscountPercent
       }).eq('id', selectedCustomer.id);
 
       if (error) {
@@ -539,6 +548,52 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               <p className="text-sm font-black text-slate-950 dark:text-white">{formData.email || 'Não informado'}</p>
                             )}
                           </label>
+                        </div>
+                      </div>
+
+                      {/* VIP SECTION */}
+                      <div className={`p-5 rounded-[1.75rem] border shadow-sm space-y-4 transition-all ${formData.isVip ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700'}`}>
+                        <h4 className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-b pb-2 ${formData.isVip ? 'text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900' : 'text-slate-400 dark:text-slate-500 border-slate-50 dark:border-zinc-700'}`}>
+                          <Sparkles size={16} /> Cliente VIP
+                        </h4>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-900 dark:text-white uppercase">Status: {formData.isVip ? 'VIP ATIVO' : 'REGULAR'}</span>
+                            {isEditing && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData({ ...formData, isVip: !formData.isVip })}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${formData.isVip ? 'bg-amber-600 text-white hover:bg-amber-700' : 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-zinc-700 dark:text-slate-300'}`}
+                              >
+                                {formData.isVip ? 'Remover VIP' : 'Tornar VIP'}
+                              </button>
+                            )}
+                          </div>
+
+                          {(formData.isVip || isEditing) && formData.isVip && (
+                            <div className="space-y-1.5 animate-in slide-in-from-top-2">
+                              <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase">Desconto Automático (%)</span>
+                              {isEditing ? (
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-amber-500"
+                                    placeholder="0"
+                                    value={formData.vipDiscountPercent || 0}
+                                    onChange={e => setFormData({ ...formData, vipDiscountPercent: Number(e.target.value) })}
+                                  />
+                                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-amber-500">%</span>
+                                </div>
+                              ) : (
+                                <p className="text-xl font-black text-amber-600 dark:text-amber-400 leading-tight">
+                                  {formData.vipDiscountPercent || 0}% OFF
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 

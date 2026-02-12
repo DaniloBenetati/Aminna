@@ -24,28 +24,73 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
   const getFinancials = (providerId: string) => {
+    const provider = providers.find(p => p.id === providerId);
+    const defaultRate = provider?.commissionRate || 0; // Default rate from provider
+
     const providerApps = appointments.filter(app => {
       const isProvider = app.providerId === providerId;
-      const inRange = app.date >= startDate && app.date <= endDate;
+      // Normalize referenceDate to YYYY-MM-DD to ensure strict date comparison
+      // This handles cases where paymentDate includes time (e.g. ISO string)
+      const rawDate = app.paymentDate || app.date;
+      const referenceDate = rawDate ? rawDate.substring(0, 10) : '';
+
+      const inRange = referenceDate >= startDate && referenceDate <= endDate;
       const validStatus = app.status === 'Concluído';
       return isProvider && inRange && validStatus;
     });
 
-    let revenue = 0;
+    let revenue = 0; // Cash Revenue/Production Total
+    let commissionVal = 0; // Total Commission/Payout
+
     const detailedServices = providerApps.map(app => {
       const service = services.find(s => s.id === app.serviceId);
       const customer = customers.find(c => c.id === app.customerId);
-      const price = app.pricePaid || app.bookedPrice || service?.price || 0;
-      revenue += price;
-      return { date: app.date, time: app.time, serviceName: app.combinedServiceNames || service?.name || 'Serviço', clientName: customer?.name || 'Cliente Avulso', price };
+
+      // 1. Determine Base Value (Production)
+      let baseValue = app.pricePaid || 0;
+
+      // Exception: If Paid=0 (VIP/Debt) but Completed, commission is on the full Booked/Service Price
+      if (baseValue === 0 && app.status === 'Concluído') {
+        baseValue = app.bookedPrice || service?.price || 0;
+      }
+
+      // Also check explicitly for Debt payment method or VIP status to ensure we use valid base
+      if (app.paymentMethod === 'Dívida' || customer?.isVip) {
+        baseValue = app.bookedPrice || service?.price || 0;
+      }
+
+      // 2. Determine Rate (Use snapshot if available, or current provider rate)
+      // Note: If commissionRateSnapshot is not present (null/undefined), we use the current provider rate.
+      const rate = app.commissionRateSnapshot ?? defaultRate;
+
+      // 3. Calculate Payout
+      const payout = baseValue * rate;
+
+      revenue += baseValue;
+      commissionVal += payout;
+
+      const displayDate = app.paymentDate || app.date;
+
+      return {
+        date: displayDate,
+        time: app.time,
+        serviceName: app.combinedServiceNames || service?.name || 'Serviço',
+        clientName: customer?.name || 'Cliente Avulso',
+        price: payout, // DISPLAY PAYOUT VALUE
+        originalValue: baseValue,
+        rate: rate
+      };
     });
 
-    const provider = providers.find(p => p.id === providerId);
-    const commissionRate = provider ? (providerApps[0]?.commissionRateSnapshot ?? provider.commissionRate) : 0;
-    const commissionVal = revenue * commissionRate;
+    // Calculate effective average rate for display, handling division by zero
+    const effectiveRate = revenue > 0 ? (commissionVal / revenue) : defaultRate;
 
-    return { provider, revenue, commissionRate, commissionVal, count: providerApps.length, details: detailedServices };
+    return { provider, revenue, commissionRate: effectiveRate, commissionVal, count: providerApps.length, details: detailedServices };
   };
 
   const reportData = useMemo(() => {
@@ -54,6 +99,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
   }, [providers, selectedProvider, searchTerm, startDate, endDate, services, appointments]);
 
   const totalToPay = reportData.reduce((acc, curr) => acc + curr.commissionVal, 0);
+  const totalRevenue = reportData.reduce((acc, curr) => acc + curr.revenue, 0);
+  const totalServices = reportData.reduce((acc, curr) => acc + curr.count, 0);
 
   const handleGenerateReceipts = (data: any | null = null) => {
     setIsPrinting(true);
@@ -137,14 +184,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             {/* Elegant Formal Declaration */}
             <div className="mb-12 relative pl-8 border-l-2 border-slate-900">
               <p className="text-[13px] font-medium leading-relaxed text-slate-700 text-justify tracking-tight">
-                Recebi de <span className="font-bold text-slate-900">AMINNA GESTÃO DE ATENDIMENTOS</span> a importância de <span className="font-black text-slate-900 border-b-2 border-indigo-500/30 pb-0.5">R$ {data.commissionVal.toFixed(2)}</span> referente a <span className="font-bold">{data.count} serviços prestados</span> e ao repasse de comissão sobre atendimentos executados no período acima mencionado, conforme detalhamento em anexo.
+                Recebi de <span className="font-bold text-slate-900">AMINNA GESTÃO DE ATENDIMENTOS</span> a importância de <span className="font-black text-slate-900 border-b-2 border-indigo-500/30 pb-0.5">R$ {data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span> referente a <span className="font-bold">{data.count} serviços prestados</span> e ao repasse de comissão sobre atendimentos executados no período acima mencionado, conforme detalhamento em anexo.
               </p>
             </div>
 
             <div className="flex justify-end mt-4">
               <div className="flex flex-col items-end">
                 <p className="text-[7px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">Valor Líquido</p>
-                <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">R$ {data.commissionVal.toFixed(2)}</p>
+                <p className="text-xl font-black text-slate-900 tracking-tighter leading-none">R$ {data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
           </div>
@@ -160,7 +207,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     <th className="py-3 px-2">Data/Hora</th>
                     <th className="py-3">Serviço</th>
                     <th className="py-3">Cliente</th>
-                    <th className="py-3 text-right pr-2">Total</th>
+                    <th className="py-3 text-right pr-2">Valor (Repasse)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -168,7 +215,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     <tr key={idx} className="group">
                       <td className="py-4 px-2">
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 uppercase leading-none">{new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                          <span className="font-bold text-slate-900 uppercase leading-none">{new Date((item.date ? item.date.substring(0, 10) : new Date().toISOString().split('T')[0]) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                           <span className="text-[8px] font-medium text-slate-400 mt-1">{item.time}</span>
                         </div>
                       </td>
@@ -179,7 +226,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         <p className="text-slate-500 font-bold uppercase tracking-tight">{item.clientName}</p>
                       </td>
                       <td className="py-4 text-right pr-2 font-black text-slate-900">
-                        R$ {item.price.toFixed(2)}
+                        R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   )) : (
@@ -227,29 +274,49 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     );
   };
 
-  const handleSendWhatsApp = (data: any) => {
-    if (!data.provider?.phone) {
-      alert('Telefone do profissional não cadastrado.');
-      return;
-    }
+  const [whatsappModalData, setWhatsappModalData] = useState<any | null>(null);
 
-    const phone = data.provider.phone.replace(/\D/g, '');
+  const generateWhatsappMessage = (data: any) => {
+    const phone = data.provider?.phone?.replace(/\D/g, '') || '';
     let message = `* RECIBO DE REPASSE - AMINNA *\n`;
     message += `* Profissional:* ${data.provider.name} \n`;
     message += `* Período:* ${new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR')} \n\n`;
 
     message += `* DETALHAMENTO DE SERVIÇOS:*\n`;
     data.details.forEach((item: any) => {
-      message += `• ${new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')} - ${item.serviceName} (${item.clientName}): R$ ${item.price.toFixed(2)} \n`;
+      message += `• ${new Date((item.date ? item.date.substring(0, 10) : new Date().toISOString().split('T')[0]) + 'T12:00:00').toLocaleDateString('pt-BR')} - ${item.serviceName} (${item.clientName}): R$ ${item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
     });
 
     message += `\n * RESUMO FINANCEIRO:*\n`;
-    message += `Faturamento Total: R$ ${data.revenue.toFixed(2)} \n`;
-    message += `Minha Comissão(${(data.commissionRate * 100).toFixed(0)}%): R$ ${data.commissionVal.toFixed(2)} \n`;
-    message += `\n * VALOR A RECEBER: R$ ${data.commissionVal.toFixed(2)}*\n\n`;
+    message += `Faturamento Total: R$ ${data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
+    message += `Minha Comissão(${(data.commissionRate * 100).toFixed(0)}%): R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
+    message += `\n * VALOR A RECEBER: R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
     message += `_Gerado automaticamente pelo Sistema Aminna._`;
 
+    return { message, phone };
+  };
+
+  const handleOpenWhatsappModal = (data: any) => {
+    if (!data.provider?.phone) {
+      alert('Telefone do profissional não cadastrado.');
+      return;
+    }
+    setWhatsappModalData(data);
+  };
+
+  const handleSendToWhatsapp = () => {
+    if (!whatsappModalData) return;
+    const { message, phone } = generateWhatsappMessage(whatsappModalData);
     window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
+    setWhatsappModalData(null);
+  };
+
+  const handleCopyToClipboard = () => {
+    if (!whatsappModalData) return;
+    const { message } = generateWhatsappMessage(whatsappModalData);
+    navigator.clipboard.writeText(message);
+    setWhatsappModalData(null);
+    alert('Relatório copiado para a área de transferência!');
   };
 
   return (
@@ -257,6 +324,36 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div><h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight uppercase">Repasses Profissionais</h2><p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Cálculo de Comissões Sincronizado</p></div>
         <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-2xl border border-slate-200 shadow-sm"><Calendar size={16} className="text-slate-400" /><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /><span className="text-slate-300 font-black">-</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /></div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Faturamento Total</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white">R$ {totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl text-slate-400">
+            <Files size={20} />
+          </div>
+        </div>
+        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Serviços Realizados</p>
+            <p className="text-xl font-black text-slate-900 dark:text-white">{totalServices}</p>
+          </div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl text-slate-400">
+            <Scissors size={20} />
+          </div>
+        </div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30 shadow-sm flex items-center justify-between">
+          <div>
+            <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Total a Repassar</p>
+            <p className="text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {totalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          </div>
+          <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 size={20} />
+          </div>
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-slate-200 shadow-sm gap-4">
@@ -268,10 +365,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         </div>
       </div>
 
-      <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black border-b">
+      <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
+        <div className="overflow-auto flex-1">
+          <table className="w-full text-left text-sm relative">
+            <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black border-b sticky top-0 z-10 shadow-sm">
               <tr>
                 <th className="px-6 py-4">Profissional</th>
                 <th className="px-6 py-4 text-center">Serviços</th>
@@ -286,9 +383,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <tr key={data.provider?.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
                   <td className="px-6 py-4 font-black">{data.provider?.name}</td>
                   <td className="px-6 py-4 text-center font-bold">{data.count}</td>
-                  <td className="px-6 py-4 text-right text-slate-500 font-bold">R$ {data.revenue.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right text-slate-500 font-bold">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-center font-black">{(data.commissionRate * 100).toFixed(0)}%</td>
-                  <td className="px-6 py-4 text-right font-black text-emerald-700">R$ {data.commissionVal.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right font-black text-emerald-700">R$ {data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -299,7 +396,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         <FileText size={18} />
                       </button>
                       <button
-                        onClick={() => handleSendWhatsApp(data)}
+                        onClick={() => handleOpenWhatsappModal(data)}
                         className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors"
                         title="Enviar WhatsApp"
                       >
@@ -313,6 +410,39 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           </table>
         </div>
       </div>
+
+      {whatsappModalData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] shadow-2xl border border-slate-200 dark:border-zinc-800 p-6 flex flex-col items-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400">
+              <MessageCircle size={24} />
+            </div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight text-center mb-2">Enviar Comprovante</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-6">Escolha como deseja compartilhar o comprovante de repasse com {whatsappModalData.provider?.name}.</p>
+
+            <div className="w-full space-y-3">
+              <button
+                onClick={handleSendToWhatsapp}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Send size={16} /> Abrir WhatsApp
+              </button>
+              <button
+                onClick={handleCopyToClipboard}
+                className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-700 dark:text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95"
+              >
+                <Copy size={16} /> Copiar Texto
+              </button>
+              <button
+                onClick={() => setWhatsappModalData(null)}
+                className="w-full py-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-bold text-[10px] uppercase tracking-widest"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedReceipt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -331,15 +461,15 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
               <div className="grid grid-cols-3 gap-4">
                 <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100 dark:border-zinc-800">
                   <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Faturamento</p>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">R$ {selectedReceipt.revenue.toFixed(2)}</p>
+                  <p className="text-sm font-black text-slate-900 dark:text-white">R$ {selectedReceipt.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
                 <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100 dark:border-zinc-800">
                   <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Comissão ({(selectedReceipt.commissionRate * 100).toFixed(0)}%)</p>
-                  <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">R$ {selectedReceipt.commissionVal.toFixed(2)}</p>
+                  <p className="text-sm font-black text-indigo-600 dark:text-indigo-400">R$ {selectedReceipt.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100 dark:border-emerald-800/50">
                   <p className="text-[8px] font-black text-emerald-600 uppercase mb-1">A Repassar</p>
-                  <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">R$ {selectedReceipt.commissionVal.toFixed(2)}</p>
+                  <p className="text-sm font-black text-emerald-700 dark:text-emerald-400">R$ {selectedReceipt.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
 
@@ -350,14 +480,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800 rounded-2xl hover:border-slate-200 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-400 border border-slate-100 dark:border-zinc-700">
-                          {new Date(service.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                          {new Date((service.date ? service.date.substring(0, 10) : new Date().toISOString().split('T')[0]) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                         </div>
                         <div>
                           <p className="text-xs font-black text-slate-900 dark:text-white uppercase">{service.serviceName}</p>
                           <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{service.clientName}</p>
                         </div>
                       </div>
-                      <p className="text-xs font-black text-slate-900 dark:text-white">R$ {service.price.toFixed(2)}</p>
+                      <p className="text-xs font-black text-slate-900 dark:text-white">R$ {service.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                     </div>
                   ))}
                 </div>
@@ -368,7 +498,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
               <button
                 onClick={() => {
                   const phone = selectedReceipt.provider.phone?.replace(/\D/g, '') || '';
-                  const message = `*RECIBO DE REPASSE - AMINNA*\n*Profissional:* ${selectedReceipt.provider.name}\n*Período:* ${new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR')}\n\n*VALOR A RECEBER: R$ ${selectedReceipt.commissionVal.toFixed(2)}*\n\nCopie os detalhes acima ou clique no botão para enviar via WhatsApp.`;
+                  const message = `*RECIBO DE REPASSE - AMINNA*\n*Profissional:* ${selectedReceipt.provider.name}\n*Período:* ${new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR')}\n\n*VALOR A RECEBER: R$ ${selectedReceipt.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\nCopie os detalhes acima ou clique no botão para enviar via WhatsApp.`;
                   navigator.clipboard.writeText(message).then(() => alert('Resumo copiado para a área de transferência!'));
                 }}
                 className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border border-slate-200 dark:border-zinc-700 flex items-center justify-center gap-2"
@@ -377,7 +507,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <Copy size={18} /> Copiar
               </button>
               <button
-                onClick={() => handleSendWhatsApp(selectedReceipt)}
+                onClick={() => handleOpenWhatsappModal(selectedReceipt)}
                 className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 dark:shadow-none transition-all active:scale-95"
               >
                 <MessageCircle size={18} /> Enviar WhatsApp

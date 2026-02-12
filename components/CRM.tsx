@@ -17,7 +17,6 @@ interface CRMProps {
 }
 
 export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLeads, providers, appointments, services }) => {
-    // Main CRM Tab State
     const [crmView, setCrmView] = useState<'RELATIONSHIP' | 'JOURNEY' | 'REPORTS'>('JOURNEY');
 
     // --- RELATIONSHIP STATE ---
@@ -436,7 +435,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
 
                 <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 w-full md:w-fit overflow-x-auto no-scrollbar shadow-sm">
                     {[
-                        { id: 'RELATIONSHIP', label: 'Relacionamento', icon: HeartHandshake },
+
                         { id: 'JOURNEY', label: 'Funil de Vendas', icon: Map },
                         { id: 'REPORTS', label: 'Relatórios', icon: BarChart }
                     ].map(tab => (

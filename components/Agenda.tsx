@@ -827,6 +827,39 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 </div>
                             )}
                         </div>
+
+                        {/* Zoom Controls */}
+                        <div className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                            <button
+                                onClick={() => setRowHeight(prev => Math.max(40, prev - 10))}
+                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                title="Diminuir Altura"
+                            >
+                                <ZoomOut size={16} />
+                            </button>
+                            <button
+                                onClick={() => setRowHeight(prev => Math.min(200, prev + 10))}
+                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                title="Aumentar Altura"
+                            >
+                                <ZoomIn size={16} />
+                            </button>
+                            <div className="h-4 w-px bg-slate-300 dark:bg-zinc-600 mx-1"></div>
+                            <button
+                                onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                title="Estreitar Colunas"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <button
+                                onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
+                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                title="Alargar Colunas"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
@@ -891,8 +924,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <button
                                             onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
                                             className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
-                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
+                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
                                                 }`}
                                         >
                                             {isBlocked ? <Check size={8} /> : <Ban size={8} />}
@@ -902,38 +935,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 );
                             })}
                         </div>
-                        {/* Zoom Controls */}
-                        <div className="flex items-center gap-1 px-3 border-l border-slate-200 dark:border-zinc-800">
-                            <button
-                                onClick={() => setRowHeight(prev => Math.max(40, prev - 10))}
-                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-slate-200"
-                                title="Diminuir Altura"
-                            >
-                                <ZoomOut size={14} />
-                            </button>
-                            <button
-                                onClick={() => setRowHeight(prev => Math.min(200, prev + 10))}
-                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-transparent hover:border-200"
-                                title="Aumentar Altura"
-                            >
-                                <ZoomIn size={14} />
-                            </button>
-                            <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800 mx-1"></div>
-                            <button
-                                onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
-                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
-                                title="Estreitar Colunas"
-                            >
-                                <ChevronLeft size={14} />
-                            </button>
-                            <button
-                                onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
-                                className="p-1.5 hover:bg-white dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 transition-all"
-                                title="Alargar Colunas"
-                            >
-                                <ChevronRight size={14} />
-                            </button>
-                        </div>
+
                     </div>
 
 
@@ -1132,8 +1134,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div
                                                     key={`${p.id}-${hour}`}
                                                     className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
-                                                            ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
-                                                            : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
+                                                        ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
+                                                        : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
                                                         }`}
                                                     style={{ width: `${160 * zoomLevel}px` }}
                                                 >
@@ -1298,12 +1300,31 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                                     <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
                                                                         <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
-                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                                                                            R$ {gridAppointments
-                                                                                .filter(a => a.customerId === appt.customerId)
-                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
-                                                                                .toFixed(0)}
-                                                                        </p>
+                                                                        <div className="flex flex-col items-end">
+                                                                            {customer?.isVip ? (
+                                                                                <>
+                                                                                    <span className="text-[10px] font-bold text-slate-400 line-through">
+                                                                                        R$ {gridAppointments
+                                                                                            .filter(a => a.customerId === appt.customerId)
+                                                                                            .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                            .toFixed(2)}
+                                                                                    </span>
+                                                                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
+                                                                                        R$ {Math.max(0, gridAppointments
+                                                                                            .filter(a => a.customerId === appt.customerId)
+                                                                                            .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0) * (1 - (customer.vipDiscountPercent || 0) / 100))
+                                                                                            .toFixed(2)} <span className="text-[9px] text-amber-500 ml-1">(VIP)</span>
+                                                                                    </span>
+                                                                                </>
+                                                                            ) : (
+                                                                                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                                    R$ {gridAppointments
+                                                                                        .filter(a => a.customerId === appt.customerId)
+                                                                                        .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                        .toFixed(0)}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
 
                                                                     {customer?.assignedProviderIds && customer.assignedProviderIds.length > 0 && (

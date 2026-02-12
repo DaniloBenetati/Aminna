@@ -6,11 +6,12 @@ import {
     ArrowDownCircle, AlertTriangle, BarChart3, Target, Calculator, Files,
     Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
     ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
-    Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info
+    Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem } from '../types';
 import { supabase } from '../services/supabase';
+import { FinanceCharts } from './FinanceCharts';
 
 const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -45,16 +46,18 @@ interface DailyCloseViewProps {
     setClosingObservation: (v: string) => void;
     closerName: string;
     setCloserName: (v: string) => void;
+    date: Date;
 }
 
 const DailyCloseView: React.FC<DailyCloseViewProps> = ({
-    transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation, closerName, setCloserName
+    transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation, closerName, setCloserName, date
 }) => {
     const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Use the passed date prop instead of current date
+    const dateStr = toLocalDateStr(date);
 
-    const dailyTrans = transactions.filter(t => t.date === todayStr);
+    const dailyTrans = transactions.filter(t => t.date === dateStr);
     const dailyRevenueTransactions = dailyTrans.filter(t => t.type === 'RECEITA' && t.status === 'Pago');
 
     const totalServices = dailyRevenueTransactions.filter(t => t.origin === 'Serviço').reduce((acc, t) => acc + t.amount, 0);
@@ -82,7 +85,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         const printContent = `
             <html>
             <head>
-                <title>Fechamento de Caixa - ${new Date().toLocaleDateString('pt-BR')}</title>
+                <title>Fechamento de Caixa - ${date.toLocaleDateString('pt-BR')}</title>
                 <style>
                     body { font-family: 'Courier New', monospace; padding: 20px; color: #000; }
                     .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
@@ -100,7 +103,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div class="header">
                     <h1>AMINNA HOME NAIL GEL</h1>
                     <p>FECHAMENTO DE CAIXA</p>
-                    <p>${new Date().toLocaleString('pt-BR')}</p>
+                    <p>${date.toLocaleString('pt-BR')}</p>
                 </div>
                 <div class="section">
                     <div class="row"><span>SERVIÇOS:</span> <span>R$ ${totalServices.toFixed(2)}</span></div>
@@ -142,7 +145,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     return (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 relative">
             <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4">
-                <div><h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2"><Lock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fechamento de Caixa</h3><p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase mt-0.5">Ref: {new Date().toLocaleDateString('pt-BR')}</p></div>
+                <div><h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2"><Lock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fechamento de Caixa</h3><p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase mt-0.5">Ref: {date.toLocaleDateString('pt-BR')}</p></div>
                 <div className="flex flex-col sm:flex-row gap-6 text-right"><div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Faturamento Bruto</p><p className="text-2xl font-black text-slate-950 dark:text-white">R$ {totalRevenue.toFixed(2)}</p></div><div className="border-l border-slate-200 dark:border-zinc-800 pl-6"><p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center justify-end gap-1">Receita Revisada <CheckCircle2 size={10} /></p><p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">R$ {revisedRevenue.toFixed(2)}</p></div></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -157,7 +160,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             const d = data as { count: number; amount: number };
                             const isExpanded = expandedMethod === method;
                             return (
-                                <div key={method} className="border-b border-slate-50 dark:border-zinc-800 last:border-none">
+                                <div key={method} className="border-b border-slate-5 dark:border-zinc-800 last:border-none">
                                     <div onClick={() => setExpandedMethod(isExpanded ? null : method)} className={`flex justify-between items-center p-3 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer rounded-xl transition-all ${isExpanded ? 'bg-slate-50 dark:bg-zinc-800' : ''}`}>
                                         <div className="flex items-center gap-3"><div className="bg-slate-100 dark:bg-zinc-700 p-1.5 rounded-lg text-slate-600 dark:text-slate-400"><DollarSign size={14} /></div><div><p className="text-[11px] font-black text-slate-950 dark:text-white uppercase">{method}</p><p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{d.count} Transações</p></div></div>
                                         <div className="flex items-center gap-2"><span className="text-xs font-black text-slate-950 dark:text-white">R$ {d.amount.toFixed(2)}</span>{isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}</div>
@@ -167,7 +170,10 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             {dailyRevenueTransactions.filter(t => t.paymentMethod === method).map((t, idx) => (
                                                 <div key={t.id || idx} className="flex justify-between items-center p-2 border-b border-slate-100 dark:border-zinc-700 last:border-none text-[10px]">
                                                     <div className="flex flex-col"><span className="font-bold text-slate-700 dark:text-slate-300 uppercase">{t.description.split(' - ')[0]}</span>{t.customerOrProviderName && <span className="text-slate-400 dark:text-slate-500 uppercase text-[9px]">{t.customerOrProviderName}</span>}</div>
-                                                    <span className="font-black text-emerald-700 dark:text-emerald-400">R$ {t.amount.toFixed(2)}</span>
+                                                    <span className="font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                                                        {t.amount === 0 && <span className="text-[9px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="VIP / Cortesia"><Crown size={10} strokeWidth={3} /> VIP</span>}
+                                                        R$ {t.amount.toFixed(2)}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
@@ -209,7 +215,7 @@ interface FinanceProps {
 }
 
 export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock }) => {
-    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE' | 'SUPPLIERS'>('DRE');
+    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE' | 'SUPPLIERS' | 'CHARTS'>('DRE');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('year');
     const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 8) + '01');
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -310,6 +316,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     const [payablesFilter, setPayablesFilter] = useState('');
     const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('');
 
+    // Filter States for Detailed View
+    const [detailedFilter, setDetailedFilter] = useState('');
+
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
@@ -396,6 +405,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             let targetMonth = month;
             let targetYear = year;
 
+            // Logic: If payment day is smaller than start day, it DEFINITELY is next month.
+            // Example: Period 16-31, Payment 5. 5 < 16 -> Next Month.
+            // Example: Period 1-15, Payment 20. 20 < 1 -> False -> Same Month.
+            // Note: This assumes standard logic where you don't pay before the period starts.
             if (setting.paymentDay < setting.startDay) {
                 targetMonth++;
                 if (targetMonth > 11) { targetMonth = 0; targetYear++; }
@@ -424,20 +437,25 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const service = services.find(s => s.id === app.serviceId);
             const customer = customers.find(c => c.id === app.customerId);
             const provider = providers.find(p => p.id === app.providerId);
-            // Revenue logic: use pricePaid if concluded (can be 0 for courtesy), else fallback
-            const revenueBase = (app.status === 'Concluído' && app.pricePaid !== undefined && app.pricePaid !== null)
-                ? app.pricePaid
-                : (app.bookedPrice || service?.price || 0);
+            // Revenue logic: Handle snake_case from DB if camelCase is missing
+            const rawApp = app as any;
+            const pricePaid = app.pricePaid ?? rawApp.price_paid;
+            const bookedPrice = app.bookedPrice ?? rawApp.booked_price;
+
+            const revenueBase = (app.status === 'Concluído' && pricePaid !== undefined && pricePaid !== null)
+                ? pricePaid
+                : (bookedPrice || service?.price || 0);
 
             // Payment Logic
-            const paymentMethodName = app.paymentMethod || 'Pix';
+            const paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
             const { fee, days } = getPaymentDetails(paymentMethodName);
 
             const netAmount = revenueBase * (1 - (fee / 100));
 
             // Date Logic
             // If concluded, use paymentDate (D+0 reference), else use scheduled date
-            const baseDate = (app.status === 'Concluído' && app.paymentDate) ? app.paymentDate : app.date;
+            const paymentDate = app.paymentDate || rawApp.payment_date;
+            const baseDate = (app.status === 'Concluído' && paymentDate) ? paymentDate : app.date;
             const settlementDate = addDays(baseDate, days);
 
             // Status Logic
@@ -464,9 +482,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             });
 
             if (provider) {
-                const rate = app.commissionRateSnapshot ?? provider.commissionRate;
+                const commissionRateSnapshot = app.commissionRateSnapshot ?? rawApp.commission_rate_snapshot;
+                const rate = commissionRateSnapshot ?? provider.commissionRate;
                 // Commission is on NET value of the MAIN service
-                const mainServiceBookedPrice = app.bookedPrice || service?.price || 0;
+                const mainServiceBookedPrice = bookedPrice || service?.price || 0;
                 const commissionLiquidBase = mainServiceBookedPrice * (1 - (fee / 100));
                 const commissionAmount = commissionLiquidBase * rate;
 
@@ -477,7 +496,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     date: commissionDate,
                     type: 'DESPESA',
                     category: 'Comissão',
-                    description: `Repasse - ${provider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%)`,
+                    description: `Repasse - ${provider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                     amount: commissionAmount,
                     status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                     paymentMethod: 'Transferência',
@@ -492,8 +511,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     const extraProvider = providers.find(p => p.id === extra.providerId);
                     const extraService = services.find(s => s.id === extra.serviceId);
                     if (extraProvider) {
-                        const rate = extra.commissionRateSnapshot ?? extraProvider.commissionRate;
-                        const extraBookedPrice = extra.bookedPrice || extraService?.price || 0;
+                        const rawExtra = extra as any;
+                        const extraRateSnapshot = extra.commissionRateSnapshot ?? rawExtra.commission_rate_snapshot;
+                        const rate = extraRateSnapshot ?? extraProvider.commissionRate;
+
+                        const extraBooked = extra.bookedPrice ?? rawExtra.booked_price;
+                        const extraBookedPrice = extraBooked || extraService?.price || 0;
                         const commissionLiquidBase = extraBookedPrice * (1 - (fee / 100));
                         const commissionAmount = commissionLiquidBase * rate;
 
@@ -504,7 +527,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             date: commissionDate,
                             type: 'DESPESA',
                             category: 'Comissão',
-                            description: `Repasse Extra - ${extraProvider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%)`,
+                            description: `Repasse Extra - ${extraProvider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                             amount: commissionAmount,
                             status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                             paymentMethod: 'Transferência',
@@ -546,7 +569,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         return allTrans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [services, expenses, appointments, sales, paymentSettings, commissionSettings]);
 
-    const filteredTransactions = useMemo(() => transactions.filter(t => t.date >= startDate && t.date <= endDate), [transactions, startDate, endDate]);
+    const filteredTransactions = useMemo(() => {
+        return transactions.filter(t => {
+            const matchesDate = t.date >= startDate && t.date <= endDate;
+            const matchesDescription = t.description.toLowerCase().includes(detailedFilter.toLowerCase()) ||
+                (t.customerOrProviderName || '').toLowerCase().includes(detailedFilter.toLowerCase()); // Search in both description and name
+
+            // Only apply filters if we are in DETAILED tab ideally, but filteredTransactions is used for the view.
+            // Wait, filteredTransactions is ONLY used in DETAILED rendering and PAYABLES rendering?
+            // PAYABLES uses `filteredPayables` (which I usually see in other codebases or need to check if it exists).
+            // Let's check where `filteredTransactions` is used.
+            // It is used in lines 1399 (DETAILED TABLE).
+
+            return matchesDate && matchesDescription;
+        });
+    }, [transactions, startDate, endDate, detailedFilter]);
 
     const handlePrintDetailedReport = () => {
         const printContent = `
@@ -1286,6 +1323,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         { id: 'DAILY', label: 'Caixa Diário', icon: ArrowDownCircle },
                         { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
                         { id: 'DRE', label: 'DRE', icon: CalcIcon },
+                        { id: 'CHARTS', label: 'Gráficos', icon: BarChart3 },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -1293,6 +1331,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 setActiveTab(tab.id as any);
                                 if (tab.id === 'DRE') {
                                     setTimeView('month');
+                                    setDateRef(new Date());
+                                }
+                                if (tab.id === 'DAILY') {
+                                    setTimeView('day');
+                                    setDateRef(new Date());
+                                }
+                                if (tab.id === 'CHARTS') {
+                                    setTimeView('year');
                                     setDateRef(new Date());
                                 }
                             }}
@@ -1329,6 +1375,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     )}
 
+                    {activeTab === 'DETAILED' && (
+                        <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
+                            <div className="relative w-full md:w-64">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar por descrição ou nome..."
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    value={detailedFilter}
+                                    onChange={e => setDetailedFilter(e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
@@ -1358,7 +1419,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><List size={16} /> Extrato de Fluxo Financeiro</h3>
                                 <p className="text-[9px] text-slate-500 uppercase mt-0.5">Listagem de todas as entradas e saídas no período</p>
                             </div>
-                            <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Printer size={16} /></button>
+                            <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors"><Printer size={16} /></button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
@@ -1404,7 +1465,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 </span>
                                             </td>
                                             <td className={`px-6 py-4 text-right font-black text-sm whitespace-nowrap ${t.type === 'RECEITA' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-                                                {t.type === 'DESPESA' ? '-' : '+'} R$ {t.amount.toFixed(2)}
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {t.amount === 0 && t.type === 'RECEITA' && <span className="text-[9px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="VIP / Cortesia"><Crown size={10} strokeWidth={3} /> VIP</span>}
+                                                    {t.type === 'DESPESA' ? '-' : '+'} R$ {t.amount.toFixed(2)}
+                                                </div>
                                             </td>
                                         </tr>
                                     )) : (
@@ -1420,7 +1484,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     </div>
                 )}
-                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} />}
+                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} />}
+                {activeTab === 'CHARTS' && <FinanceCharts transactions={transactions} expenses={expenses} startDate={startDate} endDate={endDate} timeView={timeView} />}
                 {activeTab === 'PAYABLES' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
                         {/* Indicadores Contas a Pagar */}
