@@ -213,9 +213,8 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
 
             // Service location and details
             codigo_municipio_prestacao: '3550308',
-            codigo_tributacao_municipio: '08516', // Another common SP Municipal Code for Cabeleireiros (08516)
+            codigo_tributacao_municipio: '08494', // Updated to 08494 as requested by the user
             item_lista_servico: '06.01', // Use LC 116 item as primary tax identifier for SP instead of National Code
-            codigo_tributacao_nacional_iss: '060101', // Restored 6-digit National Code which is structurally valid (cTribNac)
             // codigo_tributacao_nacional_iss: '060101', // Removing National Code as it fails with E0312 in SP environment
             descricao_servico: `${params.serviceDescription}\n\n` +
                 `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
@@ -232,7 +231,18 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             nfseRequest.inscricao_municipal_prestador = fiscalConfig.municipalRegistration;
         }
 
-        // Add tomador data if we have customer info
+        // 5.1. Add Intermediário (Profissional Parceiro) - Mandatory for Salão Parceiro compliance in SP
+        // This ensures tax segregation and allows the salon to deduct the professional's share from the tax base
+        nfseRequest.intermediario = {
+            cnpj: professionalConfig.cnpj.replace(/\D/g, ''),
+            razao_social: professionalConfig.socialName || professionalConfig.fantasyName || 'Profissional Parceiro'
+        };
+
+        if (professionalConfig.municipalRegistration) {
+            nfseRequest.intermediario.inscricao_municipal = professionalConfig.municipalRegistration.replace(/\D/g, '');
+        }
+
+        // 6. Add tomador data if we have customer info
         if (params.customerCpfCnpj) {
             const cpfCnpj = params.customerCpfCnpj.replace(/\D/g, '');
             if (cpfCnpj.length === 11) {
