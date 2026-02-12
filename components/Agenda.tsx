@@ -52,7 +52,7 @@ const DroppableCell = ({ id, isBlocked, zoomLevel, children }: { id: string, isB
     );
 };
 
-const DraggableAppointment = ({ id, disabled, children, style }: { id: string, disabled: boolean, children: React.ReactNode, style?: React.CSSProperties }) => {
+const DraggableAppointment = ({ id, disabled, children, style, className = '' }: { id: string, disabled: boolean, children: React.ReactNode, style?: React.CSSProperties, className?: string }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id,
         disabled
@@ -61,14 +61,14 @@ const DraggableAppointment = ({ id, disabled, children, style }: { id: string, d
     const dndStyle = {
         ...style,
         transform: CSS.Translate.toString(transform),
-        opacity: isDragging ? 0.3 : 1,
-        zIndex: isDragging ? 999 : style?.zIndex
+        opacity: isDragging ? 0.3 : 1
     };
 
     return (
         <div
             ref={setNodeRef}
             style={dndStyle}
+            className={`${className} ${isDragging ? 'z-[999]' : ''}`}
             {...listeners}
             {...attributes}
         >
@@ -1362,18 +1362,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     key={appt.id}
                                                                     id={appt.id}
                                                                     disabled={appt.status === 'Concluído' || appt.status === 'Cancelado' || appt.customerId === 'INTERNAL_BLOCK'}
+                                                                    className="absolute left-1 right-1 z-10 hover:z-[50] transition-all"
                                                                     style={{
-                                                                        position: 'absolute',
-                                                                        left: '4px',
-                                                                        right: '4px',
                                                                         height: `${cardHeight}px`,
-                                                                        top: `${topOffset}px`,
-                                                                        zIndex: 10
+                                                                        top: `${topOffset}px`
                                                                     }}
                                                                 >
                                                                     <div
                                                                         onClick={() => handleAppointmentClick(appt)}
-                                                                        className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                        className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                             appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
                                                                                 appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
                                                                                     'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
