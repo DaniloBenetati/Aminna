@@ -1,13 +1,4 @@
-﻿
-import React, { useState, useMemo } from 'react';
-import {
-    ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
-    Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
-    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle
-} from 'lucide-react';
-import { supabase } from '../services/supabase';
-import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig } from '../types';
-import { ServiceModal } from './ServiceModal';
+﻿import React, { useState, useMemo } from 'react';
 
 const getDuration = (start: string, end?: string, defaultDuration: number = 30) => {
     if (!end) return defaultDuration;
@@ -15,7 +6,76 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
     const [endH, endM] = end.split(':').map(Number);
     return (endH * 60 + endM) - (startH * 60 + startM);
 };
+import {
+    ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
+    Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
+    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert
+} from 'lucide-react';
+import { supabase } from '../services/supabase';
+import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig } from '../types';
+import { ServiceModal } from './ServiceModal';
+import {
+    DndContext,
+    DragEndEvent,
+    useDraggable,
+    useDroppable,
+    DragOverlay,
+    useSensor,
+    useSensors,
+    PointerSensor,
+    DragStartEvent,
+    closestCorners
+} from '@dnd-kit/core';
+import { restrictToWindowEdges } from '@dnd-kit/modifiers';
+import { CSS } from '@dnd-kit/utilities';
 import { Avatar } from './Avatar';
+
+const DroppableCell = ({ id, isBlocked, zoomLevel, children }: { id: string, isBlocked: boolean, zoomLevel: number, children: React.ReactNode }) => {
+    const { isOver, setNodeRef } = useDroppable({
+        id,
+        disabled: isBlocked
+    });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
+                ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
+                : isOver
+                    ? 'bg-indigo-50/50 dark:bg-indigo-900/30'
+                    : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
+                }`}
+            style={{ width: `${160 * zoomLevel}px` }}
+        >
+            {children}
+        </div>
+    );
+};
+
+const DraggableAppointment = ({ id, disabled, children, style }: { id: string, disabled: boolean, children: React.ReactNode, style?: React.CSSProperties }) => {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+        id,
+        disabled
+    });
+
+    const dndStyle = {
+        ...style,
+        transform: CSS.Translate.toString(transform),
+        opacity: isDragging ? 0.3 : 1,
+        zIndex: isDragging ? 999 : style?.zIndex
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={dndStyle}
+            {...listeners}
+            {...attributes}
+        >
+            {children}
+        </div>
+    );
+};
 
 interface AgendaProps {
     customers: Customer[];
@@ -60,6 +120,15 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [visibleProviderIds, setVisibleProviderIds] = useState<string[]>([]);
     const [visibleServiceIds, setVisibleServiceIds] = useState<string[]>([]);
     const [serviceSidebarSearch, setServiceSidebarSearch] = useState('');
+    const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        })
+    );
 
     // DEBUG: Track selectedProviderId changes
     React.useEffect(() => {
@@ -610,6 +679,50 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
     };
 
+    // DND-KIT HANDLERS
+    const handleDragStart = (event: DragStartEvent) => {
+        setActiveDragId(event.active.id as string);
+    };
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveDragId(null);
+
+        if (!over) return;
+
+        const appointmentId = active.id as string;
+        const [targetProviderId, targetTime] = (over.id as string).split('|');
+
+        if (!appointmentId || !targetProviderId || !targetTime) return;
+
+        const appt = appointments.find(a => a.id === appointmentId);
+        if (!appt) return;
+
+        if (appt.providerId === targetProviderId && appt.time === targetTime) return;
+
+        // Optimistic UI
+        const originalAppointments = [...appointments];
+        setAppointments(prev => prev.map(a =>
+            a.id === appointmentId ? { ...a, providerId: targetProviderId, time: targetTime } : a
+        ));
+
+        try {
+            const { error } = await supabase
+                .from('appointments')
+                .update({
+                    provider_id: targetProviderId,
+                    time: targetTime
+                })
+                .eq('id', appointmentId);
+
+            if (error) throw error;
+        } catch (error) {
+            console.error("Error moving appointment:", error);
+            setAppointments(originalAppointments);
+            alert("Erro ao mover atendimento. Revertendo...");
+        }
+    };
+
     const MiniCalendar = () => {
         const [viewDate, setViewDate] = useState(new Date(dateRef));
         const month = viewDate.getMonth();
@@ -897,10 +1010,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
 
                     {/* Grid Header */}
-                    <div className="flex border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30">
-                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center">
+                    <div className="flex border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30 overflow-hidden">
+                        {/* Time Column Header (Sticky) */}
+                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center sticky left-0 z-40 bg-slate-50 dark:bg-zinc-900 transition-colors">
                             <Clock size={14} className="text-slate-400" />
                         </div>
+
+                        {/* Providers Header (Scrollable) */}
                         <div ref={headerScrollRef} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide flex">
                             {activeVisibileProviders.map(p => {
                                 const isBlocked = appointments.some(a =>
@@ -934,8 +1050,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     </div>
                                 );
                             })}
-                        </div>
 
+                            {/* Scrollbar Compensation: Empty div at the end of header to match grid end padding + scrollbar width */}
+                            <div className="flex-shrink-0 w-4 h-full"></div>
+                        </div>
                     </div>
 
 
@@ -1103,257 +1221,279 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     ) : (
                         /* Time Slots (Day View) */
-                        <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto relative">
-                            {hours.map(hour => (
-                                <div
-                                    key={hour}
-                                    className="flex border-b border-slate-100 dark:border-zinc-800"
-                                    style={{ minHeight: `${rowHeight}px` }}
-                                >
-                                    {/* Time Column */}
-                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-colors">
-                                        {hour}
-                                    </div>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCorners}
+                            onDragStart={handleDragStart}
+                            onDragEnd={handleDragEnd}
+                        >
+                            <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto relative">
+                                {hours.map(hour => (
+                                    <div
+                                        key={hour}
+                                        className="flex border-b border-slate-100 dark:border-zinc-800"
+                                        style={{ minHeight: `${rowHeight}px` }}
+                                    >
+                                        {/* Time Column */}
+                                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-colors">
+                                            {hour}
+                                        </div>
 
-                                    {/* Provider Columns */}
-                                    <div className="flex-1 flex">
-                                        {activeVisibileProviders.map(p => {
-                                            const isBlocked = appointments.some(a =>
-                                                a.providerId === p.id &&
-                                                a.date === gridDateStr &&
-                                                a.customerId === 'INTERNAL_BLOCK'
-                                            );
+                                        {/* Provider Columns */}
+                                        <div className="flex-1 flex">
+                                            {activeVisibileProviders.map(p => {
+                                                const isBlocked = appointments.some(a =>
+                                                    a.providerId === p.id &&
+                                                    a.date === gridDateStr &&
+                                                    a.customerId === 'INTERNAL_BLOCK'
+                                                );
 
-                                            if (isBlocked && hour === '12:00') {
-                                                // Show a marker for the block only once per column to avoid clutter
-                                                // although we'll gray out the whole column
-                                            }
+                                                if (isBlocked && hour === '12:00') {
+                                                    // Show a marker for the block only once per column to avoid clutter
+                                                    // although we'll gray out the whole column
+                                                }
 
-                                            const slotAppointments = getCellAppointments(p.id, hour);
-                                            return (
-                                                <div
-                                                    key={`${p.id}-${hour}`}
-                                                    className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
-                                                        ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
-                                                        : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
-                                                        }`}
-                                                    style={{ width: `${160 * zoomLevel}px` }}
-                                                >
-                                                    {isBlocked && hour === '12:00' && (
-                                                        <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                            <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-4 py-2 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
-                                                                <p className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                const slotAppointments = getCellAppointments(p.id, hour);
+                                                return (
+                                                    <DroppableCell
+                                                        key={`${p.id}-${hour}`}
+                                                        id={`${p.id}|${hour}`}
+                                                        isBlocked={isBlocked}
+                                                        zoomLevel={zoomLevel}
+                                                    >
+                                                        {isBlocked && hour === '12:00' && (
+                                                            <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
+                                                                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-4 py-2 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
+                                                                    <p className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    )}
+                                                        )}
 
-                                                    {/* Add Button on Hover */}
-                                                    {!isBlocked && (
-                                                        <button
-                                                            onClick={() => handleNewAppointment({
-                                                                providerId: p.id,
-                                                                date: gridDateStr,
-                                                                time: hour
-                                                            })}
-                                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
-                                                        >
-                                                            <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
-                                                        </button>
-                                                    )}
+                                                        {/* Add Button on Hover */}
+                                                        {!isBlocked && (
+                                                            <button
+                                                                onClick={() => handleNewAppointment({
+                                                                    providerId: p.id,
+                                                                    date: gridDateStr,
+                                                                    time: hour
+                                                                })}
+                                                                className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
+                                                            >
+                                                                <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
+                                                            </button>
+                                                        )}
 
-                                                    {slotAppointments.map(appt => {
-                                                        const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
-                                                        const service = services.find(s => s.id === appt.serviceId);
+                                                        {slotAppointments.map(appt => {
+                                                            const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+                                                            const service = services.find(s => s.id === appt.serviceId);
 
-                                                        let displayServiceName: string = '';
-                                                        let displayTime: string = '';
-                                                        let cardHeight: number = 0;
+                                                            let displayServiceName: string = '';
+                                                            let displayTime: string = '';
+                                                            let cardHeight: number = 0;
 
-                                                        // Calculate height based on duration
-                                                        // Base height is rowHeight (for 30 mins)
-                                                        // If it's 60 mins, height is rowHeight * 2
-                                                        if (appt.providerId === p.id) {
-                                                            displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
-                                                            displayTime = appt.time;
-                                                            const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
-                                                            const factor = dur / 30;
-                                                            cardHeight = (rowHeight * factor) - 8;
-                                                        } else {
-                                                            const subService = appt.additionalServices?.find(s => s.providerId === p.id);
-                                                            if (subService) {
-                                                                const srv = services.find(s => s.id === subService.serviceId);
-                                                                displayServiceName = srv?.name || 'Serviço Extra';
-                                                                displayTime = subService.startTime || appt.time;
-                                                                const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
+                                                            // Calculate height based on duration
+                                                            // Base height is rowHeight (for 30 mins)
+                                                            // If it's 60 mins, height is rowHeight * 2
+                                                            if (appt.providerId === p.id) {
+                                                                displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                                displayTime = appt.time;
+                                                                const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
                                                                 const factor = dur / 30;
                                                                 cardHeight = (rowHeight * factor) - 8;
+                                                            } else {
+                                                                const subService = appt.additionalServices?.find(s => s.providerId === p.id);
+                                                                if (subService) {
+                                                                    const srv = services.find(s => s.id === subService.serviceId);
+                                                                    displayServiceName = srv?.name || 'Serviço Extra';
+                                                                    displayTime = subService.startTime || appt.time;
+                                                                    const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
+                                                                    const factor = dur / 30;
+                                                                    cardHeight = (rowHeight * factor) - 8;
+                                                                }
                                                             }
-                                                        }
 
-                                                        // Calculate top offset based on actual appointment time within the slot
-                                                        const [apptHour, apptMin] = displayTime.split(':').map(Number);
-                                                        const [slotHour, slotMin] = hour.split(':').map(Number);
-                                                        const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
-                                                        const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
+                                                            // Calculate top offset based on actual appointment time within the slot
+                                                            const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                            const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                            const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                            const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
 
-                                                        return (
-                                                            <div
-                                                                key={appt.id}
-                                                                onClick={() => handleAppointmentClick(appt)}
-                                                                className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
-                                                                    appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
-                                                                            'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
-                                                                    }`}
-                                                                style={{
-                                                                    height: `${cardHeight}px`,
-                                                                    top: `${topOffset}px`
-                                                                }}
-                                                            >
-                                                                <div className="flex justify-between items-start">
-                                                                    <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                        {customer?.status === 'Novo' && !(Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) && (
-                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
-                                                                        )}
-                                                                        {(customer?.assignedProviderIds?.some(id => id.toLowerCase() === p.id.toLowerCase()) ||
-                                                                            (customer?.assignedProviderId && customer.assignedProviderId.toLowerCase() === p.id.toLowerCase())) && (
-                                                                                <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
-                                                                            )}
-                                                                    </div>
-                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
-                                                                </div>
-                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
-
-                                                                {/* Only show bottom info if height allows */}
-                                                                {cardHeight > 40 && (
-                                                                    <div className="flex justify-between items-center mt-1.5">
-                                                                        <div className="flex items-center gap-1">
-                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                                        'bg-amber-400'
-                                                                                }`}></span>
-                                                                            {appt.status === 'Concluído' && (
-                                                                                (() => {
-                                                                                    const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                                                                                    if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
-                                                                                    return null;
-                                                                                })()
-                                                                            )}
-                                                                        </div>
-                                                                        <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* HOVER TOOLTIP */}
-                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
-                                                                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
-                                                                        <div>
-                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'CLIENTE AVULSA'}</p>
-                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
-                                                                                <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
-                                                                            </p>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="space-y-4">
-                                                                        {(() => {
-                                                                            const customerApps = gridAppointments
-                                                                                .filter(a => a.customerId === appt.customerId)
-                                                                                .sort((a, b) => a.time.localeCompare(b.time));
-
-                                                                            return customerApps.map((ca, idx) => {
-                                                                                const mainSrv = services.find(s => s.id === ca.serviceId);
-                                                                                const mainProv = providers.find(p => p.id === ca.providerId);
-
-                                                                                return (
-                                                                                    <div key={ca.id} className={`${idx > 0 ? 'pt-3 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
-                                                                                        {/* Main Service info for this record */}
-                                                                                        <div className="flex justify-between items-start mb-2">
-                                                                                            <div className="flex-1">
-                                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
-                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {getDuration(ca.time, ca.endTime, mainSrv?.durationMinutes)} min</p>
-                                                                                            </div>
-                                                                                            <div className="text-right">
-                                                                                                <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
-                                                                                            </div>
-                                                                                        </div>
-
-                                                                                        {/* Status and Price for this record */}
-                                                                                        <div className="flex justify-between items-center mt-1">
-                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
-                                                                                                ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                    ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
-                                                                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                                                                                                }`}>
-                                                                                                {ca.status}
-                                                                                            </span>
-                                                                                            <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                );
-                                                                            });
-                                                                        })()}
-                                                                    </div>
-
-                                                                    <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
-                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
-                                                                        <div className="flex flex-col items-end">
-                                                                            {customer?.isVip ? (
-                                                                                <>
-                                                                                    <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                                                        R$ {gridAppointments
-                                                                                            .filter(a => a.customerId === appt.customerId)
-                                                                                            .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
-                                                                                            .toFixed(2)}
-                                                                                    </span>
-                                                                                    <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
-                                                                                        R$ {Math.max(0, gridAppointments
-                                                                                            .filter(a => a.customerId === appt.customerId)
-                                                                                            .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0) * (1 - (customer.vipDiscountPercent || 0) / 100))
-                                                                                            .toFixed(2)} <span className="text-[9px] text-amber-500 ml-1">(VIP)</span>
-                                                                                    </span>
-                                                                                </>
-                                                                            ) : (
-                                                                                <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                                                                                    R$ {gridAppointments
-                                                                                        .filter(a => a.customerId === appt.customerId)
-                                                                                        .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
-                                                                                        .toFixed(0)}
-                                                                                </p>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {customer?.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
-                                                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                                                            <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-3">Profissionais Preferidos</p>
-                                                                            <div className="flex flex-wrap gap-2">
-                                                                                {customer.assignedProviderIds.map(pid => {
-                                                                                    const prov = providers.find(p => p.id === pid);
-                                                                                    if (!prov) return null;
-                                                                                    return (
-                                                                                        <span key={pid} className="bg-[#FF007F] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-sm">
-                                                                                            {prov.name}
-                                                                                        </span>
-                                                                                    );
-                                                                                })}
+                                                            return (
+                                                                <DraggableAppointment
+                                                                    key={appt.id}
+                                                                    id={appt.id}
+                                                                    disabled={appt.status === 'Concluído' || appt.status === 'Cancelado' || appt.customerId === 'INTERNAL_BLOCK'}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        left: '4px',
+                                                                        right: '4px',
+                                                                        height: `${cardHeight}px`,
+                                                                        top: `${topOffset}px`,
+                                                                        zIndex: 10
+                                                                    }}
+                                                                >
+                                                                    <div
+                                                                        onClick={() => handleAppointmentClick(appt)}
+                                                                        className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                            appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
+                                                                                appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
+                                                                                    'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                                                                            }`}
+                                                                    >
+                                                                        <div className="flex justify-between items-start">
+                                                                            <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
+                                                                                <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
+                                                                                {customer?.status === 'Novo' && !(Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) && (
+                                                                                    <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                                )}
+                                                                                {(customer?.assignedProviderIds?.some(id => id.toLowerCase() === p.id.toLowerCase()) ||
+                                                                                    (customer?.assignedProviderId && customer.assignedProviderId.toLowerCase() === p.id.toLowerCase())) && (
+                                                                                        <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
+                                                                                    )}
                                                                             </div>
+                                                                            <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            );
-                                        })}
+                                                                        <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
+
+                                                                        {/* Only show bottom info if height allows */}
+                                                                        {cardHeight > 40 && (
+                                                                            <div className="flex justify-between items-center mt-1.5">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                                        appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                            appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                                'bg-amber-400'
+                                                                                        }`}></span>
+                                                                                    {appt.status === 'Concluído' && (
+                                                                                        (() => {
+                                                                                            const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                            if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                            return null;
+                                                                                        })()
+                                                                                    )}
+                                                                                </div>
+                                                                                <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
+                                                                            </div>
+                                                                        )}
+
+                                                                        {/* HOVER TOOLTIP */}
+                                                                        <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                                                                                <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
+                                                                                <div>
+                                                                                    <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'CLIENTE AVULSA'}</p>
+                                                                                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                                                                                        <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div className="space-y-4">
+                                                                                {(() => {
+                                                                                    const customerApps = gridAppointments
+                                                                                        .filter(a => a.customerId === appt.customerId)
+                                                                                        .sort((a, b) => a.time.localeCompare(b.time));
+
+                                                                                    return customerApps.map((ca, idx) => {
+                                                                                        const mainSrv = services.find(s => s.id === ca.serviceId);
+                                                                                        const mainProv = providers.find(p => p.id === ca.providerId);
+
+                                                                                        return (
+                                                                                            <div key={ca.id} className={`${idx > 0 ? 'pt-3 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
+                                                                                                {/* Main Service info for this record */}
+                                                                                                <div className="flex justify-between items-start mb-2">
+                                                                                                    <div className="flex-1">
+                                                                                                        <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
+                                                                                                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {getDuration(ca.time, ca.endTime, mainSrv?.durationMinutes)} min</p>
+                                                                                                    </div>
+                                                                                                    <div className="text-right">
+                                                                                                        <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
+                                                                                                    </div>
+                                                                                                </div>
+
+                                                                                                {/* Status and Price for this record */}
+                                                                                                <div className="flex justify-between items-center mt-1">
+                                                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                                                                                                        ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
+                                                                                                            ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                                'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                                                                                                        }`}>
+                                                                                                        {ca.status}
+                                                                                                    </span>
+                                                                                                    <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    });
+                                                                                })()}
+                                                                            </div>
+
+                                                                            <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
+                                                                                <div className="flex flex-col items-end">
+                                                                                    {customer?.isVip ? (
+                                                                                        <>
+                                                                                            <span className="text-[10px] font-bold text-slate-400 line-through">
+                                                                                                R$ {gridAppointments
+                                                                                                    .filter(a => a.customerId === appt.customerId)
+                                                                                                    .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                                    .toFixed(2)}
+                                                                                            </span>
+                                                                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
+                                                                                                R$ {Math.max(0, gridAppointments
+                                                                                                    .filter(a => a.customerId === appt.customerId)
+                                                                                                    .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0) * (1 - (customer.vipDiscountPercent || 0) / 100))
+                                                                                                    .toFixed(2)} <span className="text-[9px] text-amber-500 ml-1">(VIP)</span>
+                                                                                            </span>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                                            R$ {gridAppointments
+                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                                .toFixed(0)}
+                                                                                        </p>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {customer?.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
+                                                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                                                                    <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-3">Profissionais Preferidos</p>
+                                                                                    <div className="flex flex-wrap gap-2">
+                                                                                        {customer.assignedProviderIds.map(pid => {
+                                                                                            const prov = providers.find(p => p.id === pid);
+                                                                                            if (!prov) return null;
+                                                                                            return (
+                                                                                                <span key={pid} className="bg-[#FF007F] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-sm">
+                                                                                                    {prov.name}
+                                                                                                </span>
+                                                                                            );
+                                                                                        })}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </DraggableAppointment>
+                                                            );
+                                                        })}
+                                                    </DroppableCell>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
+                                ))}
+                            </div>
+
+                            <DragOverlay modifiers={[restrictToWindowEdges]}>
+                                {activeDragId ? (
+                                    <div className="w-40 h-20 bg-indigo-600/20 border-2 border-indigo-600 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                        <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Movendo...</p>
+                                    </div>
+                                ) : null}
+                            </DragOverlay>
+                        </DndContext>
                     )}
                 </div>
 
