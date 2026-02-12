@@ -215,7 +215,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             codigo_municipio_prestacao: '3550308',
             codigo_tributacao_municipio: '08494', // Updated to 08494 as requested by the user
             item_lista_servico: '06.01', // Use LC 116 item as primary tax identifier for SP instead of National Code
-            // codigo_tributacao_nacional_iss: '060101', // Removing National Code as it fails with E0312 in SP environment
+            codigo_tributacao_nacional_iss: '060101', // Restoring as it is mandatory in the schema
             descricao_servico: `${params.serviceDescription}\n\n` +
                 `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
                 `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
@@ -226,10 +226,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             tipo_retencao_iss: 1, // 1 = Não retido
         };
 
-        // Add inscricao_municipal_prestador only if it exists (optional field)
-        if (fiscalConfig.municipalRegistration) {
-            nfseRequest.inscricao_municipal_prestador = fiscalConfig.municipalRegistration;
-        }
+        // Removed inscricao_municipal_prestador to resolve E0120 (NFSe Nacional SP)
 
         // 5.1. Add Intermediário (Profissional Parceiro) - Mandatory for Salão Parceiro compliance in SP
         // This ensures tax segregation and allows the salon to deduct the professional's share from the tax base

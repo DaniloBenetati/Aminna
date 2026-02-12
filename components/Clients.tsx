@@ -85,9 +85,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         // Determine Price & Payment Details
         let details = '';
         if (a.status === 'Concluído') {
-          const price = a.pricePaid !== undefined ? `R$ ${a.pricePaid.toFixed(2)}` : (a.bookedPrice ? `R$ ${a.bookedPrice.toFixed(2)}` : '');
+          const price = (a.pricePaid !== undefined && a.pricePaid !== null) ? `R$ ${a.pricePaid.toFixed(2)}` : (a.bookedPrice ? `R$ ${a.bookedPrice.toFixed(2)}` : '');
           const payment = a.payments && a.payments.length > 0
-            ? a.payments.map(p => `${p.method}: R$${p.amount.toFixed(2)}`).join(', ')
+            ? a.payments.map(p => `${p.method}: R$${(p.amount || 0).toFixed(2)}`).join(', ')
             : (a.paymentMethod || 'Não informado');
 
           details = `Valor: ${price} | Pagamento: ${payment}`;
@@ -127,8 +127,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     });
     setActiveTab('INFO');
     setLocalRestrictions(customer.preferences?.restrictions || '');
-    setLocalFavServices(customer.preferences?.favoriteServices?.join(', ') || '');
-    setLocalPrefDays(customer.preferences?.preferredDays?.join(', ') || '');
+    setLocalFavServices((customer.preferences?.favoriteServices as any || []).join(', ') || '');
+    setLocalPrefDays((customer.preferences?.preferredDays as any || []).join(', ') || '');
     setLocalPrefNotes(customer.preferences?.notes || '');
     setLocalAssignedProviderIds(customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : []));
   };
