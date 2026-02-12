@@ -45,7 +45,14 @@ export const Copa: React.FC<CopaProps> = ({
     const activeAppointments = useMemo(() => {
         // Apenas atendimentos com status "Em Andamento" (Check-in realizado)
         // Exclui "Confirmado" (Agendado mas não chegou) e "Concluído" (Checkout feito)
-        const today = new Date().toISOString().split('T')[0];
+        const toLocalDateStr = (date: Date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const today = toLocalDateStr(new Date());
+
         return appointments.filter(a =>
             a.date === today && a.status === 'Em Andamento'
         ).sort((a, b) => a.time.localeCompare(b.time));

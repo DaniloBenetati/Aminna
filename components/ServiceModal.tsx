@@ -40,6 +40,9 @@ interface ServiceLine {
     startTime: string;
     endTime: string;
     appointmentId?: string; // Tracks original appointment for merged services
+    clientName?: string; // Companion Name
+    clientPhone?: string; // Companion Phone
+    isCompanion?: boolean; // Flag to identify companion services
 }
 
 interface ServiceModalProps {
@@ -190,7 +193,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         const prv = activeProviders.find(p => p.id === extra.providerId);
                         return srv ? calculateEndTime(extra.startTime || appointment.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || appointment.time);
                     })(),
-                    appointmentId: appointment.id
+                    appointmentId: appointment.id,
+                    clientName: extra.clientName,
+                    clientPhone: extra.clientPhone,
+                    isCompanion: !!extra.clientName // Assume if name exists, it's a companion (or explicit flag if we saved it)
                 });
             });
         }
@@ -238,7 +244,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
                         startTime: extra.startTime || rel.time,
                         endTime: extra.endTime || (services.find(s => s.id === extra.serviceId) ? calculateEndTime(extra.startTime || rel.time, services.find(s => s.id === extra.serviceId)!.durationMinutes) : (extra.startTime || rel.time)),
-                        appointmentId: rel.id
+                        appointmentId: rel.id,
+                        clientName: extra.clientName,
+                        clientPhone: extra.clientPhone,
+                        isCompanion: !!extra.clientName
                     });
                 });
             }
@@ -306,24 +315,39 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const totalValue = useMemo(() => {
-        let total = 0;
-        lines.forEach(line => {
-            if (!line.isCourtesy) {
-                total += line.unitPrice - (line.discount || 0);
-            }
-        });
+        const subtotal = lines.reduce((acc, line) => {
+            if (line.isCourtesy) return acc;
+            const price = Number(line.unitPrice) || 0;
+            const discount = Number(line.discount) || 0;
+            return acc + Math.max(0, price - discount);
+        }, 0);
 
+        let final = subtotal;
+        let couponDiscountAmount = 0; // Initialize here for local scope
+
+        // Apply Coupon
         if (appliedCampaign) {
-            if (appliedCampaign.discountType === 'FIXED') total -= appliedCampaign.discountValue;
-            else total -= total * (appliedCampaign.discountValue / 100);
+            if (appliedCampaign.discountType === 'FIXED') {
+                couponDiscountAmount = appliedCampaign.discountValue;
+                final -= appliedCampaign.discountValue;
+            } else if (appliedCampaign.discountType === 'PERCENTAGE') {
+                couponDiscountAmount = subtotal * (appliedCampaign.discountValue / 100);
+                final -= couponDiscountAmount;
+            }
+        }
+
+        // Apply VIP Discount
+        if (customer.isVip && customer.vipDiscountPercent) {
+            const vipDiscount = final * (customer.vipDiscountPercent / 100);
+            final -= vipDiscount;
         }
 
         if (includeDebt && customer.outstandingBalance && customer.outstandingBalance > 0) {
-            total += customer.outstandingBalance;
+            final += customer.outstandingBalance;
         }
 
-        return Math.max(0, total);
-    }, [lines, appliedCampaign, includeDebt, customer.outstandingBalance]);
+        return Math.max(0, final);
+    }, [lines, appliedCampaign, customer.isVip, customer.vipDiscountPercent, includeDebt, customer.outstandingBalance]);
 
     // Auto-fill payment amount if single payment method
     useEffect(() => {
@@ -530,7 +554,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             bookedPrice: l.unitPrice,
             products: l.products,
             startTime: l.startTime,
-            endTime: l.endTime
+            endTime: l.endTime,
+            clientName: l.clientName,
+            clientPhone: l.clientPhone
         }));
 
         const dataToSave = {
@@ -604,8 +630,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 } else {
                     // Remove temp ID if it exists and add new, or just add new
                     // If isNew, the previous ID was local. We should remove the local draft if it was in the list?
-                    // Usually 'Novo' appointments aren't in the list yet? 
-                    // Actually handleNewAppointment sets draft, doesn't add to list. 
+                    // Usually 'Novo' appointments aren't in the list yet?
+                    // Actually handleNewAppointment sets draft, doesn't add to list.
                     // But if checking conflict added it? No.
                     // safely add to list.
                     // Check if we need to replace a temp one:
@@ -660,7 +686,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             bookedPrice: l.unitPrice,
             products: l.products,
             startTime: l.startTime,
-            endTime: l.endTime
+            endTime: l.endTime,
+            clientName: l.clientName,
+            clientPhone: l.clientPhone
         }));
 
         const dischargeDate = new Date().toISOString().split('T')[0];
@@ -673,6 +701,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             products_used: allProductsUsed,
             combined_service_names: combinedNames,
             booked_price: lines[0].unitPrice,
+            provider_id: lines[0].providerId, // CRITICAL: Update provider to the one selected in checkout
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
@@ -709,8 +738,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // The appointment record itself is sufficient for Service revenue.
 
             // 3. Update Customer History (handled locally for now, assuming App.tsx will refetch on next load)
-            // Currently App.tsx fetches history from 'customers' table? 
-            // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan, 
+            // Currently App.tsx fetches history from 'customers' table?
+            // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan,
             // but the UI uses it. Let's assume we update the customer's totals in DB.
             // 3. Update Customer History and Balance
             let newOutstandingBalance = customer.outstandingBalance || 0;
@@ -798,10 +827,29 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const handleSave = async () => {
-        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+        if (isSaving) return;
+
+        if (restrictionData.isRestricted) {
+            alert(`⚠️ Agendamento Bloqueado\n\nMotivo: ${restrictionData.reason}`);
+            return;
+        }
+
+        if (customer.isBlocked) {
+            alert('⚠️ Cliente Bloqueada\n\nEsta cliente possui um bloqueio administrativo.');
+            return;
+        }
+
+        if (handleCheckConflict()) {
+            console.log('Conflict detected in handleSave');
+            // handleCheckConflict already shows an alert? Let's verify.
+            return;
+        }
 
         // Check for merge
-        if (await checkForCustomerConflictAndMerge()) return;
+        if (await checkForCustomerConflictAndMerge()) {
+            console.log('Merge conflict detected or handled');
+            return;
+        }
 
         setIsSaving(true);
 
@@ -814,7 +862,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             bookedPrice: l.unitPrice,
             products: l.products,
             startTime: l.startTime,
-            endTime: l.endTime
+            endTime: l.endTime,
+            clientName: l.clientName,
+            clientPhone: l.clientPhone
         }));
 
         const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
@@ -1006,7 +1056,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 discount: l.discount,
                 bookedPrice: l.unitPrice,
                 products: l.products,
-                startTime: l.startTime
+                startTime: l.startTime,
+                clientName: l.clientName,
+                clientPhone: l.clientPhone
             }));
 
             const dischargeDate = new Date().toISOString().split('T')[0];
@@ -1326,8 +1378,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             rating: 5,
             feedback: '',
             unitPrice: services[0].price,
-            startTime: appointment.time,
-            endTime: calculateEndTime(appointment.time, services[0].durationMinutes)
+            startTime: appointment.time, // Default to main time
+            endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
+            isCompanion: false
+        }]);
+    };
+
+    const addCompanionLine = () => {
+        setLines([...lines, {
+            id: Date.now().toString(),
+            serviceId: services[0].id,
+            providerId: customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id,
+            products: [],
+            currentSearchTerm: '',
+            discount: 0,
+            isCourtesy: false,
+            showProductResults: false,
+            rating: 5,
+            feedback: '',
+            unitPrice: services[0].price,
+            startTime: appointment.time, // Default to main time (parallel)
+            endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
+            isCompanion: true,
+            clientName: '',
+            clientPhone: ''
         }]);
     };
 
@@ -1350,7 +1424,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                 if (srv) {
                     updated.endTime = calculateEndTime(start, srv.durationMinutes, prv, srv.name);
-                    updated.unitPrice = srv.price;
+                    // Only reset price if SERVICE changes
+                    if (field === 'serviceId') {
+                        updated.unitPrice = srv.price;
+                    }
                 }
 
                 if (field === 'startTime' && line.id === 'main') {
@@ -1519,6 +1596,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     </div>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
+                                        {customer.isVip && (
+                                            <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                                                <Sparkles size={10} />
+                                                VIP {customer.vipDiscountPercent}% OFF
+                                            </div>
+                                        )}
                                         {isAgendaMode && (
                                             <button
                                                 onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
@@ -1576,12 +1659,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="space-y-5 animate-in fade-in duration-200">
                                     <div className="flex justify-between items-center px-1">
                                         <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Procedimentos Selecionados</h4>
-                                        <button
-                                            type="button" onClick={addServiceLine}
-                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
-                                        >
-                                            <Plus size={14} /> ADICIONAR EXTRA
-                                        </button>
+                                        <div>
+                                            <button
+                                                type="button" onClick={addServiceLine}
+                                                className="mr-2 text-[9px] font-black text-slate-950 dark:text-white inline-flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                            >
+                                                <Plus size={14} /> ADICIONAR EXTRA
+                                            </button>
+                                            <button
+                                                type="button" onClick={addCompanionLine}
+                                                className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800/50 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                            >
+                                                <User size={14} /> ADICIONAR ACOMPANHANTE
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="space-y-3">
@@ -1589,6 +1680,34 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
                                                 {lines.length > 1 && (
                                                     <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
+                                                )}
+
+                                                {line.isCompanion && (
+                                                    <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-xl relative">
+                                                        <div className="absolute -top-2 left-3 bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
+                                                            <User size={10} /> Acompanhante
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
+                                                            <div className="space-y-0.5">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Nome da Acompanhante"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                                                    value={line.clientName || ''}
+                                                                    onChange={e => updateLine(line.id, 'clientName', e.target.value)}
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="WhatsApp (Opcional)"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                                                    value={line.clientPhone || ''}
+                                                                    onChange={e => updateLine(line.id, 'clientPhone', e.target.value)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 )}
 
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1700,17 +1819,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                     <div className="flex flex-col">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
-                                                        <div className="text-[11px] font-black text-slate-950 dark:text-white p-1">R$ {line.unitPrice.toFixed(2)}</div>
-                                                    </div>
-
-                                                    <div className="flex flex-col">
-                                                        <label className="text-[8px] font-black text-rose-500 uppercase ml-1">Desc. R$</label>
-                                                        <input
-                                                            type="number"
-                                                            className="bg-transparent border-none text-[11px] font-black text-rose-700 dark:text-rose-400 p-1 outline-none w-14"
-                                                            value={line.discount}
-                                                            onChange={e => updateLine(line.id, 'discount', Math.max(0, parseFloat(e.target.value) || 0))}
-                                                        />
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-black text-slate-950 dark:text-white pl-6 pr-1 py-1 outline-none w-20 focus:border-indigo-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                value={line.unitPrice}
+                                                                onChange={e => updateLine(line.id, 'unitPrice', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                            />
+                                                        </div>
                                                     </div>
                                                     <button
                                                         type="button"
@@ -1952,10 +2070,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     {mode === 'CHECKOUT' && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
                             <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
-                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
+                                    {customer.isVip && (
+                                        <span className="text-[9px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-wider mt-1">
+                                            VIP {customer.vipDiscountPercent}% OFF
+                                        </span>
+                                    )}
+                                </div>
                                 <div className="text-right">
+                                    {customer.isVip && (
+                                        <span className="block text-[10px] font-bold text-slate-400 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
+                                    )}
                                     {appliedCampaign && (
-                                        <span className="block text-[10px] font-bold text-rose-500 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
+                                        <span className="block text-[10px] font-bold text-rose-500 line-through">
+                                            {customer.isVip ? '' : `R$ ${totalBeforeCoupon.toFixed(2)}`}
+                                        </span>
                                     )}
                                     <span className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</span>
                                 </div>
@@ -2488,149 +2618,155 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 </div>
             </div>
             {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
-            {isCancelling && (
-                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-10">
-                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
-                                <X size={40} className="animate-pulse" />
-                            </div>
-                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Cancelar Atendimento?
-                            </h3>
-                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
-                                Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
-                            </p>
-                            <div className="mb-6">
-                                <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                                    Justificativa do Cancelamento *
-                                </label>
-                                <textarea
-                                    value={cancellationReason}
-                                    onChange={(e) => setCancellationReason(e.target.value)}
-                                    placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
-                                    className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
-                                    rows={3}
-                                    autoFocus
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setIsCancelling(false)}
-                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
-                                >
-                                    Não, Manter
-                                </button>
-                                <button
-                                    onClick={handleConfirmCancellation}
-                                    disabled={isSaving}
-                                    className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
-                                </button>
+            {
+                isCancelling && (
+                    <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                            <div className="p-8 text-center pt-10">
+                                <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
+                                    <X size={40} className="animate-pulse" />
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                    Cancelar Atendimento?
+                                </h3>
+                                <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-4">
+                                    Tem certeza que deseja cancelar o atendimento de <span className="text-slate-900 dark:text-white font-black">{customer.name}</span>? Esta ação não pode ser desfeita.
+                                </p>
+                                <div className="mb-6">
+                                    <label className="block text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                                        Justificativa do Cancelamento *
+                                    </label>
+                                    <textarea
+                                        value={cancellationReason}
+                                        onChange={(e) => setCancellationReason(e.target.value)}
+                                        placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+                                        rows={3}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setIsCancelling(false)}
+                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                    >
+                                        Não, Manter
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmCancellation}
+                                        disabled={isSaving}
+                                        className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* CUSTOM DEBT CONFIRMATION MODAL ("FIADO") */}
-            {showDebtConfirmModal && (
-                <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-10">
-                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
-                                <AlertTriangle size={40} className="animate-pulse" />
-                            </div>
-
-                            <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Atenção: Registro de "Fiado"
-                            </h3>
-
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
-                                <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
-                                </p>
-
-                                <div className="flex flex-col items-center gap-1 py-2">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Pendente</span>
-                                    <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
+            {
+                showDebtConfirmModal && (
+                    <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                            <div className="p-8 text-center pt-10">
+                                <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
+                                    <AlertTriangle size={40} className="animate-pulse" />
                                 </div>
 
-                                <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
-                                    💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
-                                </p>
-                            </div>
+                                <h3 className="text-2xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                    Atenção: Registro de "Fiado"
+                                </h3>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    onClick={() => setShowDebtConfirmModal(false)}
-                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    onClick={() => handleCreateDebt(true)}
-                                    className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    <Save size={16} /> Confirmar
-                                </button>
+                                <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
+                                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
+                                    </p>
+
+                                    <div className="flex flex-col items-center gap-1 py-2">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Pendente</span>
+                                        <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
+                                    </div>
+
+                                    <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
+                                        💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button
+                                        onClick={() => setShowDebtConfirmModal(false)}
+                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => handleCreateDebt(true)}
+                                        className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    >
+                                        <Save size={16} /> Confirmar
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
             {/* CPF PROMPT MODAL */}
-            {showCpfPrompt && (
-                <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
-                        <div className="p-8 text-center pt-8">
-                            <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
-                                <User size={32} />
-                            </div>
+            {
+                showCpfPrompt && (
+                    <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                            <div className="p-8 text-center pt-8">
+                                <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                    <User size={32} />
+                                </div>
 
-                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-2 leading-tight">
-                                Cliente sem CPF
-                            </h3>
-                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
-                                Deseja informar o CPF para a nota fiscal? Se informar, ele ficará salvo no cadastro.
-                            </p>
+                                <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-2 leading-tight">
+                                    Cliente sem CPF
+                                </h3>
+                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">
+                                    Deseja informar o CPF para a nota fiscal? Se informar, ele ficará salvo no cadastro.
+                                </p>
 
-                            <input
-                                type="text"
-                                placeholder="000.000.000-00"
-                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
-                                value={tempCpf}
-                                onChange={e => {
-                                    // Simple mask
-                                    let v = e.target.value.replace(/\D/g, '');
-                                    if (v.length > 11) v = v.substring(0, 11);
-                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                                    v = v.replace(/(\d{3})(\d)/, '$1.$2');
-                                    v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-                                    setTempCpf(v);
-                                }}
-                                autoFocus
-                            />
+                                <input
+                                    type="text"
+                                    placeholder="000.000.000-00"
+                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
+                                    value={tempCpf}
+                                    onChange={e => {
+                                        // Simple mask
+                                        let v = e.target.value.replace(/\D/g, '');
+                                        if (v.length > 11) v = v.substring(0, 11);
+                                        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                                        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                                        setTempCpf(v);
+                                    }}
+                                    autoFocus
+                                />
 
-                            <div className="flex flex-col gap-3">
-                                <button
-                                    onClick={handleSaveCpfAndIssue}
-                                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                                >
-                                    Salvar CPF e Emitir
-                                </button>
-                                <button
-                                    onClick={handleSkipCpf}
-                                    className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
-                                >
-                                    Emitir sem CPF (Consumidor)
-                                </button>
+                                <div className="flex flex-col gap-3">
+                                    <button
+                                        onClick={handleSaveCpfAndIssue}
+                                        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        Salvar CPF e Emitir
+                                    </button>
+                                    <button
+                                        onClick={handleSkipCpf}
+                                        className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                    >
+                                        Emitir sem CPF (Consumidor)
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

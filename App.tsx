@@ -318,7 +318,14 @@ const App: React.FC = () => {
       if (partnersData) setPartners(partnersData);
       if (expenseCategoriesData) setExpenseCategories(expenseCategoriesData);
       if (paymentSettingsData) setPaymentSettings(paymentSettingsData.map((p: any) => ({ ...p, maxInstallments: p.max_installments })));
-      if (commissionSettingsData) setCommissionSettings(commissionSettingsData);
+      if (commissionSettingsData) {
+        setCommissionSettings(commissionSettingsData.map((c: any) => ({
+          id: c.id,
+          startDay: c.start_day,
+          endDay: c.end_day,
+          paymentDay: c.payment_day
+        })));
+      }
       if (suppliersData) setSuppliers(suppliersData);
       if (nfseRecordsData) {
         setNfseRecords(nfseRecordsData.map((r: any) => ({
@@ -367,7 +374,9 @@ const App: React.FC = () => {
           packageName: c.package_name,
           packageSessions: c.package_sessions,
           packageSessionsUsed: c.package_sessions_used,
-          registrationDate: c.created_at
+          registrationDate: c.created_at,
+          isVip: c.is_vip,
+          vipDiscountPercent: c.vip_discount_percent
         })));
 
       }
@@ -380,18 +389,22 @@ const App: React.FC = () => {
           providerId: a.provider_id,
           serviceId: a.service_id,
           date: a.date,
+          paymentDate: a.payment_date, // Added paymentDate
           time: a.time,
           status: a.status,
           paymentMethod: a.payment_method,
           payments: a.payments || [],
           amount: a.amount,
           commissionRate: a.commission_rate,
+          commissionRateSnapshot: a.commission_rate_snapshot, // Added commissionRateSnapshot
           observation: a.observation,
           rating: a.rating,
           feedback: a.feedback,
           additionalServices: a.additional_services,
           combinedServiceNames: a.combined_service_names,
           appliedCoupon: a.applied_coupon,
+          pricePaid: a.price_paid, // Critical: Map price_paid
+          bookedPrice: a.booked_price, // Critical: Map booked_price
           createdAt: a.created_at,
           updatedAt: a.updated_at
         })));
