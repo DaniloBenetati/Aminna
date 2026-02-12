@@ -40,7 +40,7 @@ const DroppableCell = ({ id, isBlocked, zoomLevel, children }: { id: string, isB
         <div
             ref={setNodeRef}
             className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group transition-all duration-300 ${isBlocked
-                ? 'bg-slate-100/50 dark:bg-zinc-800/20 cursor-not-allowed'
+                ? 'bg-slate-200/80 dark:bg-zinc-900/60 cursor-not-allowed'
                 : isOver
                     ? 'bg-indigo-50/50 dark:bg-indigo-900/30'
                     : 'hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'
@@ -651,7 +651,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         const block = appointments.find(a =>
             a.providerId === providerId &&
             a.date === gridDateStr &&
-            (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
+            a.combinedServiceNames === 'BLOQUEIO_INTERNO'
         );
 
         if (block) {
@@ -1061,13 +1061,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 const isBlocked = appointments.some(a =>
                                     a.providerId === p.id &&
                                     a.date === gridDateStr &&
-                                    (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
+                                    a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                 );
 
                                 return (
                                     <div
                                         key={p.id}
-                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-300 dark:bg-zinc-800' : ''}`}
+                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-700' : ''}`}
                                         style={{ width: `${160 * zoomLevel}px` }}
                                     >
                                         <div className="flex justify-center mb-1">
@@ -1284,7 +1284,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 const isBlocked = appointments.some(a =>
                                                     a.providerId === p.id &&
                                                     a.date === gridDateStr &&
-                                                    (a.customerId === 'INTERNAL_BLOCK' || a.combinedServiceNames === 'BLOQUEIO_INTERNO')
+                                                    a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                                 );
 
                                                 if (isBlocked && hour === '12:00') {
@@ -1302,8 +1302,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     >
                                                         {isBlocked && hour === '12:00' && (
                                                             <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                                <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-4 py-2 rounded-2xl shadow-xl transform -rotate-12 border-dashed">
-                                                                    <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                                <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed">
+                                                                    <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
                                                                 </div>
                                                             </div>
                                                         )}
