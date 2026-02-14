@@ -1852,7 +1852,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         </div>
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <label className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase ml-1">Gorjeta professional</label>
+                                                        <label className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase ml-1">Caixinha</label>
                                                         <div className="relative">
                                                             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-400">R$</span>
                                                             <input
