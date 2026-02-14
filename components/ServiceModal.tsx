@@ -2210,14 +2210,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto / Gorjeta</label>
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto / Caixinha</label>
                                                             <div className="flex items-center gap-2">
                                                                 <input
                                                                     type="number"
                                                                     className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-rose-500 dark:text-rose-400 outline-none"
                                                                     value={line.tipAmount}
                                                                     onChange={e => updateLine(line.id, 'tipAmount', parseFloat(e.target.value) || 0)}
-                                                                    placeholder="Gorjeta"
+                                                                    placeholder="Caixinha"
                                                                 />
                                                                 <input
                                                                     type="number"
