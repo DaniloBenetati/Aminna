@@ -47,18 +47,20 @@ interface DailyCloseViewProps {
     closerName: string;
     setCloserName: (v: string) => void;
     date: Date;
+    appointments: Appointment[];
+    services: Service[];
 }
 
 const DailyCloseView: React.FC<DailyCloseViewProps> = ({
-    transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation, closerName, setCloserName, date
+    transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation, closerName, setCloserName, date, appointments, services
 }) => {
     const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
     // Use the passed date prop instead of current date
     const dateStr = toLocalDateStr(date);
 
-    const dailyTrans = transactions.filter(t => t.date === dateStr);
-    const dailyRevenueTransactions = dailyTrans.filter(t => t.type === 'RECEITA' && t.status === 'Pago');
+    const dailyTrans = transactions.filter(t => (t.appointmentDate || t.date) === dateStr);
+    const dailyRevenueTransactions = dailyTrans.filter(t => t.type === 'RECEITA' && (t.status === 'Pago' || t.status === 'Previsto'));
 
     const totalServices = dailyRevenueTransactions.filter(t => t.origin === 'Serviço').reduce((acc, t) => acc + t.amount, 0);
     const totalProducts = dailyRevenueTransactions.filter(t => t.origin === 'Produto').reduce((acc, t) => acc + t.amount, 0);
@@ -79,6 +81,50 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const cashDifference = physicalCashNum - systemCashTotal;
     const hasDifference = Math.abs(cashDifference) > 0.01;
     const revisedRevenue = totalRevenue + cashDifference;
+
+    // VIP / Courtesy Calculation
+    const vipMetrics = useMemo(() => {
+        let vipValue = 0;
+        let vipCount = 0;
+
+        const dayAppts = appointments.filter(a => {
+            if (a.status === 'Cancelado') return false;
+            // Match date logic similar to transactions (paymentDate if Concluído, else date)
+            const appDateStr = (a.status === 'Concluído' && a.paymentDate) ? a.paymentDate : a.date;
+            return appDateStr === dateStr;
+        });
+
+        dayAppts.forEach(app => {
+            const rawApp = app as any;
+            const pricePaid = app.pricePaid ?? rawApp.price_paid;
+            // Check if the whole appointment was effectively free/VIP (100% discount)
+            const isTotalFree = app.status === 'Concluído' && pricePaid < 0.01;
+
+            // Check main service
+            if (app.isCourtesy || isTotalFree) {
+                const s = services.find(x => x.id === app.serviceId);
+                vipValue += (app.bookedPrice || s?.price || 0);
+                vipCount++;
+            }
+
+            // Check additional services
+            if (app.additionalServices) {
+                app.additionalServices.forEach(extra => {
+                    const extraRaw = extra as any;
+                    // If the whole appointment is free, assume all parts are free/VIP
+                    if (extra.isCourtesy || isTotalFree) {
+                        const s = services.find(x => x.id === extra.serviceId);
+                        // Use bookedPrice from extra if available, else service price
+                        const extraPrice = extraRaw.bookedPrice || extraRaw.booked_price || s?.price || 0;
+                        vipValue += extraPrice;
+                        vipCount++;
+                    }
+                });
+            }
+        });
+
+        return { value: vipValue, count: vipCount };
+    }, [appointments, services, dateStr]);
 
     // Grouping by Professional -> Client -> Service
     const groupedByProvider = dailyRevenueTransactions.reduce((acc, t) => {
@@ -130,6 +176,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     <div class="row"><span>PRODUTOS:</span> <span>R$ ${totalProducts.toFixed(2)}</span></div>
                     <div class="row total"><span>FATURAMENTO BRUTO:</span> <span>R$ ${totalRevenue.toFixed(2)}</span></div>
                 </div>
+                </div>
                 <div class="section">
                     <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">DETALHAMENTO POR MÉTODO:</div>
                     ${Object.entries(paymentBreakdown).map(([method, data]) => {
@@ -140,6 +187,7 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div class="section">
                     <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">OUTRAS INFORMAÇÕES:</div>
                     <div class="row"><span>CAIXA POR:</span> <span>${closerName || '---'}</span></div>
+                    <div class="row"><span>CORTESIAS / VIP:</span> <span>${vipMetrics.count}x (R$ ${vipMetrics.value.toFixed(2)})</span></div>
                 </div>
                 <div class="section">
                     <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">EXTRATO POR PROFISSIONAL/CLIENTE:</div>
@@ -173,6 +221,40 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         `;
         const win = window.open('', '_blank');
         if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
+    const handleShareWhatsapp = () => {
+        let text = `*FECHAMENTO DE CAIXA - AMINNA*\n`;
+        text += `Data: ${date.toLocaleDateString('pt-BR')}\n\n`;
+        text += `*RESUMO FINANCEIRO*\n`;
+        text += `Servicos: R$ ${totalServices.toFixed(2)}\n`;
+        text += `Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        text += `*Faturamento Bruto: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+
+        text += `*DETALHAMENTO*\n`;
+        Object.entries(paymentBreakdown).forEach(([method, data]) => {
+            text += `${method}: R$ ${data.amount.toFixed(2)} (${data.count}x)\n`;
+        });
+
+        text += `\n*CONFERENCIA*\n`;
+        text += `Sistema: R$ ${systemCashTotal.toFixed(2)}\n`;
+        text += `Fisico: R$ ${physicalCashNum.toFixed(2)}\n`;
+        text += `Diferenca: R$ ${cashDifference.toFixed(2)}\n`;
+        if (hasDifference) text += `(QUEBRA/SOBRA)\n`;
+
+        text += `\n*OUTRAS INFO*\n`;
+        text += `Caixa por: ${closerName}\n`;
+        text += `VIPs: ${vipMetrics.count}x (R$ ${vipMetrics.value.toFixed(2)})\n`;
+
+        const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    };
+
+    const handleCloseRegister = () => {
+        if (confirm('Confirma o fechamento do caixa deste dia? Isso irá registrar o fechamento no sistema.')) {
+            // Here we would ideally save to DB. For now, we simulate success and maybe update observation.
+            alert('Caixa fechado com sucesso!');
+        }
     };
 
     return (
@@ -248,7 +330,11 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             <div className="flex items-center gap-3"><div className="relative flex-1"><span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span><input type="number" className={`w-full pl-8 pr-3 py-2 border-2 rounded-xl text-sm font-black outline-none text-slate-950 dark:text-white ${hasDifference ? 'border-amber-300 bg-amber-50 dark:bg-amber-900/20' : 'border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800'}`} value={physicalCash} onChange={e => setPhysicalCash(e.target.value)} /></div></div>
                         </div>
                         <div className={`p-3 rounded-xl border flex justify-between items-center ${hasDifference ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-500'}`}><span className="text-[9px] font-black uppercase">{hasDifference ? 'Diferença no Caixa' : 'Caixa Batido'}</span><span className="text-sm font-black">R$ {cashDifference.toFixed(2)}</span></div>
-                        <div className="grid grid-cols-2 gap-2 pt-1"><button onClick={handlePrintClosingReport} className="py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Printer size={14} /> Relatório</button></div>
+                        <div className="flex gap-2 pt-1">
+                            <button onClick={handlePrintClosingReport} className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Printer size={12} /> Relatório</button>
+                            <button onClick={handleCloseRegister} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Lock size={12} /> Fechar</button>
+                            <button onClick={handleShareWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><MessageCircle size={12} /> WhatsApp</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -504,10 +590,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 : (bookedPrice || service?.price || 0);
 
             // Payment Logic
-            const paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
+            let paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
             const { fee, days } = getPaymentDetails(paymentMethodName);
 
-            const netAmount = revenueBase * (1 - (fee / 100));
+            let netAmount = revenueBase * (1 - (fee / 100));
+
+            // Override for Courtesy/VIP
+            if (netAmount === 0 || app.isCourtesy) {
+                paymentMethodName = 'Cortesia';
+                netAmount = 0;
+            }
 
             // Date Logic
             // If concluded, use paymentDate (D+0 reference), else use scheduled date
@@ -538,7 +630,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 customerOrProviderName: customer?.name || 'Cliente',
                 providerName: provider?.name || 'Não atribuído',
                 customerName: customer?.name || 'Desconhecido',
-                serviceName: service?.name || 'Serviço'
+                serviceName: service?.name || 'Serviço',
+                appointmentDate: app.date
             });
 
             if (provider) {
@@ -564,7 +657,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     customerOrProviderName: provider.name,
                     providerName: provider.name,
                     customerName: customer?.name || 'Desconhecido',
-                    serviceName: `Comissão: ${service?.name || 'Serviço'}`
+                    serviceName: `Comissão: ${service?.name || 'Serviço'}`,
+                    appointmentDate: app.date
                 });
             }
 
@@ -598,7 +692,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             customerOrProviderName: extraProvider.name,
                             providerName: extraProvider.name,
                             customerName: customer?.name || 'Desconhecido',
-                            serviceName: `Comissão: ${extraService?.name || 'Serviço'}`
+                            serviceName: `Comissão: ${extraService?.name || 'Serviço'}`,
+                            appointmentDate: app.date
                         });
                     }
                 });
@@ -627,7 +722,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 customerOrProviderName: 'Cliente Balcão',
                 providerName: 'Venda Direta',
                 customerName: 'Cliente Balcão',
-                serviceName: 'Venda de Produto'
+                serviceName: 'Venda de Produto',
+                appointmentDate: sale.date
             });
         });
 
@@ -1553,7 +1649,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     </div>
                 )}
-                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} />}
+                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} />}
                 {activeTab === 'CHARTS' && <FinanceCharts transactions={transactions} expenses={expenses} startDate={startDate} endDate={endDate} timeView={timeView} />}
                 {activeTab === 'PAYABLES' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">

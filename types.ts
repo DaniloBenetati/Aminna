@@ -203,10 +203,12 @@ export interface Appointment {
     products?: string[]; // Lista de produtos vinculados a este serviço extra
     clientName?: string; // Nome do cliente (para acompanhantes)
     clientPhone?: string; // Telefone do cliente (para acompanhantes)
+    tipAmount?: number;
   }[];
   combinedServiceNames?: string;
   rating?: number;
   feedback?: string;
+  tipAmount?: number;
 }
 
 export interface ChatMessage {
@@ -290,6 +292,7 @@ export interface FinancialTransaction {
   providerName?: string;
   customerName?: string;
   serviceName?: string;
+  appointmentDate?: string;
 }
 
 // --- TIPOS PARA COPA (PANTRY) ---

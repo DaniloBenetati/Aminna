@@ -43,6 +43,7 @@ interface ServiceLine {
     clientName?: string; // Companion Name
     clientPhone?: string; // Companion Phone
     isCompanion?: boolean; // Flag to identify companion services
+    tipAmount: number;
 }
 
 interface ServiceModalProps {
@@ -170,7 +171,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             unitPrice: appointment.bookedPrice || mainService?.price || 0,
             startTime: appointment.time,
             endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
-            appointmentId: appointment.id
+            appointmentId: appointment.id,
+            tipAmount: appointment.tipAmount || 0
         }];
 
         if (appointment.additionalServices) {
@@ -196,7 +198,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     appointmentId: appointment.id,
                     clientName: extra.clientName,
                     clientPhone: extra.clientPhone,
-                    isCompanion: !!extra.clientName // Assume if name exists, it's a companion (or explicit flag if we saved it)
+                    isCompanion: !!extra.clientName, // Assume if name exists, it's a companion (or explicit flag if we saved it)
+                    tipAmount: extra.tipAmount || 0
                 });
             });
         }
@@ -225,7 +228,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 unitPrice: rel.bookedPrice || relService?.price || 0,
                 startTime: rel.time,
                 endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
-                appointmentId: rel.id
+                appointmentId: rel.id,
+                tipAmount: rel.tipAmount || 0
             });
 
             if (rel.additionalServices) {
@@ -247,7 +251,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         appointmentId: rel.id,
                         clientName: extra.clientName,
                         clientPhone: extra.clientPhone,
-                        isCompanion: !!extra.clientName
+                        isCompanion: !!extra.clientName,
+                        tipAmount: extra.tipAmount || 0
                     });
                 });
             }
@@ -315,14 +320,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const totalValue = useMemo(() => {
-        const subtotal = lines.reduce((acc, line) => {
+        const serviceSubtotal = lines.reduce((acc, line) => {
             if (line.isCourtesy) return acc;
             const price = Number(line.unitPrice) || 0;
             const discount = Number(line.discount) || 0;
             return acc + Math.max(0, price - discount);
         }, 0);
 
-        let final = subtotal;
+        const totalTips = lines.reduce((acc, line) => acc + (Number(line.tipAmount) || 0), 0);
+
+        let final = serviceSubtotal;
         let couponDiscountAmount = 0; // Initialize here for local scope
 
         // Apply Coupon
@@ -331,7 +338,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 couponDiscountAmount = appliedCampaign.discountValue;
                 final -= appliedCampaign.discountValue;
             } else if (appliedCampaign.discountType === 'PERCENTAGE') {
-                couponDiscountAmount = subtotal * (appliedCampaign.discountValue / 100);
+                couponDiscountAmount = serviceSubtotal * (appliedCampaign.discountValue / 100);
                 final -= couponDiscountAmount;
             }
         }
@@ -345,6 +352,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         if (includeDebt && customer.outstandingBalance && customer.outstandingBalance > 0) {
             final += customer.outstandingBalance;
         }
+
+        // Add tips at the end (not subject to discounts)
+        final += totalTips;
 
         return Math.max(0, final);
     }, [lines, appliedCampaign, customer.isVip, customer.vipDiscountPercent, includeDebt, customer.outstandingBalance]);
@@ -696,7 +706,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             clientPhone: l.clientPhone
         }));
 
-        const dischargeDate = new Date().toISOString().split('T')[0];
+        const dischargeDate = appointment.date || new Date().toISOString().split('T')[0];
 
         const updatedData = {
             status: 'Concluído',
@@ -712,7 +722,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
             payments: payments,
-            end_time: lines[0].endTime
+            end_time: lines[0].endTime,
+            tip_amount: lines[0].tipAmount
         };
 
         try {
@@ -1063,10 +1074,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 products: l.products,
                 startTime: l.startTime,
                 clientName: l.clientName,
-                clientPhone: l.clientPhone
+                clientPhone: l.clientPhone,
+                tipAmount: l.tipAmount
             }));
 
-            const dischargeDate = new Date().toISOString().split('T')[0];
+            const dischargeDate = appointment.date || new Date().toISOString().split('T')[0];
 
             const updatedData = {
                 status: 'Concluído',
@@ -1080,7 +1092,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 additional_services: extras,
                 applied_coupon: appliedCampaign?.couponCode,
                 discount_amount: couponDiscountAmount,
-                payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }]
+                payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }],
+                tip_amount: lines[0].tipAmount
             };
 
             // 1. Update Appointment
@@ -1114,7 +1127,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     mainServiceProducts: lines[0].products,
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
-                    discountAmount: couponDiscountAmount
+                    discountAmount: couponDiscountAmount,
+                    tipAmount: lines[0].tipAmount
                 } as Appointment;
 
                 if (exists) {
@@ -1385,7 +1399,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             unitPrice: services[0].price,
             startTime: appointment.time, // Default to main time
             endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
-            isCompanion: false
+            isCompanion: false,
+            tipAmount: 0 // Initialize tipAmount
         }]);
     };
 
@@ -1406,7 +1421,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
             isCompanion: true,
             clientName: '',
-            clientPhone: ''
+            clientPhone: '',
+            tipAmount: 0 // Initialize tipAmount
         }]);
     };
 
@@ -1835,10 +1851,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             />
                                                         </div>
                                                     </div>
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase ml-1">Gorjeta professional</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-400">R$</span>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                className="bg-transparent border border-rose-200 dark:border-rose-800 rounded-lg text-[11px] font-black text-rose-600 dark:text-rose-400 pl-6 pr-1 py-1 outline-none w-20 focus:border-rose-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                value={line.tipAmount}
+                                                                onChange={e => updateLine(line.id, 'tipAmount', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                            />
+                                                        </div>
+                                                    </div>
                                                     <button
                                                         type="button"
                                                         onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                        className={`md:col-span-1 col-span-2 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                                        className={`col-span-1 flex items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
                                                     >
                                                         <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
                                                     </button>
@@ -2181,14 +2210,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                     <div className="grid grid-cols-2 gap-2">
                                                         <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto Manual</label>
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto / Gorjeta</label>
                                                             <div className="flex items-center gap-2">
                                                                 <input
                                                                     type="number"
-                                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
+                                                                    className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-rose-500 dark:text-rose-400 outline-none"
+                                                                    value={line.tipAmount}
+                                                                    onChange={e => updateLine(line.id, 'tipAmount', parseFloat(e.target.value) || 0)}
+                                                                    placeholder="Gorjeta"
+                                                                />
+                                                                <input
+                                                                    type="number"
+                                                                    className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
                                                                     value={line.discount}
                                                                     onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
-                                                                    placeholder="0.00"
+                                                                    placeholder="Desc"
                                                                 />
                                                                 <button
                                                                     type="button"

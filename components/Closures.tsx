@@ -36,8 +36,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       const isProvider = app.providerId === providerId;
       // Normalize referenceDate to YYYY-MM-DD to ensure strict date comparison
       // This handles cases where paymentDate includes time (e.g. ISO string)
-      const rawDate = app.paymentDate || app.date;
-      const referenceDate = rawDate ? rawDate.substring(0, 10) : '';
+      const referenceDate = app.date ? app.date.substring(0, 10) : (app.paymentDate ? app.paymentDate.substring(0, 10) : '');
 
       const inRange = referenceDate >= startDate && referenceDate <= endDate;
       const validStatus = app.status === 'Concluído';
