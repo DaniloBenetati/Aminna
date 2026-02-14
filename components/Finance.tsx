@@ -52,7 +52,7 @@ interface DailyCloseViewProps {
 const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation, closerName, setCloserName, date
 }) => {
-    const [expandedMethod, setExpandedMethod] = useState<string | null>(null);
+    const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
 
     // Use the passed date prop instead of current date
     const dateStr = toLocalDateStr(date);
@@ -80,6 +80,24 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const hasDifference = Math.abs(cashDifference) > 0.01;
     const revisedRevenue = totalRevenue + cashDifference;
 
+    // Grouping by Professional -> Client -> Service
+    const groupedByProvider = dailyRevenueTransactions.reduce((acc, t) => {
+        const pName = t.providerName || 'Não atribuído';
+        const cName = t.customerName || 'Desconhecido';
+        if (!acc[pName]) acc[pName] = { amount: 0, count: 0, clients: {} };
+        if (!acc[pName].clients[cName]) acc[pName].clients[cName] = { amount: 0, transactions: [] };
+
+        acc[pName].amount += t.amount;
+        acc[pName].count += 1;
+        acc[pName].clients[cName].amount += t.amount;
+        acc[pName].clients[cName].transactions.push(t);
+        return acc;
+    }, {} as Record<string, {
+        amount: number;
+        count: number;
+        clients: Record<string, { amount: number; transactions: FinancialTransaction[] }>
+    }>);
+
 
     const handlePrintClosingReport = () => {
         const printContent = `
@@ -97,6 +115,8 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     table { width: 100%; font-size: 10px; border-collapse: collapse; margin-top: 5px; }
                     th { text-align: left; border-bottom: 1px dashed #000; padding: 2px; }
                     td { padding: 2px; }
+                    .prov-header { font-weight: bold; background: #eee; padding: 4px; margin-top: 10px; font-size: 11px; }
+                    .cli-header { font-weight: bold; text-decoration: underline; margin-top: 5px; font-size: 10px; margin-left: 10px; }
                 </style>
             </head>
             <body>
@@ -118,21 +138,34 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         }).join('')}
                 </div>
                 <div class="section">
-                    <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">EXTRATO DE TRANSAÇÕES:</div>
-                    <table>
-                        <thead><tr><th>DESCRIÇÃO / CLIENTE</th><th>PAGTO</th><th style="text-align:right">VALOR</th></tr></thead>
-                        <tbody>${dailyRevenueTransactions.map(t => `<tr><td>${t.description}<br/><span style="font-size:8px;">${t.customerOrProviderName || ''}</span></td><td style="text-align:center">${t.paymentMethod}</td><td style="text-align:right">${t.amount.toFixed(2)}</td></tr>`).join('')}</tbody>
-                    </table>
+                    <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">OUTRAS INFORMAÇÕES:</div>
+                    <div class="row"><span>CAIXA POR:</span> <span>${closerName || '---'}</span></div>
+                </div>
+                <div class="section">
+                    <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">EXTRATO POR PROFISSIONAL/CLIENTE:</div>
+                    ${Object.entries(groupedByProvider).sort((a, b) => b[1].amount - a[1].amount).map(([pName, pData]) => `
+                        <div class="prov-header">${pName.toUpperCase()} - R$ ${pData.amount.toFixed(2)}</div>
+                        ${Object.entries(pData.clients).map(([cName, cData]) => `
+                            <div class="cli-header">${cName.toUpperCase()} (Total: R$ ${cData.amount.toFixed(2)})</div>
+                            <table>
+                                <tbody>
+                                    ${cData.transactions.map(t => `
+                                        <tr>
+                                            <td style="width: 60%">${t.serviceName}</td>
+                                            <td style="width: 20%; text-align: center">${t.paymentMethod}</td>
+                                            <td style="width: 20%; text-align: right">R$ ${t.amount.toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        `).join('')}
+                    `).join('')}
                 </div>
                 <div class="section">
                     <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">CONFERÊNCIA (DINHEIRO):</div>
                     <div class="row"><span>SISTEMA:</span> <span>R$ ${systemCashTotal.toFixed(2)}</span></div>
                     <div class="row"><span>FÍSICO (GAVETA):</span> <span>R$ ${physicalCashNum.toFixed(2)}</span></div>
                     <div class="diff-box">DIFERENÇA: R$ ${cashDifference.toFixed(2)}${hasDifference ? '<br/>(QUEBRA/SOBRA)' : '<br/>(CAIXA BATIDO)'}</div>
-                </div>
-                <div class="section">
-                    <div style="font-weight:bold; margin-bottom:5px; font-size:12px;">ASSINATURA:</div>
-                    <div style="margin-top:20px; border-top:1px solid #000; padding-top:5px; width:100%; text-align:center; font-size:10px;">${closerName}</div>
                 </div>
                 <script>window.onload = () => { window.print(); window.close(); }</script>
             </body>
@@ -156,24 +189,48 @@ const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
                     <div className="p-2 overflow-y-auto max-h-[350px]">
-                        {Object.entries(paymentBreakdown).map(([method, data]) => {
-                            const d = data as { count: number; amount: number };
-                            const isExpanded = expandedMethod === method;
+                        {Object.entries(groupedByProvider).sort((a, b) => b[1].amount - a[1].amount).map(([providerName, data]) => {
+                            const isExpanded = expandedProvider === providerName;
                             return (
-                                <div key={method} className="border-b border-slate-5 dark:border-zinc-800 last:border-none">
-                                    <div onClick={() => setExpandedMethod(isExpanded ? null : method)} className={`flex justify-between items-center p-3 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer rounded-xl transition-all ${isExpanded ? 'bg-slate-50 dark:bg-zinc-800' : ''}`}>
-                                        <div className="flex items-center gap-3"><div className="bg-slate-100 dark:bg-zinc-700 p-1.5 rounded-lg text-slate-600 dark:text-slate-400"><DollarSign size={14} /></div><div><p className="text-[11px] font-black text-slate-950 dark:text-white uppercase">{method}</p><p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{d.count} Transações</p></div></div>
-                                        <div className="flex items-center gap-2"><span className="text-xs font-black text-slate-950 dark:text-white">R$ {d.amount.toFixed(2)}</span>{isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}</div>
+                                <div key={providerName} className="border-b border-slate-5 dark:border-zinc-800 last:border-none">
+                                    <div onClick={() => setExpandedProvider(isExpanded ? null : providerName)} className={`flex justify-between items-center p-3 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer rounded-xl transition-all ${isExpanded ? 'bg-slate-50 dark:bg-zinc-800' : ''}`}>
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-indigo-100 dark:bg-indigo-900/30 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                                <Users size={14} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-black text-slate-950 dark:text-white uppercase">{providerName}</p>
+                                                <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{data.count} ATENDIMENTOS</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-slate-950 dark:text-white">R$ {data.amount.toFixed(2)}</span>
+                                            {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                                        </div>
                                     </div>
+
                                     {isExpanded && (
-                                        <div className="bg-slate-50/80 dark:bg-zinc-800/80 p-2 mx-2 mb-2 rounded-b-xl animate-in slide-in-from-top-2 duration-200">
-                                            {dailyRevenueTransactions.filter(t => t.paymentMethod === method).map((t, idx) => (
-                                                <div key={t.id || idx} className="flex justify-between items-center p-2 border-b border-slate-100 dark:border-zinc-700 last:border-none text-[10px]">
-                                                    <div className="flex flex-col"><span className="font-bold text-slate-700 dark:text-slate-300 uppercase">{t.description.split(' - ')[0]}</span>{t.customerOrProviderName && <span className="text-slate-400 dark:text-slate-500 uppercase text-[9px]">{t.customerOrProviderName}</span>}</div>
-                                                    <span className="font-black text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
-                                                        {t.amount === 0 && <span className="text-[9px] bg-amber-100 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded flex items-center gap-1" title="VIP / Cortesia"><Crown size={10} strokeWidth={3} /> VIP</span>}
-                                                        R$ {t.amount.toFixed(2)}
-                                                    </span>
+                                        <div className="bg-slate-50/80 dark:bg-zinc-800/80 p-2 mx-2 mb-2 rounded-b-xl animate-in slide-in-from-top-2 duration-200 space-y-2">
+                                            {Object.entries(data.clients).map(([clientName, clientData]) => (
+                                                <div key={clientName} className="bg-white dark:bg-zinc-900/50 p-2 rounded-lg border border-slate-100 dark:border-zinc-700">
+                                                    <div className="flex justify-between items-center mb-1 pb-1 border-b border-slate-50 dark:border-zinc-800">
+                                                        <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">{clientName}</span>
+                                                        <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {clientData.amount.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        {clientData.transactions.map((t, idx) => (
+                                                            <div key={t.id || idx} className="flex justify-between items-center text-[9px] px-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-slate-500 dark:text-slate-400 font-bold uppercase">{t.serviceName}</span>
+                                                                    <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-zinc-800 rounded text-[8px] text-slate-400 font-bold uppercase">{t.paymentMethod}</span>
+                                                                </div>
+                                                                <span className="font-bold text-slate-700 dark:text-slate-300">
+                                                                    {t.amount === 0 && <span className="mr-1 text-amber-600"><Crown size={8} /></span>}
+                                                                    R$ {t.amount.toFixed(2)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
@@ -478,7 +535,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 status: status,
                 paymentMethod: paymentMethodName,
                 origin: 'Serviço',
-                customerOrProviderName: customer?.name || 'Cliente'
+                customerOrProviderName: customer?.name || 'Cliente',
+                providerName: provider?.name || 'Não atribuído',
+                customerName: customer?.name || 'Desconhecido',
+                serviceName: service?.name || 'Serviço'
             });
 
             if (provider) {
@@ -501,7 +561,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                     paymentMethod: 'Transferência',
                     origin: 'Outro',
-                    customerOrProviderName: provider.name
+                    customerOrProviderName: provider.name,
+                    providerName: provider.name,
+                    customerName: customer?.name || 'Desconhecido',
+                    serviceName: `Comissão: ${service?.name || 'Serviço'}`
                 });
             }
 
@@ -532,7 +595,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                             paymentMethod: 'Transferência',
                             origin: 'Outro',
-                            customerOrProviderName: extraProvider.name
+                            customerOrProviderName: extraProvider.name,
+                            providerName: extraProvider.name,
+                            customerName: customer?.name || 'Desconhecido',
+                            serviceName: `Comissão: ${extraService?.name || 'Serviço'}`
                         });
                     }
                 });
@@ -558,7 +624,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 status: status,
                 paymentMethod: paymentMethodName,
                 origin: 'Produto',
-                customerOrProviderName: 'Cliente Balcão'
+                customerOrProviderName: 'Cliente Balcão',
+                providerName: 'Venda Direta',
+                customerName: 'Cliente Balcão',
+                serviceName: 'Venda de Produto'
             });
         });
 

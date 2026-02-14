@@ -391,10 +391,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     }, [lines, customer]);
 
     const handleCheckConflict = () => {
+        // IDs of all appointments currently represented in this modal lines
+        const currentApptIds = new Set(lines.map(l => l.appointmentId).filter(Boolean));
+        if (appointment.id) currentApptIds.add(appointment.id);
+
         const currentProviderIds = new Set(lines.map(l => l.providerId));
 
         const conflictingAppt = allAppointments.find(a => {
-            if (a.id === appointment.id) return false;
+            // Exclude ALL appointments being handled in this modal
+            if (currentApptIds.has(a.id)) return false;
+
             // Normalize time to HH:mm for comparison
             const apptTime = a.time.slice(0, 5);
             const currentTime = appointmentTime.slice(0, 5);
@@ -409,13 +415,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return isProvBusy;
         });
 
-        if (conflictingAppt) {
+        if (conflictingAppt && !(appointment.status === 'Concluído' && appointment.time === appointmentTime && appointment.date === appointmentDate)) {
             // Case: Professional is busy with another client
             const conflictingProvider = providers.find(p => p.id === conflictingAppt.providerId);
             alert(`⚠️ CONFLITO DE PROFISSIONAL\n\n${conflictingProvider?.name || 'A profissional'} já está ocupada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
             return true;
         }
-        return false;
         return false;
     };
 

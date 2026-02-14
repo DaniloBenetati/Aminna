@@ -287,6 +287,9 @@ export interface FinancialTransaction {
   paymentMethod: string;
   origin: 'Serviço' | 'Produto' | 'Despesa' | 'Outro';
   customerOrProviderName?: string;
+  providerName?: string;
+  customerName?: string;
+  serviceName?: string;
 }
 
 // --- TIPOS PARA COPA (PANTRY) ---
