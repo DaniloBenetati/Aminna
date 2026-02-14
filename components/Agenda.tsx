@@ -1379,13 +1379,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex justify-between items-start">
                                                                             <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
                                                                                 <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                                {customer?.status === 'Novo' && !(Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) && (
+                                                                                {(!(Number(customer?.totalSpent || 0) > 0) && (customer?.history || []).length === 0 && !appointments.some(a => a.customerId === customer?.id && a.status === 'Concluído')) && (
                                                                                     <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
                                                                                 )}
-                                                                                {(customer?.assignedProviderIds?.some(id => id.toLowerCase() === p.id.toLowerCase()) ||
-                                                                                    (customer?.assignedProviderId && customer.assignedProviderId.toLowerCase() === p.id.toLowerCase())) && (
-                                                                                        <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
-                                                                                    )}
+                                                                                {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
+                                                                                    <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
+                                                                                )}
                                                                             </div>
                                                                             <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
                                                                         </div>

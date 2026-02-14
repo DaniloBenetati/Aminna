@@ -42,6 +42,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     const [localFavServices, setLocalFavServices] = useState(customer.preferences?.favoriteServices?.join(', ') || '');
     const [localPrefDays, setLocalPrefDays] = useState(customer.preferences?.preferredDays?.join(', ') || '');
     const [localPrefNotes, setLocalPrefNotes] = useState(customer.preferences?.notes || '');
+    const [localAssignedProviderIds, setLocalAssignedProviderIds] = useState<string[]>(customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])); // Support legacy singular field
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -65,6 +66,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 status: localStatus,
                 is_blocked: localIsBlocked,
                 block_reason: localIsBlocked ? localBlockReason : null,
+                assigned_provider_ids: localAssignedProviderIds,
                 preferences: updatedPreferences
             };
 
@@ -88,6 +90,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 status: localStatus,
                 isBlocked: localIsBlocked,
                 blockReason: localIsBlocked ? localBlockReason : null,
+                assignedProviderIds: localAssignedProviderIds,
                 preferences: updatedPreferences
             } as Customer : c));
 
@@ -394,15 +397,73 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                             )}
                                         </div>
 
-                                        <div className="space-y-1">
-                                            <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Notas de Preferência</label>
-                                            {editMode ? (
-                                                <textarea value={localPrefNotes} onChange={e => setLocalPrefNotes(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 min-h-[100px] resize-none" placeholder="Ex: Prefere café com pouco açúcar, gosta de silêncio..." />
-                                            ) : (
-                                                <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localPrefNotes || 'Nenhuma nota de preferência'}</p>
-                                            )}
+                                        <div className="space-y-6">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Dias Preferenciais</label>
+                                                {editMode ? (
+                                                    <input value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)} placeholder="Ex: Terças, Quintas..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                                                ) : (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {localPrefDays ? localPrefDays.split(',').map((d, i) => (
+                                                            <span key={i} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">{d.trim()}</span>
+                                                        )) : <p className="text-xs text-slate-300 font-bold uppercase italic p-1">Nenhum dia preferencial</p>}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Notas de Preferência</label>
+                                                {editMode ? (
+                                                    <textarea value={localPrefNotes} onChange={e => setLocalPrefNotes(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 min-h-[100px] resize-none" placeholder="Ex: Prefere café com pouco açúcar, gosta de silêncio..." />
+                                                ) : (
+                                                    <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localPrefNotes || 'Nenhuma nota de preferência'}</p>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* PROFISSIONAIS PREFERIDOS */}
+                                <div className="mt-6 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-4">
+                                    <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Profissionais Preferidos</h4>
+                                    {editMode ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                            {providers.filter(p => p.active).map(provider => {
+                                                const isSelected = localAssignedProviderIds.includes(provider.id);
+                                                return (
+                                                    <div
+                                                        key={provider.id}
+                                                        onClick={() => {
+                                                            setLocalAssignedProviderIds(prev =>
+                                                                prev.includes(provider.id)
+                                                                    ? prev.filter(id => id !== provider.id)
+                                                                    : [...prev, provider.id]
+                                                            );
+                                                        }}
+                                                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-2 ${isSelected
+                                                            ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
+                                                            : 'border-slate-100 dark:border-zinc-800 hover:border-slate-300'}`}
+                                                    >
+                                                        <Avatar name={provider.name} src={provider.avatar} size="w-8 h-8" />
+                                                        <span className={`text-[10px] font-black uppercase ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-slate-500 dark:text-slate-400'}`}>{provider.name}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-wrap gap-3">
+                                            {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 ? (
+                                                providers.filter(p => customer.assignedProviderIds?.includes(p.id)).map(p => (
+                                                    <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-800 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                                        <Avatar name={p.name} src={p.avatar} size="w-6 h-6" />
+                                                        <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{p.name}</span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-xs text-slate-300 font-bold uppercase italic">Nenhum profissional preferido</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
