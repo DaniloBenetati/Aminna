@@ -358,7 +358,7 @@ interface FinanceProps {
 }
 
 export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock }) => {
-    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE' | 'SUPPLIERS' | 'CHARTS'>('DRE');
+    const [activeTab, setActiveTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'DRE' | 'SUPPLIERS' | 'CHARTS'>('DAILY');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('year');
     const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 8) + '01');
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);

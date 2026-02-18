@@ -760,6 +760,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // but the UI uses it. Let's assume we update the customer's totals in DB.
             // 3. Update Customer History and Balance
             let newOutstandingBalance = customer.outstandingBalance || 0;
+            let usedCredit = 0;
+            payments.forEach(p => {
+                if (p.method === 'Crédito Aminna' || p.method === 'Crédito') usedCredit += (p.amount || 0);
+            });
 
             // If paying debt, reduce it (but ensure it doesn't go below zero if strict)
             if (includeDebt) {
@@ -770,9 +774,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + priceDifference,
                 outstanding_balance: newOutstandingBalance,
-                status: customer.status === 'Novo' ? 'Regular' : customer.status
+                status: customer.status === 'Novo' ? 'Regular' : customer.status,
+                credit_balance: (customer.creditBalance || 0) - usedCredit
             }).eq('id', customer.id);
             if (custError) throw custError;
+
+            // Notify about credit update
+            if (usedCredit > 0) {
+                const finalBalance = (customer.creditBalance || 0) - usedCredit;
+                alert(`✅ Crédito Aminna Utilizado!\n\nValor Debitado: R$ ${usedCredit.toFixed(2)}\nSaldo Restante: R$ ${finalBalance.toFixed(2)}`);
+            }
 
             onUpdateAppointments(prev => {
                 const exists = prev.find(a => a.id === appointment.id);
@@ -829,7 +840,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         lastVisit: dischargeDate,
                         totalSpent: c.totalSpent + priceDifference,
                         status: c.status === 'Novo' ? 'Regular' : c.status,
-                        history: isReFinalizing ? c.history : [...newEntries, ...c.history]
+                        history: isReFinalizing ? c.history : [...newEntries, ...c.history],
+                        creditBalance: (c.creditBalance || 0) - usedCredit,
+                        outstandingBalance: newOutstandingBalance
                     };
                 }
                 return c;
@@ -2105,16 +2118,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {mode === 'CHECKOUT' && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                            <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
-                                <div className="flex flex-col">
+                            <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center group relative overflow-hidden">
+                                <div className="flex flex-col z-10">
                                     <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
                                     {customer.isVip && (
                                         <span className="text-[9px] font-black text-amber-600 dark:text-amber-500 uppercase tracking-wider mt-1">
                                             VIP {customer.vipDiscountPercent}% OFF
                                         </span>
                                     )}
+                                    {customer.creditBalance !== undefined && customer.creditBalance > 0 && (
+                                        <div className="mt-2 flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-lg border border-purple-100 dark:border-purple-800">
+                                            <Wallet size={12} className="text-purple-600 dark:text-purple-400" />
+                                            <span className="text-[9px] font-black text-purple-700 dark:text-purple-400 uppercase tracking-tight">Crédito Aminna: R$ {customer.creditBalance.toFixed(2)}</span>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="text-right">
+                                <div className="text-right z-10">
                                     {customer.isVip && (
                                         <span className="block text-[10px] font-bold text-slate-400 line-through">R$ {totalBeforeCoupon.toFixed(2)}</span>
                                     )}
@@ -2125,6 +2144,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     )}
                                     <span className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {totalValue.toFixed(2)}</span>
                                 </div>
+                                <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-500/5 dark:bg-indigo-500/10 blur-3xl rounded-full -mr-16 -mt-16 pointer-events-none"></div>
                             </div>
 
                             {!isAgendaMode && (
@@ -2300,7 +2320,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                             <div className="space-y-3 px-1">
                                 <div className="flex items-center justify-between ml-1">
-                                    <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
+                                    <div className="flex flex-col">
+                                        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
+                                        {customer.creditBalance && customer.creditBalance > 0 ? (
+                                            <div className="mt-1 flex items-center gap-2 bg-purple-50 dark:bg-zinc-800/50 border border-purple-100 dark:border-purple-900 shadow-sm rounded-lg px-3 py-1.5 animate-in fade-in zoom-in duration-300">
+                                                <Wallet size={12} className="text-purple-600 dark:text-purple-400" />
+                                                <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 uppercase">
+                                                    R$ {customer.creditBalance.toFixed(2)} DISPONÍVEL
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                    </div>
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button" onClick={addPayment}
@@ -2324,18 +2354,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         return (
                                             <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
                                                 <select
-                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit ? 'rounded-r-none border-r-0' : ''}`}
+                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
                                                     value={payment.method}
                                                     onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                 >
-                                                    {paymentSettings.map(pay => (
+                                                    {[...paymentSettings, { id: 'virtual-credit', method: 'Crédito Aminna' }].filter((v, i, a) => a.findIndex(t => t.method === v.method) === i).map(pay => (
                                                         <option key={pay.id} value={pay.method}>
                                                             {pay.method}
                                                         </option>
                                                     ))}
                                                 </select>
 
-                                                {isCredit && (
+                                                {isCredit && payment.method !== 'Crédito Aminna' && (
                                                     <select
                                                         className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
                                                         value={payment.installments || 1}
@@ -2347,7 +2377,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </select>
                                                 )}
 
-                                                {(payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito')) && (
+                                                {(payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito')) && payment.method !== 'Crédito Aminna' && (
                                                     <select
                                                         className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
                                                         value={payment.cardBrand || ''}
@@ -2406,7 +2436,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                             {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
                             {/* EXIBIÇÃO DA DÍVIDA ANTERIOR COM CHECKBOX */}
-                            {customer.outstandingBalance && customer.outstandingBalance > 0 && (
+                            {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
                                 <button
                                     type="button"
                                     onClick={() => setIncludeDebt(!includeDebt)}

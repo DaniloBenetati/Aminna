@@ -115,6 +115,7 @@ export interface Customer {
   outstandingBalance?: number; // Saldo Devedor
   isVip?: boolean; // Cliente VIP
   vipDiscountPercent?: number; // Percentual de desconto VIP (0-100)
+  creditBalance?: number; // Saldo de Crédito
 }
 
 export interface CustomerHistoryItem {

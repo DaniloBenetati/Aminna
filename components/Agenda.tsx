@@ -12,7 +12,7 @@ import {
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig } from '../types';
+import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig, UserProfile } from '../types';
 import { ServiceModal } from './ServiceModal';
 import {
     DndContext,
@@ -91,11 +91,13 @@ interface AgendaProps {
     stock: StockItem[];
     nfseRecords: NFSeRecord[];
     fiscalConfig?: FiscalConfig;
+    userProfile?: UserProfile | null;
+    isLoadingData?: boolean;
     onNavigate?: (view: ViewState, payload?: any) => void;
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, fiscalConfig, onNavigate
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, fiscalConfig, userProfile, isLoadingData, onNavigate
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');

@@ -4,7 +4,7 @@ import {
   Search, Plus, MapPin, Phone, Mail, User, FileText, Check, X,
   Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar,
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
-  Filter, UserPlus, History, Star, Megaphone, Ban, Users
+  Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet
 } from 'lucide-react';
 import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile } from '../types';
 
@@ -240,7 +240,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         assigned_provider_ids: localAssignedProviderIds,
         assigned_provider_id: localAssignedProviderIds?.[0] || null,
         is_vip: formData.isVip,
-        vip_discount_percent: formData.vipDiscountPercent
+        vip_discount_percent: formData.vipDiscountPercent,
+        credit_balance: formData.creditBalance || 0
       }).eq('id', selectedCustomer.id);
 
       if (error) {
@@ -358,6 +359,12 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) ? 'Regular' : customer.status}
                       </span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">{customer.phone}</p>
+                      {customer.creditBalance !== undefined && customer.creditBalance > 0 && (
+                        <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-800">
+                          <Wallet size={10} className="text-purple-600 dark:text-purple-400" />
+                          <span className="text-[8px] font-black text-purple-700 dark:text-purple-400 uppercase">R$ {customer.creditBalance.toFixed(2)}</span>
+                        </div>
+                      )}
                       {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
                         <div className="flex -space-x-1.5 ml-2">
                           {customer.assignedProviderIds.map(pid => {
@@ -441,6 +448,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                           })}
                         </div>
                       )}
+                      {formData.creditBalance !== undefined && formData.creditBalance > 0 && (
+                        <span className="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase border border-purple-100 dark:border-purple-900 px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center gap-1">
+                          <Wallet size={10} /> {formData.creditBalance.toFixed(2)}
+                        </span>
+                      )}
                       {formData.isBlocked && <span className="text-[9px] font-black text-rose-500 uppercase border border-rose-200 dark:border-rose-900 px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20">BLOQUEADA</span>}
                     </div>
                   </div>
@@ -506,23 +518,23 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             )}
                           </label>
                           <label className="block">
-                            <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Canal de Entrada</span>
+                            <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Passou Por</span>
+                            <p className="text-sm font-black text-slate-950 dark:text-white uppercase">
+                              {(() => {
+                                const visits = appointments.filter(a => a.customerId === formData.id && a.status === 'Concluído').length;
+                                return visits === 0 ? 'Primeira Visita' : visits === 1 ? '1 Visita' : `${visits} Visitas`;
+                              })()}
+                            </p>
+                          </label>
+                          <label className="block pt-2">
+                            <span className="text-[9px] md:text-[8px] font-black text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1"><Wallet size={10} /> Crédito Aminna</span>
                             {isEditing ? (
                               <div className="relative">
-                                <Megaphone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                <select
-                                  className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl pl-9 pr-3 py-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-zinc-950 dark:focus:border-white appearance-none"
-                                  value={formData.acquisitionChannel || ''}
-                                  onChange={e => setFormData({ ...formData, acquisitionChannel: e.target.value })}
-                                >
-                                  <option value="">Selecione...</option>
-                                  {['Instagram', 'Facebook', 'TikTok', 'Google', 'Indicação', 'WhatsApp', 'Passante'].map(c => (
-                                    <option key={c} value={c}>{c}</option>
-                                  ))}
-                                </select>
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
+                                <input type="number" step="0.01" className="w-full bg-purple-50/50 dark:bg-purple-900/10 border-2 border-purple-100 dark:border-purple-800 rounded-xl pl-8 pr-3 py-2 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-purple-500" value={formData.creditBalance || 0} onChange={e => setFormData({ ...formData, creditBalance: parseFloat(e.target.value) || 0 })} />
                               </div>
                             ) : (
-                              <p className="text-sm font-black text-slate-950 dark:text-white">{formData.acquisitionChannel || 'Não informado'}</p>
+                              <p className="text-sm font-black text-purple-700 dark:text-purple-400">R$ {(formData.creditBalance || 0).toFixed(2)}</p>
                             )}
                           </label>
                         </div>

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Save, Ban, Clock, Star, Smartphone, Mail, MapPin, FileText, Sparkles, Calendar, ChevronLeft } from 'lucide-react';
+import { X, Save, Ban, Clock, Star, Smartphone, Mail, MapPin, FileText, Sparkles, Calendar, ChevronLeft, Wallet } from 'lucide-react';
 import { Customer, CustomerHistoryItem, Service, Provider } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -36,6 +36,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     const [localStatus, setLocalStatus] = useState(customer.status);
     const [localIsBlocked, setLocalIsBlocked] = useState(customer.isBlocked || false);
     const [localBlockReason, setLocalBlockReason] = useState(customer.blockReason || '');
+    const [localCreditBalance, setLocalCreditBalance] = useState(customer.creditBalance || 0);
 
     // Preferences
     const [localRestrictions, setLocalRestrictions] = useState(customer.preferences?.restrictions || '');
@@ -67,7 +68,8 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 is_blocked: localIsBlocked,
                 block_reason: localIsBlocked ? localBlockReason : null,
                 assigned_provider_ids: localAssignedProviderIds,
-                preferences: updatedPreferences
+                preferences: updatedPreferences,
+                credit_balance: localCreditBalance
             };
 
             const { error } = await supabase
@@ -91,7 +93,8 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 isBlocked: localIsBlocked,
                 blockReason: localIsBlocked ? localBlockReason : null,
                 assignedProviderIds: localAssignedProviderIds,
-                preferences: updatedPreferences
+                preferences: updatedPreferences,
+                creditBalance: localCreditBalance
             } as Customer : c));
 
             setEditMode(false);
@@ -248,6 +251,25 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                             </select>
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localAcquisitionChannel || 'Não informado'}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase ml-1 flex items-center gap-1">
+                                            <Wallet size={10} /> Crédito Aminna
+                                        </label>
+                                        {editMode ? (
+                                            <div className="relative">
+                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black">R$</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={localCreditBalance}
+                                                    onChange={e => setLocalCreditBalance(parseFloat(e.target.value) || 0)}
+                                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 pl-12 font-black text-purple-600 dark:text-purple-400 outline-none focus:border-purple-500 transition-all"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm font-black text-purple-600 dark:text-purple-400 p-1">R$ {Number(localCreditBalance || 0).toFixed(2)}</p>
                                         )}
                                     </div>
                                 </div>
