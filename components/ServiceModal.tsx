@@ -46,6 +46,13 @@ interface ServiceLine {
     tipAmount: number;
 }
 
+const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 interface ServiceModalProps {
     appointment: Appointment;
     allAppointments: Appointment[];
@@ -707,7 +714,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             clientPhone: l.clientPhone
         }));
 
-        const dischargeDate = appointment.date || new Date().toISOString().split('T')[0];
+        const dischargeDate = appointment.date || formatLocalDate(new Date());
 
         const updatedData = {
             status: 'Concluído',
@@ -964,7 +971,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     if (recurrenceFrequency === 'WEEKLY') current.setDate(current.getDate() + 7);
                     else if (recurrenceFrequency === 'BIWEEKLY') current.setDate(current.getDate() + 14);
                     else if (recurrenceFrequency === 'MONTHLY') current.setMonth(current.getMonth() + 1);
-                    futureDates.push(current.toISOString().split('T')[0]);
+                    futureDates.push(formatLocalDate(current));
                 }
 
                 const bulkData = futureDates.map(d => ({
@@ -1093,7 +1100,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 tipAmount: l.tipAmount
             }));
 
-            const dischargeDate = appointment.date || new Date().toISOString().split('T')[0];
+            const dischargeDate = appointment.date || formatLocalDate(new Date());
 
             const updatedData = {
                 status: 'Concluído',
@@ -1344,7 +1351,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: apptError } = await supabase.from('appointments').update({ status: 'Cancelado' }).eq('id', appointment.id);
             if (apptError) throw apptError;
 
-            const today = new Date().toISOString().split('T')[0];
+            const today = formatLocalDate(new Date());
 
             // 2. Update local state for appointments
             const secondaryAppointmentIds = Array.from(new Set(

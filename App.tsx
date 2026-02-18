@@ -124,7 +124,7 @@ const App: React.FC = () => {
       // Optimization: Filter logs and records by date (last 3 months) to prevent slow loading
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      const minDate = threeMonthsAgo.toISOString().split('T')[0];
+      const minDate = threeMonthsAgo.getFullYear() + '-' + String(threeMonthsAgo.getMonth() + 1).padStart(2, '0') + '-' + String(threeMonthsAgo.getDate()).padStart(2, '0');
 
       // Helper function to fetch customers in parallel batches
       const fetchCustomers = async () => {

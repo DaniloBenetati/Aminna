@@ -1,5 +1,12 @@
 ﻿import React, { useState, useMemo } from 'react';
 
+const formatLocalDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 const getDuration = (start: string, end?: string, defaultDuration: number = 30) => {
     if (!end) return defaultDuration;
     const [startH, startM] = start.split(':').map(Number);
@@ -187,29 +194,6 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
     }, [timeView, isInitialized]);
 
-    // Sync scroll between header and grid
-    React.useEffect(() => {
-        const headerEl = headerScrollRef.current;
-        const gridEl = gridScrollRef.current;
-
-        if (!headerEl || !gridEl) return;
-
-        const syncHeaderScroll = () => {
-            if (gridEl) gridEl.scrollLeft = headerEl.scrollLeft;
-        };
-
-        const syncGridScroll = () => {
-            if (headerEl) headerEl.scrollLeft = gridEl.scrollLeft;
-        };
-
-        headerEl.addEventListener('scroll', syncHeaderScroll);
-        gridEl.addEventListener('scroll', syncGridScroll);
-
-        return () => {
-            headerEl.removeEventListener('scroll', syncHeaderScroll);
-            gridEl.removeEventListener('scroll', syncGridScroll);
-        };
-    }, []);
 
     const scrollGrid = (direction: 'left' | 'right') => {
         const gridEl = gridScrollRef.current;
@@ -222,7 +206,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     // Helpers
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const formatDate = (date: Date) => formatLocalDate(date);
 
     const navigateDate = (direction: 'prev' | 'next') => {
         if (timeView === 'custom') return;
@@ -1050,238 +1034,26 @@ export const Agenda: React.FC<AgendaProps> = ({
                         Dia: {new Date(gridDateStr + 'T12:00:00').toLocaleDateString('pt-BR')}
                     </div>
 
-                    {/* Grid Header */}
-                    <div className="flex border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/30 overflow-hidden">
-                        {/* Time Column Header (Sticky) */}
-                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center sticky left-0 z-40 bg-slate-50 dark:bg-zinc-900 transition-colors">
-                            <Clock size={14} className="text-slate-400" />
-                        </div>
-
-                        {/* Providers Header (Scrollable) */}
-                        <div ref={headerScrollRef} className="flex-1 overflow-x-auto overflow-y-hidden scrollbar-hide flex">
-                            {activeVisibileProviders.map(p => {
-                                const isBlocked = appointments.some(a =>
-                                    a.providerId === p.id &&
-                                    a.date === gridDateStr &&
-                                    a.combinedServiceNames === 'BLOQUEIO_INTERNO'
-                                );
-
-                                return (
-                                    <div
-                                        key={p.id}
-                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-700' : ''}`}
-                                        style={{ width: `${160 * zoomLevel}px` }}
-                                    >
-                                        <div className="flex justify-center mb-1">
-                                            <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
-                                        </div>
-                                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
-
-                                        {/* Block/Unblock Toggle */}
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
-                                            className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
-                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
-                                                }`}
-                                        >
-                                            {isBlocked ? <Check size={8} /> : <Ban size={8} />}
-                                            {isBlocked ? 'Desbloquear' : 'Bloquear'}
-                                        </button>
-                                    </div>
-                                );
-                            })}
-
-                            {/* Scrollbar Compensation: Empty div at the end of header to match grid end padding + scrollbar width */}
-                            <div className="flex-shrink-0 w-4 h-full"></div>
-                        </div>
-                    </div>
-
-
-
-                    {/* Annual View Grid */}
-                    {timeView === 'year' ? (
-                        <div className="flex-1 p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                                {Array.from({ length: 12 }).map((_, i) => {
-                                    const year = dateRef.getFullYear();
-                                    const monthDate = new Date(year, i, 1);
-                                    const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'long' });
-
-                                    const monthApps = appointments.filter(a => {
-                                        const appDate = a.date.split('-');
-                                        return parseInt(appDate[0]) === year && parseInt(appDate[1]) === (i + 1) && a.status !== 'Cancelado' && (selectedProviderId === 'all' || a.providerId === selectedProviderId);
-                                    });
-
-                                    const isCurrentMonth = new Date().getMonth() === i && new Date().getFullYear() === year;
-
-                                    return (
-                                        <div
-                                            key={i}
-                                            onClick={() => {
-                                                const newDate = new Date(dateRef);
-                                                newDate.setMonth(i);
-                                                setDateRef(newDate);
-                                                setTimeView('month');
-                                            }}
-                                            className={`bg-white dark:bg-zinc-900 border ${isCurrentMonth ? 'border-indigo-500 shadow-lg shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-800'} rounded-3xl p-5 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col justify-between min-h-[160px]`}
-                                        >
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">{year}</h4>
-                                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{monthName}</h3>
-                                                </div>
-                                                {isCurrentMonth && (
-                                                    <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase">Atual</span>
-                                                )}
-                                            </div>
-
-                                            <div className="space-y-3">
-                                                <div className="flex items-end justify-between">
-                                                    <div className="text-3xl font-black text-slate-950 dark:text-white tracking-tighter">{monthApps.length}</div>
-                                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Atendimentos</div>
-                                                </div>
-
-                                                <div className="h-2 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-indigo-500 rounded-full transition-all duration-700"
-                                                        style={{ width: `${Math.min(100, (monthApps.length / 50) * 100)}%` }}
-                                                    ></div>
-                                                </div>
-
-                                                <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Confirmado' || a.status === 'Pendente').length} Agendados</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    ) : timeView === 'month' ? (
-                        <div className="flex-1 p-6 overflow-y-auto">
-                            <div className="grid grid-cols-7 gap-4 h-full min-h-[500px]">
-                                {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                    <div key={day} className="text-center font-black text-slate-400 uppercase text-xs mb-2">
-                                        {day}
-                                    </div>
-                                ))}
-                                {(() => {
-                                    const year = dateRef.getFullYear();
-                                    const month = dateRef.getMonth();
-                                    const firstDay = new Date(year, month, 1).getDay();
-                                    const daysInMonth = new Date(year, month + 1, 0).getDate();
-                                    const days = [];
-
-                                    // Empty slots for previous month
-                                    for (let i = 0; i < firstDay; i++) {
-                                        days.push(<div key={`empty-${i}`} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-transparent"></div>);
-                                    }
-
-                                    // Days of month
-                                    for (let day = 1; day <= daysInMonth; day++) {
-                                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                                        const dayApps = appointments.filter(a =>
-                                            a.date === dateStr &&
-                                            a.status !== 'Cancelado' &&
-                                            (selectedProviderId === 'all' || a.providerId === selectedProviderId)
-                                        );
-
-                                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
-
-                                        days.push(
-                                            <div
-                                                key={day}
-                                                onClick={() => {
-                                                    setDateRef(new Date(year, month, day));
-                                                    setTimeView('day');
-                                                }}
-                                                className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-2xl p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-1 min-h-[80px]`}
-                                            >
-                                                <span className={`text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
-
-                                                <div className="flex-1 flex flex-col gap-1 overflow-hidden">
-                                                    {dayApps.slice(0, 3).map(app => (
-                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
-                                                    ))}
-                                                    {dayApps.length > 3 && (
-                                                        <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
-                                                    )}
-                                                </div>
-
-                                                {dayApps.length > 0 && (
-                                                    <div className="absolute top-2 right-2 text-[9px] font-black text-slate-400">
-                                                        {dayApps.length}
-                                                    </div>
-                                                )}
-
-                                                {/* Hover Details Overlay */}
-                                                {dayApps.length > 0 && (
-                                                    <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto z-[150] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-200 hidden md:block">
-                                                        <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                                                            <span className="text-[10px] font-black text-white uppercase tracking-widest">{new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>
-                                                            <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">{dayApps.length} Atendimentos</span>
-                                                        </div>
-                                                        <div className="max-h-48 overflow-y-auto scrollbar-hide space-y-3">
-                                                            {dayApps.sort((a, b) => a.time.localeCompare(b.time)).map(app => {
-                                                                const cust = customers.find(c => c.id === app.customerId);
-                                                                const srv = services.find(s => s.id === app.serviceId);
-                                                                const prv = providers.find(p => p.id === app.providerId);
-                                                                const price = app.bookedPrice || srv?.price || 0;
-                                                                return (
-                                                                    <div key={app.id} className="flex flex-col gap-0.5 border-l-2 border-indigo-500 pl-3 py-0.5">
-                                                                        <div className="flex justify-between items-center">
-                                                                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
-                                                                            <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
-                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
-                                                                        </div>
-                                                                        <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex-1">{app.combinedServiceNames || srv?.name}</p>
-                                                                            <span className="text-[8px] font-black text-indigo-300 uppercase truncate">[{prv?.name.split(' ')[0]}]</span>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    }
-                                    return days;
-                                })()}
-                            </div>
-                        </div>
-                    ) : (
-                        /* Time Slots (Day View) */
-                        <DndContext
-                            sensors={sensors}
-                            collisionDetection={closestCorners}
-                            onDragStart={handleDragStart}
-                            onDragEnd={handleDragEnd}
-                        >
-                            <div ref={gridScrollRef} className="flex-1 overflow-x-auto overflow-y-auto relative">
-                                {hours.map(hour => (
-                                    <div
-                                        key={hour}
-                                        className="flex border-b border-slate-100 dark:border-zinc-800"
-                                        style={{ minHeight: `${rowHeight}px` }}
-                                    >
-                                        {/* Time Column */}
-                                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-colors">
-                                            {hour}
+                    {/* Agenda Content Container */}
+                    <div className="flex-1 overflow-auto scrollbar-hide relative">
+                        {/* Day View Grid */}
+                        {timeView === 'day' && (
+                            <DndContext
+                                sensors={sensors}
+                                collisionDetection={closestCorners}
+                                onDragStart={handleDragStart}
+                                onDragEnd={handleDragEnd}
+                            >
+                                <div className="min-w-max relative">
+                                    {/* Sticky Header Row */}
+                                    <div className="flex sticky top-0 z-50 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-colors">
+                                        {/* Time Corner (Sticky Top + Sticky Left) */}
+                                        <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 flex items-center justify-center sticky left-0 z-50 bg-slate-50 dark:bg-zinc-900">
+                                            <Clock size={14} className="text-slate-400" />
                                         </div>
 
-                                        {/* Provider Columns */}
-                                        <div className="flex-1 flex">
+                                        {/* Providers Row */}
+                                        <div className="flex flex-1">
                                             {activeVisibileProviders.map(p => {
                                                 const isBlocked = appointments.some(a =>
                                                     a.providerId === p.id &&
@@ -1289,253 +1061,225 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                                 );
 
-                                                if (isBlocked && hour === '12:00') {
-                                                    // Show a marker for the block only once per column to avoid clutter
-                                                    // although we'll gray out the whole column
-                                                }
-
-                                                const slotAppointments = getCellAppointments(p.id, hour);
                                                 return (
-                                                    <DroppableCell
-                                                        key={`${p.id}-${hour}`}
-                                                        id={`${p.id}|${hour}`}
-                                                        isBlocked={isBlocked}
-                                                        zoomLevel={zoomLevel}
+                                                    <div
+                                                        key={p.id}
+                                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-700' : ''}`}
+                                                        style={{ width: `${160 * zoomLevel}px` }}
                                                     >
-                                                        {isBlocked && hour === '12:00' && (
-                                                            <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                                <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed">
-                                                                    <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
-                                                                </div>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex justify-center mb-1">
+                                                            <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
+                                                        </div>
+                                                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
 
-                                                        {/* Add Button on Hover */}
-                                                        {!isBlocked && (
-                                                            <button
-                                                                onClick={() => handleNewAppointment({
-                                                                    providerId: p.id,
-                                                                    date: gridDateStr,
-                                                                    time: hour
-                                                                })}
-                                                                className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
-                                                            >
-                                                                <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
-                                                            </button>
-                                                        )}
-
-                                                        {slotAppointments.map(appt => {
-                                                            const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
-                                                            const service = services.find(s => s.id === appt.serviceId);
-
-                                                            let displayServiceName: string = '';
-                                                            let displayTime: string = '';
-                                                            let cardHeight: number = 0;
-
-                                                            // Calculate height based on duration
-                                                            // Base height is rowHeight (for 30 mins)
-                                                            // If it's 60 mins, height is rowHeight * 2
-                                                            if (appt.providerId === p.id) {
-                                                                displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
-                                                                displayTime = appt.time;
-                                                                const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
-                                                                const factor = dur / 30;
-                                                                cardHeight = (rowHeight * factor) - 8;
-                                                            } else {
-                                                                const subService = appt.additionalServices?.find(s => s.providerId === p.id);
-                                                                if (subService) {
-                                                                    const srv = services.find(s => s.id === subService.serviceId);
-                                                                    displayServiceName = srv?.name || 'Serviço Extra';
-                                                                    displayTime = subService.startTime || appt.time;
-                                                                    const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
-                                                                    const factor = dur / 30;
-                                                                    cardHeight = (rowHeight * factor) - 8;
-                                                                }
-                                                            }
-
-                                                            // Calculate top offset based on actual appointment time within the slot
-                                                            const [apptHour, apptMin] = displayTime.split(':').map(Number);
-                                                            const [slotHour, slotMin] = hour.split(':').map(Number);
-                                                            const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
-                                                            const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
-
-                                                            return (
-                                                                <DraggableAppointment
-                                                                    key={appt.id}
-                                                                    id={appt.id}
-                                                                    disabled={appt.status === 'Concluído' || appt.status === 'Cancelado' || appt.customerId === 'INTERNAL_BLOCK'}
-                                                                    className="absolute left-1 right-1 z-10 hover:z-[50] transition-all"
-                                                                    style={{
-                                                                        height: `${cardHeight}px`,
-                                                                        top: `${topOffset}px`
-                                                                    }}
-                                                                >
-                                                                    <div
-                                                                        onClick={() => handleAppointmentClick(appt)}
-                                                                        className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
-                                                                            appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                                appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
-                                                                                    'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
-                                                                            }`}
-                                                                    >
-                                                                        <div className="flex justify-between items-start">
-                                                                            <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                                <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                                {(!(Number(customer?.totalSpent || 0) > 0) && (customer?.history || []).length === 0 && !appointments.some(a => a.customerId === customer?.id && a.status === 'Concluído')) && (
-                                                                                    <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
-                                                                                )}
-                                                                                {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
-                                                                                    <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
-                                                                                )}
-                                                                            </div>
-                                                                            <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
-                                                                        </div>
-                                                                        <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
-
-                                                                        {/* Only show bottom info if height allows */}
-                                                                        {cardHeight > 40 && (
-                                                                            <div className="flex justify-between items-center mt-1.5">
-                                                                                <div className="flex items-center gap-1">
-                                                                                    <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                                        appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                            appt.status === 'Concluído' ? 'bg-slate-500' :
-                                                                                                'bg-amber-400'
-                                                                                        }`}></span>
-                                                                                    {appt.status === 'Concluído' && (
-                                                                                        (() => {
-                                                                                            const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                                                                                            if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
-                                                                                            return null;
-                                                                                        })()
-                                                                                    )}
-                                                                                </div>
-                                                                                <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
-                                                                            </div>
-                                                                        )}
-
-                                                                        {/* HOVER TOOLTIP */}
-                                                                        <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
-                                                                            <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
-                                                                                <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
-                                                                                <div>
-                                                                                    <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'CLIENTE AVULSA'}</p>
-                                                                                    <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
-                                                                                        <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
-                                                                                    </p>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            <div className="space-y-4">
-                                                                                {(() => {
-                                                                                    const customerApps = gridAppointments
-                                                                                        .filter(a => a.customerId === appt.customerId)
-                                                                                        .sort((a, b) => a.time.localeCompare(b.time));
-
-                                                                                    return customerApps.map((ca, idx) => {
-                                                                                        const mainSrv = services.find(s => s.id === ca.serviceId);
-                                                                                        const mainProv = providers.find(p => p.id === ca.providerId);
-
-                                                                                        return (
-                                                                                            <div key={ca.id} className={`${idx > 0 ? 'pt-3 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
-                                                                                                {/* Main Service info for this record */}
-                                                                                                <div className="flex justify-between items-start mb-2">
-                                                                                                    <div className="flex-1">
-                                                                                                        <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
-                                                                                                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} • {getDuration(ca.time, ca.endTime, mainSrv?.durationMinutes)} min</p>
-                                                                                                    </div>
-                                                                                                    <div className="text-right">
-                                                                                                        <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
-                                                                                                    </div>
-                                                                                                </div>
-
-                                                                                                {/* Status and Price for this record */}
-                                                                                                <div className="flex justify-between items-center mt-1">
-                                                                                                    <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
-                                                                                                        ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                            ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
-                                                                                                                'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                                                                                                        }`}>
-                                                                                                        {ca.status}
-                                                                                                    </span>
-                                                                                                    <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        );
-                                                                                    });
-                                                                                })()}
-                                                                            </div>
-
-                                                                            <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
-                                                                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
-                                                                                <div className="flex flex-col items-end">
-                                                                                    {customer?.isVip ? (
-                                                                                        <>
-                                                                                            <span className="text-[10px] font-bold text-slate-400 line-through">
-                                                                                                R$ {gridAppointments
-                                                                                                    .filter(a => a.customerId === appt.customerId)
-                                                                                                    .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
-                                                                                                    .toFixed(2)}
-                                                                                            </span>
-                                                                                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">
-                                                                                                R$ {Math.max(0, gridAppointments
-                                                                                                    .filter(a => a.customerId === appt.customerId)
-                                                                                                    .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0) * (1 - (customer.vipDiscountPercent || 0) / 100))
-                                                                                                    .toFixed(2)} <span className="text-[9px] text-amber-500 ml-1">(VIP)</span>
-                                                                                            </span>
-                                                                                        </>
-                                                                                    ) : (
-                                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
-                                                                                            R$ {gridAppointments
-                                                                                                .filter(a => a.customerId === appt.customerId)
-                                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
-                                                                                                .toFixed(0)}
-                                                                                        </p>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {customer?.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
-                                                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                                                                    <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-3">Profissionais Preferidos</p>
-                                                                                    <div className="flex flex-wrap gap-2">
-                                                                                        {customer.assignedProviderIds.map(pid => {
-                                                                                            const prov = providers.find(p => p.id === pid);
-                                                                                            if (!prov) return null;
-                                                                                            return (
-                                                                                                <span key={pid} className="bg-[#FF007F] text-white text-[10px] font-black px-3 py-1 rounded-full uppercase shadow-sm">
-                                                                                                    {prov.name}
-                                                                                                </span>
-                                                                                            );
-                                                                                        })}
-                                                                                    </div>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </DraggableAppointment>
-                                                            );
-                                                        })}
-                                                    </DroppableCell>
+                                                        {/* Block/Unblock Toggle */}
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                                            className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
+                                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
+                                                                }`}
+                                                        >
+                                                            {isBlocked ? <Check size={8} /> : <Ban size={8} />}
+                                                            {isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                                        </button>
+                                                    </div>
                                                 );
                                             })}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
 
-                            <DragOverlay modifiers={[restrictToWindowEdges]}>
-                                {activeDragId ? (
-                                    <div className="w-40 h-20 bg-indigo-600/20 border-2 border-indigo-600 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                                        <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Movendo...</p>
+                                    {/* Grid Rows */}
+                                    <div className="relative">
+                                        {hours.map(hour => (
+                                            <div
+                                                key={hour}
+                                                className="flex border-b border-slate-100 dark:border-zinc-800"
+                                                style={{ minHeight: `${rowHeight}px` }}
+                                            >
+                                                {/* Time Column (Sticky Left) */}
+                                                <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-colors flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-40">
+                                                    {hour}
+                                                </div>
+
+                                                {/* Provider Columns */}
+                                                <div className="flex-1 flex">
+                                                    {activeVisibileProviders.map(p => {
+                                                        const isBlocked = appointments.some(a =>
+                                                            a.providerId === p.id &&
+                                                            a.date === gridDateStr &&
+                                                            a.combinedServiceNames === 'BLOQUEIO_INTERNO'
+                                                        );
+
+                                                        const slotAppointments = getCellAppointments(p.id, hour);
+                                                        return (
+                                                            <DroppableCell
+                                                                key={`${p.id}-${hour}`}
+                                                                id={`${p.id}|${hour}`}
+                                                                isBlocked={isBlocked}
+                                                                zoomLevel={zoomLevel}
+                                                            >
+                                                                {isBlocked && hour === '12:00' && (
+                                                                    <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
+                                                                        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed">
+                                                                            <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* Add Button on Hover */}
+                                                                {!isBlocked && (
+                                                                    <button
+                                                                        onClick={() => handleNewAppointment({
+                                                                            providerId: p.id,
+                                                                            date: gridDateStr,
+                                                                            time: hour
+                                                                        })}
+                                                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
+                                                                    >
+                                                                        <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
+                                                                    </button>
+                                                                )}
+
+                                                                {slotAppointments.map((appt, idx) => {
+                                                                    const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+                                                                    const service = services.find(s => s.id === appt.serviceId);
+
+                                                                    let displayServiceName: string = '';
+                                                                    let displayTime: string = '';
+                                                                    let cardHeight: number = 0;
+
+                                                                    if (appt.providerId === p.id) {
+                                                                        displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
+                                                                        displayTime = appt.time;
+                                                                        const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
+                                                                        const factor = dur / 30;
+                                                                        cardHeight = (rowHeight * factor) - 8;
+                                                                    } else {
+                                                                        const subService = appt.additionalServices?.find(s => s.providerId === p.id);
+                                                                        if (subService) {
+                                                                            const srv = services.find(s => s.id === subService.serviceId);
+                                                                            displayServiceName = srv?.name || 'Serviço Extra';
+                                                                            displayTime = subService.startTime || appt.time;
+                                                                            const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
+                                                                            const factor = dur / 30;
+                                                                            cardHeight = (rowHeight * factor) - 8;
+                                                                        }
+                                                                    }
+
+                                                                    const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                                    const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                                    const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                                    const topOffset = (minutesIntoSlot / 30) * rowHeight + 4;
+
+                                                                    // Overlap handling
+                                                                    const width = 100 / slotAppointments.length;
+                                                                    const left = idx * width;
+
+                                                                    return (
+                                                                        <DraggableAppointment
+                                                                            key={appt.id}
+                                                                            id={appt.id}
+                                                                            disabled={appt.status === 'Concluído' || appt.status === 'Cancelado' || appt.customerId === 'INTERNAL_BLOCK'}
+                                                                            className="absolute z-10 hover:z-[50] transition-all"
+                                                                            style={{
+                                                                                height: `${cardHeight}px`,
+                                                                                top: `${topOffset}px`,
+                                                                                width: `${width}%`,
+                                                                                left: `${left}%`,
+                                                                                padding: '0 2px'
+                                                                            }}
+                                                                        >
+                                                                            <div
+                                                                                onClick={() => handleAppointmentClick(appt)}
+                                                                                className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                                    appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
+                                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
+                                                                                            'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                                                                                    }`}
+                                                                            >
+                                                                                <div className="flex justify-between items-start">
+                                                                                    <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
+                                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
+                                                                                        {(!(Number(customer?.totalSpent || 0) > 0) && (customer?.history || []).length === 0 && !appointments.some(a => a.customerId === customer?.id && a.status === 'Concluído')) && (
+                                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                                        )}
+                                                                                        {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
+                                                                                            <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
+                                                                                </div>
+                                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
+
+                                                                                {cardHeight > 40 && (
+                                                                                    <div className="flex justify-between items-center mt-1.5">
+                                                                                        <div className="flex items-center gap-1">
+                                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                                    appt.status === 'Concluído' ? 'bg-slate-400' :
+                                                                                                        'bg-amber-400'
+                                                                                                }`}></span>
+                                                                                            <span className="text-[7.5px] font-black text-slate-400 uppercase uppercase">{appt.status}</span>
+                                                                                        </div>
+                                                                                        {appt.status === 'Concluído' && (
+                                                                                            (() => {
+                                                                                                const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                                if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                                return null;
+                                                                                            })()
+                                                                                        )}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </DraggableAppointment>
+                                                                    );
+                                                                })}
+                                                            </DroppableCell>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                ) : null}
-                            </DragOverlay>
-                        </DndContext>
-                    )}
-                </div>
+                                    <DragOverlay modifiers={[restrictToWindowEdges]}>
+                                        {activeDragId ? (
+                                            <div className="w-40 h-20 bg-indigo-600/20 border-2 border-indigo-600 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Movendo...</p>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
+                                </div>
+                            </DndContext>
+                        )}
 
-                {/* CUSTOMER SELECTION MODAL */}
-                {isCustomerSelectionOpen && (
+                        {/* Month View Grid placeholder */}
+                        {timeView === 'month' && (
+                            <div className="p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
+                                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                                    <CalendarRange size={48} className="mb-4 opacity-20" />
+                                    <p className="text-sm font-black uppercase tracking-widest">Visualização Mensal em Desenvolvimento</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Annual View Grid */}
+                        {timeView === 'year' && (
+                            <div className="p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
+                                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+                                    <CalendarRange size={48} className="mb-4 opacity-20" />
+                                    <p className="text-sm font-black uppercase tracking-widest">Visualização Anual em Desenvolvimento</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            </div>
+
+            {/* CUSTOMER SELECTION MODAL */}
+            {
+                isCustomerSelectionOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                         <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[80vh]">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
@@ -1645,10 +1389,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
-                {/* WhatsApp Confirmations Modal with Copy Option */}
-                {isWhatsAppModalOpen && (
+            {/* WhatsApp Confirmations Modal with Copy Option */}
+            {
+                isWhatsAppModalOpen && (
                     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
                         <div className="bg-slate-100 dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[85vh]">
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
@@ -1719,10 +1465,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
-                {/* Modal */}
-                {isServiceModalOpen && selectedAppointment && (
+            {/* Modal */}
+            {
+                isServiceModalOpen && selectedAppointment && (
                     <ServiceModal
                         appointment={selectedAppointment}
                         allAppointments={appointments}
@@ -1740,8 +1488,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                         customers={customers}
                         onNavigate={onNavigate}
                     />
-                )}
-            </div>
+                )
+            }
         </div >
     );
 };
