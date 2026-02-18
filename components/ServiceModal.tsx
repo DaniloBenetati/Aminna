@@ -731,7 +731,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount_amount: couponDiscountAmount,
             payments: payments,
             end_time: lines[0].endTime,
-            tip_amount: lines[0].tipAmount
+            tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
         };
 
         try {
@@ -810,7 +810,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     discountAmount: couponDiscountAmount,
                     payments: payments,
                     endTime: lines[0].endTime,
-                    tipAmount: lines[0].tipAmount
+                    tipAmount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
                 } as Appointment;
 
                 return prev.map(a => {
@@ -922,7 +922,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             customer_id: customer.id,
             payments: payments,
             recurrence_id: recId,
-            end_time: lines[0].endTime
+            end_time: lines[0].endTime,
+            tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
         };
 
         try {
@@ -2237,40 +2238,50 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         </div>
                                                     </div>
 
-                                                    <div className="grid grid-cols-2 gap-2">
+                                                    <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                                                         <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Desconto / Caixinha</label>
-                                                            <div className="flex items-center gap-2">
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Caixinha para o Profissional</label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-500">R$</span>
                                                                 <input
                                                                     type="number"
-                                                                    className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-rose-500 dark:text-rose-400 outline-none"
+                                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl py-2.5 pl-8 pr-3 text-xs font-black text-rose-500 dark:text-rose-400 outline-none focus:border-rose-400 transition-colors shadow-sm"
                                                                     value={line.tipAmount}
                                                                     onChange={e => updateLine(line.id, 'tipAmount', parseFloat(e.target.value) || 0)}
-                                                                    placeholder="Caixinha"
+                                                                    placeholder="0,00"
                                                                 />
-                                                                <input
-                                                                    type="number"
-                                                                    className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-xs font-black text-slate-950 dark:text-white outline-none"
-                                                                    value={line.discount}
-                                                                    onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
-                                                                    placeholder="Desc"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                                    className={`p-2 rounded-xl border transition-colors ${line.isCourtesy ? 'bg-slate-900 dark:bg-white text-white dark:text-black border-slate-900 dark:border-white' : 'bg-white dark:bg-zinc-800 text-slate-300 border-slate-200 dark:border-zinc-700'}`}
-                                                                    title="Cortesia"
-                                                                >
-                                                                    <Check size={12} />
-                                                                </button>
                                                             </div>
                                                         </div>
                                                         <div>
-                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-0.5">Feedback Opcional</label>
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Desconto no Serviço</label>
+                                                            <div className="flex gap-2">
+                                                                <div className="relative flex-1">
+                                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl py-2.5 pl-8 pr-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
+                                                                        value={line.discount}
+                                                                        onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
+                                                                        placeholder="0,00"
+                                                                    />
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                                                    className={`px-4 rounded-xl border font-black text-[9px] uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 ${line.isCourtesy ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white dark:bg-zinc-800 text-slate-400 border-slate-200 dark:border-zinc-700 hover:border-slate-300'}`}
+                                                                    title="Marcar como Cortesia"
+                                                                >
+                                                                    <Check size={14} className={line.isCourtesy ? "stroke-[3px]" : ""} />
+                                                                    <span>Cortesia</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Feedback do Atendimento</label>
                                                             <input
                                                                 type="text"
-                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-bold text-slate-900 dark:text-white outline-none"
-                                                                placeholder="Elogios ou observações..."
+                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5 text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
+                                                                placeholder="Elogios ou observações sobre o serviço prestado por este profissional..."
                                                                 value={line.feedback}
                                                                 onChange={e => updateLine(line.id, 'feedback', e.target.value)}
                                                             />

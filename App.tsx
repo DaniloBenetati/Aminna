@@ -18,7 +18,7 @@ import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
 
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord } from './types';
+import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -43,6 +43,7 @@ const App: React.FC = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
   const [stock, setStock] = useState<StockItem[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
@@ -197,7 +198,8 @@ const App: React.FC = () => {
         { data: nfseRecordsData },
         fetchedCustomers,
         fetchedAppointments,
-        { data: salesData }
+        { data: salesData },
+        { data: expensesData }
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
@@ -215,7 +217,8 @@ const App: React.FC = () => {
         supabase.from('nfse_records').select('*').gte('created_at', minDate),
         fetchCustomers(),
         fetchAppointments(),
-        supabase.from('sales').select('*').gte('date', minDate)
+        supabase.from('sales').select('*').gte('date', minDate),
+        supabase.from('expenses').select('*')
       ]);
 
       console.log('📊 [DATA FETCH] Results:', {
@@ -352,6 +355,23 @@ const App: React.FC = () => {
 
       }
 
+      // Map and Set Expenses
+      if (expensesData) {
+        setExpenses(expensesData.map((e: any) => ({
+          id: e.id,
+          description: e.description,
+          category: e.category,
+          subcategory: e.subcategory,
+          dreClass: e.dre_class,
+          amount: e.amount,
+          date: e.date,
+          status: e.status,
+          paymentMethod: e.payment_method,
+          supplierId: e.supplier_id,
+          recurringId: e.recurring_id
+        })));
+      }
+
       // Set Customers
       if (fetchedCustomers && fetchedCustomers.length > 0) {
         setCustomers(fetchedCustomers.map((c: any) => ({
@@ -406,6 +426,7 @@ const App: React.FC = () => {
           appliedCoupon: a.applied_coupon,
           pricePaid: a.price_paid, // Critical: Map price_paid
           bookedPrice: a.booked_price, // Critical: Map booked_price
+          tipAmount: a.tip_amount, // Critical: Map tip_amount
           createdAt: a.created_at,
           updatedAt: a.updated_at
         })));
@@ -487,7 +508,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:
@@ -506,8 +527,11 @@ const App: React.FC = () => {
             leads={leads}
             setLeads={setLeads}
             paymentSettings={paymentSettings}
+            commissionSettings={commissionSettings}
             providers={providers}
             stock={stock}
+            sales={sales}
+            expenses={expenses}
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}

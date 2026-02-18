@@ -16,7 +16,8 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
     Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
-    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert
+    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert,
+    Wallet
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig, UserProfile } from '../types';
@@ -36,6 +37,13 @@ import {
 import { restrictToWindowEdges } from '@dnd-kit/modifiers';
 import { CSS } from '@dnd-kit/utilities';
 import { Avatar } from './Avatar';
+import {
+    toLocalDateStr,
+    parseDateSafe,
+    generateFinancialTransactions
+} from '../services/financialService';
+import { DailyCloseView } from './DailyCloseView';
+import { Sale, Expense, CommissionSetting } from '../types';
 
 const DroppableCell = ({ id, isBlocked, zoomLevel, children }: { id: string, isBlocked: boolean, zoomLevel: number, children: React.ReactNode }) => {
     const { isOver, setNodeRef } = useDroppable({
@@ -94,8 +102,11 @@ interface AgendaProps {
     leads: Lead[];
     setLeads: React.Dispatch<React.SetStateAction<Lead[]>>;
     paymentSettings: PaymentSetting[];
+    commissionSettings?: CommissionSetting[];
     providers: Provider[];
     stock: StockItem[];
+    sales: Sale[];
+    expenses: Expense[];
     nfseRecords: NFSeRecord[];
     fiscalConfig?: FiscalConfig;
     userProfile?: UserProfile | null;
@@ -104,7 +115,8 @@ interface AgendaProps {
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
-    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings, providers, stock, nfseRecords, fiscalConfig, userProfile, isLoadingData, onNavigate
+    customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings,
+    commissionSettings, providers, stock, sales, expenses, nfseRecords, fiscalConfig, userProfile, isLoadingData, onNavigate
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -130,6 +142,30 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [visibleServiceIds, setVisibleServiceIds] = useState<string[]>([]);
     const [serviceSidebarSearch, setServiceSidebarSearch] = useState('');
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+    // Financial Modal States
+    const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
+    const [physicalCash, setPhysicalCash] = useState('');
+    const [closingObservation, setClosingObservation] = useState('');
+    const [closerName, setCloserName] = useState('');
+
+    const transactions = useMemo(() => {
+        return generateFinancialTransactions(
+            appointments,
+            sales,
+            expenses,
+            services,
+            customers,
+            providers,
+            commissionSettings || [],
+            paymentSettings
+        );
+    }, [appointments, sales, expenses, services, customers, providers, commissionSettings, paymentSettings]);
+
+    const dailyTransactions = useMemo(() => {
+        const dateStr = toLocalDateStr(dateRef);
+        return transactions.filter(t => (t.appointmentDate || t.date) === dateStr);
+    }, [transactions, dateRef]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -997,6 +1033,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                             >
                                 <ChevronRight size={16} />
                             </button>
+                            <div className="h-4 w-px bg-slate-300 dark:bg-zinc-600 mx-1"></div>
+                            <button
+                                onClick={() => setIsFinanceModalOpen(true)}
+                                className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-xl text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all group"
+                                title="Resumo Financeiro do Dia"
+                            >
+                                <Wallet size={16} className="group-hover:scale-110 transition-transform" />
+                            </button>
                         </div>
                     </div>
 
@@ -1641,6 +1685,33 @@ export const Agenda: React.FC<AgendaProps> = ({
                     />
                 )
             }
+            {/* Finance Modal */}
+            {isFinanceModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
+                        <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
+                            <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
+                                <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
+                            </h3>
+                            <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
+                        </div>
+                        <div className="p-0 max-h-[80vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                            <DailyCloseView
+                                transactions={dailyTransactions}
+                                physicalCash={physicalCash}
+                                setPhysicalCash={setPhysicalCash}
+                                closingObservation={closingObservation}
+                                setClosingObservation={setClosingObservation}
+                                closerName={closerName}
+                                setCloserName={setCloserName}
+                                date={dateRef}
+                                appointments={appointments}
+                                services={services}
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
