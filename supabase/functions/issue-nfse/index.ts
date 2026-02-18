@@ -48,8 +48,8 @@ serve(async (req) => {
             throw new Error('Referência é obrigatória para consultar ou cancelar.');
         }
 
-        // NFSe Nacional Endpoint (nfsen)
-        const endpointType = 'nfsen';
+        // NFSe Traditional Endpoint (nfse) for non-MEI companies in SP
+        const endpointType = 'nfse';
 
         let apiUrl;
         let method;

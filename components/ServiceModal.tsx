@@ -588,7 +588,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
             payments: payments,
-            end_time: lines[0].endTime
+            end_time: lines[0].endTime,
+            tip_amount: lines[0].tipAmount
         };
 
         try {
@@ -790,7 +791,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
                     payments: payments,
-                    endTime: lines[0].endTime
+                    endTime: lines[0].endTime,
+                    tipAmount: lines[0].tipAmount
                 } as Appointment;
 
                 return prev.map(a => {
@@ -2481,6 +2483,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 <div className="text-right">
                                                     <p className="text-xs font-black text-slate-900 dark:text-white">R$ {line.unitPrice.toFixed(2)}</p>
                                                     {line.discount > 0 && <p className="text-[8px] font-bold text-rose-500 uppercase">- R$ {line.discount.toFixed(2)} DESC</p>}
+                                                    {line.tipAmount > 0 && <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">+ R$ {line.tipAmount.toFixed(2)} CAIXINHA</p>}
                                                     {line.isCourtesy && <span className="text-[8px] font-black bg-slate-900 text-white dark:bg-white dark:text-black px-1 rounded">CORTESIA</span>}
                                                 </div>
                                             </div>
