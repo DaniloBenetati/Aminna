@@ -672,6 +672,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 });
             });
 
+            // 6. Create fee expense if applicable (to keep Cash Flow accurate)
+            if (fee > 0 && actualTotalRevenue > 0) {
+                allTrans.push({
+                    id: `app-fee-${app.id}`,
+                    date: settlementDate,
+                    type: 'DESPESA',
+                    category: 'Taxas de Cartão',
+                    description: `Taxa ${paymentMethodName} - Ref: ${customer?.name || 'Cliente'}`,
+                    amount: actualTotalRevenue * (fee / 100),
+                    status: status,
+                    paymentMethod: paymentMethodName,
+                    origin: 'Outro',
+                    customerName: customer?.name || 'Desconhecido',
+                    appointmentDate: app.date
+                });
+            }
+
             if (provider) {
                 const commissionRateSnapshot = app.commissionRateSnapshot ?? rawApp.commission_rate_snapshot;
                 const rate = commissionRateSnapshot ?? provider.commissionRate;
@@ -742,7 +759,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         sales.forEach(sale => {
             const paymentMethodName = sale.paymentMethod || 'Dinheiro';
             const { fee, days } = getPaymentDetails(paymentMethodName);
-            const netAmount = (sale.totalAmount || 0) * (1 - (fee / 100));
+            const grossAmount = sale.totalAmount || 0;
             const settlementDate = addDays(sale.date, days);
 
             const status = settlementDate <= todayStr ? 'Pago' : 'Previsto';
@@ -753,7 +770,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 type: 'RECEITA',
                 category: 'Produto',
                 description: 'Venda de Produto',
-                amount: netAmount,
+                amount: grossAmount,
                 status: status,
                 paymentMethod: paymentMethodName,
                 origin: 'Produto',
@@ -763,6 +780,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 serviceName: 'Venda de Produto',
                 appointmentDate: sale.date
             });
+
+            // Automated Card Fee for Sales
+            if (fee > 0 && grossAmount > 0) {
+                allTrans.push({
+                    id: `sale-fee-${sale.id}`,
+                    date: settlementDate,
+                    type: 'DESPESA',
+                    category: 'Taxas de Cartão',
+                    description: `Taxa ${paymentMethodName} - Ref: Venda de Produto`,
+                    amount: grossAmount * (fee / 100),
+                    status: status,
+                    paymentMethod: paymentMethodName,
+                    origin: 'Outro',
+                    appointmentDate: sale.date
+                });
+            }
         });
 
         expenses.forEach(exp => {
