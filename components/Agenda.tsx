@@ -1201,9 +1201,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 <div className="flex justify-between items-start">
                                                                                     <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
                                                                                         <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                                        {(!(Number(customer?.totalSpent || 0) > 0) && (customer?.history || []).length === 0 && !appointments.some(a => a.customerId === customer?.id && a.status === 'Concluído')) && (
-                                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
-                                                                                        )}
+                                                                                        {(() => {
+                                                                                            if (!customer) return false;
+                                                                                            const hasPastCompleted = appointments.some(a => a.customerId === customer.id && a.status === 'Concluído' && a.date < gridDateStr);
+                                                                                            const hasPastHistory = (customer.history || []).some(h => h.date < gridDateStr);
+                                                                                            return !hasPastCompleted && !hasPastHistory;
+                                                                                        })() && (
+                                                                                                <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                                            )}
                                                                                         {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
                                                                                             <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
                                                                                         )}
@@ -1253,22 +1258,168 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </DndContext>
                         )}
 
-                        {/* Month View Grid placeholder */}
+                        {/* Month View Grid */}
                         {timeView === 'month' && (
-                            <div className="p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
-                                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                                    <CalendarRange size={48} className="mb-4 opacity-20" />
-                                    <p className="text-sm font-black uppercase tracking-widest">Visualização Mensal em Desenvolvimento</p>
+                            <div className="flex-1 p-6 overflow-y-auto scrollbar-hide">
+                                <div className="grid grid-cols-7 gap-4 h-full min-h-[500px]">
+                                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
+                                        <div key={day} className="text-center font-black text-slate-400 uppercase text-xs mb-2">
+                                            {day}
+                                        </div>
+                                    ))}
+                                    {(() => {
+                                        const year = dateRef.getFullYear();
+                                        const month = dateRef.getMonth();
+                                        const firstDay = new Date(year, month, 1).getDay();
+                                        const daysInMonth = new Date(year, month + 1, 0).getDate();
+                                        const days = [];
+
+                                        // Empty slots for previous month
+                                        for (let i = 0; i < firstDay; i++) {
+                                            days.push(<div key={`empty-${i}`} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-transparent"></div>);
+                                        }
+
+                                        // Days of month
+                                        for (let day = 1; day <= daysInMonth; day++) {
+                                            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                                            const dayApps = appointments.filter(a =>
+                                                a.date === dateStr &&
+                                                a.status !== 'Cancelado' &&
+                                                (selectedProviderId === 'all' || a.providerId === selectedProviderId)
+                                            );
+
+                                            const isToday = formatLocalDate(new Date()) === dateStr;
+
+                                            days.push(
+                                                <div
+                                                    key={day}
+                                                    onClick={() => {
+                                                        setDateRef(new Date(year, month, day));
+                                                        setTimeView('day');
+                                                    }}
+                                                    className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-2xl p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-1 min-h-[80px]`}
+                                                >
+                                                    <span className={`text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
+
+                                                    <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                                                        {dayApps.slice(0, 3).map(app => (
+                                                            <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                        ))}
+                                                        {dayApps.length > 3 && (
+                                                            <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
+                                                        )}
+                                                    </div>
+
+                                                    {dayApps.length > 0 && (
+                                                        <div className="absolute top-2 right-2 text-[9px] font-black text-slate-400">
+                                                            {dayApps.length}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Hover Details Overlay */}
+                                                    {dayApps.length > 0 && (
+                                                        <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto z-[150] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-200 hidden md:block">
+                                                            <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+                                                                <span className="text-[10px] font-black text-white uppercase tracking-widest">{new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>
+                                                                <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">{dayApps.length} Atendimentos</span>
+                                                            </div>
+                                                            <div className="max-h-48 overflow-y-auto scrollbar-hide space-y-3">
+                                                                {dayApps.sort((a, b) => a.time.localeCompare(b.time)).map(app => {
+                                                                    const cust = customers.find(c => c.id === app.customerId);
+                                                                    const srv = services.find(s => s.id === app.serviceId);
+                                                                    const prv = providers.find(p => p.id === app.providerId);
+                                                                    const price = app.bookedPrice || srv?.price || 0;
+                                                                    return (
+                                                                        <div key={app.id} className="flex flex-col gap-0.5 border-l-2 border-indigo-500 pl-3 py-0.5">
+                                                                            <div className="flex justify-between items-center">
+                                                                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
+                                                                                <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
+                                                                                <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
+                                                                            </div>
+                                                                            <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
+                                                                            <div className="flex items-center gap-1.5">
+                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex-1">{app.combinedServiceNames || srv?.name}</p>
+                                                                                <span className="text-[8px] font-black text-indigo-300 uppercase truncate">[{prv?.name.split(' ')[0]}]</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        }
+                                        return days;
+                                    })()}
                                 </div>
                             </div>
                         )}
 
                         {/* Annual View Grid */}
                         {timeView === 'year' && (
-                            <div className="p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
-                                <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-                                    <CalendarRange size={48} className="mb-4 opacity-20" />
-                                    <p className="text-sm font-black uppercase tracking-widest">Visualização Anual em Desenvolvimento</p>
+                            <div className="flex-1 p-6 overflow-y-auto scrollbar-hide bg-slate-50/30 dark:bg-zinc-950/20">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {Array.from({ length: 12 }).map((_, i) => {
+                                        const year = dateRef.getFullYear();
+                                        const monthDate = new Date(year, i, 1);
+                                        const monthName = monthDate.toLocaleDateString('pt-BR', { month: 'long' });
+
+                                        const monthApps = appointments.filter(a => {
+                                            const appDate = a.date.split('-');
+                                            return parseInt(appDate[0]) === year && parseInt(appDate[1]) === (i + 1) && a.status !== 'Cancelado' && (selectedProviderId === 'all' || a.providerId === selectedProviderId);
+                                        });
+
+                                        const isCurrentMonth = new Date().getMonth() === i && new Date().getFullYear() === year;
+
+                                        return (
+                                            <div
+                                                key={i}
+                                                onClick={() => {
+                                                    const newDate = new Date(dateRef);
+                                                    newDate.setMonth(i);
+                                                    setDateRef(newDate);
+                                                    setTimeView('month');
+                                                }}
+                                                className={`bg-white dark:bg-zinc-900 border ${isCurrentMonth ? 'border-indigo-500 shadow-lg shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-800'} rounded-3xl p-5 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col justify-between min-h-[160px]`}
+                                            >
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <h4 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">{year}</h4>
+                                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{monthName}</h3>
+                                                    </div>
+                                                    {isCurrentMonth && (
+                                                        <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-1 rounded-full uppercase">Atual</span>
+                                                    )}
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    <div className="flex items-end justify-between">
+                                                        <div className="text-3xl font-black text-slate-950 dark:text-white tracking-tighter">{monthApps.length}</div>
+                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Atendimentos</div>
+                                                    </div>
+
+                                                    <div className="h-2 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-indigo-500 rounded-full transition-all duration-700"
+                                                            style={{ width: `${Math.min(100, (monthApps.length / 50) * 100)}%` }}
+                                                        ></div>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                                            <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                                                            <span>{monthApps.filter(a => a.status === 'Confirmado' || a.status === 'Pendente').length} Agendados</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

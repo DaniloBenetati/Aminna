@@ -585,21 +585,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const pricePaid = app.pricePaid ?? rawApp.price_paid;
             const bookedPrice = app.bookedPrice ?? rawApp.booked_price;
 
-            const revenueBase = (app.status === 'Concluído' && pricePaid !== undefined && pricePaid !== null)
-                ? pricePaid
-                : (bookedPrice || service?.price || 0);
-
             // Payment Logic
             let paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
             const { fee, days } = getPaymentDetails(paymentMethodName);
-
-            let netAmount = revenueBase * (1 - (fee / 100));
-
-            // Override for Courtesy/VIP
-            if (netAmount === 0 || app.isCourtesy) {
-                paymentMethodName = 'Cortesia';
-                netAmount = 0;
-            }
 
             // Date Logic
             // If concluded, use paymentDate (D+0 reference), else use scheduled date
@@ -608,8 +596,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const settlementDate = addDays(baseDate, days);
 
             // Status Logic
-            // If concluded -> check if settlement date has passed (Pago) or is future (Previsto)
-            // If not concluded -> Previsto (or Atrasado if appointment date passed? Sticking to Previsto for simplicity in flow)
             let status: 'Pago' | 'Previsto' | 'Atrasado' = 'Previsto';
             if (app.status === 'Concluído') {
                 status = settlementDate <= todayStr ? 'Pago' : 'Previsto';
@@ -617,21 +603,73 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 status = 'Atrasado';
             }
 
+            // --- REVENUE SPLIT LOGIC ---
+            // We need to split the appointment revenue between all involved professionals.
+            // 1. Calculate total expected (booked) price
+            const mainBooked = bookedPrice || service?.price || 0;
+            const extrasList = (app.additionalServices || []).map(extra => {
+                const extraRaw = extra as any;
+                const extraS = services.find(s => s.id === extra.serviceId);
+                return {
+                    ...extra,
+                    bookedPrice: extra.bookedPrice ?? extraRaw.booked_price ?? extraS?.price ?? 0,
+                    serviceName: extraS?.name || 'Serviço Extra'
+                };
+            });
+            const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
+
+            // 2. Determine actual total revenue (pricePaid if concluded, else totalBooked)
+            const actualTotalRevenue = (app.status === 'Concluído' && pricePaid !== undefined && pricePaid !== null)
+                ? pricePaid
+                : totalBooked;
+
+            // 3. Helper to get proportional amount
+            const getProportionalAmount = (booked: number) => {
+                if (totalBooked === 0) return 0;
+                return (booked / totalBooked) * actualTotalRevenue;
+            };
+
+            // 4. Create transaction for MAIN service
+            const mainRevenue = getProportionalAmount(mainBooked);
+
             allTrans.push({
-                id: `app-${app.id}`,
+                id: `app-main-${app.id}`,
                 date: settlementDate,
                 type: 'RECEITA',
                 category: 'Serviço',
                 description: `${service?.name || 'Serviço'} - ${customer?.name}`,
-                amount: netAmount,
+                amount: mainRevenue,
                 status: status,
-                paymentMethod: paymentMethodName,
+                paymentMethod: app.status === 'Concluído' && mainRevenue === 0 ? 'Cortesia' : paymentMethodName,
                 origin: 'Serviço',
                 customerOrProviderName: customer?.name || 'Cliente',
                 providerName: provider?.name || 'Não atribuído',
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: service?.name || 'Serviço',
                 appointmentDate: app.date
+            });
+
+            // 5. Create transactions for ADDITIONAL services
+            extrasList.forEach((extra, idx) => {
+                const extraProv = providers.find(p => p.id === extra.providerId);
+                const extraRevenue = getProportionalAmount(extra.bookedPrice);
+
+                allTrans.push({
+                    id: `app-extra-rev-${app.id}-${idx}`,
+                    date: settlementDate,
+                    type: 'RECEITA',
+                    category: 'Serviço',
+                    description: `${extra.serviceName} - ${customer?.name}`,
+                    amount: extraRevenue,
+                    status: status,
+                    paymentMethod: app.status === 'Concluído' && extraRevenue === 0 ? 'Cortesia' : paymentMethodName,
+                    origin: 'Serviço',
+                    customerOrProviderName: customer?.name || 'Cliente',
+                    providerName: extraProv?.name || 'Não atribuído',
+                    customerName: customer?.name || 'Desconhecido',
+                    serviceName: extra.serviceName,
+                    appointmentDate: app.date
+                });
             });
 
             if (provider) {
