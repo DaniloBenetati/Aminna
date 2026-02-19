@@ -40,7 +40,8 @@ import { Avatar } from './Avatar';
 import {
     toLocalDateStr,
     parseDateSafe,
-    generateFinancialTransactions
+    generateFinancialTransactions,
+    calculateDailySummary
 } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
 import { Sale, Expense, CommissionSetting } from '../types';
@@ -206,6 +207,52 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Scroll synchronization refs
     const headerScrollRef = React.useRef<HTMLDivElement>(null);
     const gridScrollRef = React.useRef<HTMLDivElement>(null);
+    const bottomScrollRef = React.useRef<HTMLDivElement>(null);
+    const isSyncingLeft = React.useRef(false);
+    const isSyncingRight = React.useRef(false);
+    const [gridScrollWidth, setGridScrollWidth] = useState(0);
+
+    // Sync Bottom Scrollbar
+    React.useEffect(() => {
+        const gridEl = gridScrollRef.current;
+        const bottomEl = bottomScrollRef.current;
+
+        if (!gridEl || !bottomEl) return;
+
+        const handleGridScroll = () => {
+            if (!isSyncingLeft.current) {
+                isSyncingRight.current = true;
+                bottomEl.scrollLeft = gridEl.scrollLeft;
+            }
+            isSyncingLeft.current = false;
+        };
+
+        const handleBottomScroll = () => {
+            if (!isSyncingRight.current) {
+                isSyncingLeft.current = true;
+                gridEl.scrollLeft = bottomEl.scrollLeft;
+            }
+            isSyncingRight.current = false;
+        };
+
+        gridEl.addEventListener('scroll', handleGridScroll);
+        bottomEl.addEventListener('scroll', handleBottomScroll);
+
+        // Resize Observer to sync width
+        const resizeObserver = new ResizeObserver(() => {
+            if (gridEl) setGridScrollWidth(gridEl.scrollWidth);
+        });
+        resizeObserver.observe(gridEl);
+        // Also observe the child to be sure
+        if (gridEl.firstElementChild) resizeObserver.observe(gridEl.firstElementChild);
+
+
+        return () => {
+            gridEl.removeEventListener('scroll', handleGridScroll);
+            bottomEl.removeEventListener('scroll', handleBottomScroll);
+            resizeObserver.disconnect();
+        };
+    }, []);
 
     // Persistence Effects
     React.useEffect(() => {
@@ -892,6 +939,72 @@ export const Agenda: React.FC<AgendaProps> = ({
         );
     };
 
+    // --- Daily Close Handlers ---
+    const handlePrintDailyClose = () => {
+        window.print();
+    };
+
+    const handleCloseRegister = () => {
+        setIsFinanceModalOpen(false);
+    };
+
+    const handleShareWhatsappDailyClose = () => {
+        const { totalRevenue, totalServices, totalProducts, totalTips, totalAjustes } = calculateDailySummary(dailyTransactions);
+        const dateStr = dateRef.toLocaleDateString('pt-BR');
+
+        // Detailed Breakdown Logic (Same as Print)
+        const paymentMethods = dailyTransactions.reduce((acc: any, t) => {
+            const method = t.paymentMethod || 'Outros';
+            if (!acc[method]) acc[method] = { count: 0, total: 0 };
+            acc[method].count += 1;
+            acc[method].total += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {});
+
+        const groupedProv = dailyTransactions.reduce((acc: Record<string, any>, t) => {
+            const pName = t.providerName || 'Não atribuído';
+            if (!acc[pName]) acc[pName] = { amount: 0 };
+            acc[pName].amount += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {});
+
+        // Construct Message
+        let message = `*AMINNA HOME NAIL GEL*\n`;
+        message += `*FECHAMENTO DE CAIXA - ${dateStr}* 🔒\n\n`;
+
+        message += `*RESUMO GERAL:*\n`;
+        message += `✨ Serviços: R$ ${(totalServices + totalTips).toFixed(2)}\n`;
+        message += `🛍️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        message += `💰 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+
+        message += `*DETALHAMENTO POR MÉTODO:*\n`;
+        Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
+            message += `🔹 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+        });
+        message += `\n`;
+
+        message += `*EXTRATO POR PROFISSIONAL:*\n`;
+        Object.entries(groupedProv).forEach(([pName, pData]: [string, any]) => {
+            message += `👤 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
+        });
+        message += `\n`;
+
+        message += `*CONFERÊNCIA:*\n`;
+        const systemCash = dailyTransactions.filter(t => t.paymentMethod === 'Dinheiro').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
+        const phyCash = parseFloat(physicalCash || '0');
+        const diff = phyCash - systemCash;
+
+        message += `💻 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
+        message += `💵 Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
+        message += `⚖️ Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
+
+        message += `*Observações:* ${closingObservation || 'Nenhuma'}\n`;
+        message += `*Caixa por:* ${closerName || '---'}`;
+
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    };
+
     const ServiceFilter = () => {
         const filteredServicesBySearch = services.filter(s =>
             s.name.toLowerCase().includes(serviceSidebarSearch.toLowerCase()) ||
@@ -1079,7 +1192,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
 
                     {/* Agenda Content Container */}
-                    <div className="flex-1 overflow-auto scrollbar-hide relative">
+                    <div ref={gridScrollRef} className="flex-1 overflow-auto scrollbar-hide relative">
                         {/* Day View Grid */}
                         {timeView === 'day' && (
                             <DndContext
@@ -1469,6 +1582,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                         )}
                     </div>
 
+
+                    {/* Synchronized Bottom Scrollbar */}
+                    <div
+                        ref={bottomScrollRef}
+                        className="absolute bottom-0 left-0 right-0 h-3 bg-slate-50 dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800 overflow-x-auto z-[40]"
+                    >
+                        <div style={{ width: `${gridScrollWidth}px`, height: '1px' }}></div>
+                    </div>
                 </div>
             </div>
 
@@ -1688,7 +1809,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Finance Modal */}
             {isFinanceModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
                         <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                             <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
                                 <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
@@ -1707,6 +1828,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 date={dateRef}
                                 appointments={appointments}
                                 services={services}
+                                onPrint={handlePrintDailyClose}
+                                onCloseRegister={handleCloseRegister}
+                                onShareWhatsapp={handleShareWhatsappDailyClose}
                             />
                         </div>
                     </div>

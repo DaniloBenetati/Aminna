@@ -23,3 +23,46 @@ input[type=number] {
     -moz-appearance: textfield;
     appearance: textfield;
 }
+
+@media print {
+
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Unhide the modal container but reset its positioning */
+    .modal-print-content,
+    .modal-print-content * {
+        visibility: visible;
+    }
+
+    .modal-print-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+        background: white;
+    }
+
+    /* Specifically hide the interactive part of the modal (grid layout) */
+    .modal-print-content>div.grid {
+        display: none !important;
+    }
+
+    /* Also hide the top header bar of the modal */
+    .modal-print-content>div:first-child {
+        display: none !important;
+    }
+
+    /* Ensure the print-only block is displayed */
+    .print\:block {
+        display: block !important;
+        visibility: visible !important;
+        width: 100%;
+    }
+}

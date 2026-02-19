@@ -942,6 +942,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         document.body.removeChild(link);
     };
 
+    const handlePrintDailyClose = () => {
+        window.print();
+    };
+
+
+
     return (
         <div className="space-y-4 md:space-y-6 relative h-full flex flex-col pb-24 md:pb-8 text-slate-900 dark:text-slate-100">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
@@ -1117,7 +1123,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     </div>
                 )}
-                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} />}
+                {activeTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
                 {activeTab === 'CHARTS' && <FinanceCharts transactions={transactions} expenses={expenses} startDate={startDate} endDate={endDate} timeView={timeView} />}
                 {activeTab === 'PAYABLES' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">

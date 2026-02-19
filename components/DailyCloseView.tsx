@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
     Users, Wallet, Lock, Sparkles, ShoppingBag, Target, Info, CheckCircle2,
-    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool
+    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send
 } from 'lucide-react';
 import { Appointment, Service, FinancialTransaction } from '../types';
 import { toLocalDateStr, calculateDailySummary } from '../services/financialService';
@@ -19,7 +19,7 @@ interface DailyCloseViewProps {
     services: Service[];
     onPrint?: () => void;
     onCloseRegister?: () => void;
-    onShareWhatsapp?: () => void;
+
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
 }
@@ -27,7 +27,7 @@ interface DailyCloseViewProps {
 export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation,
     closerName, setCloserName, date, appointments, services,
-    onPrint, onCloseRegister, onShareWhatsapp, showControls = true,
+    onPrint, onCloseRegister, showControls = true,
     vipMetrics = { value: 0, count: 0 }
 }) => {
     const dateStr = toLocalDateStr(date);
@@ -86,10 +86,177 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     }, {} as Record<string, any>);
 
     const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
+    const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [whatsappMessage, setWhatsappMessage] = useState('');
+
+    const paymentMethodsSummary = useMemo(() => {
+        return dailyRelTrans.reduce((acc: Record<string, number>, t: FinancialTransaction) => {
+            const method = t.paymentMethod || 'Outros';
+            if (!acc[method]) acc[method] = 0;
+            acc[method] += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {} as Record<string, number>);
+    }, [dailyRelTrans]);
+
+    const handlePrint = () => {
+        const printContent = `
+            <html>
+            <head>
+                <title>Fechamento de Caixa - ${dateStr}</title>
+                <style>
+                    body { font-family: 'Courier New', monospace; padding: 20px; font-size: 12px; color: #000; }
+                    .header { text-align: center; margin-bottom: 20px; }
+                    .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
+                    .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+                    .section-title { font-weight: bold; text-decoration: underline; margin-bottom: 8px; text-transform: uppercase; margin-top: 10px; }
+                    .total-row { font-weight: bold; font-size: 14px; margin-top: 5px; }
+                    @media print { @page { margin: 0; } body { margin: 10px; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div style="font-size: 10px;">${new Date().toLocaleString('pt-BR')}</div>
+                    <h1 style="font-size: 16px; font-weight: bold; margin: 10px 0;">AMINNA HOME NAIL GEL</h1>
+                    <p style="margin: 0;">FECHAMENTO DE CAIXA</p>
+                    <p style="font-size: 10px; margin: 5px 0;">Referência: ${date.toLocaleDateString('pt-BR')}</p>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="row"><span>SERVIÇOS:</span> <span>R$ ${servicesWithTips.toFixed(2)}</span></div>
+                <div class="row"><span>PRODUTOS:</span> <span>R$ {totalProducts.toFixed(2)}</span></div>
+                <div class="row total-row"><span>FATURAMENTO BRUTO:</span> <span>R$ {totalRevenue.toFixed(2)}</span></div>
+
+                <div class="divider"></div>
+
+                <div class="section-title">DETALHAMENTO POR MÉTODO:</div>
+                ${Object.entries(dailyTrans.reduce((acc: any, t: FinancialTransaction) => {
+            const method = t.paymentMethod || 'Outros';
+            if (!acc[method]) acc[method] = { count: 0, total: 0 };
+            acc[method].count += 1;
+            acc[method].total += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {})).map(([method, data]: [string, any]) => `
+                    <div class="row">
+                        <span>${method.toUpperCase()} (${data.count}x):</span>
+                        <span>R$ ${data.total.toFixed(2)}</span>
+                    </div>
+                `).join('')}
+
+                <div class="divider"></div>
+
+                <div class="section-title">OUTRAS INFORMAÇÕES:</div>
+                <div class="row"><span>CAIXA POR:</span> <span>${closerName || '---'}</span></div>
+                <div class="row"><span>CORTESIAS / VIP:</span> <span>${vipMetrics.count}x (R$ ${vipMetrics.value.toFixed(2)})</span></div>
+
+                <div class="divider"></div>
+
+                <div class="section-title">EXTRATO POR PROFISSIONAL:</div>
+                <div style="font-size: 10px;">
+                    ${Object.entries(groupedByProviderAndCustomer)
+                .sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount)
+                .map(([pName, pData]: [string, any]) => `
+                            <div style="margin-bottom: 8px;">
+                                <div style="font-weight: bold;">${pName} - R$ ${pData.amount.toFixed(2)}</div>
+                                ${Object.entries(pData.customers)
+                        .sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount)
+                        .map(([cName, cData]: [string, any]) => `
+                                        <div style="margin-left: 10px;">
+                                            <div>${cName} (R$ ${cData.amount.toFixed(2)})</div>
+                                            ${cData.transactions.map((t: FinancialTransaction) => `
+                                                <div style="display: flex; justify-content: space-between; padding-left: 10px; color: #555; font-size: 9px;">
+                                                    <span>${t.serviceName || t.description}</span>
+                                                    <span>${t.paymentMethod}</span>
+                                                    <span>R$ ${t.amount.toFixed(2)}</span>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    `).join('')}
+                            </div>
+                        `).join('')}
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="section-title">CONFERÊNCIA (DINHEIRO):</div>
+                <div class="row"><span>SISTEMA:</span> <span>R$ ${dailyRelTrans.filter(t => t.paymentMethod === 'Dinheiro').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0).toFixed(2)}</span></div>
+                <div class="row"><span>FÍSICO (GAVETA):</span> <span>R$ ${parseFloat(physicalCash || '0').toFixed(2)}</span></div>
+                <div class="divider"></div>
+                <div class="row total-row">
+                    <span>DIFERENÇA:</span>
+                    <span>R$ ${(parseFloat(physicalCash || '0') - dailyRelTrans.filter(t => t.paymentMethod === 'Dinheiro').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0)).toFixed(2)}</span>
+                </div>
+                ${(parseFloat(physicalCash || '0') - dailyRelTrans.filter(t => t.paymentMethod === 'Dinheiro').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0)) === 0 ? '<div style="text-align: center; font-weight: bold; margin-top: 5px;">(CAIXA BATIDO)</div>' : ''}
+                
+                <script>
+                    window.onload = () => { window.print(); window.close(); }
+                </script>
+            </body>
+            </html>
+        `;
+
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write(printContent);
+            win.document.close();
+        }
+    };
+
+    const handleOpenWhatsapp = () => {
+        const paymentMethods = dailyTrans.reduce((acc: any, t) => {
+            const method = t.paymentMethod || 'Outros';
+            if (!acc[method]) acc[method] = { count: 0, total: 0 };
+            acc[method].count += 1;
+            acc[method].total += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {});
+
+        const groupedProv = dailyRelTrans.reduce((acc: Record<string, any>, t) => {
+            const pName = t.providerName || 'Não atribuído';
+            if (!acc[pName]) acc[pName] = { amount: 0 };
+            acc[pName].amount += (t.type === 'RECEITA' ? t.amount : -t.amount);
+            return acc;
+        }, {});
+
+        const systemCash = dailyRelTrans.filter(t => t.paymentMethod === 'Dinheiro').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
+        const phyCash = parseFloat(physicalCash || '0');
+        const diff = phyCash - systemCash;
+
+        let message = `*AMINNA HOME NAIL GEL*\n`;
+        message += `*FECHAMENTO DE CAIXA - ${date.toLocaleDateString('pt-BR')}* 🔒\n\n`;
+
+        message += `*RESUMO GERAL:*\n`;
+        message += `✨ Serviços: R$ ${(servicesWithTips).toFixed(2)}\n`;
+        message += `🛍️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        message += `💰 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+
+        message += `*DETALHAMENTO POR MÉTODO:*\n`;
+        Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
+            message += `🔹 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+        });
+        message += `\n`;
+
+        message += `*EXTRATO POR PROFISSIONAL:*\n`;
+        Object.entries(groupedProv).forEach(([pName, pData]: [string, any]) => {
+            message += `👤 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
+        });
+        message += `\n`;
+
+        message += `*CONFERÊNCIA:*\n`;
+        message += `💻 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
+        message += `💵 Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
+        message += `⚖️ Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
+
+        message += `*Observações:* ${closingObservation || 'Nenhuma'}\n`;
+        message += `*Caixa por:* ${closerName || '---'}`;
+
+        setWhatsappMessage(message);
+        setIsWhatsAppModalOpen(true);
+    };
 
     return (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 relative">
-            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4">
+            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4 print:hidden">
                 <div>
                     <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                         <Lock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fechamento de Caixa
@@ -104,7 +271,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                     <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={20} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {servicesWithTips.toFixed(2)}</p></div>
@@ -123,7 +290,9 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 </div>
             </div>
 
-            <div className={`grid grid-cols-1 ${showControls ? 'lg:grid-cols-2' : ''} gap-4`}>
+
+
+            <div className={`grid grid-cols-1 ${showControls ? 'lg:grid-cols-2' : ''} gap-4 print:hidden`}>
                 <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
                     <div className="p-2 overflow-y-auto max-h-[400px]">
@@ -154,7 +323,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
                                     {isProvExpanded && (
                                         <div className="bg-slate-50/50 dark:bg-zinc-800/30 p-2 mx-2 mb-2 rounded-xl animate-in fade-in zoom-in-95 duration-200 space-y-2">
-                                            {Object.entries(pData.customers).sort((a: any, b: any) => b[1].amount - a[1].amount).map(([customerName, cData]: [string, any]) => {
+                                            {Object.entries(pData.customers).sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount).map(([customerName, cData]: [string, any]) => {
                                                 const isVip = cData.amount < 0.01 || cData.isVip;
                                                 return (
                                                     <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
@@ -199,6 +368,21 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                         <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><PenTool size={14} /> Conferência</h4></div>
                         <div className="p-4 space-y-4">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                <h5 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Wallet size={10} /> Totais por Método</h5>
+                                <div className="space-y-1.5">
+                                    {Object.entries(paymentMethodsSummary).map(([method, amount]: [string, any]) => (
+                                        <div key={method} className="flex justify-between items-center text-[10px]">
+                                            <span className="font-bold uppercase text-slate-700 dark:text-slate-300">{method}</span>
+                                            <span className="font-black text-slate-950 dark:text-white">R$ {amount.toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                    <div className="border-t border-slate-200 dark:border-zinc-700 my-1 pt-1 flex justify-between items-center text-[10px]">
+                                        <span className="font-black uppercase text-slate-950 dark:text-white">Total</span>
+                                        <span className="font-black text-slate-950 dark:text-white">R$ {Object.values(paymentMethodsSummary).reduce((a: any, b: any) => a + b, 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                            </div>
                             <div>
                                 <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Valor em Dinheiro (Físico)</label>
                                 <div className="flex items-center gap-3">
@@ -214,14 +398,69 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 </div>
                             </div>
                             <div className="flex gap-2 pt-1">
-                                <button onClick={onPrint} className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Printer size={12} /> Relatório</button>
-                                <button onClick={onCloseRegister} className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><Lock size={12} /> Fechar</button>
-                                <button onClick={onShareWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2"><MessageCircle size={12} /> WhatsApp</button>
+                                <button
+                                    onClick={handlePrint}
+                                    className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                >
+                                    <Printer size={12} /> Relatório
+                                </button>
+                                <button
+                                    onClick={onCloseRegister}
+                                    disabled={!physicalCash}
+                                    className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Lock size={12} /> Fechar
+                                </button>
+                                <button onClick={handleOpenWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"><MessageCircle size={12} /> WhatsApp</button>
                             </div>
+                            {!physicalCash && (
+                                <p className="text-[10px] text-rose-500 text-center font-bold">Realize a conferência do valor em dinheiro para liberar o fechamento.</p>
+                            )}
                         </div>
                     </div>
                 )}
             </div>
-        </div>
+
+
+            {/* WhatsApp Modal */}
+            {
+                isWhatsAppModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-slate-200 dark:border-zinc-700 animate-in zoom-in-95 duration-200">
+                            <div className="p-4 bg-green-600 text-white flex justify-between items-center">
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><MessageCircle size={18} /> Enviar no WhatsApp</h3>
+                                <button onClick={() => setIsWhatsAppModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={20} /></button>
+                            </div>
+                            <div className="p-4 space-y-4">
+                                <div className="bg-slate-100 dark:bg-zinc-950 p-4 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-[300px] overflow-y-auto border border-slate-200 dark:border-zinc-800">
+                                    {whatsappMessage}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(whatsappMessage);
+                                            // Optional: Show toast
+                                        }}
+                                        className="flex-1 py-3 bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-white rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-slate-300 dark:hover:bg-zinc-700 transition-colors"
+                                    >
+                                        <Copy size={16} /> Copiar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const encodedMessage = encodeURIComponent(whatsappMessage);
+                                            window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                                            setIsWhatsAppModalOpen(false);
+                                        }}
+                                        className="flex-1 py-3 bg-green-600 text-white rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg shadow-green-200 dark:shadow-none"
+                                    >
+                                        <Send size={16} /> Enviar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        </div >
     );
 };
