@@ -808,6 +808,15 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         if (appt.providerId === targetProviderId && appt.time === targetTime) return;
 
+        const targetProvider = providers.find(p => p.id === targetProviderId);
+        const isOnVacation = targetProvider?.vacationStart && targetProvider?.vacationEnd &&
+            gridDateStr >= targetProvider.vacationStart && gridDateStr <= targetProvider.vacationEnd;
+
+        if (isOnVacation) {
+            alert(`\u26D4 PROFISSIONAL EM F\u00C9RIAS\n\n${targetProvider?.name} est\u00E1 em per\u00EDodo de f\u00E9rias nesta data e n\u00E3o pode receber novos agendamentos.`);
+            return;
+        }
+
         // Optimistic UI
         const originalAppointments = [...appointments];
         setAppointments(prev => prev.map(a =>
@@ -930,7 +939,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     onChange={() => toggleProvider(p.id)}
                                     className="w-3.5 h-3.5 rounded border-2 border-slate-200 dark:border-zinc-700 text-indigo-500 focus:ring-indigo-500"
                                 />
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase">{p.name}</span>
+                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase flex items-center gap-1.5">
+                                    {p.name}
+                                    {p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd && (
+                                        <span className="bg-amber-400 text-amber-950 text-[7px] font-black px-1.5 rounded-sm">FÉRIAS</span>
+                                    )}
+                                </span>
                             </label>
                         ))}
                     </div>
@@ -1212,11 +1226,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         {/* Providers Row */}
                                         <div className="flex flex-1">
                                             {activeVisibileProviders.map(p => {
-                                                const isBlocked = appointments.some(a =>
+                                                const isInternalBlocked = appointments.some(a =>
                                                     a.providerId === p.id &&
                                                     a.date === gridDateStr &&
                                                     a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                                 );
+                                                const isOnVacation = p.vacationStart && p.vacationEnd &&
+                                                    gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+
+                                                const isBlocked = isInternalBlocked || isOnVacation;
 
                                                 return (
                                                     <div
@@ -1227,19 +1245,32 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         <div className="flex justify-center mb-1">
                                                             <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
                                                         </div>
-                                                        <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate flex items-center gap-1.5">
+                                                                {p.name.split(' ')[0]}
+                                                                {p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd && (
+                                                                    <span className="bg-amber-400 text-amber-950 text-[6px] font-black px-1 rounded-sm">FÉRIAS</span>
+                                                                )}
+                                                            </p>
+                                                            <p className="text-[8px] font-bold text-slate-400 uppercase truncate">{p.specialty}</p>
+                                                        </div>
 
-                                                        {/* Block/Unblock Toggle */}
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
-                                                            className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
-                                                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
-                                                                }`}
-                                                        >
-                                                            {isBlocked ? <Check size={8} /> : <Ban size={8} />}
-                                                            {isBlocked ? 'Desbloquear' : 'Bloquear'}
-                                                        </button>
+                                                        {isOnVacation ? (
+                                                            <div className="mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-amber-950 shadow-sm">
+                                                                <CalendarIcon size={8} /> Em Férias
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                                                className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
+                                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
+                                                                    }`}
+                                                            >
+                                                                {isBlocked ? <Check size={8} /> : <Ban size={8} />}
+                                                                {isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -1262,7 +1293,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {/* Provider Columns */}
                                                 <div className="flex-1 flex">
                                                     {activeVisibileProviders.map(p => {
-                                                        const isBlocked = appointments.some(a =>
+                                                        const isOnVacation = p.vacationStart && p.vacationEnd &&
+                                                            gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                                                        const isBlocked = isOnVacation || appointments.some(a =>
                                                             a.providerId === p.id &&
                                                             a.date === gridDateStr &&
                                                             a.combinedServiceNames === 'BLOQUEIO_INTERNO'
@@ -1278,8 +1311,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             >
                                                                 {isBlocked && hour === '12:00' && (
                                                                     <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                                        <div className="bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 border-slate-300 dark:border-zinc-700 px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed">
-                                                                            <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em]">Agenda Bloqueada</p>
+                                                                        <div className={`bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 ${isOnVacation ? 'border-amber-400' : 'border-slate-300 dark:border-zinc-700'} px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed`}>
+                                                                            <p className={`text-[8px] font-black ${isOnVacation ? 'text-amber-600' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-[0.2em]`}>
+                                                                                {isOnVacation ? 'Em Férias' : 'Agenda Bloqueada'}
+                                                                            </p>
                                                                         </div>
                                                                     </div>
                                                                 )}

@@ -48,6 +48,8 @@ export interface Provider {
   specialties: string[]; // Lista completa de habilidades técnicas
   commissionRate: number; // 0.0 to 1.0
   commissionHistory?: CommissionHistoryItem[]; // Histórico de alterações de comissão
+  vacationStart?: string; // ISO date string
+  vacationEnd?: string;   // ISO date string
   avatar: string;
   phone?: string;
   birthDate?: string;

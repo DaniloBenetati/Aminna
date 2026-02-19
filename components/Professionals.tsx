@@ -59,11 +59,10 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         workDays: [1, 2, 3, 4, 5, 6], // Default Mon-Sat
         customDurations: {},
         // Fiscal data
-        fiscalCnpj: '',
-        fiscalMunicipalRegistration: '',
-        fiscalSocialName: '',
         fiscalFantasyName: '',
-        fiscalVerified: false
+        fiscalVerified: false,
+        vacationStart: '',
+        vacationEnd: ''
     });
 
     // ... (rest of code)
@@ -345,7 +344,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             fiscalMunicipalRegistration: '',
             fiscalSocialName: '',
             fiscalFantasyName: '',
-            customDurations: {}
+            customDurations: {},
+            vacationStart: '',
+            vacationEnd: ''
         });
         setIsModalOpen(true);
     };
@@ -415,11 +416,10 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             ...provider,
             workDays: provider.workDays || [1, 2, 3, 4, 5, 6], // Fallback if legacy data missing
             specialties: provider.specialties || [provider.specialty], // Fallback
-            fiscalCnpj: '', // Reset first
-            fiscalMunicipalRegistration: '',
-            fiscalSocialName: '',
             fiscalFantasyName: '',
-            customDurations: provider.customDurations || {}
+            customDurations: provider.customDurations || {},
+            vacationStart: provider.vacationStart || '',
+            vacationEnd: provider.vacationEnd || ''
         });
 
         // Fetch specific fiscal data
@@ -491,7 +491,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             work_days: formData.workDays || [],
             avatar: formData.avatar,
             custom_durations: formData.customDurations || {},
-            order: editingProvider ? undefined : providers.length // Set last order for new items (undefined for updates to ignore)
+            order: editingProvider ? undefined : providers.length, // Set last order for new items (undefined for updates to ignore)
+            vacation_start: formData.vacationStart || null,
+            vacation_end: formData.vacationEnd || null
         };
 
         try {
@@ -703,6 +705,11 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 }`}>
                                                 {provider.active ? <><div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Ativa</> : 'Inativa'}
                                             </span>
+                                            {provider.vacationStart && provider.vacationEnd && (
+                                                <span className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800">
+                                                    <Calendar size={10} /> Férias
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-wrap gap-1 max-w-[250px]">
@@ -806,7 +813,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase leading-none">Produção Total</p>
                                     <p className="text-xs font-black text-slate-950 dark:text-white mt-1">{proStats} Atendimentos</p>
                                 </div>
-                                <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-center">
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-center relative">
+                                    {provider.vacationStart && provider.vacationEnd && (
+                                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-amber-400 text-amber-950 text-[7px] font-black uppercase rounded-full shadow-sm border border-amber-200 z-10 flex items-center gap-1">
+                                            <Calendar size={8} /> Férias
+                                        </div>
+                                    )}
                                     <div className="flex gap-1 mr-2 bg-white dark:bg-zinc-900 rounded-lg">
                                         <button
                                             onClick={(e) => handleMoveUp(filteredProviders.indexOf(provider), e)}
@@ -871,6 +883,47 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 >
                                     {formData.active ? <ToggleRight size={44} /> : <ToggleLeft size={44} />}
                                 </button>
+                            </div>
+
+                            {/* VACATION PERIOD SECTION */}
+                            <div className="bg-amber-50/50 dark:bg-amber-900/10 p-5 rounded-[2rem] border-2 border-amber-100 dark:border-amber-900/30 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Calendar size={14} /> Período de Férias
+                                    </h4>
+                                    {(formData.vacationStart || formData.vacationEnd) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, vacationStart: '', vacationEnd: '' })}
+                                            className="text-[9px] font-black text-rose-500 uppercase hover:underline"
+                                        >
+                                            Limpar Datas
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[8px] font-black text-amber-700/60 dark:text-amber-500/60 uppercase ml-1">Início</label>
+                                        <input
+                                            type="date"
+                                            value={formData.vacationStart || ''}
+                                            onChange={e => setFormData({ ...formData, vacationStart: e.target.value })}
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[8px] font-black text-amber-700/60 dark:text-amber-500/60 uppercase ml-1">Término</label>
+                                        <input
+                                            type="date"
+                                            value={formData.vacationEnd || ''}
+                                            onChange={e => setFormData({ ...formData, vacationEnd: e.target.value })}
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-[8px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-tight text-center italic">
+                                    A agenda ficará bloqueada para este talento durante este período.
+                                </p>
                             </div>
 
                             <div className="flex justify-center -mt-6 mb-4 relative z-10">

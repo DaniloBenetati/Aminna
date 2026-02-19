@@ -1856,7 +1856,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 value={line.providerId}
                                                                 onChange={e => updateLine(line.id, 'providerId', e.target.value)}
                                                             >
-                                                                {activeProviders.map(p => <option key={p.id} value={p.id} className="bg-white dark:bg-zinc-800 text-slate-950 dark:text-white">{p.name.split(' ')[0]}</option>)}
+                                                                {activeProviders.map(p => {
+                                                                    const isOnVacation = p.vacationStart && p.vacationEnd && appointmentDate >= p.vacationStart && appointmentDate <= p.vacationEnd;
+                                                                    return (
+                                                                        <option
+                                                                            key={p.id}
+                                                                            value={p.id}
+                                                                            disabled={isOnVacation}
+                                                                            className={`${isOnVacation ? 'text-slate-300 bg-slate-50' : 'text-slate-950 dark:text-white bg-white dark:bg-zinc-800'}`}
+                                                                        >
+                                                                            {p.name.split(' ')[0]} {isOnVacation ? '- EM FÉRIAS' : ''}
+                                                                        </option>
+                                                                    );
+                                                                })}
                                                             </select>
                                                         </div>
                                                     </div>

@@ -245,7 +245,9 @@ const App: React.FC = () => {
           active: p.active,
           workDays: p.work_days || [],
           order: p.order,
-          commissionHistory: p.commission_history || []
+          commissionHistory: p.commission_history || [],
+          vacationStart: p.vacation_start,
+          vacationEnd: p.vacation_end
         }));
         const deduplicatedProviders = mappedProviders.reduce((acc: any[], current: any) => {
           const existingIndex = acc.findIndex(p => p.phone && p.phone === current.phone);
