@@ -315,12 +315,54 @@ const App: React.FC = () => {
 
 
       // Map and Set Other States
-      if (pantryItemsData) setPantryItems(pantryItemsData.map((p: any) => ({ ...p, name: p.name })));
-      if (pantryLogsData) setPantryLogs(pantryLogsData.map((l: any) => ({ ...l, date: l.date })));
+      if (pantryItemsData) {
+        setPantryItems(pantryItemsData.map((p: any) => ({
+          ...p,
+          minQuantity: p.min_quantity,
+          costPrice: p.cost_price,
+          referencePrice: p.reference_price,
+          priceHistory: p.price_history
+        })));
+      }
+      if (pantryLogsData) {
+        setPantryLogs(pantryLogsData.map((l: any) => ({
+          ...l,
+          itemId: l.item_id,
+          appointmentId: l.appointment_id,
+          customerId: l.customer_id,
+          providerId: l.provider_id,
+          costAtMoment: l.cost_at_moment,
+          referenceAtMoment: l.reference_at_moment
+        })));
+      }
       if (leadsData) setLeads(leadsData.map((l: any) => ({ ...l, createdAt: l.created_at })));
-      if (partnersData) setPartners(partnersData);
-      if (expenseCategoriesData) setExpenseCategories(expenseCategoriesData);
-      if (paymentSettingsData) setPaymentSettings(paymentSettingsData.map((p: any) => ({ ...p, maxInstallments: p.max_installments })));
+      if (partnersData) {
+        setPartners(partnersData.map((p: any) => ({
+          ...p,
+          socialMedia: p.social_media,
+          partnershipType: p.partnership_type,
+          pixKey: p.pix_key
+        })));
+      }
+      if (expenseCategoriesData) {
+        setExpenseCategories(expenseCategoriesData.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          dreClass: c.dre_class,
+          isSystem: c.is_system
+        })));
+      }
+      if (paymentSettingsData) {
+        setPaymentSettings(paymentSettingsData.map((p: any) => ({
+          id: p.id,
+          method: p.method,
+          fee: parseFloat(p.fee) || 0,
+          days: p.days,
+          color: p.color,
+          iconName: p.icon_name,
+          maxInstallments: p.max_installments
+        })));
+      }
       if (commissionSettingsData) {
         setCommissionSettings(commissionSettingsData.map((c: any) => ({
           id: c.id,

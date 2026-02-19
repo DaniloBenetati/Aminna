@@ -128,6 +128,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
+    const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+    const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
+    const [applyToFuture, setApplyToFuture] = useState(false);
+    const [batchNewDate, setBatchNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
     const toggleSection = (section: string) => {
@@ -604,7 +608,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
     const handleSaveExpense = async (e?: React.FormEvent, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
         if (e) e.preventDefault();
-        if (!expenseForm.description || !expenseForm.amount || !expenseForm.category) return;
+        if (!expenseForm.description || expenseForm.amount === undefined || !expenseForm.category) {
+            alert('Por favor, preencha a descrição, o valor e a categoria.');
+            return;
+        }
 
         const currentOption = overrideOption || batchOption;
 
@@ -659,9 +666,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             const shiftedDate = new Date(currentExpDate.getTime() + timeDiff);
 
                             return {
-                                ...exp, // Keep ID and other props
-                                ...expenseData, // Apply new Amount, Category, etc.
-                                id: exp.id, // Ensure ID is preserved for Upsert
+                                ...exp,
+                                ...expenseData, // Apply new Amount, Category, dre_class, etc.
                                 description: baseDescription + suffix, // New Name + Old Suffix
                                 date: toLocalDateStr(shiftedDate) // Shifted Date
                             };
@@ -756,6 +762,122 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         } catch (error) {
             console.error('Error deleting expense:', error);
         }
+    };
+
+    const handleBatchStatusUpdate = async () => {
+        if (selectedExpenseIds.length === 0) return;
+        const firstExpense = expenses.find(e => e.id === selectedExpenseIds[0]);
+        if (!firstExpense) return;
+
+        const newStatus = firstExpense.status === 'Pago' ? 'Pendente' : 'Pago';
+        const newDate = newStatus === 'Pago' ? toLocalDateStr(new Date()) : undefined;
+
+        try {
+            const { error } = await supabase.from('expenses')
+                .update({ status: newStatus, date: newDate || firstExpense.date })
+                .in('id', selectedExpenseIds);
+
+            if (error) throw error;
+
+            setExpenses(prev => prev.map(exp => selectedExpenseIds.includes(exp.id) ? { ...exp, status: newStatus, date: newDate || exp.date } as Expense : exp));
+            setSelectedExpenseIds([]);
+        } catch (error) {
+            console.error('Error in batch status update:', error);
+            alert('Erro ao atualizar status em lote.');
+        }
+    };
+
+    const handleBatchDateUpdate = async () => {
+        if (selectedExpenseIds.length === 0) return;
+
+        try {
+            if (applyToFuture) {
+                // COMPLEX SHIFT LOGIC for recurring series
+                const recurringProcessedIds = new Set<string>();
+                for (const id of selectedExpenseIds) {
+                    const exp = expenses.find(e => e.id === id);
+                    // Skip if not an expense or if it was already processed as part of a recurring series
+                    if (!exp || (exp.recurringId && recurringProcessedIds.has(exp.recurringId))) continue;
+
+                    if (exp.recurringId) {
+                        recurringProcessedIds.add(exp.recurringId);
+
+                        const originalDateObj = parseDateSafe(exp.date);
+                        const newDateObj = parseDateSafe(batchNewDate);
+                        const timeDiff = newDateObj.getTime() - originalDateObj.getTime();
+
+                        const { data: futureItems } = await supabase.from('expenses')
+                            .select('*')
+                            .eq('recurring_id', exp.recurringId)
+                            .gte('date', exp.date);
+
+                        if (futureItems && futureItems.length > 0) {
+                            const updates = futureItems.map(item => ({
+                                ...item,
+                                date: toLocalDateStr(new Date(parseDateSafe(item.date).getTime() + timeDiff))
+                            }));
+                            const { error } = await supabase.from('expenses').upsert(updates);
+                            if (error) throw error;
+                        }
+                    } else {
+                        // Regular item - just update its date
+                        const { error } = await supabase.from('expenses')
+                            .update({ date: batchNewDate })
+                            .eq('id', id);
+                        if (error) throw error;
+                    }
+                }
+            } else {
+                // SIMPLE BATCH UPDATE: Only update valid expenses
+                const validExpenseIds = selectedExpenseIds.filter(id => expenses.some(e => e.id === id));
+                if (validExpenseIds.length > 0) {
+                    const { error } = await supabase.from('expenses')
+                        .update({ date: batchNewDate })
+                        .in('id', validExpenseIds);
+
+                    if (error) throw error;
+                }
+            }
+
+            await fetchExpenses();
+            setSelectedExpenseIds([]);
+            setIsBatchDateModalOpen(false);
+            setApplyToFuture(false);
+        } catch (error) {
+            console.error('Error in batch date update:', error);
+            alert('Erro ao atualizar datas em lote.');
+        }
+    };
+
+    const handleBatchDelete = async () => {
+        if (selectedExpenseIds.length === 0) return;
+        if (!window.confirm(`Tem certeza que deseja excluir ${selectedExpenseIds.length} despesas?`)) return;
+
+        try {
+            const { error } = await supabase.from('expenses').delete().in('id', selectedExpenseIds);
+            if (error) throw error;
+
+            setExpenses(prev => prev.filter(exp => !selectedExpenseIds.includes(exp.id)));
+            setSelectedExpenseIds([]);
+        } catch (error) {
+            console.error('Error in batch delete:', error);
+            alert('Erro ao excluir despesas em lote.');
+        }
+    };
+
+    const toggleSelectAll = (visibleExpenses: Expense[]) => {
+        const visibleIds = visibleExpenses.map(e => e.id);
+        const allAlreadySelected = visibleIds.every(id => selectedExpenseIds.includes(id));
+
+        if (allAlreadySelected) {
+            setSelectedExpenseIds(prev => prev.filter(id => !visibleIds.includes(id)));
+        } else {
+            setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+        }
+    };
+
+    const toggleSelectExpense = (id: string) => {
+        setSelectedExpenseIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
     const handlePrintAnnualReport = () => {
@@ -1063,7 +1185,25 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
-                                    <tr>
+                                    <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
+                                        <th className="px-4 py-4 w-10">
+                                            <input
+                                                type="checkbox"
+                                                className="w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                                                checked={filteredTransactions.length > 0 && filteredTransactions.filter(t => t.origin === 'Despesa').every(t => selectedExpenseIds.includes(t.id))}
+                                                onChange={() => {
+                                                    const visibleExpenses = filteredTransactions.filter(t => t.origin === 'Despesa');
+                                                    if (visibleExpenses.length === 0) return;
+                                                    const visibleIds = visibleExpenses.map(e => e.id);
+                                                    const allAlreadySelected = visibleIds.every(id => selectedExpenseIds.includes(id));
+                                                    if (allAlreadySelected) {
+                                                        setSelectedExpenseIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                                                    } else {
+                                                        setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+                                                    }
+                                                }}
+                                            />
+                                        </th>
                                         <th className="px-6 py-4">Data</th>
                                         <th className="px-6 py-4">Tipo</th>
                                         <th className="px-6 py-4">Origem</th>
@@ -1075,7 +1215,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                     {filteredTransactions.length > 0 ? filteredTransactions.map(t => (
-                                        <tr key={t.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors group text-sm">
+                                        <tr key={t.id} className={`hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors group text-sm ${selectedExpenseIds.includes(t.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
+                                            <td className="px-4 py-4 w-10">
+                                                {t.origin === 'Despesa' && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                        checked={selectedExpenseIds.includes(t.id)}
+                                                        onChange={() => toggleSelectExpense(t.id)}
+                                                    />
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
                                                 {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
                                             </td>
@@ -1161,6 +1311,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 <table className="w-full text-left text-sm">
                                     <thead>
                                         <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
+                                            <th className="px-4 py-4 w-10">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer"
+                                                    checked={filteredPayables.length > 0 && filteredPayables.every(exp => selectedExpenseIds.includes(exp.id))}
+                                                    onChange={() => {
+                                                        const visibleExpenses = filteredPayables;
+                                                        if (visibleExpenses.length === 0) return;
+                                                        const visibleIds = visibleExpenses.map(e => e.id);
+                                                        const allAlreadySelected = visibleIds.every(id => selectedExpenseIds.includes(id));
+                                                        if (allAlreadySelected) {
+                                                            setSelectedExpenseIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                                                        } else {
+                                                            setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+                                                        }
+                                                    }}
+                                                />
+                                            </th>
                                             <th className="px-6 py-4">Data</th>
                                             <th className="px-6 py-4">Descrição</th>
                                             <th className="px-6 py-4">Favorecido</th>
@@ -1172,7 +1340,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                         {filteredPayables.map(exp => (
-                                            <tr key={exp.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
+                                            <tr key={exp.id} className={`hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group ${selectedExpenseIds.includes(exp.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
+                                                <td className="px-4 py-4 w-10">
+                                                    {/* Assuming 'exp' here is always a 'Despesa' in the Payables tab */}
+                                                    <input
+                                                        type="checkbox"
+                                                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                        checked={selectedExpenseIds.includes(exp.id)}
+                                                        onChange={() => toggleSelectExpense(exp.id)}
+                                                    />
+                                                </td>
                                                 <td className="px-6 py-4 text-xs font-bold font-mono">{parseDateSafe(exp.date).toLocaleDateString('pt-BR')}</td>
                                                 <td className="px-6 py-4 font-black text-xs uppercase">{exp.description}</td>
                                                 <td className="px-6 py-4 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">
@@ -2072,6 +2249,102 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     </div>
                 )}
+
+            {/* BATCH DATE ADJUSTMENT MODAL */}
+            {isBatchDateModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                            <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Calendar size={18} /> Ajustar Data em Lote</h3>
+                            <button onClick={() => setIsBatchDateModalOpen(false)}><X size={24} /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nova Data para os {selectedExpenseIds.length} itens</label>
+                                <input
+                                    type="date"
+                                    required
+                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white outline-none focus:border-black"
+                                    value={batchNewDate}
+                                    onChange={e => setBatchNewDate(e.target.value)}
+                                />
+                            </div>
+
+                            {selectedExpenseIds.some(id => expenses.find(e => e.id === id)?.recurringId) && (
+                                <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                                    <input
+                                        type="checkbox"
+                                        id="applyToFuture"
+                                        className="w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500 mt-0.5"
+                                        checked={applyToFuture}
+                                        onChange={e => setApplyToFuture(e.target.checked)}
+                                    />
+                                    <label htmlFor="applyToFuture" className="text-[11px] font-bold text-amber-900 dark:text-amber-400 leading-tight cursor-pointer">
+                                        Reajustar automaticamente o vencimento de todas as parcelas futuras das séries selecionadas?
+                                    </label>
+                                </div>
+                            )}
+
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleBatchDateUpdate}
+                                    className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all"
+                                >
+                                    Aplicar Nova Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* BATCH ACTION BAR (Floating) */}
+            {selectedExpenseIds.length > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500">
+                    <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-2 md:gap-4 p-2 md:p-3 backdrop-blur-md">
+                        <div className="px-3 md:px-6 border-r border-white/20 dark:border-black/20">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Selecionados</span>
+                                <span className="text-lg md:text-xl font-black">{selectedExpenseIds.length}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 md:gap-2">
+                            <button
+                                onClick={() => setIsBatchDateModalOpen(true)}
+                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                            >
+                                <Calendar size={18} className="group-hover:scale-110 transition-transform" />
+                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Ajustar Data</span>
+                            </button>
+
+                            <button
+                                onClick={handleBatchStatusUpdate}
+                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                            >
+                                <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
+                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Inverter Status</span>
+                            </button>
+
+                            <button
+                                onClick={handleBatchDelete}
+                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-rose-500 dark:hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all group"
+                            >
+                                <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Excluir</span>
+                            </button>
+                        </div>
+
+                        <button
+                            onClick={() => setSelectedExpenseIds([])}
+                            className="ml-2 md:ml-4 p-2 md:p-3 bg-white/10 dark:bg-black/5 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl md:rounded-2xl transition-colors"
+                            title="Limpar seleção"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
