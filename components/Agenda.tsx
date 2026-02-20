@@ -1215,7 +1215,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                             >
-                                <div className="w-fit min-w-full relative shadow-sm">
+                                <div className="w-fit relative shadow-sm">
                                     {/* Sticky Header Row */}
                                     <div className="flex sticky top-0 z-50 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-colors">
                                         {/* Time Corner (Sticky Top + Sticky Left) */}
@@ -1224,7 +1224,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         </div>
 
                                         {/* Providers Row */}
-                                        <div className="flex flex-1">
+                                        <div className="flex">
                                             {activeVisibileProviders.map(p => {
                                                 const isInternalBlocked = appointments.some(a =>
                                                     a.providerId === p.id &&
@@ -1290,7 +1290,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 </div>
 
                                                 {/* Provider Columns */}
-                                                <div className="flex-1 flex">
+                                                <div className="flex">
                                                     {activeVisibileProviders.map(p => {
                                                         const isOnVacation = p.vacationStart && p.vacationEnd &&
                                                             gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
@@ -1444,7 +1444,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                 .filter(a => a.customerId === appt.customerId)
                                                                                                 .sort((a, b) => a.time.localeCompare(b.time));
 
-                                                                                            // Collect ALL items (main + extras) from ALL appointments of this customer
                                                                                             const allItems = customerApps.flatMap(ca => {
                                                                                                 const mainSrv = services.find(s => s.id === ca.serviceId);
                                                                                                 return [
@@ -1467,7 +1466,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                         status: ca.status // Bundled services share status
                                                                                                     }))
                                                                                                 ];
-                                                                                            });
+                                                                                            }).filter(item => item.provId === p.id);
 
                                                                                             return allItems.map((item, idx) => {
                                                                                                 const srv = services.find(s => s.id === item.srvId);
@@ -1504,6 +1503,25 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
                                                                                         <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
                                                                                         <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                                            R$ {gridAppointments
+                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .reduce((acc, a) => {
+                                                                                                    let totalForApp = 0;
+                                                                                                    if (a.providerId === p.id) {
+                                                                                                        totalForApp += a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0;
+                                                                                                    }
+                                                                                                    totalForApp += (a.additionalServices || [])
+                                                                                                        .filter((e: any) => e.providerId === p.id)
+                                                                                                        .reduce((eAcc: number, e: any) => eAcc + (e.price || services.find(s => s.id === e.serviceId)?.price || 0), 0);
+                                                                                                    return acc + totalForApp;
+                                                                                                }, 0)
+                                                                                                .toFixed(0)}
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    <div className="mt-1 flex justify-between items-center opacity-60">
+                                                                                        <p className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total Cliente (Geral)</p>
+                                                                                        <p className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-tighter">
                                                                                             R$ {gridAppointments
                                                                                                 .filter(a => a.customerId === appt.customerId)
                                                                                                 .reduce((acc, a) => {
@@ -1787,7 +1805,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <input
                                             type="text"
                                             placeholder="Nome Completo"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase"
+                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.name}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, name: e.target.value })}
                                             autoFocus
@@ -1795,14 +1813,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <input
                                             type="tel"
                                             placeholder="Telefone / WhatsApp"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase"
+                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.phone}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
                                         />
                                         <input
                                             type="text"
                                             placeholder="CPF (Opcional)"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase"
+                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.cpf || ''}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, cpf: e.target.value })}
                                         />
