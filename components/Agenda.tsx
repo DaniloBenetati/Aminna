@@ -178,9 +178,9 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     // DEBUG: Track selectedProviderId changes
     React.useEffect(() => {
-        console.log('­ƒö┤ selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
+        console.log('���� selectedProviderId changed to:', selectedProviderId, 'Type:', typeof selectedProviderId);
         if (selectedProviderId !== 'all' && !providers.some(p => p.id === selectedProviderId)) {
-            console.error('ÔØî INVALID selectedProviderId! Not "all" and not a valid provider ID');
+            console.error('��� INVALID selectedProviderId! Not "all" and not a valid provider ID');
         }
     }, [selectedProviderId, providers]);
     const [sidebarSearch, setSidebarSearch] = useState('');
@@ -304,7 +304,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Período Personalizado";
+        if (timeView === 'custom') return "Per�odo Personalizado";
         if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         return dateRef.getFullYear().toString();
@@ -396,19 +396,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                 const hour = parseInt(hourStr) % 12 || 12;
                 const min = parseInt(minStr);
                 const clocks: Record<number, string[]> = {
-                    1: ['­ƒòÉ', '­ƒò£'], 2: ['­ƒòæ', '­ƒòØ'], 3: ['­ƒòÆ', '­ƒò×'],
-                    4: ['­ƒòô', '­ƒòƒ'], 5: ['­ƒòö', '­ƒòá'], 6: ['­ƒòò', '­ƒòí'],
-                    7: ['­ƒòû', '­ƒòó'], 8: ['­ƒòù', '­ƒòú'], 9: ['­ƒòÿ', '­ƒòñ'],
-                    10: ['­ƒòÖ', '­ƒòÑ'], 11: ['­ƒòÜ', '­ƒòª'], 12: ['­ƒòø', '­ƒòº']
+                    1: ['🕐', '🕜'], 2: ['🕑', '🕝'], 3: ['🕒', '🕞'],
+                    4: ['🕓', '🕟'], 5: ['🕔', '🕠'], 6: ['🕕', '🕡'],
+                    7: ['🕖', '🕢'], 8: ['🕗', '🕣'], 9: ['🕘', '🕤'],
+                    10: ['🕙', '🕥'], 11: ['🕚', '🕦'], 12: ['🕛', '🕧']
                 };
                 return clocks[hour][min >= 30 ? 1 : 0];
-            } catch { return '⏰'; }
+            } catch { return '?'; }
         };
 
         const firstName = customer.name.split(' ')[0];
         const isPlural = sortedApps.length > 1;
 
-        let message = `Olá, ${firstName}! ✨\n`;
+        let message = `Olá, ${firstName}! 👋\n`;
         message += isPlural
             ? `Passando para confirmar seus atendimentos na Aminna:\n`
             : `Passando para confirmar seu atendimento na Aminna:\n`;
@@ -424,14 +424,14 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         Object.keys(appsByDay).forEach(day => {
-            message += `\n­ƒôà ${day}\n`;
+            message += `\n🗓️ ${day}\n`;
 
             const dayApps = appsByDay[day];
             const confirmed = dayApps.filter(a => a.status === 'Confirmado');
             const pending = dayApps.filter(a => a.status === 'Pendente');
 
             if (confirmed.length > 0) {
-                message += `\nÔ£à Confirmado: \n`;
+                message += `\n✅ Confirmado: \n`;
                 confirmed.forEach(a => {
                     const srv = services.find(s => s.id === a.serviceId);
                     const p = providers.find(prov => prov.id === a.providerId);
@@ -443,7 +443,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             }
 
             if (pending.length > 0) {
-                message += `\nÔÅ│ Pendente: \n`;
+                message += `\n⏳ Pendente: \n`;
                 pending.forEach(a => {
                     const srv = services.find(s => s.id === a.serviceId);
                     const p = providers.find(prov => prov.id === a.providerId);
@@ -458,12 +458,12 @@ export const Agenda: React.FC<AgendaProps> = ({
         const hasPending = sortedApps.some(a => a.status === 'Pendente');
         if (hasPending) {
             message += isPlural
-                ? `\nPodemos confirmar os atendimentos pendentes? ­ƒÑ░`
-                : `\nPodemos confirmar o seu atendimento pendente? ­ƒÑ░`;
+                ? `\nPodemos confirmar os atendimentos pendentes? 🙏`
+                : `\nPodemos confirmar o seu atendimento pendente? 🙏`;
         } else {
-            message += `\nEstamos te aguardando com carinho. ­ƒÑ░\n`;
-            message += `Se n├úo puder comparecer, por favor nos avise com anteced├¬ncia.\n\n`;
-            message += `Obrigada! ­ƒÿè`;
+            message += `\nEstamos te aguardando com carinho. 🙏\n`;
+            message += `Se não puder comparecer, por favor nos avise com antecedência.\n\n`;
+            message += `Obrigada! ❤️`;
         }
         return message;
     };
@@ -631,7 +631,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         if (!draftAppointment) return;
 
         if (customer.isBlocked) {
-            alert(`­ƒÜ½ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'N├úo informado'}\n\nN├úo ├® poss├¡vel realizar agendamentos para clientes bloqueadas.`);
+            alert(`⛔ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'Não informado'}\n\nNão é possível realizar agendamentos para clientes bloqueadas.`);
             return;
         }
 
@@ -651,7 +651,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         if (matchedLead) {
-            const confirmConversion = window.confirm(`ÔÜá´©Å ESTE CLIENTE ├ë UM LEAD ATIVO DO CRM!\n\nEste agendamento ir├í converter o lead "${matchedLead.name}" e mov├¬-lo para o status "CONVERTIDO".\n\nDeseja confirmar o agendamento e a convers├úo?`);
+            const confirmConversion = window.confirm(`⭐ ESTE CLIENTE É UM LEAD ATIVO DO CRM!\n\nEste agendamento irá converter o lead "${matchedLead.name}" e movê-lo para o status "CONVERTIDO".\n\nDeseja confirmar o agendamento e a conversão?`);
 
             if (!confirmConversion) return;
 
@@ -676,10 +676,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                 .filter(h => h.type === 'RESTRICTION' && h.providerId === draftAppointment.providerId)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-            const reason = restrictionEntry?.details || "Motivo n├úo registrado.";
+            const reason = restrictionEntry?.details || "Motivo não registrado.";
 
             // ALERT THE USER, BUT DO NOT BLOCK
-            alert(`­ƒÜ½ RESTRI├ç├âO DE ATENDIMENTO\n\nA cliente possui restri├º├úo com ${providerName}.\n${reason}\n\nO sistema selecionar├í outra profissional dispon├¡vel automaticamente.`);
+            alert(`⚠️ RESTRIÇÃO DE ATENDIMENTO\n\nA cliente possui restrição com ${providerName}.\n${reason}\n\nO sistema selecionará outra profissional disponível automaticamente.`);
 
             // Auto-switch to a valid provider (First active provider not in restriction list)
             const fallbackProvider = activeProviders.find(p =>
@@ -813,7 +813,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             gridDateStr >= targetProvider.vacationStart && gridDateStr <= targetProvider.vacationEnd;
 
         if (isOnVacation) {
-            alert(`\u26D4 PROFISSIONAL EM F\u00C9RIAS\n\n${targetProvider?.name} est\u00E1 em per\u00EDodo de f\u00E9rias nesta data e n\u00E3o pode receber novos agendamentos.`);
+            alert(`⛔ PROFISSIONAL EM FÉRIAS\n\n${targetProvider?.name} está em período de férias nesta data e não pode receber novos agendamentos.`);
             return;
         }
 
@@ -895,10 +895,10 @@ export const Agenda: React.FC<AgendaProps> = ({
         );
 
         const toggleProvider = (id: string) => {
-            console.log('­ƒöº toggleProvider called with ID:', id, 'Type:', typeof id);
+            console.log('✅ toggleProvider called with ID:', id, 'Type:', typeof id);
             setVisibleProviderIds(prev => {
                 const newValue = prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id];
-                console.log('­ƒôØ visibleProviderIds updated:', prev, 'ÔåÆ', newValue);
+                console.log('✅ visibleProviderIds updated:', prev, '->', newValue);
                 return newValue;
             });
         };
@@ -942,7 +942,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase flex items-center gap-1.5">
                                     {p.name}
                                     {p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd && (
-                                        <span className="bg-amber-400 text-amber-950 text-[7px] font-black px-1.5 rounded-sm">FÉRIAS</span>
+                                        <span className="bg-amber-400 text-amber-950 text-[7px] font-black px-1 rounded-sm">FÉRIAS</span>
                                     )}
                                 </span>
                             </label>
@@ -984,22 +984,22 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         // Construct Message
         let message = `*AMINNA HOME NAIL GEL*\n`;
-        message += `*FECHAMENTO DE CAIXA - ${dateStr}* 🔒\n\n`;
+        message += `*FECHAMENTO DE CAIXA - ${dateStr}* 💰\n\n`;
 
         message += `*RESUMO GERAL:*\n`;
-        message += `✨ Serviços: R$ ${(totalServices + totalTips).toFixed(2)}\n`;
+        message += `💅 Serviços: R$ ${(totalServices + totalTips).toFixed(2)}\n`;
         message += `🛍️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
-        message += `💰 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+        message += `💸 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
         Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
-            message += `🔹 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+            message += `💳 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
         });
         message += `\n`;
 
         message += `*EXTRATO POR PROFISSIONAL:*\n`;
         Object.entries(groupedProv).forEach(([pName, pData]: [string, any]) => {
-            message += `👤 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
+            message += `👩‍💼 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
         });
         message += `\n`;
 
@@ -1008,9 +1008,9 @@ export const Agenda: React.FC<AgendaProps> = ({
         const phyCash = parseFloat(physicalCash || '0');
         const diff = phyCash - systemCash;
 
-        message += `💻 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
-        message += `💵 Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
-        message += `⚖️ Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
+        message += `💵 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
+        message += `🗄️ Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
+        message += `📊 Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
 
         message += `*Observações:* ${closingObservation || 'Nenhuma'}\n`;
         message += `*Caixa por:* ${closerName || '---'}`;
@@ -1215,7 +1215,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 onDragStart={handleDragStart}
                                 onDragEnd={handleDragEnd}
                             >
-                                <div className="min-w-max relative">
+                                <div className="w-fit min-w-full relative shadow-sm">
                                     {/* Sticky Header Row */}
                                     <div className="flex sticky top-0 z-50 border-b border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-colors">
                                         {/* Time Corner (Sticky Top + Sticky Left) */}
@@ -1246,13 +1246,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate flex items-center gap-1.5">
+                                                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate flex items-center justify-center gap-1.5">
                                                                 {p.name.split(' ')[0]}
                                                                 {p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd && (
                                                                     <span className="bg-amber-400 text-amber-950 text-[6px] font-black px-1 rounded-sm">FÉRIAS</span>
                                                                 )}
                                                             </p>
-                                                            <p className="text-[8px] font-bold text-slate-400 uppercase truncate">{p.specialty}</p>
                                                         </div>
 
                                                         {isOnVacation ? (
@@ -1384,40 +1383,38 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         >
                                                                             <div
                                                                                 onClick={() => handleAppointmentClick(appt)}
-                                                                                className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
-                                                                                    appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700' :
-                                                                                            'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                                                                                className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
+                                    ${appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                        appt.status === 'Em Andamento' || appt.status === 'Em atendimento' ? 'bg-[#00AA00] border-[#00AA00] text-white' :
+                                                                                            appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
+                                                                                                'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
                                                                                 <div className="flex justify-between items-start">
                                                                                     <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                                        <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name?.split(' ')[0] || 'CLIENTE AVULSA'}</span>
-                                                                                        {(() => {
-                                                                                            if (!customer) return false;
-                                                                                            const hasPastCompleted = appointments.some(a => a.customerId === customer.id && a.status === 'Concluído' && a.date < gridDateStr);
-                                                                                            const hasPastHistory = (customer.history || []).some(h => h.date < gridDateStr);
-                                                                                            return !hasPastCompleted && !hasPastHistory;
-                                                                                        })() && (
-                                                                                                <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
-                                                                                            )}
+                                                                                        <p className="text-[10px] font-black text-white uppercase leading-none truncate">
+                                                                                            {customer?.name || 'Cliente'}
+                                                                                        </p>
+                                                                                        {customer?.status === 'Novo' && (
+                                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                                        )}
                                                                                         {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
-                                                                                            <span className="bg-[#FF007F] text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
+                                                                                            <span className="bg-slate-700 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
                                                                                         )}
                                                                                     </div>
-                                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
+                                                                                    <span className="text-[8px] font-mono text-white/70">{displayTime.split(':')[1]}</span>
                                                                                 </div>
-                                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
+                                                                                <div className="text-[8.5px] text-white/90 font-bold truncate mt-0.5">{displayServiceName}</div>
 
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
                                                                                         <div className="flex items-center gap-1">
                                                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                                appt.status === 'Em Andamento' || appt.status === 'Em atendimento' ? 'bg-blue-500' :
                                                                                                     appt.status === 'Concluído' ? 'bg-slate-400' :
                                                                                                         'bg-amber-400'
                                                                                                 }`}></span>
-                                                                                            <span className="text-[7.5px] font-black text-slate-400 uppercase uppercase">{appt.status}</span>
+                                                                                            <span className="text-[7.5px] font-black text-white/80 uppercase">{appt.status}</span>
                                                                                         </div>
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
@@ -1428,6 +1425,115 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         )}
                                                                                     </div>
                                                                                 )}
+
+                                                                                {/* HOVER TOOLTIP */}
+                                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
+                                                                                        <div>
+                                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'Cliente Desconhecida'}</p>
+                                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                                                                                                <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
+                                                                                            </p>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="space-y-4">
+                                                                                        {(() => {
+                                                                                            const customerApps = gridAppointments
+                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .sort((a, b) => a.time.localeCompare(b.time));
+
+                                                                                            // Collect ALL items (main + extras) from ALL appointments of this customer
+                                                                                            const allItems = customerApps.flatMap(ca => {
+                                                                                                const mainSrv = services.find(s => s.id === ca.serviceId);
+                                                                                                return [
+                                                                                                    {
+                                                                                                        ca,
+                                                                                                        srvId: ca.serviceId,
+                                                                                                        provId: ca.providerId,
+                                                                                                        time: ca.time,
+                                                                                                        duration: mainSrv?.durationMinutes || 30,
+                                                                                                        price: ca.bookedPrice || mainSrv?.price || 0,
+                                                                                                        status: ca.status
+                                                                                                    },
+                                                                                                    ...(ca.additionalServices || []).map((extra: any) => ({
+                                                                                                        ca,
+                                                                                                        srvId: extra.serviceId,
+                                                                                                        provId: extra.providerId,
+                                                                                                        time: extra.startTime || ca.time,
+                                                                                                        duration: extra.durationMinutes || services.find(s => s.id === extra.serviceId)?.durationMinutes || 30,
+                                                                                                        price: extra.price || services.find(s => s.id === extra.serviceId)?.price || 0,
+                                                                                                        status: ca.status // Bundled services share status
+                                                                                                    }))
+                                                                                                ];
+                                                                                            });
+
+                                                                                            return allItems.map((item, idx) => {
+                                                                                                const srv = services.find(s => s.id === item.srvId);
+                                                                                                const prov = providers.find(p => p.id === item.provId);
+                                                                                                return (
+                                                                                                    <div key={`${item.ca.id}-${idx}`} className={`${idx > 0 ? 'pt-4 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
+                                                                                                        <div className="flex justify-between items-start mb-1">
+                                                                                                            <div className="flex-1">
+                                                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{srv?.name || 'Serviço Desconhecido'}</p>
+                                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">
+                                                                                                                    {(typeof item.time === 'string' ? item.time.slice(0, 5) : item.time)} • {item.duration} min
+                                                                                                                </p>
+                                                                                                            </div>
+                                                                                                            <div className="text-right">
+                                                                                                                <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{prov?.name.split(' ')[0] || 'Profissional'}</p>
+                                                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {item.price.toFixed(0)}</p>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <div className="flex justify-between items-center mt-1">
+                                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
+                                                                                                                item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#00AA00] text-white' :
+                                                                                                                    item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
+                                                                                                                        'bg-[#008877] text-white'
+                                                                                                                }`}>
+                                                                                                                {item.status}
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                );
+                                                                                            });
+                                                                                        })()}
+                                                                                    </div>
+
+                                                                                    <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
+                                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                                            R$ {gridAppointments
+                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .reduce((acc, a) => {
+                                                                                                    const mainPrice = a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0;
+                                                                                                    const extrasPrice = (a.additionalServices || []).reduce((eAcc: number, e: any) =>
+                                                                                                        eAcc + (e.price || services.find(s => s.id === e.serviceId)?.price || 0), 0
+                                                                                                    );
+                                                                                                    return acc + mainPrice + extrasPrice;
+                                                                                                }, 0)
+                                                                                                .toFixed(0)}
+                                                                                        </p>
+                                                                                    </div>
+
+                                                                                    {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
+                                                                                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-800">
+                                                                                            <p className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter mb-2">Profissionais Preferidos</p>
+                                                                                            <div className="flex flex-wrap gap-1.5">
+                                                                                                {customer.assignedProviderIds.map(pid => {
+                                                                                                    const p = providers.find(pr => pr.id === pid);
+                                                                                                    if (!p) return null;
+                                                                                                    return (
+                                                                                                        <div key={pid} className="px-3 py-1 bg-slate-700 rounded-full shadow-sm" title={p.name}>
+                                                                                                            <span className="text-[9px] font-black uppercase text-white">{p.name.split(' ')[0]}</span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
                                                                             </div>
                                                                         </DraggableAppointment>
                                                                     );
@@ -1493,7 +1599,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 >
                                                     <span className={`text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
 
-                                                    <div className="flex-1 flex flex-col gap-1 overflow-hidden">
+                                                    <div className="flex-1 flex flex-col gap-1">
                                                         {dayApps.slice(0, 3).map(app => (
                                                             <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                         ))}
@@ -1515,12 +1621,24 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 <span className="text-[10px] font-black text-white uppercase tracking-widest">{new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>
                                                                 <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">{dayApps.length} Atendimentos</span>
                                                             </div>
+                                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                                <span className="bg-amber-400 text-amber-950 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">{dayApps.filter(a => a.status === 'Pendente').length} Pendentes</span>
+                                                                <span className="bg-slate-200 dark:bg-zinc-800 text-slate-500 dark:text-zinc-500 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">{dayApps.filter(a => a.status === 'Concluído').length} Feitos</span>
+                                                            </div>
                                                             <div className="max-h-48 overflow-y-auto scrollbar-hide space-y-3">
                                                                 {dayApps.sort((a, b) => a.time.localeCompare(b.time)).map(app => {
                                                                     const cust = customers.find(c => c.id === app.customerId);
-                                                                    const srv = services.find(s => s.id === app.serviceId);
-                                                                    const prv = providers.find(p => p.id === app.providerId);
-                                                                    const price = app.bookedPrice || srv?.price || 0;
+                                                                    const mainSrv = services.find(s => s.id === app.serviceId);
+                                                                    const price = app.bookedPrice || mainSrv?.price || 0;
+                                                                    const items = [
+                                                                        { srvId: app.serviceId, provId: app.providerId, srvName: mainSrv?.name },
+                                                                        ...(app.additionalServices || []).map((extra: any) => ({
+                                                                            srvId: extra.serviceId,
+                                                                            provId: extra.providerId,
+                                                                            srvName: services.find(s => s.id === extra.serviceId)?.name
+                                                                        }))
+                                                                    ];
+
                                                                     return (
                                                                         <div key={app.id} className="flex flex-col gap-0.5 border-l-2 border-indigo-500 pl-3 py-0.5">
                                                                             <div className="flex justify-between items-center">
@@ -1529,9 +1647,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
                                                                             </div>
                                                                             <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
-                                                                            <div className="flex items-center gap-1.5">
-                                                                                <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex-1">{app.combinedServiceNames || srv?.name}</p>
-                                                                                <span className="text-[8px] font-black text-indigo-300 uppercase truncate">[{prv?.name.split(' ')[0]}]</span>
+                                                                            <div className="space-y-0.5">
+                                                                                {items.map((item, itemIdx) => (
+                                                                                    <div key={itemIdx} className="flex items-center gap-1.5">
+                                                                                        <p className="text-[9px] font-bold text-slate-400 uppercase truncate flex-1">{item.srvName}</p>
+                                                                                        <span className="text-[8px] font-black text-indigo-300 uppercase truncate">[{providers.find(p => p.id === item.provId)?.name.split(' ')[0]}]</span>
+                                                                                    </div>
+                                                                                ))}
                                                                             </div>
                                                                         </div>
                                                                     );
@@ -1658,7 +1780,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             {isQuickRegisterOpen ? (
                                 <div className="p-4 bg-indigo-50 dark:bg-zinc-900 border-b border-indigo-100 dark:border-zinc-800 animate-in slide-in-from-top-2">
                                     <div className="flex justify-between items-center mb-3">
-                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
+                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro R�pido</h4>
                                         <button onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
                                     </div>
                                     <form onSubmit={handleQuickRegister} className="flex flex-col gap-3">
@@ -1751,10 +1873,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                                        <MessageCircle size={18} className="text-emerald-400" /> Confirmações
+                                        <MessageCircle size={18} className="text-emerald-400" /> Confirma��es
                                     </h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">
-                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                        {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} at� {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
                                     </p>
                                 </div>
                                 <button onClick={() => setIsWhatsAppModalOpen(false)} className="text-white hover:text-slate-300"><X size={24} /></button>
@@ -1810,7 +1932,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 }) : (
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
                                         <CheckCircle2 size={48} className="mx-auto mb-2 opacity-20" />
-                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no período</p>
+                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per�odo</p>
                                     </div>
                                 )}
                             </div>

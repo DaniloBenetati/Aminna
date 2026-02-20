@@ -19,6 +19,7 @@ interface DailyCloseViewProps {
     services: Service[];
     onPrint?: () => void;
     onCloseRegister?: () => void;
+    onShareWhatsapp?: () => void;
 
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
@@ -27,7 +28,7 @@ interface DailyCloseViewProps {
 export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation,
     closerName, setCloserName, date, appointments, services,
-    onPrint, onCloseRegister, showControls = true,
+    onPrint, onCloseRegister, onShareWhatsapp, showControls = true,
     vipMetrics = { value: 0, count: 0 }
 }) => {
     const dateStr = toLocalDateStr(date);
@@ -104,13 +105,62 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             <head>
                 <title>Fechamento de Caixa - ${dateStr}</title>
                 <style>
-                    body { font-family: 'Courier New', monospace; padding: 20px; font-size: 12px; color: #000; }
-                    .header { text-align: center; margin-bottom: 20px; }
-                    .divider { border-bottom: 1px dashed #000; margin: 10px 0; }
-                    .row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-                    .section-title { font-weight: bold; text-decoration: underline; margin-bottom: 8px; text-transform: uppercase; margin-top: 10px; }
-                    .total-row { font-weight: bold; font-size: 14px; margin-top: 5px; }
-                    @media print { @page { margin: 0; } body { margin: 10px; } }
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+                    body { 
+                        font-family: 'Inter', -apple-system, sans-serif; 
+                        padding: 40px; 
+                        font-size: 11px; 
+                        color: #1a1a1a; 
+                        line-height: 1.4;
+                        max-width: 800px;
+                        margin: 0 auto;
+                    }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .header h1 { font-weight: 900; letter-spacing: -0.5px; color: #000; margin: 0; }
+                    .divider { border-bottom: 1.5px solid #eaeaea; margin: 15px 0; }
+                    .row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+                    .section-title { 
+                        font-weight: 800; 
+                        font-size: 10px;
+                        color: #666;
+                        border-bottom: 2px solid #000;
+                        padding-bottom: 2px;
+                        margin-bottom: 12px; 
+                        text-transform: uppercase; 
+                        margin-top: 25px; 
+                        letter-spacing: 1px;
+                    }
+                    .total-row { 
+                        font-weight: 900; 
+                        font-size: 14px; 
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        border-top: 1px solid #000;
+                    }
+                    .professional-block { margin-bottom: 20px; break-inside: avoid; }
+                    .professional-header { 
+                        font-weight: 900; 
+                        font-size: 12px; 
+                        margin-bottom: 8px;
+                        color: #000;
+                        display: flex;
+                        justify-content: space-between;
+                        border-bottom: 1px solid #f0f0f0;
+                        padding-bottom: 4px;
+                    }
+                    .customer-row { font-weight: 700; margin-left: 0; margin-top: 8px; color: #333; }
+                    .transaction-row { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        padding-left: 15px; 
+                        color: #666; 
+                        font-size: 9px;
+                        margin-bottom: 2px;
+                    }
+                    @media print { 
+                        @page { margin: 1cm; size: A4; } 
+                        body { padding: 0; margin: 0; width: 100%; } 
+                    }
                 </style>
             </head>
             <body>
@@ -124,8 +174,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div class="divider"></div>
 
                 <div class="row"><span>SERVIÇOS:</span> <span>R$ ${servicesWithTips.toFixed(2)}</span></div>
-                <div class="row"><span>PRODUTOS:</span> <span>R$ {totalProducts.toFixed(2)}</span></div>
-                <div class="row total-row"><span>FATURAMENTO BRUTO:</span> <span>R$ {totalRevenue.toFixed(2)}</span></div>
+                <div class="row"><span>PRODUTOS:</span> <span>R$ ${totalProducts.toFixed(2)}</span></div>
+                <div class="row total-row"><span>FATURAMENTO BRUTO:</span> <span>R$ ${totalRevenue.toFixed(2)}</span></div>
 
                 <div class="divider"></div>
 
@@ -156,18 +206,21 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     ${Object.entries(groupedByProviderAndCustomer)
                 .sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount)
                 .map(([pName, pData]: [string, any]) => `
-                            <div style="margin-bottom: 8px;">
-                                <div style="font-weight: bold;">${pName} - R$ ${pData.amount.toFixed(2)}</div>
+                            <div class="professional-block">
+                                <div class="professional-header">
+                                    <span>${pName.toUpperCase()}</span>
+                                    <span>R$ ${pData.amount.toFixed(2)}</span>
+                                </div>
                                 ${Object.entries(pData.customers)
                         .sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount)
                         .map(([cName, cData]: [string, any]) => `
-                                        <div style="margin-left: 10px;">
-                                            <div>${cName} (R$ ${cData.amount.toFixed(2)})</div>
+                                        <div class="customer-block">
+                                            <div class="customer-row">${cName} (R$ ${cData.amount.toFixed(2)})</div>
                                             ${cData.transactions.map((t: FinancialTransaction) => `
-                                                <div style="display: flex; justify-content: space-between; padding-left: 10px; color: #555; font-size: 9px;">
-                                                    <span>${t.serviceName || t.description}</span>
-                                                    <span>${t.paymentMethod}</span>
-                                                    <span>R$ ${t.amount.toFixed(2)}</span>
+                                                <div class="transaction-row">
+                                                    <span style="flex: 2;">${t.serviceName || t.description}</span>
+                                                    <span style="flex: 1; text-align: center; color: #999;">${t.paymentMethod}</span>
+                                                    <span style="flex: 1; text-align: right;">R$ ${t.amount.toFixed(2)}</span>
                                                 </div>
                                             `).join('')}
                                         </div>
@@ -203,6 +256,10 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     };
 
     const handleOpenWhatsapp = () => {
+        if (onShareWhatsapp) {
+            onShareWhatsapp();
+            return;
+        }
         const paymentMethods = dailyTrans.reduce((acc: any, t) => {
             const method = t.paymentMethod || 'Outros';
             if (!acc[method]) acc[method] = { count: 0, total: 0 };

@@ -412,33 +412,87 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const currentApptIds = new Set(lines.map(l => l.appointmentId).filter(Boolean));
         if (appointment.id) currentApptIds.add(appointment.id);
 
-        const currentProviderIds = new Set(lines.map(l => l.providerId));
+        const currentCustomerId = customer.id;
 
-        const conflictingAppt = allAppointments.find(a => {
-            // Exclude ALL appointments being handled in this modal
-            if (currentApptIds.has(a.id)) return false;
+        // Helper to convert time "HH:mm" to minutes from 00:00
+        const toMinutes = (time: string) => {
+            if (!time) return 0;
+            const [h, m] = time.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        };
 
-            // Normalize time to HH:mm for comparison
-            const apptTime = a.time.slice(0, 5);
-            const currentTime = appointmentTime.slice(0, 5);
+        const modalDate = appointmentDate;
 
-            if (a.date !== appointmentDate || apptTime !== currentTime) return false;
-            if (a.status === 'Cancelado') return false;
+        // CHECK EACH LINE INDIVIDUALLY FOR ITS SPECIFIC PROVIDER
+        for (const line of lines) {
+            const providerId = line.providerId;
+            if (!providerId) continue;
 
-            // 1. Conflict: Same professional
-            const isProvBusy = currentProviderIds.has(a.providerId) ||
-                a.additionalServices?.some(extra => currentProviderIds.has(extra.providerId));
+            const provider = providers.find(p => p.id === providerId);
+            const lineStart = toMinutes(line.startTime || appointmentTime);
+            const srv = services.find(s => s.id === line.serviceId);
+            const lineDur = line.endTime ? (toMinutes(line.endTime) - lineStart) : (srv?.durationMinutes || 30);
+            const lineEnd = lineStart + lineDur;
 
-            return isProvBusy;
-        });
+            // Find any overlapping appointment for THIS provider on THIS line
+            const conflict = allAppointments.find(a => {
+                // 1. Basic exclusions
+                if (currentApptIds.has(a.id)) return false;
+                if (a.date !== modalDate) return false;
+                if (a.customerId === currentCustomerId) return false; // SELF-EXCLUSION
 
-        if (conflictingAppt && !(appointment.status === 'Concluído' && appointment.time === appointmentTime && appointment.date === appointmentDate)) {
-            // Case: Professional is busy with another client
-            const conflictingProvider = providers.find(p => p.id === conflictingAppt.providerId);
-            alert(`⚠️ CONFLITO DE PROFISSIONAL\n\n${conflictingProvider?.name || 'A profissional'} já está ocupada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
-            return true;
+                const isInternalBlock = a.combinedServiceNames === 'BLOQUEIO_INTERNO';
+                if (a.status === 'Cancelado' && !isInternalBlock) return false;
+
+                // 2. Determine all time windows for 'providerId' within appointment 'a'
+                interface TimeWindow { start: number; end: number; }
+                const windows: TimeWindow[] = [];
+
+                if (a.providerId === providerId) {
+                    const start = toMinutes(a.time);
+                    const srv = services.find(s => s.id === a.serviceId);
+                    const end = a.endTime ? toMinutes(a.endTime) : (start + (srv?.durationMinutes || 30));
+                    windows.push({ start, end });
+                }
+
+                if (a.additionalServices) {
+                    a.additionalServices.forEach((extra: any) => {
+                        if (extra.providerId === providerId) {
+                            const start = toMinutes(extra.startTime || a.time);
+                            const srv = services.find(s => s.id === extra.serviceId);
+                            const end = toMinutes(extra.endTime) || (start + (extra.durationMinutes || srv?.durationMinutes || 30));
+                            windows.push({ start, end });
+                        }
+                    });
+                }
+
+                // If this provider isn't even in appt 'a', no conflict
+                if (windows.length === 0) return false;
+
+                // 3. Precise overlap check: (lineStart < w.end) && (lineEnd > w.start)
+                const hasOverlap = windows.some(w => (lineStart < w.end) && (lineEnd > w.start));
+                return hasOverlap;
+            });
+
+            if (conflict) {
+                const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
+                const conflictStart = toMinutes(conflict.time);
+
+                if (isInternalBlock) {
+                    alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+                    return true; // Stop
+                } else if (conflictStart === lineStart) {
+                    // Even if same start, we make it a warning instead of a block, unless it's a manual block
+                    const proceed = window.confirm(`⚠️ CONFLITO DE HORÁRIO\n\n${provider?.name || 'A profissional'} já possui um atendimento que inicia exatamente às ${conflict.time}.\n\nDeseja agendar em duplicidade neste horário?`);
+                    if (!proceed) return true;
+                } else {
+                    const proceed = window.confirm(`⚠️ AVISO DE INTERFERÊNCIA\n\n${provider?.name || 'A profissional'} possui um atendimento (${conflict.time}) que se sobrepõe a este horário.\n\nDeseja continuar mesmo assim?`);
+                    if (!proceed) return true;
+                }
+            }
         }
-        return false;
+
+        return false; // No conflicts found or user accepted warnings
     };
 
     const performMerge = async (targetAppt: Appointment) => {
@@ -452,20 +506,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 isCourtesy: l.isCourtesy,
                 discount: l.discount,
                 bookedPrice: l.unitPrice,
-                products: l.products
+                products: l.products,
+                startTime: l.startTime,
+                endTime: l.endTime
             }));
 
-            // 2. Combine with target's existing extras
+            // 2. Combine and Deduplicate with target's existing extras
+            // Logic: If same serviceId AND same providerId exists, don't add it again
+            const existingExtras = targetAppt.additionalServices || [];
+            const filteredNewExtras = newExtras.filter(ne =>
+                !existingExtras.some(ee => ee.serviceId === ne.serviceId && ee.providerId === ne.providerId) &&
+                !(targetAppt.serviceId === ne.serviceId && targetAppt.providerId === ne.providerId)
+            );
+
             const updatedExtras = [
-                ...(targetAppt.additionalServices || []),
-                ...newExtras
+                ...existingExtras,
+                ...filteredNewExtras
             ];
 
             // 3. Update target appointment
-            const combinedNames = [
+            const names = [
                 targetAppt.combinedServiceNames || services.find(s => s.id === targetAppt.serviceId)?.name,
                 ...lines.map(l => services.find(s => s.id === l.serviceId)?.name)
-            ].join(' + ');
+            ].flatMap(n => n ? n.split(' + ') : []);
+            const combinedNames = Array.from(new Set(names)).filter(Boolean).join(' + ');
 
             const { error: updateError } = await supabase.from('appointments').update({
                 additional_services: updatedExtras,
@@ -891,7 +955,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
-        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+        const serviceNamesArray = lines.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
+        const uniqueNames = Array.from(new Set(serviceNamesArray));
+        const combinedNames = uniqueNames.join(' + ');
         const extras = lines.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,

@@ -1,0 +1,120 @@
+﻿                                                            displayTime = appt.time;
+                                                        } else {
+                                                            const subService = appt.additionalServices?.find(s => s.providerId === p.id);
+                                                            if (subService) {
+                                                                const srv = services.find(s => s.id === subService.serviceId);
+                                                                displayServiceName = srv?.name || 'Servi├ºo Extra';
+                                                                displayTime = subService.startTime || appt.time;
+                                                            }
+                                                        }
+
+                                                        // Calculate top offset based on actual appointment time within the slot
+                                                        const [apptHour, apptMin] = displayTime.split(':').map(Number);
+                                                        const [slotHour, slotMin] = hour.split(':').map(Number);
+                                                        const minutesIntoSlot = (apptHour * 60 + apptMin) - (slotHour * 60 + slotMin);
+                                                        const topOffset = (minutesIntoSlot / 30) * rowHeight + 4; // 4px base padding
+
+                                                        return (
+                                                            <div
+                                                                key={appt.id}
+                                                                onClick={() => handleAppointmentClick(appt)}
+                                                                className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
+                                                                    appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
+                                                                        appt.status === 'Conclu├¡do' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
+                                                                            'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
+                                                                    }`}
+                                                                style={{
+                                                                    height: `${cardHeight}px`,
+                                                                    top: `${topOffset}px`
+                                                                }}
+                                                            >
+                                                                <div className="flex justify-between items-start">
+                                                                    <span className="text-[9.5px] font-black text-slate-900 dark:text-white uppercase truncate max-w-[70%]">{customer?.name.split(' ')[0]}</span>
+                                                                    <span className="text-[8px] font-mono text-slate-500 dark:text-slate-400">{displayTime.split(':')[1]}</span>
+                                                                </div>
+                                                                <div className="text-[8.5px] text-slate-600 dark:text-slate-300 font-bold truncate mt-0.5">{displayServiceName}</div>
+
+                                                                {/* Only show bottom info if height allows */}
+                                                                {cardHeight > 40 && (
+                                                                    <div className="flex justify-between items-center mt-1.5">
+                                                                        <div className="flex items-center gap-1">
+                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
+                                                                                appt.status === 'Em Andamento' ? 'bg-blue-500' :
+                                                                                    appt.status === 'Conclu├¡do' ? 'bg-slate-500' :
+                                                                                        'bg-amber-400'
+                                                                                }`}></span>
+                                                                            {appt.status === 'Conclu├¡do' && (
+                                                                                (() => {
+                                                                                    const record = nfseRecords.find(r => r.appointmentId === appt.id);
+                                                                                    if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                    return null;
+                                                                                })()
+                                                                            )}
+                                                                        </div>
+                                                                        <button onClick={(e) => handleSendWhatsApp(e, appt)} className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 p-1 rounded transition-colors"><MessageCircle size={12} /></button>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* HOVER TOOLTIP */}
+                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                    <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
+                                                                        <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
+                                                                        <div>
+                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name}</p>
+                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                                                                                <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="space-y-4">
+                                                                        {(() => {
+                                                                            const customerApps = gridAppointments
+                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                .sort((a, b) => a.time.localeCompare(b.time));
+
+                                                                            return customerApps.map((ca, idx) => {
+                                                                                const mainSrv = services.find(s => s.id === ca.serviceId);
+                                                                                const mainProv = providers.find(p => p.id === ca.providerId);
+
+                                                                                return (
+                                                                                    <div key={ca.id} className={`${idx > 0 ? 'pt-3 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
+                                                                                        {/* Main Service info for this record */}
+                                                                                        <div className="flex justify-between items-start mb-2">
+                                                                                            <div className="flex-1">
+                                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase leading-tight">{ca.combinedServiceNames || mainSrv?.name}</p>
+                                                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">{ca.time} ÔÇó {ca.duration || 30} min</p>
+                                                                                            </div>
+                                                                                            <div className="text-right">
+                                                                                                <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{mainProv?.name.split(' ')[0]}</p>
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Status and Price for this record */}
+                                                                                        <div className="flex justify-between items-center mt-1">
+                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
+                                                                                                ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
+                                                                                                    ca.status === 'Conclu├¡do' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                        'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                                                                                                }`}>
+                                                                                                {ca.status}
+                                                                                            </span>
+                                                                                            <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {(ca.bookedPrice || mainSrv?.price || 0).toFixed(0)}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            });
+                                                                        })()}
+                                                                    </div>
+
+                                                                    <div className="mt-4 pt-3 border-t-2 border-dashed border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
+                                                                        <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
+                                                                            R$ {gridAppointments
+                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                .reduce((acc, a) => acc + (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), 0)
+                                                                                .toFixed(0)}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>

@@ -177,7 +177,7 @@ export interface Appointment {
   paymentDate?: string; // Data real do pagamento (Baixa)
   time: string;
   endTime?: string;
-  status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento';
+  status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento' | 'Em atendimento';
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
   recurrenceId?: string; // ID to track recurring appointment series
