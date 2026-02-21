@@ -19,7 +19,7 @@ interface DailyCloseViewProps {
     services: Service[];
     onPrint?: () => void;
     onCloseRegister?: () => void;
-    onShareWhatsapp?: () => void;
+    onShareWhatsapp?: (message?: string) => void;
 
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
@@ -89,6 +89,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const [expandedProvider, setExpandedProvider] = useState<string | null>(null);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
     const [whatsappMessage, setWhatsappMessage] = useState('');
+    const [isCopied, setIsCopied] = useState(false);
 
     const paymentMethodsSummary = useMemo(() => {
         return dailyRelTrans.reduce((acc: Record<string, number>, t: FinancialTransaction) => {
@@ -256,10 +257,6 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     };
 
     const handleOpenWhatsapp = () => {
-        if (onShareWhatsapp) {
-            onShareWhatsapp();
-            return;
-        }
         const paymentMethods = dailyTrans.reduce((acc: any, t) => {
             const method = t.paymentMethod || 'Outros';
             if (!acc[method]) acc[method] = { count: 0, total: 0 };
@@ -279,36 +276,38 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         const phyCash = parseFloat(physicalCash || '0');
         const diff = phyCash - systemCash;
 
+        // Using standard Unicode escapes for safety to ensure correct encoding across browsers/OS
         let message = `*AMINNA HOME NAIL GEL*\n`;
-        message += `*FECHAMENTO DE CAIXA - ${date.toLocaleDateString('pt-BR')}* 🔒\n\n`;
+        message += `*FECHAMENTO DE CAIXA - ${date.toLocaleDateString('pt-BR')}* \uD83D\uDD12\n\n`;
 
         message += `*RESUMO GERAL:*\n`;
-        message += `✨ Serviços: R$ ${(servicesWithTips).toFixed(2)}\n`;
-        message += `🛍️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
-        message += `💰 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+        message += `\u2728 Serviços: R$ ${(servicesWithTips).toFixed(2)}\n`;
+        message += `\uD83D\uDECD️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        message += `\uD83D\uDCA0 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
         Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
-            message += `🔹 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+            message += `\uD83D\uDD39 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
         });
         message += `\n`;
 
         message += `*EXTRATO POR PROFISSIONAL:*\n`;
         Object.entries(groupedProv).forEach(([pName, pData]: [string, any]) => {
-            message += `👤 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
+            message += `\uD83D\uDC64 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
         });
         message += `\n`;
 
         message += `*CONFERÊNCIA:*\n`;
-        message += `💻 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
-        message += `💵 Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
-        message += `⚖️ Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
+        message += `\uD83D\uDCBB Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
+        message += `\uD83D\uDCB5 Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
+        message += `\u2696\uFE0F Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
 
         message += `*Observações:* ${closingObservation || 'Nenhuma'}\n`;
         message += `*Caixa por:* ${closerName || '---'}`;
 
         setWhatsappMessage(message);
         setIsWhatsAppModalOpen(true);
+        setIsCopied(false);
     };
 
     return (
@@ -482,35 +481,49 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {/* WhatsApp Modal */}
             {
                 isWhatsAppModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-slate-200 dark:border-zinc-700 animate-in zoom-in-95 duration-200">
-                            <div className="p-4 bg-green-600 text-white flex justify-between items-center">
-                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><MessageCircle size={18} /> Enviar no WhatsApp</h3>
-                                <button onClick={() => setIsWhatsAppModalOpen(false)} className="hover:bg-white/20 p-1 rounded-full transition-colors"><X size={20} /></button>
+                    <div className="fixed inset-0 bg-black/70 z-[10000] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                            <div className="p-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white flex justify-between items-center">
+                                <div>
+                                    <h3 className="font-black uppercase text-base tracking-widest flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-xl">
+                                            <MessageCircle size={20} />
+                                        </div>
+                                        Relatório WhatsApp
+                                    </h3>
+                                    <p className="text-[10px] uppercase font-bold opacity-80 mt-1 pl-12">Confira a mensagem antes de enviar</p>
+                                </div>
+                                <button onClick={() => setIsWhatsAppModalOpen(false)} className="hover:bg-white/20 p-2 rounded-2xl transition-colors"><X size={24} /></button>
                             </div>
-                            <div className="p-4 space-y-4">
-                                <div className="bg-slate-100 dark:bg-zinc-950 p-4 rounded-xl text-xs font-mono text-slate-600 dark:text-slate-300 whitespace-pre-wrap max-h-[300px] overflow-y-auto border border-slate-200 dark:border-zinc-800">
+                            <div className="p-6 space-y-6">
+                                <div className="bg-slate-50 dark:bg-zinc-950 p-6 rounded-3xl text-[13px] font-medium text-slate-700 dark:text-slate-300 whitespace-pre-wrap max-h-[400px] overflow-y-auto border-2 border-slate-100 dark:border-zinc-800 shadow-inner leading-relaxed">
                                     {whatsappMessage}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-4">
                                     <button
                                         onClick={() => {
                                             navigator.clipboard.writeText(whatsappMessage);
-                                            // Optional: Show toast
+                                            setIsCopied(true);
+                                            setTimeout(() => setIsCopied(false), 2000);
                                         }}
-                                        className="flex-1 py-3 bg-slate-200 dark:bg-zinc-800 text-slate-800 dark:text-white rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-slate-300 dark:hover:bg-zinc-700 transition-colors"
+                                        className={`flex-1 py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 ${isCopied ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700'}`}
                                     >
-                                        <Copy size={16} /> Copiar
+                                        {isCopied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+                                        {isCopied ? 'Copiado!' : 'Copiar Texto'}
                                     </button>
                                     <button
                                         onClick={() => {
-                                            const encodedMessage = encodeURIComponent(whatsappMessage);
-                                            window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                                            if (onShareWhatsapp) {
+                                                onShareWhatsapp(whatsappMessage);
+                                            } else {
+                                                const encodedMessage = encodeURIComponent(whatsappMessage);
+                                                window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+                                            }
                                             setIsWhatsAppModalOpen(false);
                                         }}
-                                        className="flex-1 py-3 bg-green-600 text-white rounded-xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-2 hover:bg-green-700 transition-colors shadow-lg shadow-green-200 dark:shadow-none"
+                                        className="flex-1 py-4 px-6 bg-green-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-green-700 transition-all shadow-xl shadow-green-200 dark:shadow-none active:scale-95"
                                     >
-                                        <Send size={16} /> Enviar
+                                        <Send size={18} /> Enviar Agora
                                     </button>
                                 </div>
                             </div>

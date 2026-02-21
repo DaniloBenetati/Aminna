@@ -965,7 +965,13 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsFinanceModalOpen(false);
     };
 
-    const handleShareWhatsappDailyClose = () => {
+    const handleShareWhatsappDailyClose = (previewMessage?: string) => {
+        if (previewMessage && typeof previewMessage === 'string') {
+            const encodedMessage = encodeURIComponent(previewMessage);
+            window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+            return;
+        }
+
         const { totalRevenue, totalServices, totalProducts, totalTips, totalAjustes } = calculateDailySummary(dailyTransactions);
         const dateStr = dateRef.toLocaleDateString('pt-BR');
 
@@ -985,24 +991,24 @@ export const Agenda: React.FC<AgendaProps> = ({
             return acc;
         }, {});
 
-        // Construct Message
+        // Construct Message using Unicode escapes for safety
         let message = `*AMINNA HOME NAIL GEL*\n`;
-        message += `*FECHAMENTO DE CAIXA - ${dateStr}* 💰\n\n`;
+        message += `*FECHAMENTO DE CAIXA - ${dateStr}* \uD83D\uDCB0\n\n`;
 
         message += `*RESUMO GERAL:*\n`;
-        message += `💅 Serviços: R$ ${(totalServices + totalTips).toFixed(2)}\n`;
-        message += `🛍️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
-        message += `💸 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
+        message += `\uD83D\uDCC5 Serviços: R$ ${(totalServices + totalTips).toFixed(2)}\n`;
+        message += `\uD83D\uDECD️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        message += `\uD83D\uDCA0 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
         Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
-            message += `💳 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+            message += `\uD83D\uDCB3 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
         });
         message += `\n`;
 
         message += `*EXTRATO POR PROFISSIONAL:*\n`;
         Object.entries(groupedProv).forEach(([pName, pData]: [string, any]) => {
-            message += `👩‍💼 ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
+            message += `\uD83D\uDC69\u200D\uD83D\uDCBC ${pName}: R$ ${pData.amount.toFixed(2)}\n`;
         });
         message += `\n`;
 
@@ -1011,9 +1017,9 @@ export const Agenda: React.FC<AgendaProps> = ({
         const phyCash = parseFloat(physicalCash || '0');
         const diff = phyCash - systemCash;
 
-        message += `💵 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
-        message += `🗄️ Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
-        message += `📊 Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
+        message += `\uD83D\uDCB5 Sistema (Dinheiro): R$ ${systemCash.toFixed(2)}\n`;
+        message += `\uD83D\uDDC4\uFE0F Físico (Gaveta): R$ ${phyCash.toFixed(2)}\n`;
+        message += `\uD83D\uDCCA Diferença: R$ ${diff.toFixed(2)} ${diff === 0 ? '(OK)' : ''}\n\n`;
 
         message += `*Observações:* ${closingObservation || 'Nenhuma'}\n`;
         message += `*Caixa por:* ${closerName || '---'}`;

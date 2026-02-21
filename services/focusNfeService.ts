@@ -194,61 +194,60 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         const dataCompetencia = `${year}-${month}-${day}`; // YYYY-MM-DD from local (Brasilia) time
 
         const nfseRequest: any = {
-            data_emissao: dataEmissao,
-            data_competencia: dataCompetencia,
-            natureza_operacao: '1',
-            regime_especial_tributacao: '0',
-            optante_simples_nacional: true,    // ME optante pelo Simples Nacional
-            incentivo_fiscal: false,
+            infDPS: {
+                tpAmb: '1',                             // 1 = Produção
+                dhEmi: dataEmissao,                     // ISO format with timezone
+                opSimpNac: '3',                         // 3 = Optante - ME ou EPP (Padrão Nacional)
+                regTrib: '6',                           // 6 = ME EPP - Simples Nacional (Padrão Nacional)
 
-            prestador: {
-                cnpj: fiscalConfig.cnpj.replace(/\D/g, ''),
-                codigo_municipio: '3550308'
-            },
+                prest: {
+                    CNPJ: fiscalConfig.cnpj.replace(/\D/g, '')
+                },
 
-            servico: {
-                aliquota: 2,                       // Alíquota ISS SP para Simples Nacional (2-5%; 2 is common floor)
-                iss_retido: false,
-                item_lista_servico: '200100',      // LC 116/2003: Item 20 (Serviços pessoais) + Subitem 01 (Barbearia/cabeleireiros/manicuros) + Desdobro 00
-                codigo_cnae: '9602501',            // CNAE: Cabeleireiros, manicuros, pedicuros e congêneres (padrão nacional NFS-e)
-                valor_servicos: params.totalValue,
-                discriminacao: `${params.serviceDescription}\n\n` +
-                    `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
-                    `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
-                    `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
-                    `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`
-            },
+                // 2. Tomador (toma)
+                toma: params.customerCpfCnpj ? {
+                    xNome: params.customerName,
+                    email: params.customerEmail,
+                    end: {
+                        xLgr: fiscalConfig.address || 'Cliente Presencial',
+                        nro: 'S/N',
+                        xBairro: 'Centro',
+                        CEP: (fiscalConfig.zipCode?.replace(/\D/g, '') || '01001000'),
+                        UF: fiscalConfig.state || 'SP',
+                        cMun: '3550308'
+                    }
+                } : undefined,
 
-            intermediario: {
-                cnpj: professionalConfig.cnpj.replace(/\D/g, ''),
-                razao_social: professionalName
+                // 3. Intermediario (interm)
+                interm: {
+                    CNPJ: professionalConfig.cnpj.replace(/\D/g, ''),
+                    xNome: professionalName
+                },
+
+                // 4. Servico (serv)
+                serv: {
+                    cServ: '060101',                    // Código de Tributação Nacional
+                    xDesc: `${params.serviceDescription}\n\n` +
+                        `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
+                        `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
+                        `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
+                        `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`
+                },
+
+                // 5. Valores (valores)
+                valores: {
+                    vServPrest: params.totalValue.toFixed(2)
+                }
             }
         };
 
-        if (professionalConfig.municipalRegistration) {
-            nfseRequest.intermediario.inscricao_municipal = professionalConfig.municipalRegistration.replace(/\D/g, '');
-        }
-
-        // Add tomador data if we have customer info
-        if (params.customerCpfCnpj) {
+        // Handle CPF/CNPJ logic for Toma
+        if (nfseRequest.infDPS.toma && params.customerCpfCnpj) {
             const cpfCnpj = params.customerCpfCnpj.replace(/\D/g, '');
-            nfseRequest.tomador = {
-                razao_social: params.customerName,
-                email: params.customerEmail,
-                endereco: {
-                    logradouro: fiscalConfig.address || 'Cliente Presencial',
-                    numero: 'S/N',
-                    bairro: 'Centro',
-                    cep: (fiscalConfig.zipCode?.replace(/\D/g, '') || '01001000'),
-                    uf: fiscalConfig.state || 'SP',
-                    codigo_municipio: '3550308'
-                }
-            };
-
             if (cpfCnpj.length === 11) {
-                nfseRequest.tomador.cpf = cpfCnpj;
+                nfseRequest.infDPS.toma.CPF = cpfCnpj;
             } else {
-                nfseRequest.tomador.cnpj = cpfCnpj;
+                nfseRequest.infDPS.toma.CNPJ = cpfCnpj;
             }
         }
 
