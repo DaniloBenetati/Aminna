@@ -347,19 +347,20 @@ export const Agenda: React.FC<AgendaProps> = ({
             let isProvider: boolean = true;
             if (selectedProviderId !== 'all') {
                 // Specific provider selected
-                isProvider = a.providerId === selectedProviderId ||
-                    !!(a.additionalServices?.some(s => s.providerId === selectedProviderId));
+                isProvider = String(a.providerId).trim().toLowerCase() === String(selectedProviderId).trim().toLowerCase() ||
+                    !!(a.additionalServices?.some(s => String(s.providerId).trim().toLowerCase() === String(selectedProviderId).trim().toLowerCase()));
             } else if (visibleProviderIds.length > 0) {
                 // "All" selected but specific providers checked in sidebar
-                isProvider = visibleProviderIds.includes(a.providerId) ||
-                    !!(a.additionalServices?.some(s => visibleProviderIds.includes(s.providerId)));
+                const normalizedVisibleIds = visibleProviderIds.map(vid => String(vid).trim().toLowerCase());
+                isProvider = normalizedVisibleIds.includes(String(a.providerId).trim().toLowerCase()) ||
+                    !!(a.additionalServices?.some(s => normalizedVisibleIds.includes(String(s.providerId).trim().toLowerCase())));
             }
             // else: "All" selected and no providers checked = show all (isProvider stays true)
 
             const isNotCancelled = a.status !== 'Cancelado';
             let isSearchMatch = true;
             if (searchTerm) {
-                const customer = customers.find(c => c.id?.toLowerCase() === a.customerId?.toLowerCase());
+                const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(a.customerId).trim().toLowerCase());
                 isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
             }
 
@@ -376,8 +377,8 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const activeVisibileProviders = useMemo(() => {
         const filtered = selectedProviderId === 'all'
-            ? activeProviders.filter(p => visibleProviderIds.length === 0 || visibleProviderIds.includes(p.id))
-            : activeProviders.filter(p => p.id === selectedProviderId);
+            ? activeProviders.filter(p => visibleProviderIds.length === 0 || visibleProviderIds.some(vid => String(vid).trim().toLowerCase() === String(p.id).trim().toLowerCase()))
+            : activeProviders.filter(p => String(p.id).trim().toLowerCase() === String(selectedProviderId).trim().toLowerCase());
 
         return filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
     }, [activeProviders, selectedProviderId, visibleProviderIds]);
@@ -470,7 +471,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const handleSendWhatsApp = (e: React.MouseEvent, appt: Appointment) => {
         e.stopPropagation();
-        const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+        const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
         if (!customer) return;
 
         // Message for ONLY this specific appointment
@@ -521,11 +522,13 @@ export const Agenda: React.FC<AgendaProps> = ({
         const slotStartMinutes = slotHour * 60 + slotMin;
         const slotEndMinutes = slotStartMinutes + 30; // Each slot is 30 minutes
 
+        const normalizedProviderId = String(providerId).trim().toLowerCase();
+
         return gridAppointments.filter(a => {
             // Check main provider
             const [apptHour, apptMin] = a.time.split(':').map(Number);
             const apptMinutes = apptHour * 60 + apptMin;
-            const isMainProvider = a.providerId === providerId &&
+            const isMainProvider = String(a.providerId).trim().toLowerCase() === normalizedProviderId &&
                 apptMinutes >= slotStartMinutes &&
                 apptMinutes < slotEndMinutes;
 
@@ -534,7 +537,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 const extraTime = s.startTime || a.time;
                 const [extraHour, extraMin] = extraTime.split(':').map(Number);
                 const extraMinutes = extraHour * 60 + extraMin;
-                return s.providerId === providerId &&
+                return String(s.providerId).trim().toLowerCase() === normalizedProviderId &&
                     extraMinutes >= slotStartMinutes &&
                     extraMinutes < slotEndMinutes;
             });
@@ -1333,29 +1336,36 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 )}
 
                                                                 {slotAppointments.map((appt, idx) => {
-                                                                    const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+                                                                    const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
                                                                     const service = services.find(s => s.id === appt.serviceId);
 
                                                                     let displayServiceName: string = '';
                                                                     let displayTime: string = '';
                                                                     let cardHeight: number = 0;
 
-                                                                    if (appt.providerId === p.id) {
-                                                                        displayServiceName = appt.combinedServiceNames || service?.name || 'Serviço';
-                                                                        displayTime = appt.time;
-                                                                        const dur = getDuration(appt.time, appt.endTime, service?.durationMinutes);
-                                                                        const factor = dur / 30;
+                                                                    const myServices = [
+                                                                        ...(String(appt.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase() ? [{ srvId: appt.serviceId, time: appt.time, endTime: appt.endTime }] : []),
+                                                                        ...(appt.additionalServices || [])
+                                                                            .filter((s: any) => String(s.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase())
+                                                                            .map((s: any) => ({ srvId: s.serviceId, time: s.startTime || appt.time, endTime: s.endTime }))
+                                                                    ];
+
+                                                                    if (myServices.length > 0) {
+                                                                        const names = myServices.map(ms => services.find(s => s.id === ms.srvId)?.name || 'Serviço').join(' + ');
+                                                                        displayServiceName = names;
+                                                                        displayTime = myServices[0].time;
+
+                                                                        // Calculate height based on total duration of MY services in this appointment
+                                                                        const totalDuration = myServices.reduce((acc, ms) => {
+                                                                            const srv = services.find(s => s.id === ms.srvId);
+                                                                            return acc + getDuration(ms.time, ms.endTime, srv?.durationMinutes);
+                                                                        }, 0);
+
+                                                                        const factor = totalDuration / 30;
                                                                         cardHeight = (rowHeight * factor) - 8;
                                                                     } else {
-                                                                        const subService = appt.additionalServices?.find(s => s.providerId === p.id);
-                                                                        if (subService) {
-                                                                            const srv = services.find(s => s.id === subService.serviceId);
-                                                                            displayServiceName = srv?.name || 'Serviço Extra';
-                                                                            displayTime = subService.startTime || appt.time;
-                                                                            const dur = getDuration(displayTime, subService.endTime, srv?.durationMinutes);
-                                                                            const factor = dur / 30;
-                                                                            cardHeight = (rowHeight * factor) - 8;
-                                                                        }
+                                                                        // Should not happen as slotAppointments is already filtered, but for safety:
+                                                                        return null;
                                                                     }
 
                                                                     const [apptHour, apptMin] = displayTime.split(':').map(Number);
@@ -1440,8 +1450,9 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                                                     <div className="space-y-4">
                                                                                         {(() => {
+                                                                                            const columnProvId = p.id;
                                                                                             const customerApps = gridAppointments
-                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .filter(a => String(a.customerId).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase())
                                                                                                 .sort((a, b) => a.time.localeCompare(b.time));
 
                                                                                             const allItems = customerApps.flatMap(ca => {
@@ -1463,14 +1474,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                         time: extra.startTime || ca.time,
                                                                                                         duration: extra.durationMinutes || services.find(s => s.id === extra.serviceId)?.durationMinutes || 30,
                                                                                                         price: extra.price || services.find(s => s.id === extra.serviceId)?.price || 0,
-                                                                                                        status: ca.status // Bundled services share status
+                                                                                                        status: ca.status
                                                                                                     }))
                                                                                                 ];
-                                                                                            }).filter(item => item.provId === p.id);
+                                                                                            }).filter(item => {
+                                                                                                if (!item.provId || !columnProvId) return false;
+                                                                                                return String(item.provId).trim().toLowerCase() === String(columnProvId).trim().toLowerCase();
+                                                                                            });
 
                                                                                             return allItems.map((item, idx) => {
                                                                                                 const srv = services.find(s => s.id === item.srvId);
-                                                                                                const prov = providers.find(p => p.id === item.provId);
+                                                                                                const prov = providers.find(p => String(p.id).trim().toLowerCase() === String(item.provId).trim().toLowerCase());
                                                                                                 return (
                                                                                                     <div key={`${item.ca.id}-${idx}`} className={`${idx > 0 ? 'pt-4 border-t border-slate-100 dark:border-zinc-800' : ''}`}>
                                                                                                         <div className="flex justify-between items-start mb-1">
@@ -1481,7 +1495,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                                 </p>
                                                                                                             </div>
                                                                                                             <div className="text-right">
-                                                                                                                <p className="text-[10px] font-black text-slate-500 dark:text-zinc-500 uppercase">{prov?.name.split(' ')[0] || 'Profissional'}</p>
+                                                                                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">{prov?.name || 'Profissional'}</p>
                                                                                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white">R$ {item.price.toFixed(0)}</p>
                                                                                                             </div>
                                                                                                         </div>
@@ -1504,14 +1518,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total no dia</p>
                                                                                         <p className="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">
                                                                                             R$ {gridAppointments
-                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .filter(a => String(a.customerId).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase())
                                                                                                 .reduce((acc, a) => {
                                                                                                     let totalForApp = 0;
-                                                                                                    if (a.providerId === p.id) {
+                                                                                                    if (a.providerId && String(a.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase()) {
                                                                                                         totalForApp += a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0;
                                                                                                     }
                                                                                                     totalForApp += (a.additionalServices || [])
-                                                                                                        .filter((e: any) => e.providerId === p.id)
+                                                                                                        .filter((e: any) => e.providerId && String(e.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase())
                                                                                                         .reduce((eAcc: number, e: any) => eAcc + (e.price || services.find(s => s.id === e.serviceId)?.price || 0), 0);
                                                                                                     return acc + totalForApp;
                                                                                                 }, 0)
@@ -1523,7 +1537,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <p className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-tighter">Total Cliente (Geral)</p>
                                                                                         <p className="text-[10px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-tighter">
                                                                                             R$ {gridAppointments
-                                                                                                .filter(a => a.customerId === appt.customerId)
+                                                                                                .filter(a => String(a.customerId).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase())
                                                                                                 .reduce((acc, a) => {
                                                                                                     const mainPrice = a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0;
                                                                                                     const extrasPrice = (a.additionalServices || []).reduce((eAcc: number, e: any) =>

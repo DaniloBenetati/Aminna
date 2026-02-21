@@ -46,7 +46,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     return appointments
       .filter(a => {
         const isDateMatch = a.date === dateStr && a.status !== 'Cancelado';
-        const customer = customers.find(c => c.id === a.customerId);
+        const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(a.customerId).trim().toLowerCase());
         const isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : 'CLIENTE AVULSA'.toLowerCase().includes(searchTerm.toLowerCase());
         const isStatusMatch = statusFilter === 'all' || a.status === statusFilter;
         return isDateMatch && isSearchMatch && isStatusMatch;
@@ -97,7 +97,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     const errors: string[] = [];
 
     for (const appt of appsToIssue) {
-      const customer = customers.find(c => c.id === appt.customerId);
+      const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
       const service = services.find(s => s.id === appt.serviceId);
 
       if (!customer || !service) {
@@ -154,11 +154,11 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
   }, [appointments, selectedDate]);
 
   const handleSendWhatsApp = (appt: Appointment) => {
-    const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+    const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
     const service = services.find(s => s.id === appt.serviceId);
     if (!customer || !service) return;
 
-    const provider = providers.find(p => p.id === appt.providerId);
+    const provider = providers.find(p => String(p.id).trim().toLowerCase() === String(appt.providerId).trim().toLowerCase());
     const providerName = provider ? provider.name.split(' ')[0] : 'Equipe';
 
     const getClockEmoji = (time: string) => {
@@ -312,7 +312,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         </div>
 
         {filteredAppointments.length > 0 ? filteredAppointments.map(appt => {
-          const customer = customers.find(c => c.id?.toLowerCase() === appt.customerId?.toLowerCase());
+          const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
           const service = services.find(s => s.id === appt.serviceId);
           const hasRestriction = !!customer?.preferences?.restrictions;
 

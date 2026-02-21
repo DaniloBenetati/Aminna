@@ -177,7 +177,8 @@ export interface Appointment {
   paymentDate?: string; // Data real do pagamento (Baixa)
   time: string;
   endTime?: string;
-  status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento' | 'Em atendimento';
+  status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento' | 'Em atendimento' | 'Aguardando';
+  startTimeActual?: string; // Horário real do início do atendimento principal
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
   recurrenceId?: string; // ID to track recurring appointment series
@@ -201,8 +202,10 @@ export interface Appointment {
     discount: number;
     bookedPrice?: number; // Snapshot for extras
     commissionRateSnapshot?: number; // Snapshot for extras commission
-    startTime?: string; // Horário específico do serviço extra
-    endTime?: string; // Horário de término do serviço extra
+    startTime?: string; // Horário planejado
+    endTime?: string; // Horário planejado
+    startTimeActual?: string; // Horário REAL de início
+    status?: 'Pendente' | 'Em Andamento' | 'Concluído' | 'Cancelado' | 'Aguardando';
     products?: string[]; // Lista de produtos vinculados a este serviço extra
     clientName?: string; // Nome do cliente (para acompanhantes)
     clientPhone?: string; // Telefone do cliente (para acompanhantes)

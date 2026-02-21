@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -44,6 +44,8 @@ interface ServiceLine {
     clientPhone?: string; // Companion Phone
     isCompanion?: boolean; // Flag to identify companion services
     tipAmount: number;
+    status?: 'Pendente' | 'Em Andamento' | 'Concluído' | 'Cancelado' | 'Aguardando';
+    startTimeActual?: string;
 }
 
 const formatLocalDate = (date: Date) => {
@@ -179,7 +181,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: appointment.time,
             endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
             appointmentId: appointment.id,
-            tipAmount: appointment.tipAmount || 0
+            tipAmount: appointment.tipAmount || 0,
+            status: appointment.startTimeActual ? 'Em Andamento' : (
+                appointment.status === 'Concluído' ? 'Concluído' :
+                    (appointment.status === 'Cancelado' ? 'Cancelado' :
+                        (appointment.status === 'Aguardando' ? 'Aguardando' :
+                            (appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' ? 'Em Andamento' : 'Pendente')))
+            ),
+            startTimeActual: appointment.startTimeActual
         }];
 
         if (appointment.additionalServices) {
@@ -206,7 +215,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     clientName: extra.clientName,
                     clientPhone: extra.clientPhone,
                     isCompanion: !!extra.clientName, // Assume if name exists, it's a companion (or explicit flag if we saved it)
-                    tipAmount: extra.tipAmount || 0
+                    tipAmount: extra.tipAmount || 0,
+                    status: (extra.status as any) || 'Pendente',
+                    startTimeActual: extra.startTimeActual
                 });
             });
         }
@@ -623,7 +634,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setCouponCode('');
     };
 
-    const handleStartService = async () => {
+    const handleCheckIn = async () => {
         if (isSaving || restrictionData.isRestricted || handleCheckConflict()) return;
 
         // Check for merge possibility
@@ -631,8 +642,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
-        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
-        const extras = lines.slice(1).map(l => ({
+        // Update all service lines to 'Aguardando' if they are 'Pendente'
+        const updatedLines = lines.map(l => ({
+            ...l,
+            status: l.status === 'Pendente' ? 'Aguardando' : l.status
+        }));
+
+        const combinedNames = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+        const extras = updatedLines.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -642,25 +659,28 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: l.startTime,
             endTime: l.endTime,
             clientName: l.clientName,
-            clientPhone: l.clientPhone
+            clientPhone: l.clientPhone,
+            status: l.status,
+            startTimeActual: l.startTimeActual
         }));
 
         const dataToSave = {
-            status: 'Em Andamento',
-            time: lines[0].startTime, // Use the start time of the first service as the main appointment time
+            status: 'Aguardando',
+            time: updatedLines[0].startTime,
             date: appointmentDate,
             combined_service_names: combinedNames,
-            service_id: lines[0].serviceId,
-            provider_id: lines[0].providerId,
-            booked_price: lines[0].unitPrice,
-            main_service_products: lines[0].products,
+            service_id: updatedLines[0].serviceId,
+            provider_id: updatedLines[0].providerId,
+            booked_price: updatedLines[0].unitPrice,
+            main_service_products: updatedLines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
             payments: payments,
-            end_time: lines[0].endTime,
-            tip_amount: lines[0].tipAmount
+            end_time: updatedLines[0].endTime,
+            tip_amount: updatedLines[0].tipAmount,
+            start_time_actual: updatedLines[0].startTimeActual
         };
 
         try {
@@ -676,38 +696,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (result.error) throw result.error;
             const savedAppt = result.data;
 
-            // Auto-start next appointment for same customer on same day
-            const nextAppointment = allAppointments
-                .filter(a =>
-                    a.id !== appointment.id &&
-                    a.customerId === customer.id &&
-                    a.date === appointmentDate &&
-                    (a.status === 'Pendente' || a.status === 'Confirmado') &&
-                    a.time > lines[0].startTime
-                )
-                .sort((a, b) => a.time.localeCompare(b.time))[0];
-
-            if (nextAppointment) {
-                await supabase.from('appointments').update({
-                    status: 'Em Andamento'
-                }).eq('id', nextAppointment.id);
-            }
-
             onUpdateAppointments(prev => {
                 const updatedAppt = {
                     ...appointment,
-                    id: savedAppt.id, // Ensure we use the real DB ID
-                    status: 'Em Andamento',
-                    time: lines[0].startTime,
+                    id: savedAppt.id,
+                    status: 'Aguardando',
+                    providerId: updatedLines[0].providerId,
+                    serviceId: updatedLines[0].serviceId,
+                    time: updatedLines[0].startTime,
                     date: appointmentDate,
                     combinedServiceNames: combinedNames,
-                    bookedPrice: lines[0].unitPrice,
-                    mainServiceProducts: lines[0].products,
+                    bookedPrice: updatedLines[0].unitPrice,
+                    mainServiceProducts: updatedLines[0].products,
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
                     payments: payments,
-                    endTime: lines[0].endTime
+                    endTime: updatedLines[0].endTime
                 } as Appointment;
 
                 let updated = prev;
@@ -724,15 +729,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     // Check if we need to replace a temp one:
                     const filtered = prev.filter(a => a.id !== appointment.id);
                     updated = [...filtered, updatedAppt];
-                }
-
-                // Update next appointment status if it exists
-                if (nextAppointment) {
-                    updated = updated.map(a =>
-                        a.id === nextAppointment.id
-                            ? { ...a, status: 'Em Andamento' }
-                            : a
-                    );
                 }
 
                 return updated;
@@ -775,7 +771,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: l.startTime,
             endTime: l.endTime,
             clientName: l.clientName,
-            clientPhone: l.clientPhone
+            clientPhone: l.clientPhone,
+            status: l.status || 'Concluído',
+            startTimeActual: l.startTimeActual
         }));
 
         const dischargeDate = appointment.date || formatLocalDate(new Date());
@@ -795,7 +793,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             discount_amount: couponDiscountAmount,
             payments: payments,
             end_time: lines[0].endTime,
-            tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
+            tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+            start_time_actual: lines[0].startTimeActual
         };
 
         try {
@@ -862,6 +861,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     ...appointment,
                     ...(exists || {}),
                     status: 'Concluído',
+                    providerId: lines[0].providerId,
+                    serviceId: lines[0].serviceId,
                     pricePaid: totalValue,
                     paymentDate: dischargeDate,
                     paymentMethod: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
@@ -928,7 +929,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleSave = async () => {
+    const handleStartIndividualService = async (lineId: string) => {
+        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const updatedLines = lines.map(l => {
+            if (l.id === lineId) {
+                return { ...l, status: 'Em Andamento' as const, startTimeActual: now };
+            }
+            return l;
+        });
+
+        setLines(updatedLines);
+
+        // Auto-save immediately, do NOT close the modal
+        await handleSave(updatedLines, false);
+    };
+
+    const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true) => {
         if (isSaving) return;
 
         if (restrictionData.isRestricted) {
@@ -943,7 +959,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         if (handleCheckConflict()) {
             console.log('Conflict detected in handleSave');
-            // handleCheckConflict already shows an alert? Let's verify.
             return;
         }
 
@@ -955,10 +970,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
-        const serviceNamesArray = lines.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
+        const linesToUse = manualLines || lines;
+        const serviceNamesArray = linesToUse.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
         const uniqueNames = Array.from(new Set(serviceNamesArray));
         const combinedNames = uniqueNames.join(' + ');
-        const extras = lines.slice(1).map(l => ({
+        const extras = linesToUse.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -968,36 +984,46 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: l.startTime,
             endTime: l.endTime,
             clientName: l.clientName,
-            clientPhone: l.clientPhone
+            clientPhone: l.clientPhone,
+            status: l.status || 'Pendente',
+            startTimeActual: l.startTimeActual
         }));
 
         const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
 
+        // Overall status optimization: if at least one is "Em Andamento", and global is "Em atendimento", keep "Em Andamento" or similar.
+        // But for now, let's keep the global status as the user sets it or as it was.
+        let finalGlobalStatus = status;
+        if (linesToUse.some(l => l.status === 'Em Andamento') && status === 'Em atendimento') {
+            finalGlobalStatus = 'Em Andamento';
+        }
+
         const dataToSave = {
-            time: lines[0].startTime,
+            time: linesToUse[0].startTime,
             date: appointmentDate,
-            status: status,
+            status: finalGlobalStatus,
             combined_service_names: combinedNames,
-            service_id: lines[0].serviceId,
-            provider_id: lines[0].providerId,
-            booked_price: lines[0].unitPrice,
-            main_service_products: lines[0].products,
+            service_id: linesToUse[0].serviceId,
+            provider_id: linesToUse[0].providerId,
+            booked_price: linesToUse[0].unitPrice,
+            main_service_products: linesToUse[0].products,
             additional_services: extras,
             applied_coupon: appliedCoupon,
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
             payments: payments,
+            end_time: linesToUse[0].endTime,
+            tip_amount: linesToUse.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             recurrence_id: recId,
-            end_time: lines[0].endTime,
-            tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
+            start_time_actual: linesToUse[0].startTimeActual
         };
 
         try {
             // 0. Identify secondary appointments to "cancel/merge"
             const secondaryAppointmentIds = Array.from(new Set(
-                lines
+                linesToUse
                     .map(l => l.appointmentId)
-                    .filter(id => id && id !== appointment.id)
+                    .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
             ));
 
             const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
@@ -1056,6 +1082,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const exists = prev.find(a => a.id === appointment.id);
 
                 // Map all saved records to local state format
+                // If we're doing an in-place save, keep additional_services with updated statuses
                 let newLocalAppts = allSaved.map(s => ({
                     ...appointment,
                     id: s.id,
@@ -1075,11 +1102,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     paymentMethod: s.payment_method,
                     payments: s.payments || [],
                     recurrenceId: s.recurrence_id,
-                    endTime: s.end_time
+                    endTime: s.end_time,
+                    startTimeActual: s.start_time_actual
                 } as Appointment));
 
                 if (exists) {
-                    // Update the first one and add any new ones
                     const mainResult = newLocalAppts[0];
                     const others = newLocalAppts.slice(1);
                     return prev.map(a => {
@@ -1092,9 +1119,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 }
             });
 
-            onClose();
-            if (allSaved.length > 1) {
-                alert(`Agendamento e ${allSaved.length - 1} repetições criados com sucesso!`);
+            if (closeAfter) {
+                onClose();
+                if (allSaved.length > 1) {
+                    alert(`Agendamento e ${allSaved.length - 1} repetições criados com sucesso!`);
+                }
             }
         } catch (error) {
             console.error('Error saving appointment:', error);
@@ -1207,6 +1236,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     ...appointment,
                     ...(exists || {}),
                     status: 'Concluído',
+                    providerId: lines[0].providerId,
+                    serviceId: lines[0].serviceId,
                     pricePaid: 0,
                     paymentDate: dischargeDate,
                     paymentMethod: 'Dívida',
@@ -1486,10 +1517,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             rating: 5,
             feedback: '',
             unitPrice: services[0].price,
-            startTime: appointment.time, // Default to main time
+            startTime: appointment.time,
             endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
             isCompanion: false,
-            tipAmount: 0 // Initialize tipAmount
+            tipAmount: 0,
+            // If appointment already started (Aguardando or Em Andamento), new services inherit Aguardando
+            status: (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento') ? 'Aguardando' : 'Pendente'
         }]);
     };
 
@@ -1820,7 +1853,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 )}
 
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                                     <div className="space-y-0.5">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                                         <select
@@ -1833,13 +1866,44 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 .filter(s => {
                                                                     const provider = providers.find(p => p.id === line.providerId);
                                                                     if (!provider) return true;
-                                                                    // Se não houver especialidades definidas, mostra tudo para evitar bloqueio
                                                                     if (!provider.specialties || provider.specialties.length === 0) return true;
-                                                                    // Filtra por nome do serviço
                                                                     return provider.specialties.includes(s.name);
                                                                 })
                                                                 .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
                                                         </select>
+                                                    </div>
+
+                                                    <div className="space-y-0.5">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5">
+                                                            <Avatar
+                                                                src={providers.find(p => p.id === line.providerId)?.avatar}
+                                                                name={providers.find(p => p.id === line.providerId)?.name || ''}
+                                                                size="w-6 h-6"
+                                                            />
+                                                            <select
+                                                                className={`bg-transparent border-none text-[11px] font-black outline-none w-full ${customer.restrictedProviderIds?.includes(line.providerId)
+                                                                    ? 'text-rose-600 dark:text-rose-400'
+                                                                    : 'text-slate-950 dark:text-white'
+                                                                    }`}
+                                                                value={line.providerId}
+                                                                onChange={e => updateLine(line.id, 'providerId', e.target.value)}
+                                                            >
+                                                                {activeProviders.map(p => {
+                                                                    const isOnVacation = !!(p.vacationStart && p.vacationEnd && appointmentDate >= p.vacationStart && appointmentDate <= p.vacationEnd);
+                                                                    return (
+                                                                        <option
+                                                                            key={p.id}
+                                                                            value={p.id}
+                                                                            disabled={isOnVacation}
+                                                                            className={`${isOnVacation ? 'text-slate-300 bg-slate-50' : 'text-slate-950 dark:text-white bg-white dark:bg-zinc-800'}`}
+                                                                        >
+                                                                            {p.name.split(' ')[0]} {isOnVacation ? '- EM FÉRIAS' : ''}
+                                                                        </option>
+                                                                    );
+                                                                })}
+                                                            </select>
+                                                        </div>
                                                     </div>
 
                                                     <div className="space-y-0.5 relative">
@@ -1859,7 +1923,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             />
                                                             {line.showProductResults && (
                                                                 <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
-                                                                    {/* Use stock prop instead of STOCK constant */}
                                                                     {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
                                                                         <button
                                                                             key={p.id} type="button"
@@ -1887,7 +1950,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                                <div className={`grid grid-cols-2 md:grid-cols-4 ${((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700`}>
                                                     <div className="flex flex-col">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
                                                         <input
@@ -1906,38 +1969,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             onChange={e => updateLine(line.id, 'endTime', e.target.value)}
                                                         />
                                                     </div>
-                                                    <div className="flex flex-col flex-1">
-                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
-                                                        <div className="flex items-center gap-2">
-                                                            <Avatar
-                                                                src={providers.find(p => p.id === line.providerId)?.avatar}
-                                                                name={providers.find(p => p.id === line.providerId)?.name || ''}
-                                                                size="w-6 h-6"
-                                                            />
-                                                            <select
-                                                                className={`bg-white dark:bg-zinc-800 border-none text-[11px] font-black p-1 outline-none w-full rounded ${customer.restrictedProviderIds?.includes(line.providerId)
-                                                                    ? 'text-rose-600 dark:text-rose-400 border-b-2 border-rose-500'
-                                                                    : 'text-slate-950 dark:text-white'
-                                                                    }`}
-                                                                value={line.providerId}
-                                                                onChange={e => updateLine(line.id, 'providerId', e.target.value)}
-                                                            >
-                                                                {activeProviders.map(p => {
-                                                                    const isOnVacation = p.vacationStart && p.vacationEnd && appointmentDate >= p.vacationStart && appointmentDate <= p.vacationEnd;
-                                                                    return (
-                                                                        <option
-                                                                            key={p.id}
-                                                                            value={p.id}
-                                                                            disabled={isOnVacation}
-                                                                            className={`${isOnVacation ? 'text-slate-300 bg-slate-50' : 'text-slate-950 dark:text-white bg-white dark:bg-zinc-800'}`}
-                                                                        >
-                                                                            {p.name.split(' ')[0]} {isOnVacation ? '- EM FÉRIAS' : ''}
-                                                                        </option>
-                                                                    );
-                                                                })}
-                                                            </select>
-                                                        </div>
-                                                    </div>
 
                                                     <div className="flex flex-col">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Valor Unit.</label>
@@ -1952,26 +1983,58 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             />
                                                         </div>
                                                     </div>
+
                                                     <div className="flex flex-col">
-                                                        <label className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase ml-1">Caixinha</label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-400">R$</span>
-                                                            <input
-                                                                type="number"
-                                                                step="0.01"
-                                                                className="bg-transparent border border-rose-200 dark:border-rose-800 rounded-lg text-[11px] font-black text-rose-600 dark:text-rose-400 pl-6 pr-1 py-1 outline-none w-20 focus:border-rose-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                                value={line.tipAmount}
-                                                                onChange={e => updateLine(line.id, 'tipAmount', Math.max(0, parseFloat(e.target.value) || 0))}
-                                                            />
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Status</label>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${line.status === 'Em Andamento' ? 'bg-emerald-100 text-emerald-700' :
+                                                                line.status === 'Concluído' ? 'bg-blue-100 text-blue-700' :
+                                                                    'bg-slate-100 text-slate-600'
+                                                                }`}>
+                                                                {line.status || 'Pendente'}
+                                                            </span>
+                                                            {(line.status === 'Aguardando' || line.status === 'Pendente') && (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento') && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleStartIndividualService(line.id)}
+                                                                    className="px-2 py-1 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-indigo-200"
+                                                                >
+                                                                    <Play size={10} fill="currentColor" /> Iniciar
+                                                                </button>
+                                                            )}
+                                                            {line.startTimeActual && (
+                                                                <span className="text-[9px] font-black text-slate-400">
+                                                                    {line.startTimeActual}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                        className={`col-span-1 flex items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
-                                                    >
-                                                        <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
-                                                    </button>
+
+                                                    {((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') && (
+                                                        <>
+                                                            <div className="flex flex-col">
+                                                                <label className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase ml-1">Caixinha</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-400">R$</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        className="bg-transparent border border-rose-200 dark:border-rose-800 rounded-lg text-[11px] font-black text-rose-600 dark:text-rose-400 pl-6 pr-1 py-1 outline-none w-20 focus:border-rose-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        value={line.tipAmount}
+                                                                        onChange={e => updateLine(line.id, 'tipAmount', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
+                                                                className={`col-span-1 flex items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                                            >
+                                                                <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -2098,20 +2161,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
-                                                                    if (appointment.status === 'Concluído' || appointment.status === 'Em Andamento') {
+                                                                    if (appointment.status === 'Concluído' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') {
                                                                         setMode('CHECKOUT');
                                                                     } else {
-                                                                        handleStartService();
+                                                                        handleCheckIn();
                                                                     }
                                                                 }}
                                                                 className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                                                             >
-                                                                {appointment.status === 'Concluído' ? <CreditCard size={16} /> : (appointment.status === 'Em Andamento' ? <CreditCard size={16} /> : <CheckCircle2 size={16} />)}
-                                                                {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : (appointment.status === 'Em Andamento' ? 'PAGAR / CHECKOUT' : 'CHECK-IN / INICIAR')}
+                                                                {appointment.status === 'Concluído' ? <CreditCard size={16} /> : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? <CreditCard size={16} /> : <CheckCircle2 size={16} />)}
+                                                                {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? 'PAGAR / CHECKOUT' : 'REALIZAR CHECK-IN')}
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={appointment.status === 'Concluído' ? () => setMode('HISTORY') : handleSave}
+                                                                onClick={appointment.status === 'Concluído' ? () => setMode('HISTORY') : () => handleSave()}
                                                                 disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
                                                                 className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                             >
@@ -2125,12 +2188,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
                                                     <button
                                                         type="button"
-                                                        onClick={handleStartService}
+                                                        onClick={handleCheckIn}
                                                         disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
                                                         className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
-                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : 'INICIAR ATENDIMENTO')}
-                                                        {isSaving ? 'INICIANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'INICIAR ATENDIMENTO')}
+                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <CheckCircle2 size={16} />)}
+                                                        {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'REALIZAR CHECK-IN')}
                                                     </button>
                                                 ) : (
                                                     <button
@@ -2508,6 +2571,44 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </div>
                                         );
                                     })}
+                                </div>
+
+                                {/* Coupon / Campaign Input */}
+                                <div className="mt-3">
+                                    {appliedCampaign ? (
+                                        <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                                            <div className="flex items-center gap-2">
+                                                <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                                <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                                                <span className="text-[9px] font-bold text-slate-400">
+                                                    {appliedCampaign.discountType === 'PERCENTAGE'
+                                                        ? `-${appliedCampaign.discountValue}% OFF`
+                                                        : ` R$ ${couponDiscountAmount.toFixed(2)} OFF`}
+                                                </span>
+                                            </div>
+                                            <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 rounded">
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Código do cupom..."
+                                                value={couponCode}
+                                                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                                                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase placeholder-slate-300 text-slate-900 dark:text-white outline-none focus:border-slate-400"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleApplyCoupon}
+                                                className="px-3 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                                            >
+                                                APLICAR
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-2 mt-4">

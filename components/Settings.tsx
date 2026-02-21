@@ -371,6 +371,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
+    const handleDeleteUser = async (id: string, email: string) => {
+        if (!confirm(`Tem certeza que deseja excluir o acesso de ${email}? Esta ação não pode ser desfeita.`)) return;
+
+        try {
+            const { error } = await supabase.from('profiles').delete().eq('id', id);
+            if (error) throw error;
+
+            setProfiles(prev => prev.filter(p => p.id !== id));
+        } catch (error) {
+            console.error('Error deleting user:', error);
+            alert('Erro ao excluir usuário');
+        }
+    };
+
     const toggleTabPermission = (tab: ViewState) => {
         if (!editingUser) return;
         const currentTabs = editingUser.permissions.tabs;
@@ -662,6 +676,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                 <p className="text-sm font-black text-slate-900 dark:text-white truncate">{user.email}</p>
                                                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.role}</p>
                                                             </div>
+                                                            {isAdmin && (
+                                                                <button
+                                                                    onClick={() => handleDeleteUser(user.id, user.email)}
+                                                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                                                    title="Excluir Acesso"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            )}
                                                         </div>
                                                         <div className="space-y-3">
                                                             <div className="flex flex-wrap gap-1">

@@ -54,7 +54,7 @@ export const Copa: React.FC<CopaProps> = ({
         const today = toLocalDateStr(new Date());
 
         return appointments.filter(a =>
-            a.date === today && a.status === 'Em Andamento'
+            a.date === today && (a.status === 'Em Andamento' || a.status === 'Em atendimento' || a.status === 'Aguardando')
         ).sort((a, b) => a.time.localeCompare(b.time));
     }, [appointments]);
 

@@ -198,7 +198,7 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             data_competencia: dataCompetencia,
             natureza_operacao: '1',
             regime_especial_tributacao: '0',
-            optante_simples_nacional: false,
+            optante_simples_nacional: true,    // ME optante pelo Simples Nacional
             incentivo_fiscal: false,
 
             prestador: {
@@ -207,10 +207,10 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
             },
 
             servico: {
-                aliquota: 5,
+                aliquota: 2,                       // Alíquota ISS SP para Simples Nacional (2-5%; 2 is common floor)
                 iss_retido: false,
-                item_lista_servico: '060101', // 6 digits required by Focus for SP/National
-                codigo_tributacao: '08494', // Reverting to the specialized municipal code for SP
+                item_lista_servico: '200100',      // LC 116/2003: Item 20 (Serviços pessoais) + Subitem 01 (Barbearia/cabeleireiros/manicuros) + Desdobro 00
+                codigo_cnae: '9602501',            // CNAE: Cabeleireiros, manicuros, pedicuros e congêneres (padrão nacional NFS-e)
                 valor_servicos: params.totalValue,
                 discriminacao: `${params.serviceDescription}\n\n` +
                     `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
