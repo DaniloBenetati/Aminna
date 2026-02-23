@@ -1382,6 +1382,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     // Overlap handling
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
+                                                                    const isAnyServiceRunning = appt.status === 'Em Andamento' || appt.status === 'Em atendimento' || appt.additionalServices?.some((s: any) => s.status === 'Em Andamento');
 
                                                                     return (
                                                                         <DraggableAppointment
@@ -1401,9 +1402,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                                 className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
                                     ${appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
-                                                                                        appt.status === 'Em Andamento' || appt.status === 'Em atendimento' ? 'bg-[#00AA00] border-[#00AA00] text-white' :
-                                                                                            appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
-                                                                                                'bg-[#008877] border-[#008877] text-white'
+                                                                                        isAnyServiceRunning ? 'bg-[#22c55e] border-[#22c55e] text-white' :
+                                                                                            appt.status === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
+                                                                                                appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
+                                                                                                    'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
                                                                                 <div className="flex justify-between items-start">
@@ -1425,10 +1427,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
                                                                                         <div className="flex items-center gap-1">
-                                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
-                                                                                                appt.status === 'Em Andamento' || appt.status === 'Em atendimento' ? 'bg-blue-500' :
-                                                                                                    appt.status === 'Concluído' ? 'bg-slate-400' :
-                                                                                                        'bg-amber-400'
+                                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                                                isAnyServiceRunning ? 'bg-[#22c55e]' :
+                                                                                                    appt.status === 'Aguardando' ? 'bg-[#f59e0b]' :
+                                                                                                        appt.status === 'Concluído' ? 'bg-slate-400' :
+                                                                                                            'bg-amber-400'
                                                                                                 }`}></span>
                                                                                             <span className="text-[7.5px] font-black text-white/80 uppercase">{appt.status}</span>
                                                                                         </div>
@@ -1507,9 +1510,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                         </div>
                                                                                                         <div className="flex justify-between items-center mt-1">
                                                                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
-                                                                                                                item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#00AA00] text-white' :
-                                                                                                                    item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
-                                                                                                                        'bg-[#008877] text-white'
+                                                                                                                item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#22c55e] text-white' :
+                                                                                                                    item.status === 'Aguardando' ? 'bg-[#f59e0b] text-white' :
+                                                                                                                        item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
+                                                                                                                            'bg-[#008877] text-white'
                                                                                                                 }`}>
                                                                                                                 {item.status}
                                                                                                             </span>

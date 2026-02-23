@@ -994,7 +994,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         // Overall status optimization: if at least one is "Em Andamento", and global is "Em atendimento", keep "Em Andamento" or similar.
         // But for now, let's keep the global status as the user sets it or as it was.
         let finalGlobalStatus = status;
-        if (linesToUse.some(l => l.status === 'Em Andamento') && status === 'Em atendimento') {
+        if (linesToUse.some(l => l.status === 'Em Andamento') && (status === 'Aguardando' || status === 'Em atendimento' || status === 'Confirmado' || status === 'Pendente')) {
             finalGlobalStatus = 'Em Andamento';
         }
 
