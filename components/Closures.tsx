@@ -32,64 +32,99 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     const provider = providers.find(p => p.id === providerId);
     const defaultRate = provider?.commissionRate || 0; // Default rate from provider
 
-    const providerApps = appointments.filter(app => {
-      const isProvider = app.providerId === providerId;
+    let revenue = 0; // Cash Revenue/Production Total
+    let commissionVal = 0; // Total Commission/Payout
+    let count = 0;
+    const detailedServices: any[] = [];
+
+    appointments.forEach(app => {
       // Normalize referenceDate to YYYY-MM-DD to ensure strict date comparison
       // This handles cases where paymentDate includes time (e.g. ISO string)
       const referenceDate = app.date ? app.date.substring(0, 10) : (app.paymentDate ? app.paymentDate.substring(0, 10) : '');
-
       const inRange = referenceDate >= startDate && referenceDate <= endDate;
       const validStatus = app.status === 'Concluído';
-      return isProvider && inRange && validStatus;
-    });
 
-    let revenue = 0; // Cash Revenue/Production Total
-    let commissionVal = 0; // Total Commission/Payout
+      if (!inRange || !validStatus) return;
 
-    const detailedServices = providerApps.map(app => {
-      const service = services.find(s => s.id === app.serviceId);
       const customer = customers.find(c => c.id === app.customerId);
-
-      // 1. Determine Base Value (Production)
-      let baseValue = app.pricePaid || 0;
-
-      // Exception: If Paid=0 (VIP/Debt) but Completed, commission is on the full Booked/Service Price
-      if (baseValue === 0 && app.status === 'Concluído') {
-        baseValue = app.bookedPrice || service?.price || 0;
-      }
-
-      // Also check explicitly for Debt payment method or VIP status to ensure we use valid base
-      if (app.paymentMethod === 'Dívida' || customer?.isVip) {
-        baseValue = app.bookedPrice || service?.price || 0;
-      }
-
-      // 2. Determine Rate (Use snapshot if available, or current provider rate)
-      // Note: If commissionRateSnapshot is not present (null/undefined), we use the current provider rate.
-      const rate = app.commissionRateSnapshot ?? defaultRate;
-
-      // 3. Calculate Payout
-      const payout = baseValue * rate;
-
-      revenue += baseValue;
-      commissionVal += payout;
-
       const displayDate = app.paymentDate || app.date;
 
-      return {
-        date: displayDate,
-        time: app.time,
-        serviceName: app.combinedServiceNames || service?.name || 'Serviço',
-        clientName: customer?.name || 'Cliente Avulso',
-        price: payout, // DISPLAY PAYOUT VALUE
-        originalValue: baseValue,
-        rate: rate
-      };
+      // 1. Process Main Service if assigned to this provider
+      if (app.providerId === providerId) {
+        const service = services.find(s => s.id === app.serviceId);
+
+        // Determine Base Value (Production)
+        // Use bookedPrice to avoid capturing the entire appointment total (which includes extras)
+        let baseValue = app.bookedPrice || service?.price || 0;
+
+        // Fallback for backward compatibility where single-service apps used pricePaid
+        if ((!app.additionalServices || app.additionalServices.length === 0) && app.pricePaid && app.pricePaid > 0) {
+          baseValue = app.pricePaid;
+        }
+
+        // Exception: VIP, Debt, or Courtesy
+        if (app.paymentMethod === 'Dívida' || app.paymentMethod === 'Cortesia' || customer?.isVip || baseValue === 0) {
+          baseValue = app.bookedPrice || service?.price || 0;
+        }
+
+        // Determine Rate
+        const rate = app.commissionRateSnapshot ?? defaultRate;
+        const payout = baseValue * rate;
+
+        revenue += baseValue;
+        commissionVal += payout;
+        count += 1;
+
+        detailedServices.push({
+          date: displayDate,
+          time: app.time,
+          serviceName: app.combinedServiceNames && (!app.additionalServices || app.additionalServices.length === 0) 
+            ? app.combinedServiceNames 
+            : (service?.name || 'Serviço'),
+          clientName: customer?.name || 'Cliente Avulso',
+          price: payout, // DISPLAY PAYOUT VALUE
+          originalValue: baseValue,
+          rate: rate
+        });
+      }
+
+      // 2. Process Additional Services if assigned to this provider
+      if (app.additionalServices && app.additionalServices.length > 0) {
+        app.additionalServices.forEach(extra => {
+          if (extra.providerId === providerId) {
+            const extraService = services.find(s => s.id === extra.serviceId);
+
+            let baseValue = extra.bookedPrice || extraService?.price || 0;
+
+            if (extra.isCourtesy || app.paymentMethod === 'Dívida' || app.paymentMethod === 'Cortesia' || customer?.isVip || baseValue === 0) {
+              baseValue = extra.bookedPrice || extraService?.price || 0;
+            }
+
+            const rate = extra.commissionRateSnapshot ?? defaultRate;
+            const payout = baseValue * rate;
+
+            revenue += baseValue;
+            commissionVal += payout;
+            count += 1;
+
+            detailedServices.push({
+              date: displayDate,
+              time: extra.startTime || app.time,
+              serviceName: extraService?.name || 'Serviço Adicional',
+              clientName: extra.clientName || customer?.name || 'Cliente Avulso',
+              price: payout, // DISPLAY PAYOUT VALUE
+              originalValue: baseValue,
+              rate: rate
+            });
+          }
+        });
+      }
     });
 
     // Calculate effective average rate for display, handling division by zero
     const effectiveRate = revenue > 0 ? (commissionVal / revenue) : defaultRate;
 
-    return { provider, revenue, commissionRate: effectiveRate, commissionVal, count: providerApps.length, details: detailedServices };
+    return { provider, revenue, commissionRate: effectiveRate, commissionVal, count, details: detailedServices };
   };
 
   const reportData = useMemo(() => {
