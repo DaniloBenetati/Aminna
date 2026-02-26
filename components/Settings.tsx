@@ -406,8 +406,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
         setIsResettingPassword(true);
         try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("Não autenticado");
+
             const { data, error } = await supabase.functions.invoke('reset-password', {
-                body: { userId: editingUser.id, newPassword: tempPassword }
+                body: { userId: editingUser.id, newPassword: tempPassword },
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
+                }
             });
 
             if (error || !data?.success) {
