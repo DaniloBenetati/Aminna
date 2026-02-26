@@ -78,8 +78,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         detailedServices.push({
           date: displayDate,
           time: app.time,
-          serviceName: app.combinedServiceNames && (!app.additionalServices || app.additionalServices.length === 0) 
-            ? app.combinedServiceNames 
+          serviceName: app.combinedServiceNames && (!app.additionalServices || app.additionalServices.length === 0)
+            ? app.combinedServiceNames
             : (service?.name || 'Serviço'),
           clientName: customer?.name || 'Cliente Avulso',
           price: payout, // DISPLAY PAYOUT VALUE
@@ -322,7 +322,6 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     });
 
     message += `\n * RESUMO FINANCEIRO:*\n`;
-    message += `Faturamento Total: R$ ${data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
     message += `Minha Comissão(${(data.commissionRate * 100).toFixed(0)}%): R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
     message += `\n * VALOR A RECEBER: R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
     message += `_Gerado automaticamente pelo Sistema Aminna._`;
