@@ -929,6 +929,90 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const handleRemakeService = async () => {
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
+
+        const confirmRemake = window.confirm(`⚠️ ATENÇÃO: REFAZER ATENDIMENTO\n\nAo confirmar, este atendimento será ZERADO.\n- A cliente NÃO será cobrada.\n- A profissional NÃO receberá comissão.\n\nDeseja realmente refazer este atendimento sem custos?`);
+        if (!confirmRemake) return;
+
+        setIsSaving(true);
+        const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
+        const allProductsUsed = lines.flatMap(l => l.products);
+
+        const extras = lines.slice(1).map(l => ({
+            ...l,
+            serviceId: l.serviceId,
+            providerId: l.providerId,
+            isCourtesy: true,
+            discount: l.unitPrice,
+            bookedPrice: 0,
+            products: l.products,
+            startTime: l.startTime,
+            endTime: l.endTime,
+            clientName: l.clientName,
+            clientPhone: l.clientPhone,
+            status: 'Concluído',
+            startTimeActual: l.startTimeActual
+        }));
+
+        const dischargeDate = appointment.date || formatLocalDate(new Date());
+        const remakePaymentMethod = 'Refazer';
+
+        const updatedData = {
+            status: 'Concluído',
+            price_paid: 0,
+            payment_date: dischargeDate,
+            payment_method: remakePaymentMethod,
+            products_used: allProductsUsed,
+            combined_service_names: combinedNames,
+            booked_price: 0,
+            provider_id: lines[0].providerId,
+            main_service_products: lines[0].products,
+            additional_services: extras,
+            applied_coupon: null,
+            discount_amount: lines[0].unitPrice,
+            payments: [{ id: Date.now().toString(), method: remakePaymentMethod, amount: 0 }],
+            end_time: lines[0].endTime,
+            tip_amount: 0,
+            start_time_actual: lines[0].startTimeActual,
+            is_remake: true
+        };
+
+        try {
+            const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (error) throw error;
+
+            onUpdateAppointments(prev => prev.map(a => a.id === appointment.id ? {
+                ...appointment,
+                status: 'Concluído',
+                pricePaid: 0,
+                paymentDate: dischargeDate,
+                paymentMethod: remakePaymentMethod,
+                productsUsed: allProductsUsed,
+                combinedServiceNames: combinedNames,
+                bookedPrice: 0,
+                providerId: lines[0].providerId,
+                mainServiceProducts: lines[0].products,
+                additionalServices: extras as any,
+                appliedCoupon: undefined,
+                discountAmount: lines[0].unitPrice,
+                payments: [{ id: Date.now().toString(), method: remakePaymentMethod, amount: 0 }],
+                endTime: lines[0].endTime,
+                tipAmount: 0,
+                startTimeActual: lines[0].startTimeActual,
+                isRemake: true
+            } : a));
+
+            alert('Atendimento marcado como REFAZER com sucesso.');
+            onClose();
+        } catch (error) {
+            console.error('Error remaking service:', error);
+            alert('Erro ao refazer atendimento no banco de dados.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleStartIndividualService = async (lineId: string) => {
         const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const updatedLines = lines.map(l => {
@@ -2664,6 +2748,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 >
                                     {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>)}
                                 </button>
+
+                                {appointment.status !== 'Concluído' && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRemakeService}
+                                        className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                        title="Zerar o valor e refazer o atendimento (Sem cobrança e sem comissão)"
+                                    >
+                                        <RefreshCw size={14} /> REFAZER ATENDIMENTO (ZERAR AGENDA)
+                                    </button>
+                                )}
+
                                 <button onClick={() => setMode(appointment.status === 'Concluído' ? 'HISTORY' : 'VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">
                                     {appointment.status === 'Concluído' ? 'CANCELAR EDIÇÃO' : 'REVISAR DADOS'}
                                 </button>
@@ -2879,6 +2975,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 >
                                     <Edit3 size={18} /> EDITAR ATENDIMENTO
                                 </button>
+
+                                {(!appointment.isRemake && appointment.paymentMethod !== 'Refazer') && (
+                                    <button
+                                        type="button"
+                                        onClick={handleRemakeService}
+                                        className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
+                                    >
+                                        <RefreshCw size={14} /> TRANSFORMAR EM REFAZER (ZERAR)
+                                    </button>
+                                )}
+
                                 <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
                                     Fechar Histórico
                                 </button>

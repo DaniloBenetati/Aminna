@@ -67,6 +67,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           baseValue = app.bookedPrice || service?.price || 0;
         }
 
+        // Refazer should ALWAYS be 0 value, no commission.
+        if (app.isRemake || app.paymentMethod === 'Refazer') {
+          baseValue = 0;
+        }
+
         // Determine Rate
         const rate = app.commissionRateSnapshot ?? defaultRate;
         const payout = baseValue * rate;
@@ -98,6 +103,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
             if (extra.isCourtesy || app.paymentMethod === 'Dívida' || app.paymentMethod === 'Cortesia' || customer?.isVip || baseValue === 0) {
               baseValue = extra.bookedPrice || extraService?.price || 0;
+            }
+
+            // Refazer should ALWAYS be 0 value, no commission.
+            if (app.isRemake || app.paymentMethod === 'Refazer') {
+              baseValue = 0;
             }
 
             const rate = extra.commissionRateSnapshot ?? defaultRate;

@@ -380,13 +380,17 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     {isProvExpanded && (
                                         <div className="bg-slate-50/50 dark:bg-zinc-800/30 p-2 mx-2 mb-2 rounded-xl animate-in fade-in zoom-in-95 duration-200 space-y-2">
                                             {Object.entries(pData.customers).sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount).map(([customerName, cData]: [string, any]) => {
-                                                const isVip = cData.amount < 0.01 || cData.isVip;
+                                                const hasRefazer = cData.transactions.some((t: any) => t.paymentMethod === 'Refazer');
+                                                // If it's Refazer, we completely ignore VIP logic for display priority
+                                                const isVip = !hasRefazer && (cData.amount < 0.01 || cData.isVip);
+
                                                 return (
                                                     <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
                                                         <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-slate-50 dark:border-zinc-800/50">
                                                             <div className="flex items-center gap-2">
                                                                 <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1.5">
                                                                     {customerName}
+                                                                    {hasRefazer && <span className="bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">REFAZER</span>}
                                                                     {isVip && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Crown size={8} /> VIP</span>}
                                                                     {cData.tipAmount > 0 && <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Target size={8} /> CAIXINHA</span>}
                                                                 </span>

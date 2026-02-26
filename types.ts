@@ -215,6 +215,7 @@ export interface Appointment {
   rating?: number;
   feedback?: string;
   tipAmount?: number;
+  isRemake?: boolean; // Refazer agendamento (zerado)
 }
 
 export interface ChatMessage {

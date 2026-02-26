@@ -1401,11 +1401,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             <div
                                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                                 className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
-                                    ${appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
-                                                                                        isAnyServiceRunning ? 'bg-[#22c55e] border-[#22c55e] text-white' :
-                                                                                            appt.status === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
-                                                                                                appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
-                                                                                                    'bg-[#008877] border-[#008877] text-white'
+                                                                    ${(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
+                                                                                        appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                            isAnyServiceRunning ? 'bg-[#22c55e] border-[#22c55e] text-white' :
+                                                                                                appt.status === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
+                                                                                                    appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
+                                                                                                        'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
                                                                                 <div className="flex justify-between items-start">
@@ -1427,13 +1428,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
                                                                                         <div className="flex items-center gap-1">
-                                                                                            <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
-                                                                                                isAnyServiceRunning ? 'bg-[#22c55e]' :
-                                                                                                    appt.status === 'Aguardando' ? 'bg-[#f59e0b]' :
-                                                                                                        appt.status === 'Concluído' ? 'bg-slate-400' :
-                                                                                                            'bg-amber-400'
+                                                                                            <span className={`w-2 h-2 rounded-full ${(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
+                                                                                                appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                                                    isAnyServiceRunning ? 'bg-[#22c55e]' :
+                                                                                                        appt.status === 'Aguardando' ? 'bg-[#f59e0b]' :
+                                                                                                            appt.status === 'Concluído' ? 'bg-slate-400' :
+                                                                                                                'bg-amber-400'
                                                                                                 }`}></span>
-                                                                                            <span className="text-[7.5px] font-black text-white/80 uppercase">{appt.status}</span>
+                                                                                            <span className="text-[7.5px] font-black text-white/80 uppercase">{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : appt.status}</span>
                                                                                         </div>
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
@@ -1509,13 +1511,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                             </div>
                                                                                                         </div>
                                                                                                         <div className="flex justify-between items-center mt-1">
-                                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
-                                                                                                                item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#22c55e] text-white' :
-                                                                                                                    item.status === 'Aguardando' ? 'bg-[#f59e0b] text-white' :
-                                                                                                                        item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
-                                                                                                                            'bg-[#008877] text-white'
+                                                                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${(item.ca.isRemake || item.ca.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 text-white' :
+                                                                                                                item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
+                                                                                                                    item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#22c55e] text-white' :
+                                                                                                                        item.status === 'Aguardando' ? 'bg-[#f59e0b] text-white' :
+                                                                                                                            item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
+                                                                                                                                'bg-[#008877] text-white'
                                                                                                                 }`}>
-                                                                                                                {item.status}
+                                                                                                                {(item.ca.isRemake || item.ca.paymentMethod === 'Refazer') ? 'REFAZER' : item.status}
                                                                                                             </span>
                                                                                                         </div>
                                                                                                     </div>
@@ -2006,35 +2009,37 @@ export const Agenda: React.FC<AgendaProps> = ({
                 )
             }
             {/* Finance Modal */}
-            {isFinanceModalOpen && (
-                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
-                        <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
-                            <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
-                                <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
-                            </h3>
-                            <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
-                        </div>
-                        <div className="p-0 max-h-[80vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
-                            <DailyCloseView
-                                transactions={dailyTransactions}
-                                physicalCash={physicalCash}
-                                setPhysicalCash={setPhysicalCash}
-                                closingObservation={closingObservation}
-                                setClosingObservation={setClosingObservation}
-                                closerName={closerName}
-                                setCloserName={setCloserName}
-                                date={dateRef}
-                                appointments={appointments}
-                                services={services}
-                                onPrint={handlePrintDailyClose}
-                                onCloseRegister={handleCloseRegister}
-                                onShareWhatsapp={handleShareWhatsappDailyClose}
-                            />
+            {
+                isFinanceModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
+                            <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
+                                    <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
+                                </h3>
+                                <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
+                            </div>
+                            <div className="p-0 max-h-[80vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                                <DailyCloseView
+                                    transactions={dailyTransactions}
+                                    physicalCash={physicalCash}
+                                    setPhysicalCash={setPhysicalCash}
+                                    closingObservation={closingObservation}
+                                    setClosingObservation={setClosingObservation}
+                                    closerName={closerName}
+                                    setCloserName={setCloserName}
+                                    date={dateRef}
+                                    appointments={appointments}
+                                    services={services}
+                                    onPrint={handlePrintDailyClose}
+                                    onCloseRegister={handleCloseRegister}
+                                    onShareWhatsapp={handleShareWhatsappDailyClose}
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
         </div >
     );
 };
