@@ -216,7 +216,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     clientPhone: extra.clientPhone,
                     isCompanion: !!extra.clientName, // Assume if name exists, it's a companion (or explicit flag if we saved it)
                     tipAmount: extra.tipAmount || 0,
-                    status: (extra.status as any) || 'Pendente',
+                    status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado') ? appointment.status : ((extra.status as any) || 'Pendente'),
                     startTimeActual: extra.startTimeActual
                 });
             });
@@ -772,7 +772,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: l.endTime,
             clientName: l.clientName,
             clientPhone: l.clientPhone,
-            status: l.status || 'Concluído',
+            status: 'Concluído',
             startTimeActual: l.startTimeActual
         }));
 

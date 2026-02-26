@@ -1382,7 +1382,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     // Overlap handling
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
-                                                                    const isAnyServiceRunning = appt.status === 'Em Andamento' || appt.status === 'Em atendimento' || appt.additionalServices?.some((s: any) => s.status === 'Em Andamento');
+                                                                    const isAnyServiceRunning = (appt.status === 'Em Andamento' || appt.status === 'Em atendimento') || (appt.status !== 'Concluído' && appt.additionalServices?.some((s: any) => s.status === 'Em Andamento'));
 
                                                                     return (
                                                                         <DraggableAppointment
