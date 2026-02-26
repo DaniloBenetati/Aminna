@@ -398,6 +398,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         });
     };
 
+    const [tempPassword, setTempPassword] = useState('');
+    const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+    const handleResetPassword = async () => {
+        if (!editingUser || !tempPassword) return;
+
+        setIsResettingPassword(true);
+        try {
+            const { data, error } = await supabase.functions.invoke('reset-password', {
+                body: { userId: editingUser.id, newPassword: tempPassword }
+            });
+
+            if (error || !data?.success) {
+                console.error("Error from reset-password function:", error || data?.error);
+                alert(`Erro ao redefinir a senha: ${data?.error || error?.message || 'Erro desconhecido'}`);
+            } else {
+                alert('Senha provisória salva com sucesso!');
+                setTempPassword('');
+            }
+        } catch (error: any) {
+            console.error('Error invoking function:', error);
+            alert('Erro ao comunicar com o servidor. A função reset-password está instalada no Supabase?');
+        } finally {
+            setIsResettingPassword(false);
+        }
+    };
+
     // --- DOCUMENTATION HELPERS ---
     const modules = [
         { title: 'Dashboard', icon: LayoutDashboard, color: 'text-indigo-600', bg: 'bg-indigo-50', viewState: ViewState.DASHBOARD, description: 'Visão geral do negócio...', features: ['KPIs', 'Fluxo'], mockup: null },
@@ -1137,6 +1164,33 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     ))}
                                 </div>
                             </div>
+
+                            {/* Temporary Password */}
+                            {isAdmin && (
+                                <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                    <label className="block text-[10px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-widest mb-4 ml-1">Senha Provisória (Opcional)</label>
+                                    <div className="flex gap-3 items-center">
+                                        <div className="flex-1">
+                                            <input
+                                                type="text"
+                                                value={tempPassword}
+                                                onChange={e => setTempPassword(e.target.value)}
+                                                placeholder="Digite uma nova senha temporária"
+                                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-rose-500 dark:text-white"
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleResetPassword}
+                                            disabled={!tempPassword || isResettingPassword}
+                                            className="py-3 px-6 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-2 border-rose-200 dark:border-rose-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all disabled:opacity-50"
+                                        >
+                                            {isResettingPassword ? 'Enviando...' : 'Aplicar Senha'}
+                                        </button>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 mt-2 ml-1">O usuário utilizará esta senha para fazer login.</p>
+                                </div>
+                            )}
 
                             <div className="flex gap-3 pt-4">
                                 <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
