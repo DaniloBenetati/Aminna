@@ -1402,10 +1402,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                                 className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
                                                                     ${(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
-                                                                                        appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                        appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
                                                                                             isAnyServiceRunning ? 'bg-[#22c55e] border-[#22c55e] text-white' :
-                                                                                                appt.status === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
-                                                                                                    appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
+                                                                                                appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                                    appt.status === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
                                                                                                         'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
