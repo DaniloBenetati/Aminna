@@ -194,61 +194,58 @@ export const issueNFSe = async (params: IssueNFSeParams): Promise<{ success: boo
         const dataCompetencia = `${year}-${month}-${day}`; // YYYY-MM-DD from local (Brasilia) time
 
         const nfseRequest: any = {
-            infDPS: {
-                tpAmb: '1',                             // 1 = Produção
-                dhEmi: dataEmissao,                     // ISO format with timezone
-                opSimpNac: '3',                         // 3 = Optante - ME ou EPP (Padrão Nacional)
-                regTrib: '6',                           // 6 = ME EPP - Simples Nacional (Padrão Nacional)
+            data_emissao: dataEmissao,
+            natureza_operacao: '1',                     // 1 = Tributação no município
+            regime_especial_tributacao: '6',            // 6 = ME EPP Simples Nacional
+            optante_simples_nacional: true,
 
-                prest: {
-                    CNPJ: fiscalConfig.cnpj.replace(/\D/g, '')
-                },
+            prestador: {
+                cnpj: fiscalConfig.cnpj.replace(/\D/g, ''),
+                inscricao_municipal: fiscalConfig.municipalRegistration?.replace(/\D/g, '') || '',
+                codigo_municipio: '3550308'             // São Paulo
+            },
 
-                // 2. Tomador (toma)
-                toma: params.customerCpfCnpj ? {
-                    xNome: params.customerName,
-                    email: params.customerEmail,
-                    end: {
-                        xLgr: fiscalConfig.address || 'Cliente Presencial',
-                        nro: 'S/N',
-                        xBairro: 'Centro',
-                        CEP: (fiscalConfig.zipCode?.replace(/\D/g, '') || '01001000'),
-                        UF: fiscalConfig.state || 'SP',
-                        cMun: '3550308'
-                    }
-                } : undefined,
+            servico: {
+                valor_servicos: params.totalValue,
+                iss_retido: false,
+                item_lista_servico: '060101',             // 06.01.01 - Barbearia, cabeleireiros, manicuros...
+                discriminacao: `${params.serviceDescription}\n\n` +
+                    `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
+                    `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
+                    `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
+                    `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`,
+                codigo_municipio: '3550308'              // São Paulo
+            },
 
-                // 3. Intermediario (interm)
-                interm: {
-                    CNPJ: professionalConfig.cnpj.replace(/\D/g, ''),
-                    xNome: professionalName
-                },
+            // Intermediário (Profissional Parceiro)
+            intermediario: {
+                cnpj: professionalConfig.cnpj.replace(/\D/g, ''),
+                razao_social: professionalName,
+            },
 
-                // 4. Servico (serv)
-                serv: {
-                    cServ: '060101',                    // Código de Tributação Nacional
-                    xDesc: `${params.serviceDescription}\n\n` +
-                        `PROGRAMA SALÃO PARCEIRO - SÃO PAULO\n` +
-                        `Valor Total: R$ ${params.totalValue.toFixed(2)}\n` +
-                        `Estabelecimento (${salonPercentage}%): R$ ${salonValue.toFixed(2)}\n` +
-                        `Profissional (${professionalPercentage}%) - ${professionalName} (CNPJ ${professionalConfig.cnpj}): R$ ${professionalValue.toFixed(2)}`
-                },
+            // tribFed - Tributos Federais (Nacional XML: tribFed)
+            situacao_tributaria_pis_cofins: '01',        // 01 = Operação tributável
+            valor_pis: 0,
+            valor_cofins: 0,
+            tipo_retencao_pis_cofins: '1',               // 1 = Não retido
+            valor_cp: 0,
+            valor_irrf: 0,
+            valor_csll: 0,
 
-                // 5. Valores (valores)
-                valores: {
-                    vServPrest: params.totalValue.toFixed(2)
-                }
-            }
+            // totTrib - Total de Tributos (Nacional XML: totTrib)
+            valor_total_tributos_federais: 0,
+            valor_total_tributos_estaduais: 0,
+            valor_total_tributos_municipais: parseFloat((params.totalValue * 0.05).toFixed(2))
         };
 
-        // Handle CPF/CNPJ logic for Toma
-        if (nfseRequest.infDPS.toma && params.customerCpfCnpj) {
+        // Tomador (Cliente) - opcional
+        if (params.customerCpfCnpj) {
             const cpfCnpj = params.customerCpfCnpj.replace(/\D/g, '');
-            if (cpfCnpj.length === 11) {
-                nfseRequest.infDPS.toma.CPF = cpfCnpj;
-            } else {
-                nfseRequest.infDPS.toma.CNPJ = cpfCnpj;
-            }
+            nfseRequest.tomador = {
+                cpf_cnpj: cpfCnpj,
+                razao_social: params.customerName,
+                email: params.customerEmail || undefined
+            };
         }
 
         // 6. Get session and inspect JWT for diagnostics (identifying project mismatches)

@@ -48,7 +48,7 @@ serve(async (req) => {
             throw new Error('Referência é obrigatória para consultar ou cancelar.');
         }
 
-        // NFSe Nacional Endpoint (nfsen) for companies in SP
+        // NFSe Nacional Endpoint - São Paulo adopted National standard (Jan 2026)
         const endpointType = 'nfsen';
 
         let apiUrl;
