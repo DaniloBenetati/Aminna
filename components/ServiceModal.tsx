@@ -43,6 +43,7 @@ interface ServiceLine {
     clientName?: string; // Companion Name
     clientPhone?: string; // Companion Phone
     isCompanion?: boolean; // Flag to identify companion services
+    quantity?: number;
     tipAmount: number;
     status?: 'Pendente' | 'Em Andamento' | 'Concluído' | 'Cancelado' | 'Aguardando';
     startTimeActual?: string;
@@ -181,6 +182,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: appointment.time,
             endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
             appointmentId: appointment.id,
+            quantity: 1,
             tipAmount: appointment.tipAmount || 0,
             status: appointment.startTimeActual ? 'Em Andamento' : (
                 appointment.status === 'Concluído' ? 'Concluído' :
@@ -215,6 +217,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     clientName: extra.clientName,
                     clientPhone: extra.clientPhone,
                     isCompanion: !!extra.clientName, // Assume if name exists, it's a companion (or explicit flag if we saved it)
+                    quantity: extra.quantity || 1,
                     tipAmount: extra.tipAmount || 0,
                     status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado') ? appointment.status : ((extra.status as any) || 'Pendente'),
                     startTimeActual: extra.startTimeActual
@@ -247,6 +250,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 startTime: rel.time,
                 endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
                 appointmentId: rel.id,
+                quantity: 1,
                 tipAmount: rel.tipAmount || 0
             });
 
@@ -270,6 +274,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         clientName: extra.clientName,
                         clientPhone: extra.clientPhone,
                         isCompanion: !!extra.clientName,
+                        quantity: extra.quantity || 1,
                         tipAmount: extra.tipAmount || 0
                     });
                 });
@@ -342,7 +347,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (line.isCourtesy) return acc;
             const price = Number(line.unitPrice) || 0;
             const discount = Number(line.discount) || 0;
-            return acc + Math.max(0, price - discount);
+            const qty = Number(line.quantity) || 1;
+            return acc + Math.max(0, (price * qty) - discount);
         }, 0);
 
         const totalTips = lines.reduce((acc, line) => acc + (Number(line.tipAmount) || 0), 0);
@@ -389,7 +395,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     }, [totalValue, payments.length, payments]); // payments dependency is needed to check amount, but length check protects logic
 
     const totalBeforeCoupon = useMemo(() => {
-        return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : (line.unitPrice - line.discount)), 0);
+        return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : ((line.unitPrice * (line.quantity || 1)) - line.discount)), 0);
     }, [lines]);
 
     const couponDiscountAmount = useMemo(() => {
@@ -660,6 +666,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: l.endTime,
             clientName: l.clientName,
             clientPhone: l.clientPhone,
+            quantity: l.quantity || 1,
             status: l.status,
             startTimeActual: l.startTimeActual
         }));
@@ -772,6 +779,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: l.endTime,
             clientName: l.clientName,
             clientPhone: l.clientPhone,
+            quantity: l.quantity || 1,
             status: 'Concluído',
             startTimeActual: l.startTimeActual
         }));
@@ -952,6 +960,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: l.endTime,
             clientName: l.clientName,
             clientPhone: l.clientPhone,
+            quantity: l.quantity || 1,
             status: 'Concluído',
             startTimeActual: l.startTimeActual
         }));
@@ -1071,6 +1080,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: l.endTime,
             clientName: l.clientName,
             clientPhone: l.clientPhone,
+            quantity: l.quantity || 1,
             status: l.status || 'Pendente',
             startTimeActual: l.startTimeActual
         }));
@@ -1591,6 +1601,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const newStatus = currentStatus === 'Confirmado' ? 'Pendente' : 'Confirmado';
         onUpdateAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as Appointment['status'] } : a));
     };
+    const toggleFavoriteProvider = async (providerId: string) => {
+        if (!providerId) return;
+        const isFavorite = customer.assignedProviderIds?.includes(providerId);
+        const newFavorites = isFavorite
+            ? (customer.assignedProviderIds || []).filter(id => id !== providerId)
+            : [...(customer.assignedProviderIds || []), providerId];
+
+        try {
+            const { error } = await supabase
+                .from('customers')
+                .update({ assigned_provider_ids: newFavorites })
+                .eq('id', customer.id);
+
+            if (error) throw error;
+
+            onUpdateCustomers(prev => prev.map(c =>
+                c.id === customer.id
+                    ? { ...c, assignedProviderIds: newFavorites }
+                    : c
+            ));
+        } catch (error) {
+            console.error('Error toggling favorite provider:', error);
+        }
+    };
 
     const addServiceLine = () => {
         setLines([...lines, {
@@ -1608,6 +1642,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: appointment.time,
             endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
             isCompanion: false,
+            quantity: 1,
             tipAmount: 0,
             // If appointment already started (Aguardando or Em Andamento), new services inherit Aguardando
             status: (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento') ? 'Aguardando' : 'Pendente'
@@ -1632,6 +1667,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCompanion: true,
             clientName: '',
             clientPhone: '',
+            quantity: 1,
             tipAmount: 0 // Initialize tipAmount
         }]);
     };
@@ -1962,7 +1998,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
 
                                                     <div className="space-y-0.5">
-                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Responsável</label>
+                                                        <div className="flex justify-between items-center ml-1">
+                                                            <label className="text-[8px] font-black text-slate-400 uppercase">Responsável</label>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    toggleFavoriteProvider(line.providerId);
+                                                                }}
+                                                                className={`text-[8px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all outline-none ${customer.assignedProviderIds?.includes(line.providerId)
+                                                                        ? 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30'
+                                                                        : 'text-slate-400 bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:bg-zinc-800'
+                                                                    }`}
+                                                                title={customer.assignedProviderIds?.includes(line.providerId) ? "Remover favorito" : "Adicionar favorito"}
+                                                            >
+                                                                <Star opacity={0.8} strokeWidth={3} size={10} fill={customer.assignedProviderIds?.includes(line.providerId) ? 'currentColor' : 'none'} /> PR
+                                                            </button>
+                                                        </div>
                                                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5">
                                                             <Avatar
                                                                 src={providers.find(p => p.id === line.providerId)?.avatar}
@@ -2040,7 +2092,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className={`grid grid-cols-2 md:grid-cols-4 ${((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') ? 'lg:grid-cols-6' : 'lg:grid-cols-4'} gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700`}>
+                                                <div className={`grid grid-cols-2 md:grid-cols-5 ${((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') ? 'lg:grid-cols-7' : 'lg:grid-cols-5'} gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700`}>
                                                     <div className="flex flex-col">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
                                                         <input
@@ -2070,6 +2122,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-black text-slate-950 dark:text-white pl-6 pr-1 py-1 outline-none w-20 focus:border-indigo-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 value={line.unitPrice}
                                                                 onChange={e => updateLine(line.id, 'unitPrice', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Qtd.</label>
+                                                        <div className="relative">
+                                                            <input
+                                                                type="number"
+                                                                min="1"
+                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-black text-slate-950 dark:text-white px-2 py-1 outline-none w-16 focus:border-indigo-500 transition-colors"
+                                                                value={line.quantity || 1}
+                                                                onChange={e => updateLine(line.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
                                                             />
                                                         </div>
                                                     </div>
@@ -3000,7 +3064,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     )}
 
                 </div>
-            </div>
+            </div >
             {/* CANCEL CONFIRMATION MODAL (EXISTING) */}
             {
                 isCancelling && (

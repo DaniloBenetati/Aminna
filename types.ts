@@ -210,6 +210,7 @@ export interface Appointment {
     products?: string[]; // Lista de produtos vinculados a este serviço extra
     clientName?: string; // Nome do cliente (para acompanhantes)
     clientPhone?: string; // Telefone do cliente (para acompanhantes)
+    quantity?: number;
     tipAmount?: number;
   }[];
   combinedServiceNames?: string;
