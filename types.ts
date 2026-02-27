@@ -50,6 +50,7 @@ export interface Provider {
   commissionHistory?: CommissionHistoryItem[]; // Histórico de alterações de comissão
   vacationStart?: string; // ISO date string
   vacationEnd?: string;   // ISO date string
+  daysOff?: string[];     // Array de datas específicas de folga (ISO date strings)
   avatar: string;
   phone?: string;
   birthDate?: string;

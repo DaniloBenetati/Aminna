@@ -1978,7 +1978,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 onChange={e => updateLine(line.id, 'providerId', e.target.value)}
                                                             >
                                                                 {activeProviders.map(p => {
-                                                                    const isOnVacation = !!(p.vacationStart && p.vacationEnd && appointmentDate >= p.vacationStart && appointmentDate <= p.vacationEnd);
+                                                                    const isVacationPeriod = !!(p.vacationStart && p.vacationEnd && appointmentDate >= p.vacationStart && appointmentDate <= p.vacationEnd);
+                                                                    const isDayOff = p.daysOff?.includes(appointmentDate) || false;
+                                                                    const isOnVacation = isVacationPeriod || isDayOff;
                                                                     return (
                                                                         <option
                                                                             key={p.id}
@@ -1986,7 +1988,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                             disabled={isOnVacation}
                                                                             className={`${isOnVacation ? 'text-slate-300 bg-slate-50' : 'text-slate-950 dark:text-white bg-white dark:bg-zinc-800'}`}
                                                                         >
-                                                                            {p.name.split(' ')[0]} {isOnVacation ? '- EM FÉRIAS' : ''}
+                                                                            {p.name.split(' ')[0]} {isOnVacation ? (isDayOff ? '- FOLGA' : '- EM FÉRIAS') : ''}
                                                                         </option>
                                                                     );
                                                                 })}

@@ -62,7 +62,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalFantasyName: '',
         fiscalVerified: false,
         vacationStart: '',
-        vacationEnd: ''
+        vacationEnd: '',
+        daysOff: []
     });
 
     // ... (rest of code)
@@ -346,7 +347,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             fiscalFantasyName: '',
             customDurations: {},
             vacationStart: '',
-            vacationEnd: ''
+            vacationEnd: '',
+            daysOff: []
         });
         setIsModalOpen(true);
     };
@@ -419,7 +421,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             fiscalFantasyName: '',
             customDurations: provider.customDurations || {},
             vacationStart: provider.vacationStart || '',
-            vacationEnd: provider.vacationEnd || ''
+            vacationEnd: provider.vacationEnd || '',
+            daysOff: provider.daysOff || []
         });
 
         // Fetch specific fiscal data
@@ -493,7 +496,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             custom_durations: formData.customDurations || {},
             order: editingProvider ? undefined : providers.length, // Set last order for new items (undefined for updates to ignore)
             vacation_start: formData.vacationStart || null,
-            vacation_end: formData.vacationEnd || null
+            vacation_end: formData.vacationEnd || null,
+            days_off: formData.daysOff || []
         };
 
         try {
@@ -924,6 +928,71 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 <p className="text-[8px] font-bold text-amber-600 dark:text-amber-500 uppercase tracking-tight text-center italic">
                                     A agenda ficará bloqueada para este talento durante este período.
                                 </p>
+                            </div>
+
+                            {/* DIAS DE FOLGA AVULSOS SECTION */}
+                            <div className="bg-slate-50/50 dark:bg-zinc-800/50 p-5 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700/50 space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                                    <Calendar size={14} /> Dias de Folga Específicos
+                                </h4>
+
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1 space-y-1.5">
+                                        <label className="block text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase ml-1">Adicionar Data</label>
+                                        <input
+                                            type="date"
+                                            id="new_day_off_input"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all font-sans"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = e.currentTarget.value;
+                                                    if (val && !formData.daysOff?.includes(val)) {
+                                                        setFormData({ ...formData, daysOff: [...(formData.daysOff || []), val].sort() });
+                                                        e.currentTarget.value = '';
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const input = document.getElementById('new_day_off_input') as HTMLInputElement;
+                                            if (input && input.value && !formData.daysOff?.includes(input.value)) {
+                                                setFormData({ ...formData, daysOff: [...(formData.daysOff || []), input.value].sort() });
+                                                input.value = '';
+                                            }
+                                        }}
+                                        className="h-[38px] px-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                    >
+                                        Adicionar
+                                    </button>
+                                </div>
+
+                                {/* List of Days Off */}
+                                {(formData.daysOff && formData.daysOff.length > 0) ? (
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        {formData.daysOff.map(dateStr => (
+                                            <div key={dateStr} className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 shadow-sm">
+                                                <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                                                    {new Date(dateStr + 'T12:00:00Z').toLocaleDateString('pt-BR')}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormData({ ...formData, daysOff: formData.daysOff!.filter(d => d !== dateStr) });
+                                                    }}
+                                                    className="p-0.5 text-slate-400 hover:text-rose-500 transition-colors"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-[10px] text-center text-slate-400 dark:text-zinc-500 italic">Nenhum dia de folga adicionado.</p>
+                                )}
                             </div>
 
                             <div className="flex justify-center -mt-6 mb-4 relative z-10">

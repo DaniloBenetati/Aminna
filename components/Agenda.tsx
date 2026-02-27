@@ -812,8 +812,10 @@ export const Agenda: React.FC<AgendaProps> = ({
         if (appt.providerId === targetProviderId && appt.time === targetTime) return;
 
         const targetProvider = providers.find(p => p.id === targetProviderId);
-        const isOnVacation = targetProvider?.vacationStart && targetProvider?.vacationEnd &&
+        const isVacationPeriod = targetProvider?.vacationStart && targetProvider?.vacationEnd &&
             gridDateStr >= targetProvider.vacationStart && gridDateStr <= targetProvider.vacationEnd;
+        const isDayOff = targetProvider?.daysOff?.includes(gridDateStr);
+        const isOnVacation = isVacationPeriod || isDayOff;
 
         if (isOnVacation) {
             alert(`⛔ PROFISSIONAL EM FÉRIAS\n\n${targetProvider?.name} está em período de férias nesta data e não pode receber novos agendamentos.`);
@@ -1240,8 +1242,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     a.date === gridDateStr &&
                                                     a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                                 );
-                                                const isOnVacation = p.vacationStart && p.vacationEnd &&
+                                                const isVacationPeriod = p.vacationStart && p.vacationEnd &&
                                                     gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                                                const isDayOff = p.daysOff?.includes(gridDateStr);
+                                                const isOnVacation = isVacationPeriod || isDayOff;
 
                                                 const isBlocked = isInternalBlocked || isOnVacation;
 
@@ -1257,8 +1261,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate flex items-center justify-center gap-1.5">
                                                                 {p.name.split(' ')[0]}
-                                                                {p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd && (
-                                                                    <span className="bg-amber-400 text-amber-950 text-[6px] font-black px-1 rounded-sm">FÉRIAS</span>
+                                                                {((p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd) || p.daysOff?.includes(gridDateStr)) && (
+                                                                    <span className="bg-amber-400 text-amber-950 text-[6px] font-black px-1 rounded-sm">
+                                                                        {p.daysOff?.includes(gridDateStr) ? 'FOLGA' : 'FÉRIAS'}
+                                                                    </span>
                                                                 )}
                                                             </p>
                                                         </div>
@@ -1301,8 +1307,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {/* Provider Columns */}
                                                 <div className="flex">
                                                     {activeVisibileProviders.map(p => {
-                                                        const isOnVacation = p.vacationStart && p.vacationEnd &&
+                                                        const isVacationPeriod = p.vacationStart && p.vacationEnd &&
                                                             gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                                                        const isDayOff = p.daysOff?.includes(gridDateStr);
+                                                        const isOnVacation = isVacationPeriod || isDayOff;
                                                         const isBlocked = isOnVacation || appointments.some(a =>
                                                             a.providerId === p.id &&
                                                             a.date === gridDateStr &&
@@ -1321,7 +1329,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
                                                                         <div className={`bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 ${isOnVacation ? 'border-amber-400' : 'border-slate-300 dark:border-zinc-700'} px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed`}>
                                                                             <p className={`text-[8px] font-black ${isOnVacation ? 'text-amber-600' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-[0.2em]`}>
-                                                                                {isOnVacation ? 'Em Férias' : 'Agenda Bloqueada'}
+                                                                                {isOnVacation ? (isDayOff ? 'Em Folga' : 'Em Férias') : 'Agenda Bloqueada'}
                                                                             </p>
                                                                         </div>
                                                                     </div>
