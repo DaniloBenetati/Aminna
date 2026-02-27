@@ -785,6 +785,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
             products_used: allProductsUsed,
             combined_service_names: combinedNames,
+            service_id: lines[0].serviceId, // CRITICAL: Update service to the one selected in checkout
             booked_price: lines[0].unitPrice,
             provider_id: lines[0].providerId, // CRITICAL: Update provider to the one selected in checkout
             main_service_products: lines[0].products,
@@ -965,6 +966,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payment_method: remakePaymentMethod,
             products_used: allProductsUsed,
             combined_service_names: combinedNames,
+            service_id: lines[0].serviceId,
             booked_price: 0,
             provider_id: lines[0].providerId,
             main_service_products: lines[0].products,
@@ -1289,7 +1291,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 payment_method: 'Dívida',
                 products_used: allProductsUsed,
                 combined_service_names: combinedNames,
+                service_id: lines[0].serviceId,
                 booked_price: lines[0].unitPrice,
+                provider_id: lines[0].providerId,
                 main_service_products: lines[0].products,
                 additional_services: extras,
                 applied_coupon: appliedCampaign?.couponCode,
