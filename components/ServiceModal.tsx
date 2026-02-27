@@ -2827,21 +2827,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <div className="space-y-1">
                                         {(appointment.payments && appointment.payments.length > 0) ? (
                                             appointment.payments.map((p, pIdx) => (
-                                                <div key={pIdx} className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{p.method} {p.cardBrand ? `(${p.cardBrand})` : ''}</span>
+                                                <div key={pIdx} className="flex items-start justify-between gap-2">
+                                                    <div className="flex items-start gap-2 flex-1">
+                                                        <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-[2px]" />
+                                                        <span className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight break-words">{p.method} {p.cardBrand && p.method !== 'Crédito Aminna' ? `(${p.cardBrand})` : ''}</span>
                                                     </div>
-                                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {p.amount.toFixed(2)}</span>
+                                                    <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0 mt-[3px]">R$ {p.amount.toFixed(2)}</span>
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400" />
-                                                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{appointment.paymentMethod || 'Não informado'}</span>
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="flex items-start gap-2 flex-1">
+                                                    <CreditCard size={14} className="text-indigo-600 dark:text-indigo-400 shrink-0 mt-[2px]" />
+                                                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight break-words">{appointment.paymentMethod || 'Não informado'}</span>
                                                 </div>
-                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {totalValue.toFixed(2)}</span>
+                                                <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 whitespace-nowrap shrink-0 mt-[3px]">R$ {totalValue.toFixed(2)}</span>
                                             </div>
                                         )}
                                     </div>
