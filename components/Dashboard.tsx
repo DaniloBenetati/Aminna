@@ -1069,55 +1069,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
                     </div>
 
-                    {/* Top Dias da Semana */}
-                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                            <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
-                        </h3>
-                        <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={topDaysOfWeek} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                    <Tooltip cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
-                                    <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
-                                        <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
-                                    </Line>
-                                </LineChart>
-                            </ResponsiveContainer>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        {/* Top Dias da Semana */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
+                            </h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={topDaysOfWeek} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
+                                        <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                            <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Line>
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
-                    </div>
 
-
-
-                    {/* Tempo Médio no Salão */}
-                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                            <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
-                        </h3>
-                        <div className="h-64">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={avgTimePerDay} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                                    <defs>
-                                        <linearGradient id="colorTempo" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                    <Tooltip
-                                        cursor={{ stroke: '#0d9488', strokeWidth: 1 }}
-                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value: number) => [`${value} min`, 'Tempo Médio']}
-                                    />
-                                    <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTempo)" dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
-                                        <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `${v}m`} />
-                                    </Area>
-                                </AreaChart>
-                            </ResponsiveContainer>
+                        {/* Tempo Médio no Salão */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
+                            </h3>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={avgTimePerDay} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="colorTempo" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                                                <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip
+                                            cursor={{ stroke: '#0d9488', strokeWidth: 1 }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                            formatter={(value: number) => [`${value} min`, 'Tempo Médio']}
+                                        />
+                                        <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTempo)" dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                            <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `${v}m`} />
+                                        </Area>
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </div>
