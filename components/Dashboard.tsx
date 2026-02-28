@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
-import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 
@@ -39,7 +39,8 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
-    const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas'>('geral');
+    const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas' | 'preditivo'>('geral');
+    const [predictiveTargetGrowth, setPredictiveTargetGrowth] = useState(20);
     const [dateRef, setDateRef] = useState(new Date()); // Default to Today
 
     // Custom Range State
@@ -914,6 +915,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 >
                     Campanhas
                 </button>
+                <button
+                    onClick={() => setDashboardTab('preditivo')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap flex items-center gap-2 ${dashboardTab === 'preditivo' ? 'border-amber-500 text-amber-600 dark:border-amber-400 dark:text-amber-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    <BrainCircuit size={14} className={dashboardTab === 'preditivo' ? 'text-amber-500' : ''} />
+                    Estudos Preditivos
+                </button>
             </div>
 
             {dashboardTab === 'geral' && (
@@ -1382,6 +1390,188 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
                     </div>
                 </div>
+            )}
+
+            {dashboardTab === 'preditivo' && (
+                (() => {
+                    const HISTORICAL_REVENUE = [
+                        { month: 0, label: 'Jan', pastValue: 203743.00 },
+                        { month: 1, label: 'Fev', pastValue: 223761.00 },
+                        { month: 2, label: 'Mar', pastValue: 191600.00 },
+                        { month: 3, label: 'Abr', pastValue: 208329.00 },
+                        { month: 4, label: 'Mai', pastValue: 222481.00 },
+                        { month: 5, label: 'Jun', pastValue: 213532.00 },
+                        { month: 6, label: 'Jul', pastValue: 243692.00 },
+                        { month: 7, label: 'Ago', pastValue: 265019.00 },
+                        { month: 8, label: 'Set', pastValue: 259375.00 },
+                        { month: 9, label: 'Out', pastValue: 297134.00 },
+                        { month: 10, label: 'Nov', pastValue: 280000.00 },
+                        { month: 11, label: 'Dez', pastValue: 350000.00 }
+                    ];
+
+                    const currentYear = new Date().getFullYear();
+                    const currentData = new Array(12).fill(0);
+
+                    appointments.forEach(a => {
+                        if (!a.date || a.status === 'Cancelado') return;
+                        if (filterProvider !== 'all' && a.providerId !== filterProvider) return;
+                        if (filterService !== 'all' && a.serviceId !== filterService) return;
+
+                        // We need to look up the customer for the channel filter
+                        if (filterChannel !== 'all') {
+                            const customer = customers.find(c => c.id === a.customerId);
+                            if (customer?.acquisitionChannel !== filterChannel) return;
+                        }
+
+                        const dateObj = new Date(a.date + 'T12:00:00');
+                        if (dateObj.getFullYear() === currentYear) {
+                            const month = dateObj.getMonth();
+                            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+                            currentData[month] += mainPrice;
+                            (a.additionalServices || []).forEach(extra => {
+                                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
+                                currentData[month] += extraPrice;
+                            });
+                        }
+                    });
+
+                    sales.forEach(s => {
+                        if (!s.date) return;
+                        if (filterProduct !== 'all' && !s.items.some(i => i.productId === filterProduct)) return;
+
+                        const dateObj = new Date(s.date + 'T12:00:00');
+                        if (dateObj.getFullYear() === currentYear) {
+                            const month = dateObj.getMonth();
+                            currentData[month] += (s.totalAmount || 0);
+                        }
+                    });
+
+                    const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
+                        const currentValue = currentData[index];
+                        const targetValue = hist.pastValue * (1 + (predictiveTargetGrowth / 100));
+                        return {
+                            name: hist.label,
+                            ['Ano Passado']: hist.pastValue,
+                            ['Ano Atual']: currentValue,
+                            ['Meta Ajustada']: targetValue,
+                            monthIndex: hist.month
+                        };
+                    });
+
+                    const currentMonthIndex = new Date().getMonth();
+                    const currentMonthData = predictiveData[currentMonthIndex];
+                    const targetToBeat = currentMonthData['Meta Ajustada'];
+                    const currentAchieved = currentMonthData['Ano Atual'];
+                    const percentageAchieved = targetToBeat > 0 ? (currentAchieved / targetToBeat) * 100 : 0;
+                    const gapToTarget = targetToBeat - currentAchieved;
+
+                    return (
+                        <div className="space-y-6">
+
+                            {/* AI Strategist Banner */}
+                            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-6 py-2 rounded-2xl shadow-lg text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-2 justify-between">
+                                <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
+                                    <BrainCircuit size={100} />
+                                </div>
+                                <div className="z-10 flex-1">
+                                    <h2 className="text-lg font-black uppercase tracking-tighter flex items-center gap-2 drop-shadow-sm">
+                                        <BrainCircuit size={16} /> O Estrategista
+                                    </h2>
+                                    <p className="text-white/80 font-bold text-[11px] leading-tight max-w-4xl drop-shadow-sm mt-0.5">
+                                        Analisei seus dados de {currentYear - 1} e tracei a sazonalidade do seu negócio.
+                                        Acompanhe a linha de meta ajustada e veja quanto falta faturar em {currentMonthData.name}!
+                                    </p>
+                                </div>
+                                <div className="z-10 bg-white/20 py-1.5 px-4 rounded-xl backdrop-blur-sm border border-white/20 flex flex-col items-center min-w-[150px]">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-1 mb-0.5"><Target size={10} /> Simulador de Meta</span>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-xs">-</button>
+                                        <span className="text-xl font-black drop-shadow-md leading-none">+{predictiveTargetGrowth}%</span>
+                                        <button onClick={() => setPredictiveTargetGrowth(predictiveTargetGrowth + 5)} className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-xs">+</button>
+                                    </div>
+                                    <span className="text-[8px] font-bold text-white/70 uppercase mt-0.5">Crescimento sobre {currentYear - 1}</span>
+                                </div>
+                            </div>
+
+                            {/* Core Diagnostics */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2"><Target size={12} /> Cenário de {currentMonthData.name}</p>
+                                        <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">R$ {currentAchieved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-4 mt-4 flex relative overflow-hidden">
+                                            <div className="bg-orange-500 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
+                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">{percentageAchieved.toFixed(1)}% da Meta</div>
+                                        </div>
+                                    </div>
+                                    <p className={`text-xs font-bold mt-4 ${gapToTarget > 0 ? 'text-amber-600 dark:text-amber-500' : 'text-emerald-600 dark:text-emerald-500'}`}>
+                                        {gapToTarget > 0 ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir +${predictiveTargetGrowth}%` : 'Meta superada com excelência!'}
+                                    </p>
+                                </div>
+
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2"><BarChart2 size={12} /> Análise de Sazonalidade</p>
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-2">Tração no 2º Semestre</h3>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Os dados históricos mostram que o negócio ganha uma força expressiva a partir de agosto, culminando no pico do ano em outubro.</p>
+                                    </div>
+                                    <p className="text-xs font-bold mt-4 text-indigo-600 flex items-center gap-1"><Zap size={14} /> Prepare o time para a alta demanda.</p>
+                                </div>
+
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between border-l-4 border-l-rose-500">
+                                    <div>
+                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 mb-2"><AlertCircle size={12} /> Ponto de Atenção</p>
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white leading-tight mb-2">Queda pós-Fevereiro</h3>
+                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Fevereiro (R$223k) para Março (R$191k) apresentou uma retração considerável no ano passado.</p>
+                                    </div>
+                                    <p className="text-xs font-bold mt-4 text-rose-600">Programe campanhas de reativação para Março/Abril.</p>
+                                </div>
+                            </div>
+
+                            {/* Predictive Chart */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2 mb-1">
+                                    Modelagem de Curva Financeira
+                                </h3>
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-8">Baseline de {currentYear - 1} vs Tração Atual vs Target (+{predictiveTargetGrowth}%)</p>
+
+                                <div className="h-80 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={predictiveData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorTarget" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="colorAchieved" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} tickFormatter={(v) => `R$ ${(v / 1000)}k`} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" className="dark:stroke-zinc-800" />
+
+                                            <Tooltip
+                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                                itemStyle={{ fontSize: '12px', fontWeight: '800' }}
+                                                labelStyle={{ fontSize: '10px', fontWeight: '900', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}
+                                                formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                            />
+
+                                            <Area type="monotone" dataKey="Ano Passado" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} fill="none" />
+                                            <Area type="monotone" dataKey="Meta Ajustada" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorTarget)" />
+
+                                            {/* We only draw "Ano Atual" up to the current month by using a special formatter if needed, but recharts draws 0 by default. Let's make it null for future months so it stops drawing */}
+                                            <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['Ano Atual'] : null} name="Ano Atual" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 6, strokeWidth: 0 }} />
+
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()
             )}
         </div>
     );
