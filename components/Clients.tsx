@@ -135,7 +135,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
   const handleNewCustomer = () => {
     setFormData({
-      name: '', phone: '', email: '', address: '', birthDate: '', cpf: '', status: 'Novo', observations: '',
+      name: '', phone: '', email: '', address: '', birthDate: '', cpf: '', profession: '', status: 'Novo', observations: '',
       acquisitionChannel: '',
       isBlocked: false,
       blockReason: '',
@@ -184,6 +184,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         birth_date: formData.birthDate,
         address: formData.address,
         cpf: formData.cpf,
+        profession: formData.profession || null,
         observations: formData.observations,
         acquisition_channel: formData.acquisitionChannel,
         preferences: updatedPreferences,
@@ -232,6 +233,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         birth_date: formData.birthDate,
         address: formData.address,
         cpf: formData.cpf,
+        profession: formData.profession || null,
         observations: formData.observations,
         acquisition_channel: formData.acquisitionChannel,
         preferences: updatedPreferences,
@@ -515,6 +517,14 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               <input type="text" className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-zinc-950 dark:focus:border-white placeholder:text-slate-400" placeholder="000.000.000-00" value={formData.cpf || ''} onChange={e => setFormData({ ...formData, cpf: e.target.value })} />
                             ) : (
                               <p className="text-sm font-black text-slate-950 dark:text-white">{formData.cpf || 'Não informado'}</p>
+                            )}
+                          </label>
+                          <label className="block">
+                            <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Profissão</span>
+                            {isEditing ? (
+                              <input type="text" className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-zinc-950 dark:focus:border-white placeholder:text-slate-400" placeholder="Ex: Médica, Advogada..." value={formData.profession || ''} onChange={e => setFormData({ ...formData, profession: e.target.value })} />
+                            ) : (
+                              <p className="text-sm font-black text-slate-950 dark:text-white">{formData.profession || 'Não informado'}</p>
                             )}
                           </label>
                           <label className="block">

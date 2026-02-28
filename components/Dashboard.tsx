@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
@@ -38,8 +38,8 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
-    // --- FILTER STATES ---
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
+    const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas'>('geral');
     const [dateRef, setDateRef] = useState(new Date()); // Default to Today
 
     // Custom Range State
@@ -159,45 +159,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     }, [sales, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, customers]);
 
     const newCustomersCount = useMemo(() => {
-        // Ensure we count registration dates within the period
-        return customers.filter(c => {
-            const inDate = c.registrationDate && isDateInPeriod(c.registrationDate);
-            if (!inDate) return false;
-
-            if (filterChannel !== 'all' && c.acquisitionChannel !== filterChannel) return false;
-            // Apply other customer filters if logic permits
-
-            return true;
-        }).length;
-    }, [customers, timeView, dateRef, customRange, filterChannel]);
+        const customersInPeriod = new Set(filteredAppointments.map(a => a.customerId));
+        let count = 0;
+        customersInPeriod.forEach(cid => {
+            const customer = customers.find(c => c.id === cid);
+            if (customer && customer.status === 'Novo') {
+                if (filterChannel !== 'all' && customer.acquisitionChannel !== filterChannel) return;
+                count++;
+            }
+        });
+        return count;
+    }, [filteredAppointments, customers, filterChannel]);
 
     // --- CHART DATA GENERATION ---
 
     // 1. Dynamic Flow Chart (Adapts x-axis based on view)
     const flowData = useMemo(() => {
-        // Helper to calc metrics for a list of apps
         const calcMetrics = (apps: Appointment[]) => {
             let total = 0;
-            let fees = 0;
+            let commissionTotal = 0;
+
             apps.forEach(a => {
-                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                const mainSvc = services.find(s => s.id === a.serviceId);
+                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? mainSvc?.price ?? 0);
                 total += mainPrice;
 
-                // Calc fees for main
-                const method = a.paymentMethod || 'Dinheiro';
-                const settings = paymentSettings.find(ps => ps.method === method);
-                if (settings) fees += (mainPrice * (settings.fee / 100));
+                // Commission for main service
+                const provider = providers.find(p => p.id === a.providerId);
+                const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
+
+                commissionTotal += mainPrice * mainCommRate;
 
                 // Add extra services
                 (a.additionalServices || []).forEach(extra => {
-                    const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                    const extraSvc = services.find(s => s.id === extra.serviceId);
+                    const extraPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0);
                     total += extraPrice;
-                    if (settings) fees += (extraPrice * (settings.fee / 100));
+
+                    const extraProvider = providers.find(p => p.id === extra.providerId);
+                    const extraCommRate = extra.commissionRateSnapshot ?? (extraProvider?.commissionRate || 0);
+
+                    commissionTotal += extraPrice * extraCommRate;
                 });
             });
             return {
                 faturamento: total,
-                receita: total - fees
+                receita: total - commissionTotal
             };
         };
 
@@ -257,7 +264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 };
             });
         }
-    }, [filteredAppointments, timeView, dateRef, customRange, services]);
+    }, [filteredAppointments, timeView, dateRef, customRange, services, providers]);
 
     // 2. Top Providers (Updated to Revenue)
     const topProviders = useMemo(() => {
@@ -298,8 +305,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 full: customers.find(c => c.id === id)?.name,
                 value: val
             }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            .sort((a, b) => b.value - a.value);
+    }, [filteredAppointments, customers, services]);
+
+    // Frequência de Clientes
+    const customerFrequency = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredAppointments.forEach(a => {
+            counts[a.customerId] = (counts[a.customerId] || 0) + 1;
+        });
+
+        return Object.entries(counts)
+            .map(([id, val]) => ({
+                name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
+                value: val
+            }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredAppointments, customers]);
+
+    // Ticket Médio Clientes
+    const customerAvgTicket = useMemo(() => {
+        const stats: Record<string, { faturamento: number; atendimentos: number }> = {};
+        filteredAppointments.forEach(a => {
+            const servicePrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+            if (!stats[a.customerId]) stats[a.customerId] = { faturamento: 0, atendimentos: 0 };
+            stats[a.customerId].faturamento += servicePrice;
+            stats[a.customerId].atendimentos += 1;
+        });
+
+        return Object.entries(stats)
+            .map(([id, data]) => ({
+                name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
+                value: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
+            }))
+            .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers, services]);
 
     // 4. Top Partners - Already Revenue
@@ -320,8 +359,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: PARTNERS.find((p: any) => p.id === id)?.name || 'Desc.',
                 value: val
             }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, services, campaigns]);
 
     // 5. Top Services (Updated to Revenue)
@@ -380,9 +418,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const camp = campaigns.find(c => c.couponCode === code);
                 return { name: code, value: val, full: camp?.name };
             })
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, services, campaigns]);
+
+    // Uso de Campanhas (Agendamentos)
+    const campaignUsage = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredAppointments.forEach(a => {
+            if (a.appliedCoupon) {
+                counts[a.appliedCoupon] = (counts[a.appliedCoupon] || 0) + 1;
+            }
+        });
+
+        return Object.entries(counts)
+            .map(([code, val]) => {
+                const camp = campaigns.find(c => c.couponCode === code);
+                return { name: code, value: val, full: camp?.name };
+            })
+            .sort((a, b) => b.value - a.value);
+    }, [filteredAppointments, campaigns]);
 
     // 8. Top Channels (NEW - Based on New Customers Count in Period)
     const topChannels = useMemo(() => {
@@ -397,11 +451,199 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return Object.entries(channelCounts)
             .map(([name, value]) => ({ name, value }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            .sort((a, b) => b.value - a.value);
     }, [customers, timeView, dateRef, customRange]);
 
-    // 9. Birthdays
+    // 9. Horários de Pico (Agendamentos)
+    const topHours = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredAppointments.forEach(a => {
+            if (a.time) {
+                const hour = a.time.substring(0, 2) + 'h';
+                counts[hour] = (counts[hour] || 0) + 1;
+            }
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => a.name.localeCompare(b.name)); // sort chronologically
+    }, [filteredAppointments]);
+
+    // 10. Dias de Pico (Agendamentos)
+    const topDaysOfWeek = useMemo(() => {
+        const counts: Record<string, number> = {};
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        filteredAppointments.forEach(a => {
+            if (a.date) {
+                const dateObj = new Date(a.date + 'T12:00:00'); // Ensure local timezone interpretation
+                const dayStr = daysMap[dateObj.getDay()];
+                counts[dayStr] = (counts[dayStr] || 0) + 1;
+            }
+        });
+        return daysMap
+            .filter(day => counts[day] !== undefined) // keep only days with appointments
+            .map(day => ({ name: day, value: counts[day] || 0 })); // sort logically by week day
+    }, [filteredAppointments]);
+
+    // 11. Profissionais Mais Requisitados (Volume)
+    const topProvidersVolume = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredAppointments.forEach(a => {
+            counts[a.providerId] = (counts[a.providerId] || 0) + 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                counts[extra.providerId] = (counts[extra.providerId] || 0) + 1;
+            });
+        });
+        return Object.entries(counts)
+            .map(([id, val]) => ({
+                name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
+                value: val
+            }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredAppointments, providers]);
+
+    // 12. Serviços Mais Agendados (Volume)
+    const topServicesVolume = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredAppointments.forEach(a => {
+            counts[a.serviceId] = (counts[a.serviceId] || 0) + 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                counts[extra.serviceId] = (counts[extra.serviceId] || 0) + 1;
+            });
+        });
+        return Object.entries(counts)
+            .map(([id, val]) => ({
+                name: services.find(s => s.id === id)?.name || 'Desc.',
+                value: val
+            }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredAppointments, services]);
+
+    // Profissionais - Receita e Ticket Médio
+    const providerMetrics = useMemo(() => {
+        const stats: Record<string, { faturamento: number; atendimentos: number }> = {};
+
+        filteredAppointments.forEach(a => {
+            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+
+            if (!stats[a.providerId]) stats[a.providerId] = { faturamento: 0, atendimentos: 0 };
+            stats[a.providerId].faturamento += mainPrice;
+            stats[a.providerId].atendimentos += 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
+                if (!stats[extra.providerId]) stats[extra.providerId] = { faturamento: 0, atendimentos: 0 };
+                stats[extra.providerId].faturamento += extraPrice;
+                stats[extra.providerId].atendimentos += 1;
+            });
+        });
+
+        const arr = Object.entries(stats).map(([id, data]) => ({
+            name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
+            faturamento: data.faturamento,
+            ticketMedio: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
+        }));
+
+        return {
+            revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
+            ticket: [...arr].sort((a, b) => b.ticketMedio - a.ticketMedio)
+        };
+    }, [filteredAppointments, providers, services]);
+
+    // Serviços - Receita e Ticket Médio
+    const serviceMetrics = useMemo(() => {
+        const stats: Record<string, { faturamento: number; qtd: number }> = {};
+
+        filteredAppointments.forEach(a => {
+            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+
+            if (!stats[a.serviceId]) stats[a.serviceId] = { faturamento: 0, qtd: 0 };
+            stats[a.serviceId].faturamento += mainPrice;
+            stats[a.serviceId].qtd += 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
+                if (!stats[extra.serviceId]) stats[extra.serviceId] = { faturamento: 0, qtd: 0 };
+                stats[extra.serviceId].faturamento += extraPrice;
+                stats[extra.serviceId].qtd += 1;
+            });
+        });
+
+        const arr = Object.entries(stats).map(([id, data]) => ({
+            name: services.find(s => s.id === id)?.name || 'Desc.',
+            faturamento: data.faturamento,
+            ticketMedio: data.qtd > 0 ? data.faturamento / data.qtd : 0
+        }));
+
+        return {
+            revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
+            ticket: [...arr].sort((a, b) => b.ticketMedio - a.ticketMedio)
+        };
+    }, [filteredAppointments, services]);
+
+    // 13. Tempo Médio no Salão por Dia da Semana
+    const avgTimePerDay = useMemo(() => {
+        const stats: Record<string, { total: number; count: number }> = {};
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        filteredAppointments.forEach(a => {
+            if (!a.date) return;
+            const dateObj = new Date(a.date + 'T12:00:00');
+            const dayStr = daysMap[dateObj.getDay()];
+
+            let duration = 0;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            if (mainSvc) duration += mainSvc.durationMinutes || 0;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                if (extraSvc) duration += extraSvc.durationMinutes || 0;
+            });
+
+            if (duration > 0) {
+                if (!stats[dayStr]) stats[dayStr] = { total: 0, count: 0 };
+                stats[dayStr].total += duration;
+                stats[dayStr].count++;
+            }
+        });
+
+        return daysMap
+            .filter(day => stats[day])
+            .map(day => ({ name: day, value: Math.round(stats[day].total / stats[day].count) }));
+    }, [filteredAppointments, services]);
+
+    // 14. Ticket Médio por Dia da Semana
+    const avgTicketPerDay = useMemo(() => {
+        const stats: Record<string, { faturamento: number; atendimentos: number }> = {};
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        filteredAppointments.forEach(a => {
+            if (!a.date) return;
+            const dateObj = new Date(a.date + 'T12:00:00');
+            const dayStr = daysMap[dateObj.getDay()];
+
+            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+
+            if (!stats[dayStr]) stats[dayStr] = { faturamento: 0, atendimentos: 0 };
+            stats[dayStr].faturamento += mainPrice;
+            stats[dayStr].atendimentos += 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
+                stats[dayStr].faturamento += extraPrice;
+            });
+        });
+
+        return daysMap
+            .filter(day => stats[day] !== undefined)
+            .map(day => ({
+                name: day,
+                ticket: stats[day].atendimentos > 0 ? stats[day].faturamento / stats[day].atendimentos : 0
+            }));
+    }, [filteredAppointments, services]);
+
+    // 15. Birthdays
     const currentMonthIdx = timeView === 'month' ? dateRef.getMonth() : new Date().getMonth();
     const displayMonthName = new Date(0, currentMonthIdx).toLocaleString('pt-BR', { month: 'long' });
 
@@ -500,6 +742,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {data.receita.toFixed(2)}</span>
                         </div>
                     </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    // Tooltip specifically for Appointments Count
+    const CountTooltipAgendamentos = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                    <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
+                    <p className="text-indigo-700 dark:text-indigo-400 font-bold text-sm">
+                        {payload[0].value} Agendamentos
+                    </p>
                 </div>
             );
         }
@@ -619,228 +876,513 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 </div>
             )}
 
-            {/* 1. KPIs Principais */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <KPICard
-                    title="Faturamento Global"
-                    value={`R$ ${(totalRevenue / 1000).toFixed(1)}k`}
-                    sub="Serviços + Produtos"
-                    icon={DollarSign}
-                    color="text-emerald-700"
-                    lightColor="bg-emerald-50"
-                />
-                <KPICard
-                    title="Atendimentos"
-                    value={filteredAppointments.length}
-                    sub="No período selecionado"
-                    icon={Calendar}
-                    color="text-violet-700"
-                    lightColor="bg-violet-50"
-                />
-                <KPICard
-                    title="Novos Clientes"
-                    value={newCustomersCount}
-                    sub="Cadastrados no período"
-                    icon={Users}
-                    color="text-blue-700"
-                    lightColor="bg-blue-50"
-                />
-                <KPICard
-                    title="Produtos Vendidos"
-                    value={filteredSales.reduce((acc, s) => acc + s.quantity, 0)}
-                    sub="Venda direta"
-                    icon={Package}
-                    color="text-amber-700"
-                    lightColor="bg-amber-50"
-                />
+            {/* --- DASHBOARD TABS --- */}
+            <div className="flex gap-6 border-b border-slate-200 dark:border-zinc-800 overflow-x-auto scrollbar-hide">
+                <button
+                    onClick={() => setDashboardTab('geral')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'geral' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Visão Geral
+                </button>
+                <button
+                    onClick={() => setDashboardTab('ocupacao')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'ocupacao' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Análise de Ocupação
+                </button>
+                <button
+                    onClick={() => setDashboardTab('profissionais')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'profissionais' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Profissionais
+                </button>
+                <button
+                    onClick={() => setDashboardTab('servicos')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'servicos' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Serviços
+                </button>
+                <button
+                    onClick={() => setDashboardTab('clientes')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'clientes' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Clientes
+                </button>
+                <button
+                    onClick={() => setDashboardTab('campanhas')}
+                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'campanhas' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                >
+                    Campanhas
+                </button>
             </div>
 
-            {/* 2. Fluxo Dinâmico (Big Chart) */}
-            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                {/* ... (Chart content remains the same) ... */}
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                            <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
-                        </h3>
-                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
+            {dashboardTab === 'geral' && (
+                <>
+                    {/* 1. KPIs Principais */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <KPICard
+                            title="Atendimentos (Clientes)"
+                            value={new Set(filteredAppointments.map(a => a.customerId)).size}
+                            sub="No período selecionado"
+                            icon={Users}
+                            color="text-violet-700"
+                            lightColor="bg-violet-50"
+                        />
+                        <KPICard
+                            title="Serviços Realizados"
+                            value={filteredAppointments.reduce((acc, a) => acc + 1 + (a.additionalServices?.length || 0), 0)}
+                            sub="Total no período"
+                            icon={TrendingUp}
+                            color="text-rose-700"
+                            lightColor="bg-rose-50"
+                        />
+                        <KPICard
+                            title="Novos Clientes"
+                            value={newCustomersCount}
+                            sub="Cadastrados no período"
+                            icon={Users}
+                            color="text-blue-700"
+                            lightColor="bg-blue-50"
+                        />
+                        <KPICard
+                            title="Produtos Vendidos"
+                            value={filteredSales.reduce((acc, s) => acc + s.quantity, 0)}
+                            sub="Venda direta"
+                            icon={Package}
+                            color="text-amber-700"
+                            lightColor="bg-amber-50"
+                        />
                     </div>
-                </div>
-                <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={flowData}>
-                            <defs>
-                                <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
-                            <Tooltip
-                                content={<CustomFlowTooltip />}
-                                cursor={{ stroke: '#4f46e5', strokeWidth: 2 }}
-                            />
-                            <Area type="monotone" dataKey="atendimentos" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorFlow)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
 
-            {/* 3. Rankings Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
-                {/* Top Profissionais (Revenue) */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <Award size={16} className="text-purple-600 dark:text-purple-400" /> TOP 5 Profissionais (R$)
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topProviders} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                <Bar dataKey="value" fill="#7c3aed" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Clientes */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <ShoppingBag size={16} className="text-emerald-600 dark:text-emerald-400" /> TOP 5 Clientes (Gasto)
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topCustomers} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Serviços (Revenue) */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <TrendingUp size={16} className="text-rose-600 dark:text-rose-400" /> TOP 5 Serviços (R$)
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topServices} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={90} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                <Bar dataKey="value" fill="#e11d48" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Produtos (Revenue) */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <Package size={16} className="text-amber-500" /> TOP 5 Produtos (Venda R$)
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topProducts} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={90} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Canais de Entrada (NEW) */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <Megaphone size={16} className="text-cyan-600" /> TOP 5 Canais de Entrada
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topChannels} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltip />} />
-                                <Bar dataKey="value" fill="#0891b2" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Top Campanhas */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                        <Ticket size={16} className="text-amber-600" /> TOP 5 Campanhas (R$)
-                    </h3>
-                    <div className="h-40">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={topCampaigns} layout="vertical" margin={{ left: 0 }}>
-                                <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            </div>
-
-            {/* 4. Aniversariantes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                        <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
-                    </h3>
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
-                        {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
-                            <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
-                                <div>
-                                    <p className="font-black text-sm text-slate-900 dark:text-white">{c.name}</p>
-                                    <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{c.phone}</p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{c.birthDate?.split('-').reverse().join('/')}</span>
-                                </div>
+                    {/* 2. Fluxo Dinâmico (Big Chart) */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                        {/* ... (Chart content remains the same) ... */}
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                                    <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
+                                </h3>
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
                             </div>
-                        )) : (
-                            <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário de cliente neste período.</p>
-                        )}
+                        </div>
+                        <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={flowData}>
+                                    <defs>
+                                        <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
+                                    <Tooltip
+                                        content={<CustomFlowTooltip />}
+                                        cursor={{ stroke: '#4f46e5', strokeWidth: 2 }}
+                                    />
+                                    <Area type="monotone" dataKey="atendimentos" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorFlow)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
-                </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                    <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                        <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
-                    </h3>
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
-                        {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
-                            <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
-                                <div className="flex items-center gap-3">
-                                    <img src={p.avatar} alt={p.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-600" />
-                                    <div>
-                                        <p className="font-black text-sm text-slate-900 dark:text-white">{p.name}</p>
-                                        <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{p.specialty}</p>
+
+
+                    {/* 4. Aniversariantes */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                                <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
+                            </h3>
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                                {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
+                                    <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                        <div>
+                                            <p className="font-black text-sm text-slate-900 dark:text-white">{c.name}</p>
+                                            <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{c.phone}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{c.birthDate?.split('-').reverse().join('/')}</span>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{p.birthDate?.split('-').reverse().join('/')}</span>
-                                </div>
+                                )) : (
+                                    <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário de cliente neste período.</p>
+                                )}
                             </div>
-                        )) : (
-                            <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário na equipe neste período.</p>
-                        )}
+                        </div>
+
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                                <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
+                            </h3>
+                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                                {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
+                                    <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                        <div className="flex items-center gap-3">
+                                            <img src={p.avatar} alt={p.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-600" />
+                                            <div>
+                                                <p className="font-black text-sm text-slate-900 dark:text-white">{p.name}</p>
+                                                <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{p.specialty}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{p.birthDate?.split('-').reverse().join('/')}</span>
+                                        </div>
+                                    </div>
+                                )) : (
+                                    <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário na equipe neste período.</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {dashboardTab === 'ocupacao' && (
+                <div className="space-y-6">
+                    {/* Top Horários de Pico */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Clock size={16} className="text-indigo-600 dark:text-indigo-400" /> Horários de Pico
+                        </h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={topHours} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <Tooltip cursor={{ stroke: '#4f46e5', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
+                                    <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                        <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                                    </Line>
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    {/* Top Dias da Semana */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
+                        </h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={topDaysOfWeek} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <Tooltip cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
+                                    <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                        <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                                    </Line>
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+
+
+                    {/* Tempo Médio no Salão */}
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                            <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
+                        </h3>
+                        <div className="h-64">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={avgTimePerDay} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorTempo" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                    <Tooltip
+                                        cursor={{ stroke: '#0d9488', strokeWidth: 1 }}
+                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                        formatter={(value: number) => [`${value} min`, 'Tempo Médio']}
+                                    />
+                                    <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTempo)" dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                        <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `${v}m`} />
+                                    </Area>
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
+
+            {dashboardTab === 'profissionais' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* Profissionais por Volume */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Users size={16} className="text-sky-600 dark:text-sky-400" /> Profissionais por Volume
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, topProvidersVolume.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={topProvidersVolume} layout="vertical" margin={{ left: 0, right: 30 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                        <Bar dataKey="value" fill="#0284c7" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Faturamento por Profissional */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerMetrics.revenue.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={providerMetrics.revenue} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="faturamento" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Ticket Médio por Profissional */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerMetrics.ticket.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={providerMetrics.ticket} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="ticketMedio" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {dashboardTab === 'servicos' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* Serviços por Volume */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <TrendingUp size={16} className="text-pink-600 dark:text-pink-400" /> Serviços por Volume
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, topServicesVolume.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={topServicesVolume} layout="vertical" margin={{ left: 0, right: 60 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                        <Bar dataKey="value" fill="#db2777" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Faturamento por Serviço */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, serviceMetrics.revenue.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={serviceMetrics.revenue} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="faturamento" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Ticket Médio por Serviço */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, serviceMetrics.ticket.length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={serviceMetrics.ticket} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="ticketMedio" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {dashboardTab === 'clientes' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* Frequência Clientes */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" /> Frequência
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerFrequency.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={customerFrequency.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                        <Bar dataKey="value" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Top Clientes Gasto */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Gasto Total (R$)
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCustomers.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={topCustomers.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Ticket Médio Clientes */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerAvgTicket.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={customerAvgTicket.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Ticket Médio Dia Semana */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Ticket Médio Semanal
+                            </h3>
+                            <div className="h-60 mt-4">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <LineChart data={avgTicketPerDay} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <YAxis axisLine={false} tickLine={false} width={40} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip content={<CurrencyTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1, strokeDasharray: '4 4' }} />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <Line type="monotone" dataKey="ticket" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', r: 4, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {dashboardTab === 'campanhas' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {/* Campanhas Uso */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Ticket size={16} className="text-amber-600" /> Uso de Cupons
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, campaignUsage.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={campaignUsage.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                        <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Top Campanhas Faturamento */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <DollarSign size={16} className="text-emerald-500" /> Faturamento por Campanha
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCampaigns.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={topCampaigns.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                        <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Top Canais de Entrada */}
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                <Megaphone size={16} className="text-cyan-600" /> Canais de Entrada
+                            </h3>
+                            <div className="min-h-[240px]" style={{ height: `${Math.max(240, topChannels.slice(0, 10).length * 32)}px` }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={topChannels.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                        <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltip />} />
+                                        <Bar dataKey="value" fill="#0891b2" radius={[0, 4, 4, 0]} barSize={16}>
+                                            <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

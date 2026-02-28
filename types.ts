@@ -101,6 +101,7 @@ export interface Customer {
   birthDate?: string;
   address?: string;
   cpf?: string;
+  profession?: string; // Profissão
   registrationDate: string;
   lastVisit: string;
   totalSpent: number;

@@ -30,6 +30,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
     const [localEmail, setLocalEmail] = useState(customer.email || '');
     const [localBirthday, setLocalBirthday] = useState(customer.birthDate || '');
     const [localCpf, setLocalCpf] = useState(customer.cpf || '');
+    const [localProfession, setLocalProfession] = useState(customer.profession || '');
     const [localAcquisitionChannel, setLocalAcquisitionChannel] = useState(customer.acquisitionChannel || '');
     const [localAddress, setLocalAddress] = useState(customer.address || '');
     const [localObservations, setLocalObservations] = useState(customer.observations || '');
@@ -61,6 +62,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 email: localEmail,
                 birth_date: localBirthday || null,
                 cpf: localCpf || null,
+                profession: localProfession || null,
                 acquisition_channel: localAcquisitionChannel || null,
                 address: localAddress || null,
                 observations: localObservations || null,
@@ -86,6 +88,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                 email: localEmail,
                 birthDate: localBirthday,
                 cpf: localCpf,
+                profession: localProfession,
                 acquisitionChannel: localAcquisitionChannel,
                 address: localAddress,
                 observations: localObservations,
@@ -236,6 +239,14 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                             <input value={localCpf} onChange={e => setLocalCpf(e.target.value)} placeholder="000.000.000-00" className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-blue-900 dark:text-blue-400 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localCpf || 'Não informado'}</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Profissão</label>
+                                        {editMode ? (
+                                            <input value={localProfession} onChange={e => setLocalProfession(e.target.value)} placeholder="Ex: Médica, Advogada..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
+                                        ) : (
+                                            <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localProfession || 'Não informado'}</p>
                                         )}
                                     </div>
                                     <div className="space-y-1">

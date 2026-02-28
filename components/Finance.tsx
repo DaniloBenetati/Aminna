@@ -352,16 +352,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }, 0);
 
             const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
-            const deductions = manualDeductions + automatedDeductions;
-            const netRevenue = grossRevenue - deductions;
 
             const commissions = apps.reduce((acc, a) => {
-                // Main service commission (uses bookedPrice for courtesies fallback)
                 const provider = providers.find(p => p.id === a.providerId);
                 const rate = a.commissionRateSnapshot ?? provider?.commissionRate ?? 0;
                 const mainComm = (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0) * rate;
 
-                // Additional services commission
                 const extraComm = (a.additionalServices || []).reduce((eAcc, extra) => {
                     const eProv = providers.find(p => p.id === extra.providerId);
                     if (!eProv) return eAcc;
@@ -373,8 +369,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 return acc + mainComm + extraComm;
             }, 0);
 
+            const deductions = manualDeductions + commissions;
+            const netRevenue = grossRevenue - deductions;
+
             const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
-            const totalCOGS = commissions + manualCosts;
+            const totalCOGS = manualCosts;
             const grossProfit = netRevenue - totalCOGS;
 
             const expensesVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES');
@@ -383,7 +382,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
             const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0);
-            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0);
+            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0) + automatedDeductions;
             const totalOpExpenses = amountVendas + amountAdm + amountFin;
 
             const groupByCat = (list: Expense[]) => {
@@ -451,7 +450,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }, {} as Record<string, { total: number, count: number }>);
 
             return {
-                grossRevenue, revenueServices,
+                grossRevenue, revenueServices, automatedDeductions,
                 deductions, netRevenue,
                 totalCOGS, commissions,
                 grossProfit, totalOpExpenses, amountVendas, amountAdm, amountFin,
@@ -1522,8 +1521,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     )}
 
                                     {/* 2. DEDUÇÕES */}
-                                    <tr>
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">2. (-) DEDUÇÕES E ABATIMENTOS</td>
+                                    <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                            {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            2. (-) DEDUÇÕES (Repasses Salão Parceiro)
+                                        </td>
                                         {timeView === 'year' ? (
                                             <>
                                                 {dreData.monthlySnapshots?.map((m: any) => (
@@ -1540,6 +1542,53 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             </>
                                         )}
                                     </tr>
+                                    {expandedSections.includes('deductions') && (
+                                        <>
+                                            <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                    {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <Menu size={12} />}
+                                                    └ Comissões
+                                                </td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.commissions.toFixed(0)}</td>
+                                                        ))}
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.commissions.toFixed(2)}</td>
+                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                            {dreData.grossRevenue > 0 ? ((dreData.commissions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                            {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-rose-50 dark:border-rose-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => (
+                                                                <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                            ))}
+                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </>
+                                    )}
 
                                     {/* 3. RECEITA LÍQUIDA */}
                                     <tr className="bg-slate-50 dark:bg-zinc-800/50">
@@ -1562,8 +1611,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     {/* 4. CPV/CMV */}
                                     <tr onClick={() => toggleSection('cogs')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                         <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            <Menu size={16} />
-                                            4. (-) CPV / CMV
+                                            {expandedSections.includes('cogs') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                            4. (-) CPV / CMV / CUSTOS OPERACIONAIS
                                         </td>
                                         {timeView === 'year' ? (
                                             <>
@@ -1583,64 +1632,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </tr>
                                     {expandedSections.includes('cogs') && (
                                         <>
-                                            <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    <Menu size={12} />
-                                                    └ Comissões (Técnica)
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => (
-                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.commissions.toFixed(0)}</td>
-                                                        ))}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.commissions.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.commissions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
-                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
-                                                    </td>
-                                                    {timeView === 'year' ? (
-                                                        <>
-                                                            {dreData.monthlySnapshots?.map((m: any) => (
-                                                                <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
-                                                            ))}
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
                                             <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Custos Operacionais (Manuais)</td>
+                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Insumos e Produtos (Lançamentos Manuais)</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const costVal = m.totalCOGS - m.commissions;
+                                                            const costVal = m.totalCOGS;
                                                             return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{costVal.toFixed(0)}</td>
                                                         })}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {(dreData.totalCOGS - dreData.commissions).toFixed(2)}</td>
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.totalCOGS.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {(dreData.totalCOGS - dreData.commissions).toFixed(2)}</td>
+                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.totalCOGS.toFixed(2)}</td>
                                                         <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? (((dreData.totalCOGS - dreData.commissions) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                         </td>
                                                     </>
                                                 )}
@@ -1862,69 +1868,91 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             </>
                                         )}
                                     </tr>
-                                    {expandedSections.includes('exp-fin') && Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
-                                        <React.Fragment key={cat}>
-                                            <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    <Menu size={12} />
-                                                    {cat}
-                                                </td>
+                                    {expandedSections.includes('exp-fin') && (
+                                        <>
+                                            <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const catTotal = (m.breakdownFin[cat]?.total || 0);
-                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
+                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">-{m.automatedDeductions.toFixed(0)}</td>
                                                         })}
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
+                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
                                                         <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            {dreData.grossRevenue > 0 ? ((dreData.automatedDeductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                         </td>
                                                     </>
                                                 )}
                                             </tr>
-                                            {expandedSubSections.includes(cat) && (() => {
-                                                const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
-                                                (info.items as Expense[]).forEach(e => {
-                                                    let key = e.recurringId;
-                                                    let displayDesc = e.description || '';
-                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
-                                                    if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
-                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
-                                                    const dateObj = parseDateSafe(e.date);
-                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
-                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key || 'no-key'].total += e.amount;
-                                                });
-                                                const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
-                                                return sortedGroups.map((group, idx) => (
-                                                    <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                            {Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
+                                                <React.Fragment key={cat}>
+                                                    <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                        <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                            <Menu size={12} />
+                                                            {cat}
+                                                        </td>
                                                         {timeView === 'year' ? (
                                                             <>
-                                                                {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                    const val = group.amounts[mIdx];
-                                                                    return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                {dreData.monthlySnapshots?.map((m: any) => {
+                                                                    const catTotal = (m.breakdownFin[cat]?.total || 0);
+                                                                    return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
                                                                 })}
-                                                                <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
-                                                                <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                    {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                                 </td>
                                                             </>
                                                         )}
                                                     </tr>
-                                                ));
-                                            })()}
-                                        </React.Fragment>
-                                    ))}
+                                                    {expandedSubSections.includes(cat) && (() => {
+                                                        const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
+                                                        (info.items as Expense[]).forEach(e => {
+                                                            let key = e.recurringId;
+                                                            let displayDesc = e.description || '';
+                                                            const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                            if (key) { if (match) displayDesc = match[1]; }
+                                                            else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                            if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                            const dateObj = parseDateSafe(e.date);
+                                                            const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                            groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                            groupedItems[key || 'no-key'].total += e.amount;
+                                                        });
+                                                        const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
+                                                        return sortedGroups.map((group, idx) => (
+                                                            <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                {timeView === 'year' ? (
+                                                                    <>
+                                                                        {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
+                                                                            const val = group.amounts[mIdx];
+                                                                            return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                        })}
+                                                                        <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                            {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                            </tr>
+                                                        ));
+                                                    })()}
+                                                </React.Fragment>
+                                            ))}
+                                        </>
+                                    )}
 
                                     {/* 9. RESULTADO ANTES IRPJ */}
                                     <tr className="bg-slate-100 dark:bg-zinc-800">
