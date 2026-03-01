@@ -185,6 +185,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     }, [selectedProviderId, providers]);
     const [sidebarSearch, setSidebarSearch] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
@@ -1101,8 +1102,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors">
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                            className={`p-3 rounded-full transition-all border shadow-sm ${isSidebarOpen ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
+                            onClick={() => {
+                                // On large screens toggle sidebar; on small screens open mobile drawer
+                                if (window.innerWidth >= 1024) {
+                                    setIsSidebarOpen(!isSidebarOpen);
+                                } else {
+                                    setIsMobileDrawerOpen(true);
+                                }
+                            }}
+                            className={`p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
                             title="Alternar Filtros"
                         >
                             <Filter size={18} />
@@ -1196,14 +1204,14 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                         <button
                             onClick={() => setIsWhatsAppModalOpen(true)}
-                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 sm:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                         >
-                            <MessageCircle size={16} /> Confirmações
+                            <MessageCircle size={16} /> <span className="hidden sm:inline">Confirmações</span>
                         </button>
 
                         <button
                             onClick={() => handleNewAppointment()}
-                            className="flex items-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                            className="flex items-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-3 sm:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                         >
                             <Plus size={16} /> <span className="hidden sm:inline">Novo</span>
                         </button>
@@ -1212,12 +1220,100 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                 {/* Agenda Grid */}
                 <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col relative transition-colors">
-                    <div className="absolute top-2 right-4 z-20 md:hidden bg-white/90 dark:bg-zinc-900/90 px-2 rounded text-[9px] font-bold text-slate-400">
-                        Dia: {new Date(gridDateStr + 'T12:00:00').toLocaleDateString('pt-BR')}
-                    </div>
 
-                    {/* Agenda Content Container */}
-                    <div ref={gridScrollRef} className="flex-1 overflow-auto scrollbar-hide relative">
+                    {/* Mobile Day List — visible only on < md */}
+                    {timeView === 'day' && (
+                        <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-4">
+                            {activeVisibileProviders.length === 0 ? (
+                                <div className="text-center py-16 text-slate-400">
+                                    <CalendarIcon size={40} className="mx-auto mb-3 opacity-20" />
+                                    <p className="text-xs font-black uppercase">Nenhum profissional visível</p>
+                                </div>
+                            ) : activeVisibileProviders.map(p => {
+                                const provAppts = gridAppointments
+                                    .filter(a => {
+                                        const isMain = String(a.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase();
+                                        const isExtra = (a.additionalServices || []).some((s: any) => String(s.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase());
+                                        return isMain || isExtra;
+                                    })
+                                    .filter(a => a.customerId !== 'INTERNAL_BLOCK')
+                                    .sort((a, b) => a.time.localeCompare(b.time));
+
+                                const isVacationPeriod = p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                                const isDayOff = p.daysOff?.includes(gridDateStr);
+                                const isOnVacation = isVacationPeriod || isDayOff;
+
+                                return (
+                                    <div key={p.id} className="rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden">
+                                        {/* Provider header */}
+                                        <div className={`flex items-center gap-3 px-4 py-3 ${isOnVacation ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-zinc-800'}`}>
+                                            <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate">{p.name}</p>
+                                                {isOnVacation && (
+                                                    <span className="text-[9px] font-black text-amber-600 uppercase">{isDayOff ? 'Em Folga' : 'Em Férias'}</span>
+                                                )}
+                                            </div>
+                                            <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-black px-2 py-0.5 rounded-full">{provAppts.length}</span>
+                                            <button
+                                                onClick={() => handleNewAppointment({ providerId: p.id, date: gridDateStr })}
+                                                className="p-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-lg shadow active:scale-95 transition-all"
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                        </div>
+
+                                        {/* Appointment cards */}
+                                        {isOnVacation ? (
+                                            <div className="px-4 py-5 text-center text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase">
+                                                {isDayOff ? 'Folga neste dia' : 'Profissional em férias'}
+                                            </div>
+                                        ) : provAppts.length === 0 ? (
+                                            <div className="px-4 py-5 text-center text-slate-400 dark:text-slate-600 text-[10px] font-black uppercase">Sem agendamentos</div>
+                                        ) : (
+                                            <div className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                {provAppts.map(appt => {
+                                                    const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
+                                                    const serviceName = appt.combinedServiceNames || services.find(s => s.id === appt.serviceId)?.name || 'Serviço';
+                                                    const isAnyRunning = appt.status === 'Em Andamento' || appt.status === 'Em atendimento';
+                                                    const statusColor =
+                                                        (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
+                                                            appt.status === 'Concluído' ? 'bg-[#E66A6E]' :
+                                                                isAnyRunning ? 'bg-green-500' :
+                                                                    appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                        appt.status === 'Aguardando' ? 'bg-amber-400' :
+                                                                            'bg-[#008877]';
+
+                                                    return (
+                                                        <button
+                                                            key={appt.id}
+                                                            onClick={() => handleAppointmentClick(appt)}
+                                                            className="w-full text-left px-4 py-3 flex items-center gap-3 active:bg-slate-50 dark:active:bg-zinc-800 transition-colors"
+                                                        >
+                                                            <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${statusColor}`} />
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
+                                                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">{serviceName}</p>
+                                                            </div>
+                                                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                                                <span className="text-[11px] font-black text-slate-900 dark:text-white">{appt.time}</span>
+                                                                <span className={`text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase ${statusColor}`}>
+                                                                    {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : appt.status}
+                                                                </span>
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Agenda Content Container — hidden on mobile when in day view (uses list above) */}
+                    <div ref={gridScrollRef} className={`flex-1 overflow-auto scrollbar-hide relative ${timeView === 'day' ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
                         {/* Day View Grid */}
                         {timeView === 'day' && (
                             <DndContext
@@ -1611,11 +1707,12 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                         {/* Month View Grid */}
                         {timeView === 'month' && (
-                            <div className="flex-1 p-6 overflow-y-auto scrollbar-hide">
-                                <div className="grid grid-cols-7 gap-4 h-full min-h-[500px]">
-                                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                                        <div key={day} className="text-center font-black text-slate-400 uppercase text-xs mb-2">
-                                            {day}
+                            <div className="flex-1 p-2 md:p-6 overflow-y-auto scrollbar-hide">
+                                <div className="grid grid-cols-7 gap-0.5 md:gap-4 h-full min-h-[500px]">
+                                    {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, i) => (
+                                        <div key={i} className="text-center font-black text-slate-400 uppercase text-[9px] md:text-xs mb-1 md:mb-2">
+                                            <span className="hidden md:inline">{['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][i]}</span>
+                                            <span className="md:hidden">{day}</span>
                                         </div>
                                     ))}
                                     {(() => {
@@ -1648,16 +1745,16 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         setDateRef(new Date(year, month, day));
                                                         setTimeView('day');
                                                     }}
-                                                    className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-2xl p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-1 min-h-[80px]`}
+                                                    className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-lg md:rounded-2xl p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
                                                 >
-                                                    <span className={`text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
+                                                    <span className={`text-[9px] md:text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
 
-                                                    <div className="flex-1 flex flex-col gap-1">
+                                                    <div className="flex-1 flex flex-col gap-0.5">
                                                         {dayApps.slice(0, 3).map(app => (
-                                                            <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                            <div key={app.id} className={`w-full h-1 md:h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                         ))}
                                                         {dayApps.length > 3 && (
-                                                            <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
+                                                            <span className="text-[8px] md:text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
                                                         )}
                                                     </div>
 
@@ -1802,6 +1899,54 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
                 </div>
             </div>
+
+            {/* ============================================================
+                MOBILE SIDEBAR BOTTOM DRAWER
+                Shown only on < lg when isMobileDrawerOpen is true.
+            ============================================================ */}
+            {isMobileDrawerOpen && (
+                <div className="lg:hidden fixed inset-0 z-[200] flex flex-col justify-end">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                        onClick={() => setIsMobileDrawerOpen(false)}
+                    />
+                    {/* Drawer */}
+                    <div className="relative bg-white dark:bg-zinc-900 rounded-t-3xl shadow-2xl flex flex-col max-h-[85vh] animate-in slide-in-from-bottom-8 duration-300">
+                        {/* Handle */}
+                        <div className="flex justify-center pt-3 pb-1">
+                            <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                        </div>
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-zinc-800">
+                            <h2 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                                <Filter size={14} className="text-indigo-600" /> Filtros
+                            </h2>
+                            <button
+                                onClick={() => setIsMobileDrawerOpen(false)}
+                                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        {/* Content — reuse the same sidebar sub-components */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <MiniCalendar />
+                            <ProviderFilter />
+                            <ServiceFilter />
+                        </div>
+                        {/* Apply button */}
+                        <div className="p-4 border-t border-slate-100 dark:border-zinc-800">
+                            <button
+                                onClick={() => setIsMobileDrawerOpen(false)}
+                                className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                            >
+                                Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* CUSTOMER SELECTION MODAL */}
             {
