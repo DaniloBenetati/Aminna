@@ -102,6 +102,40 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
         }
     };
 
+    // ---- Plano de Contas CRUD ----
+    const handleSaveCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!categoryForm.name.trim()) return;
+        try {
+            if (editingCategoryId) {
+                const { error } = await supabase.from('expense_categories').update({ name: categoryForm.name, dre_class: categoryForm.dreClass }).eq('id', editingCategoryId);
+                if (error) throw error;
+                setExpenseCategories(prev => prev.map(c => c.id === editingCategoryId ? { ...c, name: categoryForm.name, dreClass: categoryForm.dreClass as any } : c));
+            } else {
+                const { data, error } = await supabase.from('expense_categories').insert([{ name: categoryForm.name, dre_class: categoryForm.dreClass }]).select();
+                if (error) throw error;
+                if (data) setExpenseCategories(prev => [...prev, { id: data[0].id, name: data[0].name, dreClass: data[0].dre_class }]);
+            }
+            setIsCategoryFormOpen(false);
+            setEditingCategoryId(null);
+            setCategoryForm({ name: '', dreClass: 'EXPENSE_ADM' });
+        } catch (err) {
+            console.error('Error saving category:', err);
+            alert('Erro ao salvar conta.');
+        }
+    };
+
+    const handleDeleteCategory = async (id: string) => {
+        if (!window.confirm('Excluir esta conta do plano?')) return;
+        try {
+            const { error } = await supabase.from('expense_categories').delete().eq('id', id);
+            if (error) throw error;
+            setExpenseCategories(prev => prev.filter(c => c.id !== id));
+        } catch (err) {
+            console.error('Error deleting category:', err);
+        }
+    };
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [recurrenceMonths, setRecurrenceMonths] = useState(1);
@@ -133,6 +167,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     const [applyToFuture, setApplyToFuture] = useState(false);
     const [batchNewDate, setBatchNewDate] = useState(new Date().toISOString().split('T')[0]);
     const [expandedSections, setExpandedSections] = useState<string[]>([]);
+
+    // DRE Sub-tab: 'STATEMENT' = existing DRE view | 'ACCOUNTS' = Plano de Contas
+    const [dreSubTab, setDreSubTab] = useState<'STATEMENT' | 'ACCOUNTS'>('STATEMENT');
+
+    // Plano de Contas CRUD
+    const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+    const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+    const [categoryForm, setCategoryForm] = useState<{ name: string; dreClass: string }>({ name: '', dreClass: 'EXPENSE_ADM' });
+    const [categorySearch, setCategorySearch] = useState('');
+
+    // Expense modal category autocomplete
+    const [categoryInputSearch, setCategoryInputSearch] = useState('');
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
     const toggleSection = (section: string) => {
         setExpandedSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]);
@@ -1373,650 +1420,808 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 )}
                 {activeTab === 'DRE' && (
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-                            <div>
-                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowUpCircle size={16} className="text-emerald-500" /> Demonstração do Resultado (DRE)</h3>
-                                <p className="text-[9px] text-slate-500 uppercase mt-0.5">Visão Gerencial de Competência</p>
-                            </div>
-                            <div className="flex gap-2">
-                                <button onClick={handlePrintDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Printer size={18} /></button>
-                                <button onClick={handleDownloadDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Download size={18} /></button>
-                            </div>
-                        </div>
-
-                        {/* DRE Indicators / Insights at Top */}
-                        <div className="p-6 bg-slate-50/50 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-zinc-700">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* DRE Sub-tab header */}
+                        <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50 dark:bg-zinc-800/50">
+                            <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700">
                                 {[
-                                    { label: 'Receita Bruta', value: dreData.grossRevenue, prefix: 'R$ ', color: 'indigo', icon: TrendingUp },
-                                    { label: 'Margem de Lucro', value: dreData.grossRevenue > 0 ? (dreData.netResult / dreData.grossRevenue) * 100 : 0, suffix: '%', color: 'emerald', icon: Info },
-                                    { label: 'Ponto de Equilíbrio', value: (dreData.grossProfit / dreData.grossRevenue) > 0 ? (dreData.totalOpExpenses / (dreData.grossProfit / dreData.grossRevenue)) : 0, prefix: 'R$ ', color: 'amber', icon: FileText },
-                                    { label: 'Resultado Líquido', value: dreData.netResult, prefix: 'R$ ', color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CheckCircle2 },
-                                ].map((card, idx) => (
-                                    <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className={`p-2 rounded-xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`}>
-                                                <card.icon size={16} />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{card.label}</p>
-                                            <p className={`text-lg font-black mt-1 ${card.color === 'rose' ? 'text-rose-600' : 'text-slate-950 dark:text-white'}`}>
-                                                {card.prefix}{card.value.toLocaleString('pt-BR', { minimumFractionDigits: card.suffix === '%' ? 1 : 2, maximumFractionDigits: card.suffix === '%' ? 1 : 2 })}{card.suffix}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    { id: 'STATEMENT', label: 'Demonstrativo DRE', icon: BarChart3 },
+                                    { id: 'ACCOUNTS', label: 'Plano de Contas', icon: Files },
+                                ].map(st => (
+                                    <button
+                                        key={st.id}
+                                        onClick={() => setDreSubTab(st.id as any)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${dreSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                    >
+                                        <st.icon size={13} /> {st.label}
+                                    </button>
                                 ))}
                             </div>
+                            {dreSubTab === 'STATEMENT' && (
+                                <div className="flex gap-2">
+                                    <button onClick={handlePrintDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Printer size={18} /></button>
+                                    <button onClick={handleDownloadDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Download size={18} /></button>
+                                </div>
+                            )}
+                            {dreSubTab === 'ACCOUNTS' && (
+                                <button
+                                    onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', dreClass: 'EXPENSE_ADM' }); setIsCategoryFormOpen(true); }}
+                                    className="text-[10px] font-black uppercase text-white bg-zinc-950 dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                                >
+                                    <Plus size={12} /> Nova Conta
+                                </button>
+                            )}
                         </div>
 
-                        <div className="p-0 overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700">
-                                    <tr className="text-[10px] font-black uppercase text-slate-500">
-                                        <th className="px-8 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Categorização Financeira</th>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <th key={m.name} className="px-4 py-4 text-right border-l border-slate-200/50 dark:border-zinc-700/50">{m.name}</th>
-                                                ))}
-                                                <th className="px-6 py-4 text-right bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">TOTAL ANO</th>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <th className="px-8 py-4 text-right">Valor (R$)</th>
-                                                <th className="px-8 py-4 text-right">AV%</th>
-                                            </>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 font-sans">
-                                    {/* 1. RECEITA BRUTA */}
-                                    <tr onClick={() => toggleSection('gross')} className="bg-indigo-50/20 dark:bg-indigo-900/10 cursor-pointer hover:bg-indigo-100/30 transition-colors">
-                                        <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase flex items-center gap-2 sticky left-0 bg-indigo-50/20 dark:bg-indigo-950/20 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('gross') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                            1. RECEITA BRUTA
-                                        </td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.grossRevenue.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-sm bg-indigo-100/20 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {dreData.grossRevenue.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-sm">R$ {dreData.grossRevenue.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right font-black text-[10px] text-slate-400">100.0%</td>
-                                            </>
-                                        )}
-                                    </tr>
-                                    {expandedSections.includes('gross') && (
-                                        <>
-                                            <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                    └ Serviços
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => (
-                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{m.revenueServices.toFixed(0)}</td>
-                                                        ))}
-                                                        <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueServices.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">R$ {dreData.revenueServices.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.revenueServices / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
-                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
-                                                    </td>
-                                                    {timeView === 'year' ? (
-                                                        <>
-                                                            {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                // Logic to distribute service revenue if available per month
-                                                                // Since 'info' here is an aggregate of services by name, we need to know the distribution.
-                                                                // The current structure of 'breakdownServices' might only have totals. 
-                                                                // Let's check how 'breakdownServices' is built. 
-                                                                // If we don't have monthly breakdown in 'info', we can't distribute it easily without refactoring 'breakdownServices' construction.
-                                                                // However, assuming 'info' has items list or we can iterate items like in Admin expenses.
-                                                                // Wait, 'breakdownServices' in 'dreData' seems to be Record<string, {count: number, total: number}>. 
-                                                                // It lacks the items list to group by month.
+                        {/* ===== PLANO DE CONTAS SUB-TAB ===== */}
+                        {dreSubTab === 'ACCOUNTS' && (() => {
+                            const DRE_CLASSES: { key: string; label: string; color: string; bg: string; lineRef: string }[] = [
+                                { key: 'COSTS', label: 'CPV / Custos Operacionais', color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/20', lineRef: '4. (-) CPV / CMV' },
+                                { key: 'EXPENSE_SALES', label: 'Despesas com Vendas', color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/20', lineRef: '6. (-) Despesas Vendas' },
+                                { key: 'EXPENSE_ADM', label: 'Despesas Administrativas', color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/20', lineRef: '7. (-) Despesas ADM' },
+                                { key: 'EXPENSE_FIN', label: 'Despesas Financeiras', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/20', lineRef: '8. (-) Despesas FIN' },
+                                { key: 'TAX', label: 'Impostos e Tributos', color: 'text-amber-700', bg: 'bg-amber-50 dark:bg-amber-950/20', lineRef: '10. (-) IRPJ / CSLL / DAS' },
+                                { key: 'DEDUCTION', label: 'Deduções da Receita Bruta', color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800/40', lineRef: '2. (-) Deduções' },
+                            ];
+                            const searchLower = categorySearch.toLowerCase();
+                            const filtered = expenseCategories.filter(c => !searchLower || c.name.toLowerCase().includes(searchLower));
+                            return (
+                                <div className="flex flex-col lg:flex-row min-h-[500px]">
+                                    {/* Left: Plan list */}
+                                    <div className="flex-1 p-6 overflow-y-auto">
+                                        {/* Search */}
+                                        <div className="relative mb-4">
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar conta..."
+                                                value={categorySearch}
+                                                onChange={e => setCategorySearch(e.target.value)}
+                                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                            />
+                                        </div>
 
-                                                                // Inspecting how breakdownServices is built in the backend/calculation logic would be ideal.
-                                                                // FOR NOW: To fix the user request "Remove parcels", if this is indeed where they see it, 
-                                                                // but wait, "Aluguel" is usually an expense, not a Service Revenue.
-                                                                // If the user sees "Aluguel" here, they might have categorized it as Service? Unlikely.
+                                        <div className="space-y-5">
+                                            {DRE_CLASSES.map(cls => {
+                                                const catList = filtered.filter(c => c.dreClass === cls.key);
+                                                return (
+                                                    <div key={cls.key}>
+                                                        {/* Group header */}
+                                                        <div className={`flex items-center justify-between px-4 py-2 rounded-xl mb-2 ${cls.bg}`}>
+                                                            <div>
+                                                                <p className={`text-[10px] font-black uppercase tracking-widest ${cls.color}`}>{cls.label}</p>
+                                                                <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE → {cls.lineRef}</p>
+                                                            </div>
+                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${cls.bg} ${cls.color} border`}>{catList.length}</span>
+                                                        </div>
+                                                        {catList.length === 0 ? (
+                                                            <p className="text-[10px] text-slate-400 font-bold uppercase pl-4 pb-2 italic">Nenhuma conta nesta classe</p>
+                                                        ) : (
+                                                            <div className="space-y-1">
+                                                                {catList.sort((a, b) => a.name.localeCompare(b.name)).map(cat => {
+                                                                    const usageCount = expenses.filter(e => e.category === cat.name).length;
+                                                                    return (
+                                                                        <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800/50 group transition-colors">
+                                                                            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cls.color.replace('text-', 'bg-')}`} />
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate">{cat.name}</p>
+                                                                                {usageCount > 0 && <p className="text-[9px] text-slate-400 font-bold">{usageCount} lançamento(s)</p>}
+                                                                            </div>
+                                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                                <button
+                                                                                    onClick={() => { setEditingCategoryId(cat.id); setCategoryForm({ name: cat.name, dreClass: cat.dreClass }); setIsCategoryFormOpen(true); }}
+                                                                                    className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
+                                                                                ><Edit2 size={12} /></button>
+                                                                                {usageCount === 0 && (
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteCategory(cat.id)}
+                                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"
+                                                                                    ><Trash2 size={12} /></button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
 
-                                                                // But to be consistent, we should show monthly values here if possible. 
-                                                                // Since I cannot easily get monthly values without items, I might need to skip this section or simple show average? No that's bad.
-
-                                                                // Let's assume the user's "Aluguel" is actually in Admin Expenses and my previous fix DID work, 
-                                                                // but maybe they are looking at "CUSTOS OPERACIONAIS"?
-                                                                // Let's look for "CUSTOS OPERACIONAIS" breakdown.
-
-                                                                return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
-                                                            })}
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            ))}
-                                        </>
+                                    {/* Right: Add / Edit form panel */}
+                                    {isCategoryFormOpen && (
+                                        <div className="lg:w-80 border-l border-slate-200 dark:border-zinc-700 p-6 bg-slate-50/50 dark:bg-zinc-800/30 flex flex-col gap-4 animate-in slide-in-from-right-4 duration-200">
+                                            <div className="flex items-center justify-between">
+                                                <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
+                                                    {editingCategoryId ? 'Editar Conta' : 'Nova Conta'}
+                                                </h4>
+                                                <button onClick={() => setIsCategoryFormOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"><X size={16} /></button>
+                                            </div>
+                                            <form onSubmit={handleSaveCategory} className="space-y-4">
+                                                <div>
+                                                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Nome da Conta</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        autoFocus
+                                                        placeholder="Ex: Energia Elétrica"
+                                                        value={categoryForm.name}
+                                                        onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 text-sm"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Classificação DRE</label>
+                                                    <div className="relative">
+                                                        <select
+                                                            value={categoryForm.dreClass}
+                                                            onChange={e => setCategoryForm({ ...categoryForm, dreClass: e.target.value })}
+                                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 appearance-none text-sm"
+                                                        >
+                                                            <option value="COSTS">CPV / Custos Operacionais</option>
+                                                            <option value="EXPENSE_SALES">Despesas com Vendas</option>
+                                                            <option value="EXPENSE_ADM">Despesas Administrativas</option>
+                                                            <option value="EXPENSE_FIN">Despesas Financeiras</option>
+                                                            <option value="TAX">Impostos e Tributos</option>
+                                                            <option value="DEDUCTION">Deduções da Receita</option>
+                                                        </select>
+                                                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                    </div>
+                                                </div>
+                                                <div className="pt-2 flex flex-col gap-2">
+                                                    <button type="submit" className="w-full py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow active:scale-95 transition-all">
+                                                        {editingCategoryId ? 'Atualizar' : 'Adicionar'} Conta
+                                                    </button>
+                                                    <button type="button" onClick={() => setIsCategoryFormOpen(false)} className="w-full py-3 bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-slate-200 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
+                                                        Cancelar
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     )}
+                                </div>
+                            );
+                        })()}
 
-                                    {/* 2. DEDUÇÕES */}
-                                    <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                            2. (-) DEDUÇÕES (Repasses Salão Parceiro)
-                                        </td>
-                                        {timeView === 'year' ? (
+                        {/* ===== DEMONSTRATIVO DRE (existing view wrapped in dreSubTab check) ===== */}
+                        {dreSubTab === 'STATEMENT' && <>
+
+                            {/* DRE Indicators / Insights at Top */}
+                            <div className="p-6 bg-slate-50/50 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-zinc-700">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[
+                                        { label: 'Receita Bruta', value: dreData.grossRevenue, prefix: 'R$ ', color: 'indigo', icon: TrendingUp },
+                                        { label: 'Margem de Lucro', value: dreData.grossRevenue > 0 ? (dreData.netResult / dreData.grossRevenue) * 100 : 0, suffix: '%', color: 'emerald', icon: Info },
+                                        { label: 'Ponto de Equilíbrio', value: (dreData.grossProfit / dreData.grossRevenue) > 0 ? (dreData.totalOpExpenses / (dreData.grossProfit / dreData.grossRevenue)) : 0, prefix: 'R$ ', color: 'amber', icon: FileText },
+                                        { label: 'Resultado Líquido', value: dreData.netResult, prefix: 'R$ ', color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CheckCircle2 },
+                                    ].map((card, idx) => (
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className={`p-2 rounded-xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`}>
+                                                    <card.icon size={16} />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{card.label}</p>
+                                                <p className={`text-lg font-black mt-1 ${card.color === 'rose' ? 'text-rose-600' : 'text-slate-950 dark:text-white'}`}>
+                                                    {card.prefix}{card.value.toLocaleString('pt-BR', { minimumFractionDigits: card.suffix === '%' ? 1 : 2, maximumFractionDigits: card.suffix === '%' ? 1 : 2 })}{card.suffix}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="p-0 overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700">
+                                        <tr className="text-[10px] font-black uppercase text-slate-500">
+                                            <th className="px-8 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Categorização Financeira</th>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <th key={m.name} className="px-4 py-4 text-right border-l border-slate-200/50 dark:border-zinc-700/50">{m.name}</th>
+                                                    ))}
+                                                    <th className="px-6 py-4 text-right bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">TOTAL ANO</th>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <th className="px-8 py-4 text-right">Valor (R$)</th>
+                                                    <th className="px-8 py-4 text-right">AV%</th>
+                                                </>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-zinc-800 font-sans">
+                                        {/* 1. RECEITA BRUTA */}
+                                        <tr onClick={() => toggleSection('gross')} className="bg-indigo-50/20 dark:bg-indigo-900/10 cursor-pointer hover:bg-indigo-100/30 transition-colors">
+                                            <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase flex items-center gap-2 sticky left-0 bg-indigo-50/20 dark:bg-indigo-950/20 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                {expandedSections.includes('gross') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                1. RECEITA BRUTA
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.grossRevenue.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-sm bg-indigo-100/20 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {dreData.grossRevenue.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-sm">R$ {dreData.grossRevenue.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right font-black text-[10px] text-slate-400">100.0%</td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('gross') && (
                                             <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.deductions.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.deductions.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.deductions.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.deductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                    {expandedSections.includes('deductions') && (
-                                        <>
-                                            <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <Menu size={12} />}
-                                                    └ Comissões
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => (
-                                                            <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.commissions.toFixed(0)}</td>
-                                                        ))}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.commissions.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.commissions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
-                                                <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-rose-50 dark:border-rose-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                        └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                        {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                        └ Serviços
                                                     </td>
                                                     {timeView === 'year' ? (
                                                         <>
                                                             {dreData.monthlySnapshots?.map((m: any) => (
-                                                                <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                                <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{m.revenueServices.toFixed(0)}</td>
                                                             ))}
-                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
+                                                            <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.revenueServices.toFixed(2)}</td>
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
-                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">R$ {dreData.revenueServices.toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((dreData.revenueServices / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                             </td>
                                                         </>
                                                     )}
                                                 </tr>
-                                            ))}
-                                        </>
-                                    )}
-
-                                    {/* 3. RECEITA LÍQUIDA */}
-                                    <tr className="bg-slate-50 dark:bg-zinc-800/50">
-                                        <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÍQUIDA</td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.netRevenue.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-sm border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.netRevenue.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-sm">R$ {dreData.netRevenue.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right font-black text-[10px] text-slate-400">{((dreData.netRevenue / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
-                                            </>
-                                        )}
-                                    </tr>
-
-                                    {/* 4. CPV/CMV */}
-                                    <tr onClick={() => toggleSection('cogs')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            {expandedSections.includes('cogs') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                            4. (-) CPV / CMV / CUSTOS OPERACIONAIS
-                                        </td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.totalCOGS.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.totalCOGS.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.totalCOGS.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                    {expandedSections.includes('cogs') && (
-                                        <>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Insumos e Produtos (Lançamentos Manuais)</td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const costVal = m.totalCOGS;
-                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{costVal.toFixed(0)}</td>
-                                                        })}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.totalCOGS.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.totalCOGS.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                    <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                            └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                         </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                        </>
-                                    )}
-
-                                    {/* 5. LUCRO BRUTO */}
-                                    <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
-                                        <td className="px-8 py-4 font-black text-sm text-emerald-800 dark:text-emerald-400 uppercase sticky left-0 bg-emerald-50 dark:bg-emerald-950 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">5. (=) LUCRO BRUTO</td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-emerald-100 dark:border-emerald-800/30 ${m.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{m.grossProfit.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400 border-l-2 border-emerald-200 dark:border-emerald-800">R$ {dreData.grossProfit.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400">R$ {dreData.grossProfit.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right font-black text-[10px] text-emerald-600/50">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.grossProfit / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-
-                                    {/* 6. DESPESAS COM VENDAS */}
-                                    <tr onClick={() => toggleSection('exp-vendas')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            <Menu size={16} />
-                                            6. (-) DESPESAS COM VENDAS
-                                        </td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountVendas.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountVendas.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountVendas.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.amountVendas / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                    {expandedSections.includes('exp-vendas') && Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => (
-                                        <React.Fragment key={cat}>
-                                            <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    <Menu size={12} />
-                                                    {cat}
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const catTotal = (m.breakdownVendas[cat]?.total || 0);
-                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
-                                                        })}
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSubSections.includes(cat) && (() => {
-                                                const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
-                                                (info.items as Expense[]).forEach(e => {
-                                                    let key = e.recurringId;
-                                                    let displayDesc = e.description || '';
-                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
-                                                    if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
-                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
-                                                    const dateObj = parseDateSafe(e.date);
-                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
-                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key || 'no-key'].total += e.amount;
-                                                });
-                                                const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
-                                                return sortedGroups.map((group, idx) => (
-                                                    <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                    const val = group.amounts[mIdx];
-                                                                    return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                    // Logic to distribute service revenue if available per month
+                                                                    // Since 'info' here is an aggregate of services by name, we need to know the distribution.
+                                                                    // The current structure of 'breakdownServices' might only have totals. 
+                                                                    // Let's check how 'breakdownServices' is built. 
+                                                                    // If we don't have monthly breakdown in 'info', we can't distribute it easily without refactoring 'breakdownServices' construction.
+                                                                    // However, assuming 'info' has items list or we can iterate items like in Admin expenses.
+                                                                    // Wait, 'breakdownServices' in 'dreData' seems to be Record<string, {count: number, total: number}>. 
+                                                                    // It lacks the items list to group by month.
+
+                                                                    // Inspecting how breakdownServices is built in the backend/calculation logic would be ideal.
+                                                                    // FOR NOW: To fix the user request "Remove parcels", if this is indeed where they see it, 
+                                                                    // but wait, "Aluguel" is usually an expense, not a Service Revenue.
+                                                                    // If the user sees "Aluguel" here, they might have categorized it as Service? Unlikely.
+
+                                                                    // But to be consistent, we should show monthly values here if possible. 
+                                                                    // Since I cannot easily get monthly values without items, I might need to skip this section or simple show average? No that's bad.
+
+                                                                    // Let's assume the user's "Aluguel" is actually in Admin Expenses and my previous fix DID work, 
+                                                                    // but maybe they are looking at "CUSTOS OPERACIONAIS"?
+                                                                    // Let's look for "CUSTOS OPERACIONAIS" breakdown.
+
+                                                                    return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
                                                                 })}
-                                                                <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
+                                                                <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
                                                                 <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                    {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                                 </td>
                                                             </>
                                                         )}
                                                     </tr>
-                                                ));
-                                            })()}
-                                        </React.Fragment>
-                                    ))}
-
-                                    {/* 7. DESPESAS ADMINISTRATIVAS */}
-                                    <tr onClick={() => toggleSection('exp-adm')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            <Menu size={16} />
-                                            7. (-) DESPESAS ADMINISTRATIVAS
-                                        </td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountAdm.toFixed(0)}</td>
                                                 ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountAdm.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountAdm.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.amountAdm / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
                                             </>
                                         )}
-                                    </tr>
-                                    {expandedSections.includes('exp-adm') && Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => (
-                                        <React.Fragment key={cat}>
-                                            <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                    <Menu size={12} />
-                                                    {cat}
-                                                </td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => {
-                                                            const catTotal = (m.breakdownAdm[cat]?.total || 0);
-                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
-                                                        })}
-                                                        <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {expandedSubSections.includes(cat) && (() => {
-                                                const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
-                                                (info.items as Expense[]).forEach(e => {
-                                                    let key = e.recurringId;
-                                                    let displayDesc = e.description || '';
-                                                    const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
-                                                    if (key) { if (match) displayDesc = match[1]; }
-                                                    else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
-                                                    if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
-                                                    const dateObj = parseDateSafe(e.date);
-                                                    const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
-                                                    groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
-                                                    groupedItems[key || 'no-key'].total += e.amount;
-                                                });
-                                                const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
-                                                return sortedGroups.map((group, idx) => (
-                                                    <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
-                                                        {timeView === 'year' ? (
-                                                            <>
-                                                                {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                    const val = group.amounts[mIdx];
-                                                                    return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
-                                                                })}
-                                                                <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
-                                                                <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                    {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                                </td>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                ));
-                                            })()}
-                                        </React.Fragment>
-                                    ))}
 
-                                    {/* 8. DESPESAS FINANCEIRAS */}
-                                    <tr onClick={() => toggleSection('exp-fin')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                            <Menu size={16} />
-                                            8. (-) DESPESAS FINANCEIRAS
-                                        </td>
-                                        {timeView === 'year' ? (
+                                        {/* 2. DEDUÇÕES */}
+                                        <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                2. (-) DEDUÇÕES (Repasses Salão Parceiro)
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.deductions.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.deductions.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.deductions.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.deductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('deductions') && (
                                             <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountFin.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountFin.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountFin.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.amountFin / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                    {expandedSections.includes('exp-fin') && (
-                                        <>
-                                            <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
-                                                {timeView === 'year' ? (
-                                                    <>
-                                                        {dreData.monthlySnapshots?.map((m: any) => {
-                                                            return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">-{m.automatedDeductions.toFixed(0)}</td>
-                                                        })}
-                                                        <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
-                                                        <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                            {dreData.grossRevenue > 0 ? ((dreData.automatedDeductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                        </td>
-                                                    </>
-                                                )}
-                                            </tr>
-                                            {Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
-                                                <React.Fragment key={cat}>
-                                                    <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                            <Menu size={12} />
-                                                            {cat}
+                                                <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                        {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <Menu size={12} />}
+                                                        └ Comissões
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => (
+                                                                <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{m.commissions.toFixed(0)}</td>
+                                                            ))}
+                                                            <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.commissions.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.commissions.toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((dreData.commissions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                                {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                    <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-rose-50 dark:border-rose-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                            └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                         </td>
                                                         {timeView === 'year' ? (
                                                             <>
-                                                                {dreData.monthlySnapshots?.map((m: any) => {
-                                                                    const catTotal = (m.breakdownFin[cat]?.total || 0);
-                                                                    return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
-                                                                })}
-                                                                <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
+                                                                {dreData.monthlySnapshots?.map((m: any) => (
+                                                                    <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                                ))}
+                                                                <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {info.total.toFixed(2)}</td>
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
-                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {info.total.toFixed(2)}</td>
+                                                                <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                    {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                                 </td>
                                                             </>
                                                         )}
                                                     </tr>
-                                                    {expandedSubSections.includes(cat) && (() => {
-                                                        const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
-                                                        (info.items as Expense[]).forEach(e => {
-                                                            let key = e.recurringId;
-                                                            let displayDesc = e.description || '';
-                                                            const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
-                                                            if (key) { if (match) displayDesc = match[1]; }
-                                                            else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
-                                                            if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
-                                                            const dateObj = parseDateSafe(e.date);
-                                                            const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
-                                                            groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
-                                                            groupedItems[key || 'no-key'].total += e.amount;
-                                                        });
-                                                        const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
-                                                        return sortedGroups.map((group, idx) => (
-                                                            <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
-                                                                {timeView === 'year' ? (
-                                                                    <>
-                                                                        {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                            const val = group.amounts[mIdx];
-                                                                            return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
-                                                                        })}
-                                                                        <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
-                                                                    </>
-                                                                ) : (
-                                                                    <>
-                                                                        <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
-                                                                        <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
-                                                                            {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                                        </td>
-                                                                    </>
-                                                                )}
-                                                            </tr>
-                                                        ));
-                                                    })()}
-                                                </React.Fragment>
-                                            ))}
-                                        </>
-                                    )}
-
-                                    {/* 9. RESULTADO ANTES IRPJ */}
-                                    <tr className="bg-slate-100 dark:bg-zinc-800">
-                                        <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase sticky left-0 bg-slate-100 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">9. (=) RESULTADO ANTES IRPJ/CSLL</td>
-                                        {timeView === 'year' ? (
-                                            <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-slate-200/50 dark:border-zinc-700/50 ${m.resultBeforeTaxes >= 0 ? 'text-slate-700' : 'text-rose-600'}`}>{m.resultBeforeTaxes.toFixed(0)}</td>
                                                 ))}
-                                                <td className="px-6 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200 border-l-2 border-slate-300 dark:border-zinc-600">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right font-black text-[10px] text-slate-500">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.resultBeforeTaxes / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
                                             </>
                                         )}
-                                    </tr>
 
-                                    {/* 10. PROVISÕES IRPJ */}
-                                    <tr>
-                                        <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">10. (-) PROVISÕES IRPJ E CSLL</td>
-                                        {timeView === 'year' ? (
+                                        {/* 3. RECEITA LÍQUIDA */}
+                                        <tr className="bg-slate-50 dark:bg-zinc-800/50">
+                                            <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÍQUIDA</td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-xs font-bold border-l border-slate-200/50 dark:border-zinc-700/50">{m.netRevenue.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-sm border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.netRevenue.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-sm">R$ {dreData.netRevenue.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right font-black text-[10px] text-slate-400">{((dreData.netRevenue / dreData.grossRevenue) * 100 || 0).toFixed(1)}%</td>
+                                                </>
+                                            )}
+                                        </tr>
+
+                                        {/* 4. CPV/CMV */}
+                                        <tr onClick={() => toggleSection('cogs')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                {expandedSections.includes('cogs') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                                4. (-) CPV / CMV / CUSTOS OPERACIONAIS
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.totalCOGS.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.totalCOGS.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.totalCOGS.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('cogs') && (
                                             <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.irpjCsll.toFixed(0)}</td>
-                                                ))}
-                                                <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.irpjCsll.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.irpjCsll.toFixed(2)}</td>
-                                                <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.irpjCsll / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
+                                                <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Insumos e Produtos (Lançamentos Manuais)</td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => {
+                                                                const costVal = m.totalCOGS;
+                                                                return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">{costVal.toFixed(0)}</td>
+                                                            })}
+                                                            <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.totalCOGS.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">R$ {dreData.totalCOGS.toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((dreData.totalCOGS / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
                                             </>
                                         )}
-                                    </tr>
 
-                                    {/* 11. RESULTADO LÍQUIDO */}
-                                    <tr className="bg-black text-white dark:bg-white dark:text-black">
-                                        <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO</td>
-                                        {timeView === 'year' ? (
+                                        {/* 5. LUCRO BRUTO */}
+                                        <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
+                                            <td className="px-8 py-4 font-black text-sm text-emerald-800 dark:text-emerald-400 uppercase sticky left-0 bg-emerald-50 dark:bg-emerald-950 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">5. (=) LUCRO BRUTO</td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-emerald-100 dark:border-emerald-800/30 ${m.grossProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>{m.grossProfit.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400 border-l-2 border-emerald-200 dark:border-emerald-800">R$ {dreData.grossProfit.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-sm text-emerald-800 dark:text-emerald-400">R$ {dreData.grossProfit.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right font-black text-[10px] text-emerald-600/50">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.grossProfit / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+
+                                        {/* 6. DESPESAS COM VENDAS */}
+                                        <tr onClick={() => toggleSection('exp-vendas')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                <Menu size={16} />
+                                                6. (-) DESPESAS COM VENDAS
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountVendas.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountVendas.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountVendas.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.amountVendas / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('exp-vendas') && Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => (
+                                            <React.Fragment key={cat}>
+                                                <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                        <Menu size={12} />
+                                                        {cat}
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => {
+                                                                const catTotal = (m.breakdownVendas[cat]?.total || 0);
+                                                                return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
+                                                            })}
+                                                            <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                                {expandedSubSections.includes(cat) && (() => {
+                                                    const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
+                                                    (info.items as Expense[]).forEach(e => {
+                                                        let key = e.recurringId;
+                                                        let displayDesc = e.description || '';
+                                                        const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                        if (key) { if (match) displayDesc = match[1]; }
+                                                        else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                        if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                        const dateObj = parseDateSafe(e.date);
+                                                        const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                        groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                        groupedItems[key || 'no-key'].total += e.amount;
+                                                    });
+                                                    const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
+                                                    return sortedGroups.map((group, idx) => (
+                                                        <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                            <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
+                                                                        const val = group.amounts[mIdx];
+                                                                        return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                    })}
+                                                                    <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </React.Fragment>
+                                        ))}
+
+                                        {/* 7. DESPESAS ADMINISTRATIVAS */}
+                                        <tr onClick={() => toggleSection('exp-adm')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                <Menu size={16} />
+                                                7. (-) DESPESAS ADMINISTRATIVAS
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountAdm.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountAdm.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountAdm.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.amountAdm / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('exp-adm') && Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => (
+                                            <React.Fragment key={cat}>
+                                                <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                        <Menu size={12} />
+                                                        {cat}
+                                                    </td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => {
+                                                                const catTotal = (m.breakdownAdm[cat]?.total || 0);
+                                                                return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
+                                                            })}
+                                                            <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                                {expandedSubSections.includes(cat) && (() => {
+                                                    const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
+                                                    (info.items as Expense[]).forEach(e => {
+                                                        let key = e.recurringId;
+                                                        let displayDesc = e.description || '';
+                                                        const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                        if (key) { if (match) displayDesc = match[1]; }
+                                                        else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                        if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                        const dateObj = parseDateSafe(e.date);
+                                                        const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                        groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                        groupedItems[key || 'no-key'].total += e.amount;
+                                                    });
+                                                    const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
+                                                    return sortedGroups.map((group, idx) => (
+                                                        <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                            <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
+                                                                        const val = group.amounts[mIdx];
+                                                                        return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                    })}
+                                                                    <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </React.Fragment>
+                                        ))}
+
+                                        {/* 8. DESPESAS FINANCEIRAS */}
+                                        <tr onClick={() => toggleSection('exp-fin')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                <Menu size={16} />
+                                                8. (-) DESPESAS FINANCEIRAS
+                                            </td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.amountFin.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.amountFin.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.amountFin.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.amountFin / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                        {expandedSections.includes('exp-fin') && (
                                             <>
-                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                    <td key={m.name} className={`px-4 py-6 text-right text-xs font-black border-l border-white/10 dark:border-black/10 ${m.netResult >= 0 ? '' : 'text-rose-400'}`}>{m.netResult.toFixed(0)}</td>
+                                                <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                    <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
+                                                    {timeView === 'year' ? (
+                                                        <>
+                                                            {dreData.monthlySnapshots?.map((m: any) => {
+                                                                return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">-{m.automatedDeductions.toFixed(0)}</td>
+                                                            })}
+                                                            <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">- R$ {dreData.automatedDeductions.toFixed(2)}</td>
+                                                            <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                {dreData.grossRevenue > 0 ? ((dreData.automatedDeductions / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                                {Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => (
+                                                    <React.Fragment key={cat}>
+                                                        <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                            <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                                <Menu size={12} />
+                                                                {cat}
+                                                            </td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any) => {
+                                                                        const catTotal = (m.breakdownFin[cat]?.total || 0);
+                                                                        return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{catTotal.toFixed(0)}</td>
+                                                                    })}
+                                                                    <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">R$ {(info.total as number).toFixed(2)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">R$ {(info.total as number).toFixed(2)}</td>
+                                                                    <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                        {expandedSubSections.includes(cat) && (() => {
+                                                            const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
+                                                            (info.items as Expense[]).forEach(e => {
+                                                                let key = e.recurringId;
+                                                                let displayDesc = e.description || '';
+                                                                const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                                if (key) { if (match) displayDesc = match[1]; }
+                                                                else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                                if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                                const dateObj = parseDateSafe(e.date);
+                                                                const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                                groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                                groupedItems[key || 'no-key'].total += e.amount;
+                                                            });
+                                                            const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
+                                                            return sortedGroups.map((group, idx) => (
+                                                                <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                                    <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                    {timeView === 'year' ? (
+                                                                        <>
+                                                                            {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
+                                                                                const val = group.amounts[mIdx];
+                                                                                return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? `R$ ${val.toFixed(2)}` : ''}</td>
+                                                                            })}
+                                                                            <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">R$ {group.total.toFixed(2)}</td>
+                                                                        </>
+                                                                    ) : (
+                                                                        <>
+                                                                            <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">R$ {group.total.toFixed(2)}</td>
+                                                                            <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                                {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                            </td>
+                                                                        </>
+                                                                    )}
+                                                                </tr>
+                                                            ));
+                                                        })()}
+                                                    </React.Fragment>
                                                 ))}
-                                                <td className="px-6 py-6 text-right font-black text-xl border-l-2 border-white/20 dark:border-black/20">R$ {dreData.netResult.toFixed(2)}</td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-8 py-6 text-right font-black text-xl">R$ {dreData.netResult.toFixed(2)}</td>
-                                                <td className="px-8 py-6 text-right font-black text-xs text-white/50">
-                                                    {dreData.grossRevenue > 0 ? ((dreData.netResult / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                </td>
                                             </>
                                         )}
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
 
+                                        {/* 9. RESULTADO ANTES IRPJ */}
+                                        <tr className="bg-slate-100 dark:bg-zinc-800">
+                                            <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase sticky left-0 bg-slate-100 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">9. (=) RESULTADO ANTES IRPJ/CSLL</td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className={`px-4 py-4 text-right text-xs font-black border-l border-slate-200/50 dark:border-zinc-700/50 ${m.resultBeforeTaxes >= 0 ? 'text-slate-700' : 'text-rose-600'}`}>{m.resultBeforeTaxes.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200 border-l-2 border-slate-300 dark:border-zinc-600">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-sm text-slate-800 dark:text-slate-200">R$ {dreData.resultBeforeTaxes.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right font-black text-[10px] text-slate-500">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.resultBeforeTaxes / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+
+                                        {/* 10. PROVISÕES IRPJ */}
+                                        <tr>
+                                            <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">10. (-) PROVISÕES IRPJ E CSLL</td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-rose-500 border-l border-slate-100 dark:border-zinc-800">-{m.irpjCsll.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-4 text-right font-black text-xs text-rose-600 bg-rose-50/20 dark:bg-rose-900/10 border-l-2 border-rose-200 dark:border-rose-800">- R$ {dreData.irpjCsll.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-4 text-right font-black text-xs text-rose-600">- R$ {dreData.irpjCsll.toFixed(2)}</td>
+                                                    <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.irpjCsll / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+
+                                        {/* 11. RESULTADO LÍQUIDO */}
+                                        <tr className="bg-black text-white dark:bg-white dark:text-black">
+                                            <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO</td>
+                                            {timeView === 'year' ? (
+                                                <>
+                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                        <td key={m.name} className={`px-4 py-6 text-right text-xs font-black border-l border-white/10 dark:border-black/10 ${m.netResult >= 0 ? '' : 'text-rose-400'}`}>{m.netResult.toFixed(0)}</td>
+                                                    ))}
+                                                    <td className="px-6 py-6 text-right font-black text-xl border-l-2 border-white/20 dark:border-black/20">R$ {dreData.netResult.toFixed(2)}</td>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <td className="px-8 py-6 text-right font-black text-xl">R$ {dreData.netResult.toFixed(2)}</td>
+                                                    <td className="px-8 py-6 text-right font-black text-xs text-white/50">
+                                                        {dreData.grossRevenue > 0 ? ((dreData.netResult / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                    </td>
+                                                </>
+                                            )}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </>
+                        {/* closes dreSubTab === 'STATEMENT' fragment */}
                     </div>
                 )}
                 {activeTab === 'SUPPLIERS' && (
@@ -2112,24 +2317,56 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 )}
 
                                 <div>
-                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria / Conta</label>
                                     <div className="relative">
-                                        <select
-                                            value={expenseForm.category}
-                                            onChange={e => {
-                                                const selectedCat = expenseCategories.find(c => c.name === e.target.value);
-                                                setExpenseForm({
-                                                    ...expenseForm,
-                                                    category: e.target.value,
-                                                    dreClass: selectedCat?.dreClass || expenseForm.dreClass
-                                                });
-                                            }}
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
-                                        >
-                                            <option value="" disabled>Selecione...</option>
-                                            {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar conta... (ex: Aluguel)"
+                                            autoComplete="off"
+                                            value={categoryInputSearch}
+                                            onFocus={() => { setCategoryInputSearch(expenseForm.category || ''); setIsCategoryDropdownOpen(true); }}
+                                            onChange={e => { setCategoryInputSearch(e.target.value); setIsCategoryDropdownOpen(true); setExpenseForm({ ...expenseForm, category: e.target.value }); }}
+                                            onBlur={() => setTimeout(() => setIsCategoryDropdownOpen(false), 180)}
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black pr-10"
+                                        />
+                                        {expenseForm.category && (() => {
+                                            const selCat = expenseCategories.find(c => c.name === expenseForm.category);
+                                            const dreLabels: Record<string, { text: string; color: string }> = {
+                                                COSTS: { text: 'CPV', color: 'text-rose-600 bg-rose-50' },
+                                                EXPENSE_SALES: { text: 'Vendas', color: 'text-orange-600 bg-orange-50' },
+                                                EXPENSE_ADM: { text: 'ADM', color: 'text-indigo-600 bg-indigo-50' },
+                                                EXPENSE_FIN: { text: 'FIN', color: 'text-purple-600 bg-purple-50' },
+                                                TAX: { text: 'TAX', color: 'text-amber-700 bg-amber-50' },
+                                                DEDUCTION: { text: 'DED', color: 'text-slate-600 bg-slate-100' },
+                                            };
+                                            const dl = selCat ? dreLabels[selCat.dreClass] : null;
+                                            return dl ? <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black px-2 py-0.5 rounded-full ${dl.color}`}>{dl.text}</span> : null;
+                                        })()}
+                                        {isCategoryDropdownOpen && (
+                                            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl shadow-xl max-h-52 overflow-y-auto">
+                                                {expenseCategories
+                                                    .filter(c => !categoryInputSearch || c.name.toLowerCase().includes(categoryInputSearch.toLowerCase()))
+                                                    .sort((a, b) => a.name.localeCompare(b.name))
+                                                    .map(c => (
+                                                        <button
+                                                            key={c.id}
+                                                            type="button"
+                                                            onMouseDown={() => {
+                                                                setExpenseForm({ ...expenseForm, category: c.name, dreClass: c.dreClass as any });
+                                                                setCategoryInputSearch(c.name);
+                                                                setIsCategoryDropdownOpen(false);
+                                                            }}
+                                                            className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+                                                        >
+                                                            <span className="text-[11px] font-bold text-slate-900 dark:text-white uppercase">{c.name}</span>
+                                                            <span className="text-[8px] font-black text-slate-400">{c.dreClass}</span>
+                                                        </button>
+                                                    ))}
+                                                {expenseCategories.filter(c => !categoryInputSearch || c.name.toLowerCase().includes(categoryInputSearch.toLowerCase())).length === 0 && (
+                                                    <div className="px-4 py-3 text-[10px] text-slate-400 font-bold uppercase">Nenhuma conta encontrada</div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
