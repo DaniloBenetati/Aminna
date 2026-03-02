@@ -2916,7 +2916,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </div>
                                     <div className="space-y-1">
                                         <div className="flex justify-between items-center px-1">
-                                            <label className="block text-[10px] font-black text-slate-500 uppercase">Favorecido (Fornecedor)</label>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase">Favorecido</label>
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -2934,7 +2934,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 onChange={e => setExpenseForm({ ...expenseForm, supplierId: e.target.value })}
                                                 className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                             >
-                                                <option value="">Nenhum (Gasto Avulso)</option>
+                                                <option value="">Nenhum</option>
                                                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                             </select>
                                             <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
