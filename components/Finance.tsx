@@ -1153,7 +1153,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             </div>
 
             <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
-                <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full xl:w-auto">
+                <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full xl:w-auto flex-nowrap">
                     {[
                         { id: 'ACCOUNTS', label: 'Contas', icon: FileText },
                         { id: 'DRE', label: 'DRE', icon: CalcIcon },
@@ -1172,22 +1172,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     setDateRef(new Date());
                                 }
                             }}
-                            className={`flex-1 md:flex-none min-w-[100px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            className={`flex-1 md:flex-none min-w-[80px] md:min-w-[100px] flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
-                            <tab.icon size={14} /> {tab.label}
+                            <tab.icon size={13} className="md:size-[14px]" /> {tab.label}
                         </button>
                     ))}
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-2 w-full xl:w-auto items-center">
+                <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto items-stretch md:items-center">
                     {activeTab === 'ACCOUNTS' && accountsSubTab === 'PAYABLES' && (
-                        <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
                             <div className="relative w-full md:w-48">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                 <input
                                     type="text"
                                     placeholder="Descrição..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
                                     value={payablesFilter}
                                     onChange={e => setPayablesFilter(e.target.value)}
                                 />
@@ -1197,7 +1197,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 <input
                                     type="text"
                                     placeholder="Favorecido..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
                                     value={payablesSupplierFilter}
                                     onChange={e => setPayablesSupplierFilter(e.target.value)}
                                 />
@@ -1234,9 +1234,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </div>
                     )}
 
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide flex-nowrap">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
-                            <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
+                            <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
                         ))}
                     </div>
                     {timeView !== 'custom' ? (
@@ -1259,8 +1259,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
                         {/* ===== ACCOUNTS Sub-nav — always first ===== */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
+                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
                                     { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
@@ -1274,19 +1274,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             setAccountsSubTab(st.id as any);
                                             if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
                                         }}
-                                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                     >
-                                        <st.icon size={13} /> {st.label}
+                                        <st.icon size={12} className="md:size-[13px]" /> {st.label}
                                     </button>
                                 ))}
                             </div>
                             {accountsSubTab === 'PAYABLES' && (
-                                <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all">
+                                <button onClick={() => handleOpenModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
                                     <Plus size={12} /> Lançar Despesa
                                 </button>
                             )}
                             {accountsSubTab === 'SUPPLIERS' && (
-                                <button onClick={() => handleOpenSupplierModal()} className="text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all">
+                                <button onClick={() => handleOpenSupplierModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
                                     <Plus size={12} /> Novo Fornecedor
                                 </button>
                             )}
@@ -1302,8 +1302,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </div>
                                     <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors"><Printer size={16} /></button>
                                 </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div className="overflow-x-auto scrollbar-hide">
+                                    <table className="w-full text-left border-collapse min-w-[1000px]">
                                         <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
                                             <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
                                                 <th className="px-4 py-4 w-10">
@@ -1428,8 +1428,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                         <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
                                         <button onClick={handlePrintPayablesReport} className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-sm">
+                                    <div className="overflow-x-auto scrollbar-hide">
+                                        <table className="w-full text-left text-sm min-w-[800px]">
                                             <thead>
                                                 <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
                                                     <th className="px-4 py-4 w-10">
@@ -1576,8 +1576,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Agendamentos com pagamento pendente ou futuro</p>
                                             </div>
                                         </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-sm">
+                                        <div className="overflow-x-auto scrollbar-hide">
+                                            <table className="w-full text-left text-sm min-w-[1000px]">
                                                 <thead>
                                                     <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
                                                         <th className="px-6 py-4">Data</th>
@@ -1799,32 +1799,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     return (
                                         <div className="space-y-6">
                                             {/* AI Strategist Banner */}
-                                            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-6 py-1.5 rounded-2xl shadow-lg text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-2 justify-between">
+                                            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-4 md:px-6 py-2 md:py-1.5 rounded-2xl shadow-lg text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-3 md:gap-2 justify-between">
                                                 <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
-                                                    <BrainCircuit size={80} />
+                                                    <BrainCircuit size={60} className="md:size-[80px]" />
                                                 </div>
-                                                <div className="z-10 flex-1">
-                                                    <h2 className="text-base font-black uppercase tracking-tighter flex items-center gap-2 drop-shadow-sm">
-                                                        <BrainCircuit size={14} /> O Estrategista Aminna
+                                                <div className="z-10 flex-1 text-center md:text-left">
+                                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-1.5 md:gap-2 drop-shadow-sm">
+                                                        <BrainCircuit size={12} className="md:size-[14px]" /> O Estrategista Aminna
                                                     </h2>
-                                                    <p className="text-white/80 font-bold text-[10px] leading-tight max-w-4xl drop-shadow-sm mt-0">
+                                                    <p className="text-white/80 font-bold text-[9px] md:text-[10px] leading-tight max-w-4xl drop-shadow-sm mt-0.5 md:mt-0">
                                                         Analisei o histórico de faturamento de {currentYear - 1} e tracei a sazonalidade detalhada do seu negócio.
                                                         Abaixo você encontra a linha de meta ajustada para {currentYear}.
                                                     </p>
                                                 </div>
-                                                <div className="z-10 bg-white/20 py-1 px-4 rounded-xl backdrop-blur-sm border border-white/20 flex flex-col items-center min-w-[150px]">
-                                                    <span className="text-[8px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-1 mb-0"><Target size={8} /> Simulador de Meta</span>
-                                                    <div className="flex items-center gap-2">
-                                                        <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-xs">-</button>
-                                                        <span className="text-lg font-black drop-shadow-md leading-none">+{predictiveTargetGrowth}%</span>
-                                                        <button onClick={() => setPredictiveTargetGrowth(predictiveTargetGrowth + 5)} className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-xs">+</button>
+                                                <div className="z-10 bg-white/20 py-1.5 px-3 md:px-4 rounded-xl backdrop-blur-sm border border-white/20 flex flex-col items-center min-w-[120px] md:min-w-[150px]">
+                                                    <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-1 mb-0"><Target size={8} /> Simulador de Meta</span>
+                                                    <div className="flex items-center gap-1.5 md:gap-2">
+                                                        <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-[10px] md:text-xs">-</button>
+                                                        <span className="text-base md:text-lg font-black drop-shadow-md leading-none">+{predictiveTargetGrowth}%</span>
+                                                        <button onClick={() => setPredictiveTargetGrowth(predictiveTargetGrowth + 5)} className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-[10px] md:text-xs">+</button>
                                                     </div>
-                                                    <span className="text-[7px] font-bold text-white/70 uppercase mt-0">Crescimento sobre {currentYear - 1}</span>
+                                                    <span className="text-[6px] md:text-[7px] font-bold text-white/70 uppercase mt-0">Crescimento sobre {currentYear - 1}</span>
                                                 </div>
                                             </div>
 
                                             {/* Filters Bar for Predictive View */}
-                                            <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+                                            <div className="bg-white dark:bg-zinc-900 p-3 md:p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 md:gap-3">
                                                 <div>
                                                     <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Profissional</label>
                                                     <select value={filterProvider} onChange={e => setFilterProvider(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
@@ -1979,7 +1979,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
                         {/* DRE Sub-tab header */}
                         <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50 dark:bg-zinc-800/50">
-                            <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'STATEMENT', label: 'Demonstrativo DRE', icon: BarChart3 },
                                     { id: 'ACCOUNTS', label: 'Plano de Contas', icon: Files },
@@ -1987,9 +1987,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     <button
                                         key={st.id}
                                         onClick={() => setDreSubTab(st.id as any)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${dreSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                        className={`flex-1 sm:flex-none items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex ${dreSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                     >
-                                        <st.icon size={13} /> {st.label}
+                                        <st.icon size={12} className="md:size-[13px]" /> {st.label}
                                     </button>
                                 ))}
                             </div>
@@ -2002,7 +2002,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             {dreSubTab === 'ACCOUNTS' && (
                                 <button
                                     onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', dreClass: 'EXPENSE_ADM' }); setIsCategoryFormOpen(true); }}
-                                    className="text-[10px] font-black uppercase text-white bg-zinc-950 dark:bg-white dark:text-black px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                                    className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-zinc-950 dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all"
                                 >
                                     <Plus size={12} /> Nova Conta
                                 </button>
@@ -2022,9 +2022,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             const searchLower = categorySearch.toLowerCase();
                             const filtered = expenseCategories.filter(c => !searchLower || c.name.toLowerCase().includes(searchLower));
                             return (
-                                <div className="flex flex-col lg:flex-row min-h-[500px]">
+                                <div className="flex flex-col lg:flex-row min-h-[500px] divide-y lg:divide-y-0 lg:divide-x dark:divide-zinc-800">
                                     {/* Left: Plan list */}
-                                    <div className="flex-1 p-6 overflow-y-auto">
+                                    <div className="w-full lg:flex-1 p-4 md:p-6 overflow-y-auto">
                                         {/* Search */}
                                         <div className="relative mb-4">
                                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -2171,8 +2171,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </div>
                                 </div>
 
-                                <div className="p-0 overflow-x-auto">
-                                    <table className="w-full text-left border-collapse">
+                                <div className="p-0 overflow-x-auto scrollbar-hide">
+                                    <table className="w-full text-left border-collapse min-w-[1000px]">
                                         <thead className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700">
                                             <tr className="text-[10px] font-black uppercase text-slate-500">
                                                 <th className="px-8 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">Categorização Financeira</th>
@@ -2787,8 +2787,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             {
                 isModalOpen && (
-                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200 my-auto">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
                                 <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
@@ -3011,8 +3011,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             {/* BATCH ACTION MODAL (Recurring Expenses) */}
             {
                 isBatchModalOpen && (
-                    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                    <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300 my-auto">
                             <div className="p-8 text-center space-y-6">
                                 <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
                                     <AlertCircle size={40} />
@@ -3107,12 +3107,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             {/* BATCH ACTION BAR (Floating) */}
             {selectedExpenseIds.length > 0 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500">
-                    <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-2 md:gap-4 p-2 md:p-3 backdrop-blur-md">
-                        <div className="px-3 md:px-6 border-r border-white/20 dark:border-black/20">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Selecionados</span>
-                                <span className="text-lg md:text-xl font-black">{selectedExpenseIds.length}</span>
+                <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 w-[95%] md:w-auto">
+                    <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-1 md:gap-4 p-1.5 md:p-3 backdrop-blur-md justify-between md:justify-start">
+                        <div className="px-2 md:px-6 border-r border-white/20 dark:border-black/20">
+                            <div className="flex flex-col items-center md:items-start">
+                                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-50">Itens</span>
+                                <span className="text-sm md:text-xl font-black leading-none">{selectedExpenseIds.length}</span>
                             </div>
                         </div>
 
