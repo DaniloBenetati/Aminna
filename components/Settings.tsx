@@ -8,7 +8,7 @@ import {
     Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
     X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, CheckCircle, AlertTriangle
 } from 'lucide-react';
-import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile, FiscalConfig } from '../types';
+import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile, FiscalConfig, FinancialConfig } from '../types';
 import { getFiscalConfig, focusNfeService } from '../services/focusNfeService';
 
 interface SettingsPageProps {
@@ -21,6 +21,8 @@ interface SettingsPageProps {
     setCommissionSettings?: React.Dispatch<React.SetStateAction<CommissionSetting[]>>;
     isAdmin?: boolean;
     onSimulateUser?: (user: UserProfile | null) => void;
+    financialConfigs?: FinancialConfig[];
+    setFinancialConfigs?: React.Dispatch<React.SetStateAction<FinancialConfig[]>>;
 }
 
 export const SettingsPage: React.FC<SettingsPageProps> = ({
@@ -32,7 +34,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     commissionSettings = [],
     setCommissionSettings,
     isAdmin = false,
-    onSimulateUser
+    onSimulateUser,
+    financialConfigs = [],
+    setFinancialConfigs
 }) => {
     const [activeTab, setActiveTab] = useState<'MANUAL' | 'GENERAL'>('GENERAL');
     const [subTab, setSubTab] = useState<'FINANCE' | 'SYSTEM' | 'UNIT' | 'CATEGORIES' | 'USERS'>('FINANCE');
@@ -58,6 +62,78 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     const [isUploadingCertificate, setIsUploadingCertificate] = useState(false);
     const [certificateFile, setCertificateFile] = useState<File | null>(null);
     const [certificatePassword, setCertificatePassword] = useState('');
+
+    // --- FINANCIAL CONFIG STATES ---
+    const latestConfig = financialConfigs[0]; // Assumes sorted by valid_from DESC in App.tsx
+    const [isSavingRates, setIsSavingRates] = useState(false);
+    const [localRates, setLocalRates] = useState({
+        anticipationRate: latestConfig?.anticipationRate || 1.79,
+        anticipationEnabled: latestConfig ? latestConfig.anticipationEnabled : true,
+        validFrom: latestConfig?.validFrom || new Date().toISOString().split('T')[0],
+        initialBalance: latestConfig?.initialBalance || 0,
+        cashFlowReserveRate: latestConfig?.cashFlowReserveRate || 0
+    });
+
+    React.useEffect(() => {
+        if (latestConfig) {
+            setLocalRates({
+                anticipationRate: latestConfig.anticipationRate,
+                anticipationEnabled: latestConfig.anticipationEnabled,
+                validFrom: latestConfig.validFrom,
+                initialBalance: latestConfig.initialBalance,
+                cashFlowReserveRate: latestConfig.cashFlowReserveRate
+            });
+        }
+    }, [latestConfig]);
+
+    const handleSaveRates = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingRates(true);
+
+        const newConfig = {
+            anticipation_rate: localRates.anticipationRate,
+            anticipation_enabled: localRates.anticipationEnabled,
+            valid_from: localRates.validFrom,
+            initial_balance: localRates.initialBalance,
+            cash_flow_reserve_rate: localRates.cashFlowReserveRate
+        };
+
+        try {
+            // Se já existe uma config para EXATAMENTE a mesma data, atualizamos. Se não, inserimos nova (vigência).
+            const existingConfig = financialConfigs.find(f => f.validFrom === localRates.validFrom);
+
+            if (existingConfig) {
+                const { error } = await supabase.from('financial_config').update(newConfig).eq('id', existingConfig.id);
+                if (error) throw error;
+                if (setFinancialConfigs) {
+                    setFinancialConfigs(prev => prev.map(f => f.id === existingConfig.id ? { ...f, ...localRates } : f));
+                }
+                alert('Configuração de Antecipação atualizada!');
+            } else {
+                const { data, error } = await supabase.from('financial_config').insert(newConfig).select().single();
+                if (error) throw error;
+                if (setFinancialConfigs && data) {
+                    const mapped: FinancialConfig = {
+                        id: data.id,
+                        anticipationRate: data.anticipation_rate,
+                        anticipationEnabled: data.anticipation_enabled,
+                        validFrom: data.valid_from,
+                        initialBalance: data.initial_balance,
+                        cashFlowReserveRate: data.cash_flow_reserve_rate,
+                        createdAt: data.created_at,
+                        updatedAt: data.updated_at
+                    };
+                    setFinancialConfigs(prev => [mapped, ...prev].sort((a, b) => b.validFrom.localeCompare(a.validFrom)));
+                }
+                alert('Nova Vigência de Antecipação criada com sucesso!');
+            }
+        } catch (error) {
+            console.error('Error saving financial config updates:', error);
+            alert('Erro ao salvar as taxas de antecipação.');
+        } finally {
+            setIsSavingRates(false);
+        }
+    };
 
     // Load Fiscal Config
     React.useEffect(() => {
@@ -575,10 +651,153 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between">
                                         <div className="max-w-xl text-center md:text-left">
                                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
-                                                <Percent className="text-indigo-600" /> Prazos e Taxas
+                                                <Percent className="text-indigo-600" /> Antecipação & Vigência
                                             </h3>
                                             <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
-                                                Gerencie como o dinheiro entra no seu caixa. Defina as taxas das operadoras e os prazos de liquidação para cada método.
+                                                Configure a taxa de antecipação e quando ela entra em vigor. Mudanças futuras não alteram o passado.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        <div className="lg:col-span-1">
+                                            <form onSubmit={handleSaveRates} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm h-full">
+                                                <div className="space-y-4 mb-6">
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex justify-between">
+                                                            <span>Taxa de Antecipação (%)</span>
+                                                            <label className="flex items-center gap-1 cursor-pointer">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={localRates.anticipationEnabled}
+                                                                    onChange={e => setLocalRates({ ...localRates, anticipationEnabled: e.target.checked })}
+                                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                                                />
+                                                                <span className="text-[8px] uppercase">Ativar</span>
+                                                            </label>
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            disabled={!localRates.anticipationEnabled}
+                                                            value={localRates.anticipationRate}
+                                                            onChange={e => setLocalRates({ ...localRates, anticipationRate: parseFloat(e.target.value) || 0 })}
+                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 disabled:opacity-50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Vigência (A partir de)</label>
+                                                        <input
+                                                            type="date"
+                                                            value={localRates.validFrom}
+                                                            onChange={e => setLocalRates({ ...localRates, validFrom: e.target.value })}
+                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                        />
+                                                        <p className="text-[9px] text-slate-400 mt-1 ml-1 leading-tight">Mudar a data criará um novo registro de vigência no histórico.</p>
+                                                    </div>
+
+                                                    <div className="h-px bg-slate-100 dark:bg-zinc-800 my-2"></div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-2">
+                                                            <Landmark size={12} className="text-indigo-500" /> Saldo Inicial do Extrato (R$)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={localRates.initialBalance}
+                                                            onChange={e => setLocalRates({ ...localRates, initialBalance: parseFloat(e.target.value) || 0 })}
+                                                            className="w-full bg-emerald-50/30 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-800 rounded-xl p-3 text-sm font-bold outline-none focus:border-emerald-600 dark:text-white"
+                                                            placeholder="0,00"
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-2">
+                                                            <Sparkles size={12} className="text-indigo-500" /> Reserva de Caixa / Sem Antecipar (%)
+                                                        </label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={localRates.cashFlowReserveRate}
+                                                            onChange={e => setLocalRates({ ...localRates, cashFlowReserveRate: parseFloat(e.target.value) || 0 })}
+                                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                            placeholder="0,00"
+                                                        />
+                                                        <p className="text-[9px] text-slate-400 mt-1 ml-1 leading-tight italic">Percentual do faturamento que ficará retido para formar seu caixa próprio.</p>
+                                                    </div>
+                                                </div>
+                                                <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                                    <button
+                                                        type="submit"
+                                                        disabled={isSavingRates}
+                                                        className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full h-[48px] shadow-lg shadow-indigo-200 dark:shadow-none"
+                                                    >
+                                                        {isSavingRates ? 'Salvando...' : 'Salvar Vigência'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+
+                                        <div className="lg:col-span-2">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden h-full">
+                                                <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                                                    <h4 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">Histórico de Vigência</h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                                        <span className="text-[9px] font-black uppercase text-emerald-600">Vigente</span>
+                                                    </div>
+                                                </div>
+                                                <div className="overflow-x-auto max-h-[250px] overflow-y-auto">
+                                                    <table className="w-full text-left">
+                                                        <thead>
+                                                            <tr className="bg-slate-50 dark:bg-zinc-800/50">
+                                                                <th className="px-6 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Data Início</th>
+                                                                <th className="px-6 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Taxa</th>
+                                                                <th className="px-6 py-3 text-[10px] font-black uppercase text-slate-400 tracking-widest">Status</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                            {financialConfigs.map((config, idx) => {
+                                                                const isActive = idx === 0;
+                                                                const isPast = new Date(config.validFrom + 'T12:00:00') < new Date();
+                                                                return (
+                                                                    <tr key={config.id} className={`${isActive ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}>
+                                                                        <td className="px-6 py-4 text-sm font-black text-slate-700 dark:text-slate-300">
+                                                                            {new Date(config.validFrom + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                        </td>
+                                                                        <td className="px-6 py-4">
+                                                                            <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                                                                                {config.anticipationEnabled ? `${config.anticipationRate}%` : 'Desativado'}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-6 py-4">
+                                                                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400'}`}>
+                                                                                {isActive ? 'Vigente' : (isPast ? 'Histórico' : 'Agendado')}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                            {financialConfigs.length === 0 && (
+                                                                <tr>
+                                                                    <td colSpan={3} className="px-6 py-8 text-center text-slate-400 italic text-xs">Nenhum histórico encontrado.</td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
+                                        <div className="max-w-xl text-center md:text-left">
+                                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
+                                                <Wallet className="text-indigo-600" /> Prazos e Taxas Específicos
+                                            </h3>
+                                            <p className="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                                                Gerencie como o dinheiro entra no seu caixa. Defina regras de liquidação customizadas para métodos não padrões.
                                             </p>
                                         </div>
                                         <button

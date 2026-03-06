@@ -18,7 +18,7 @@ import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
 
-import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord } from './types';
+import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -56,6 +56,7 @@ const App: React.FC = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [nfseRecords, setNfseRecords] = useState<NFSeRecord[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [financialConfigs, setFinancialConfigs] = useState<FinancialConfig[]>([]);
 
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -180,7 +181,6 @@ const App: React.FC = () => {
         return allAppts;
       };
 
-      // 1. Parallel Execution
       const [
         { data: providersData },
         { data: servicesData },
@@ -199,7 +199,8 @@ const App: React.FC = () => {
         fetchedCustomers,
         fetchedAppointments,
         { data: salesData },
-        { data: expensesData }
+        { data: expensesData },
+        { data: financialConfigData }
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
@@ -218,7 +219,8 @@ const App: React.FC = () => {
         fetchCustomers(),
         fetchAppointments(),
         supabase.from('sales').select('*').gte('date', minDate),
-        supabase.from('expenses').select('*')
+        supabase.from('expenses').select('*'),
+        supabase.from('financial_config').select('*').order('valid_from', { ascending: false })
       ]);
 
       console.log('📊 [DATA FETCH] Results:', {
@@ -400,6 +402,20 @@ const App: React.FC = () => {
 
       }
 
+      // Map and Set Financial Config
+      if (financialConfigData) {
+        setFinancialConfigs(financialConfigData.map((f: any) => ({
+          id: f.id,
+          anticipationRate: f.anticipation_rate,
+          anticipationEnabled: f.anticipation_enabled,
+          validFrom: f.valid_from,
+          initialBalance: f.initial_balance || 0,
+          cashFlowReserveRate: f.cash_flow_reserve_rate || 0,
+          createdAt: f.created_at,
+          updatedAt: f.updated_at
+        })));
+      }
+
       // Map and Set Expenses
       if (expensesData) {
         setExpenses(expensesData.map((e: any) => ({
@@ -472,6 +488,7 @@ const App: React.FC = () => {
           pricePaid: a.price_paid, // Critical: Map price_paid
           bookedPrice: a.booked_price, // Critical: Map booked_price
           tipAmount: a.tip_amount, // Critical: Map tip_amount
+          startTimeActual: a.start_time_actual,
           createdAt: a.created_at,
           updatedAt: a.updated_at
         })));
@@ -553,7 +570,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} campaigns={campaigns} partners={partners} />;
+        return <Finance services={services} appointments={appointments} sales={sales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} campaigns={campaigns} partners={partners} financialConfigs={financialConfigs} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:
@@ -573,6 +590,8 @@ const App: React.FC = () => {
             setLeads={setLeads}
             paymentSettings={paymentSettings}
             commissionSettings={commissionSettings}
+            financialConfigs={financialConfigs}
+            setFinancialConfigs={setFinancialConfigs}
             providers={providers}
             stock={stock}
             sales={sales}
@@ -642,7 +661,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.SETTINGS:
-        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} isAdmin={userProfile?.role === 'admin'} onSimulateUser={setSimulatedProfile} />;
+        return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} isAdmin={userProfile?.role === 'admin'} onSimulateUser={setSimulatedProfile} financialConfigs={financialConfigs} setFinancialConfigs={setFinancialConfigs} />;
       default:
         return <div className="p-10 text-center text-slate-500">Módulo em desenvolvimento...</div>;
     }

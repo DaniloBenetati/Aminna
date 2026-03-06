@@ -28,7 +28,13 @@ CREATE POLICY "Enable all for authenticated" ON public.payment_settings FOR ALL 
 INSERT INTO public.payment_settings (id, method, icon_name, fee, days, color)
 VALUES 
 ('pay-1', 'Pix', 'Smartphone', 0.00, 0, 'text-emerald-500'),
-('pay-2', 'Cartão de Débito', 'CreditCard', 1.99, 1, 'text-indigo-500'),
-('pay-3', 'Cartão de Crédito', 'CreditCard', 3.49, 30, 'text-blue-500'),
-('pay-4', 'Dinheiro', 'Banknote', 0.00, 0, 'text-green-500')
-ON CONFLICT (id) DO NOTHING;
+('pay-2', 'Cartão de Débito', 'CreditCard', 0.70, 1, 'text-indigo-500'),
+('pay-3', 'Cartão de Crédito', 'CreditCard', 0.80, 30, 'text-blue-500'),
+('pay-4', 'Dinheiro', 'Banknote', 0.00, 0, 'text-green-500'),
+('pay-5', 'Crédito 6x', 'Wallet', 2.00, 0, 'text-rose-500')
+ON CONFLICT (id) DO UPDATE SET 
+    method = EXCLUDED.method,
+    fee = EXCLUDED.fee,
+    days = EXCLUDED.days,
+    color = EXCLUDED.color,
+    icon_name = EXCLUDED.icon_name;

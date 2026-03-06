@@ -184,12 +184,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             appointmentId: appointment.id,
             quantity: 1,
             tipAmount: appointment.tipAmount || 0,
-            status: appointment.startTimeActual ? 'Em Andamento' : (
-                appointment.status === 'Concluído' ? 'Concluído' :
-                    (appointment.status === 'Cancelado' ? 'Cancelado' :
-                        (appointment.status === 'Aguardando' ? 'Aguardando' :
-                            (appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' ? 'Em Andamento' : 'Pendente')))
-            ),
+            status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado')
+                ? appointment.status
+                : (appointment.startTimeActual ? 'Em Andamento' :
+                    (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' ? 'Aguardando' : 'Pendente')),
             startTimeActual: appointment.startTimeActual
         }];
 
@@ -2007,8 +2005,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     toggleFavoriteProvider(line.providerId);
                                                                 }}
                                                                 className={`text-[8px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all outline-none ${customer.assignedProviderIds?.includes(line.providerId)
-                                                                        ? 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30'
-                                                                        : 'text-slate-400 bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:bg-zinc-800'
+                                                                    ? 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30'
+                                                                    : 'text-slate-400 bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:bg-zinc-800'
                                                                     }`}
                                                                 title={customer.assignedProviderIds?.includes(line.providerId) ? "Remover favorito" : "Adicionar favorito"}
                                                             >
@@ -2321,7 +2319,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                         handleCheckIn();
                                                                     }
                                                                 }}
-                                                                className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                                                                className="flex-1 py-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                                                             >
                                                                 {appointment.status === 'Concluído' ? <CreditCard size={16} /> : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? <CreditCard size={16} /> : <CheckCircle2 size={16} />)}
                                                                 {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? 'PAGAR / CHECKOUT' : 'REALIZAR CHECK-IN')}

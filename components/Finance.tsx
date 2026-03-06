@@ -10,10 +10,10 @@ import {
     BrainCircuit, BarChart2, Zap, RefreshCw
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
-import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign } from '../types';
+import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig } from '../types';
 import { supabase } from '../services/supabase';
 import { FinanceCharts } from './FinanceCharts';
-import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary } from '../services/financialService';
+import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary, getAnticipationRate } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
 import { BankReconciliation } from './BankReconciliation';
 
@@ -44,10 +44,11 @@ interface FinanceProps {
     stock: StockItem[];
     campaigns: Campaign[];
     partners: Partner[];
+    financialConfigs: FinancialConfig[];
 }
 
 export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock,
-    expenses, setExpenses, campaigns = [], partners = []
+    expenses, setExpenses, campaigns = [], partners = [], financialConfigs = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS'>('DAILY');
@@ -283,9 +284,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             customers,
             providers,
             commissionSettings || [],
-            paymentSettings
+            paymentSettings,
+            financialConfigs
         );
-    }, [appointments, services, customers, providers, commissionSettings, paymentSettings, sales, expenses]);
+    }, [appointments, sales, expenses, services, customers, providers, commissionSettings, paymentSettings, financialConfigs]);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -302,6 +304,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             return matchesDate && matchesDescription;
         });
     }, [transactions, startDate, endDate, detailedFilter]);
+
+    const summary = useMemo(() => calculateDailySummary(filteredTransactions), [filteredTransactions]);
+    const { totalServices, totalProducts, totalAjustes, totalTips, totalAnticipationFees, totalRevenue, servicesWithTips } = summary;
 
     const handlePrintDetailedReport = () => {
         const printContent = `
@@ -432,6 +437,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                 return acc + (totalAppValue * (settings.fee / 100));
             }, 0);
 
+            const anticipationFees = apps.reduce((acc, a) => {
+                const method = a.paymentMethod || 'Dinheiro';
+                if (!method.toLowerCase().includes('crédito')) return acc;
+
+                const antRate = getAnticipationRate(a.date, financialConfigs);
+                if (antRate <= 0) return acc;
+
+                const totalAppValue = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) +
+                    (a.additionalServices || []).reduce((sum, e) => sum + (e.bookedPrice ?? services.find(s => s.id === e.serviceId)?.price ?? 0), 0);
+
+                return acc + (totalAppValue * (antRate / 100));
+            }, 0);
+
+            const latestConfig = financialConfigs[0];
+            const suggestedCashReserve = grossRevenue * ((latestConfig?.cashFlowReserveRate || 0) / 100);
+            const periodInitialBalance = latestConfig?.initialBalance || 0;
+
             const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
 
             const commissions = apps.reduce((acc, a) => {
@@ -463,7 +485,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
             const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0);
-            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0) + automatedDeductions;
+            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0) + automatedDeductions + anticipationFees;
             const totalOpExpenses = amountVendas + amountAdm + amountFin;
 
             const groupByCat = (list: Expense[]) => {
@@ -531,11 +553,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             }, {} as Record<string, { total: number, count: number }>);
 
             return {
-                grossRevenue, revenueServices, automatedDeductions,
+                grossRevenue, revenueServices, automatedDeductions, anticipationFees,
                 deductions, netRevenue,
                 totalCOGS, commissions,
                 grossProfit, totalOpExpenses, amountVendas, amountAdm, amountFin,
                 resultBeforeTaxes, irpjCsll, netResult,
+                suggestedCashReserve, periodInitialBalance,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
@@ -562,8 +585,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             });
         }
 
-        return { ...currentPeriod, monthlySnapshots };
-    }, [appointments, sales, expenses, startDate, endDate, timeView]);
+        const totalYearlyReserve = monthlySnapshots.reduce((acc, m) => acc + (m.suggestedCashReserve || 0), 0);
+        const totalYearlyAnticFees = monthlySnapshots.reduce((acc, m) => acc + (m.anticipationFees || 0), 0);
+
+        return { ...currentPeriod, monthlySnapshots, totalYearlyReserve, totalYearlyAnticFees };
+    }, [appointments, sales, expenses, startDate, endDate, timeView, financialConfigs]);
 
     const handleOpenModal = (expense?: Expense) => {
         if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); setRecurrenceMonths(1); }
@@ -1010,6 +1036,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         <tr><td>7. (-) DESP. ADM</td><td class="negative">-${dreData.amountAdm.toFixed(0)}</td>${months.map(m => `<td class="negative">-${m.amountAdm.toFixed(0)}</td>`).join('')}</tr>
 
                         <tr><td>8. (-) DESP. FIN</td><td class="negative">-${dreData.amountFin.toFixed(0)}</td>${months.map(m => `<td class="negative">-${m.amountFin.toFixed(0)}</td>`).join('')}</tr>
+                        <tr class="sub-row"><td>Taxas de Cartão</td><td>${dreData.automatedDeductions.toFixed(0)}</td>${months.map(m => `<td>${m.automatedDeductions.toFixed(0)}</td>`).join('')}</tr>
+                        <tr class="sub-row"><td>Taxas de Antecipação</td><td>${dreData.anticipationFees.toFixed(0)}</td>${months.map(m => `<td>${m.anticipationFees.toFixed(0)}</td>`).join('')}</tr>
 
                         <tr class="main-row"><td>9. (=) RES. ANTES IRPJ</td><td>${dreData.resultBeforeTaxes.toFixed(0)}</td>${months.map(m => `<td>${m.resultBeforeTaxes.toFixed(0)}</td>`).join('')}</tr>
 
@@ -1082,6 +1110,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         `).join('')}
 
                         <tr><td>8. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- R$ ${dreData.amountFin.toFixed(2)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
+                        <tr class="sub-row"><td>Taxas de Cartão</td><td class="amount">R$ ${dreData.automatedDeductions.toFixed(2)}</td><td class="amount">${formatPercent(dreData.automatedDeductions, dreData.grossRevenue)}</td></tr>
+                        <tr class="sub-row"><td>Taxas de Antecipação</td><td class="amount">R$ ${dreData.anticipationFees.toFixed(2)}</td><td class="amount">${formatPercent(dreData.anticipationFees, dreData.grossRevenue)}</td></tr>
                          ${Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => `
                             <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">R$ ${info.total.toFixed(2)}</td><td class="amount"></td></tr>
                         `).join('')}
@@ -1129,6 +1159,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             ['6. (-) DESPESAS VENDAS', `-${dreData.amountVendas.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.amountVendas.toFixed(2)}`) : [formatPercent(dreData.amountVendas, dreData.grossRevenue)])],
             ['7. (-) DESPESAS ADM', `-${dreData.amountAdm.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.amountAdm.toFixed(2)}`) : [formatPercent(dreData.amountAdm, dreData.grossRevenue)])],
             ['8. (-) DESPESAS FIN', `-${dreData.amountFin.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.amountFin.toFixed(2)}`) : [formatPercent(dreData.amountFin, dreData.grossRevenue)])],
+            ['   Taxas de Cartão', `-${dreData.automatedDeductions.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.automatedDeductions.toFixed(2)}`) : [formatPercent(dreData.automatedDeductions, dreData.grossRevenue)])],
+            ['   Taxas de Antecipação', `-${dreData.anticipationFees.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.anticipationFees.toFixed(2)}`) : [formatPercent(dreData.anticipationFees, dreData.grossRevenue)])],
             ['9. (=) RESULTADO ANTES IRPJ', dreData.resultBeforeTaxes.toFixed(2), ...(isYearView ? months.map(m => m.resultBeforeTaxes.toFixed(2)) : [formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)])],
             ['10. (-) IRPJ/CSLL', `-${dreData.irpjCsll.toFixed(2)}`, ...(isYearView ? months.map(m => `-${m.irpjCsll.toFixed(2)}`) : [formatPercent(dreData.irpjCsll, dreData.grossRevenue)])],
             ['11. (=) RESULTADO LÍQUIDO', dreData.netResult.toFixed(2), ...(isYearView ? months.map(m => m.netResult.toFixed(2)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
@@ -2649,6 +2681,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                             {expandedSections.includes('exp-fin') && (
                                                 <>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
+                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Antecipação</td>
+                                                        {timeView === 'year' ? (
+                                                            <>
+                                                                {dreData.monthlySnapshots?.map((m: any) => {
+                                                                    return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">-{m.anticipationFees.toFixed(0)}</td>
+                                                                })}
+                                                                <td className="px-6 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 border-l-2 border-slate-200 dark:border-zinc-700">- R$ {dreData.anticipationFees.toFixed(2)}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-8 py-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300">- R$ {dreData.anticipationFees.toFixed(2)}</td>
+                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                    {dreData.grossRevenue > 0 ? ((dreData.anticipationFees / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                    <tr className="animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
                                                         {timeView === 'year' ? (
                                                             <>
@@ -2774,7 +2824,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
                                             {/* 11. RESULTADO LÍQUIDO */}
                                             <tr className="bg-black text-white dark:bg-white dark:text-black">
-                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO</td>
+                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO DO PERÍODO</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -2791,6 +2841,82 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                     </>
                                                 )}
                                             </tr>
+
+                                            {/* AJUSTE FINANCEIRO / CAIXA */}
+                                            <tr className="bg-slate-50 dark:bg-zinc-800/50 border-t-2 border-slate-200 dark:border-zinc-700">
+                                                <td className="px-8 py-4 font-bold text-xs text-slate-500 uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800/50 z-10">12. (+) SALDO INICIAL (EXTRATO)</td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                            <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100 dark:border-zinc-800">R$ {m.periodInitialBalance.toFixed(0)}</td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-right font-black text-xs text-slate-500 bg-slate-100/30 dark:bg-zinc-700/30 border-l-2 border-slate-200 dark:border-zinc-700">R$ {dreData.periodInitialBalance.toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-4 text-right font-black text-xs text-slate-500">R$ {dreData.periodInitialBalance.toFixed(2)}</td>
+                                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-300">-</td>
+                                                    </>
+                                                )}
+                                            </tr>
+
+                                            <tr className="bg-amber-50/20 dark:bg-amber-900/10">
+                                                <td className="px-8 py-4 font-bold text-xs text-amber-600 uppercase italic sticky left-0 bg-amber-50/20 dark:bg-zinc-900 z-10">13. [RESERVA SUGERIDA] FLUXO DE CAIXA</td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                            <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-amber-500 border-l border-amber-100/30 dark:border-amber-900/20">R$ {m.suggestedCashReserve.toFixed(0)}</td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-right font-black text-xs text-amber-600 bg-amber-50/40 dark:bg-amber-900/30 border-l-2 border-amber-200 dark:border-amber-800">R$ {dreData.totalYearlyReserve.toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-4 text-right font-black text-xs text-amber-600">R$ {dreData.suggestedCashReserve.toFixed(2)}</td>
+                                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-amber-400">
+                                                            {dreData.grossRevenue > 0 ? ((dreData.suggestedCashReserve / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+
+                                            <tr className="bg-emerald-50/30 dark:bg-emerald-900/10">
+                                                <td className="px-8 py-4 font-bold text-xs text-emerald-600 uppercase flex items-center gap-2 sticky left-0 bg-emerald-50/30 dark:bg-zinc-900 z-10">
+                                                    <Sparkles size={16} /> 13. ( ) RESERVA DE CAIXA SUGERIDA
+                                                </td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                            <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-emerald-500 border-l border-emerald-100/50">{m.suggestedCashReserve.toFixed(0)}</td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-right font-black text-xs text-emerald-600 bg-emerald-100/20 border-l-2 border-emerald-200">R$ {dreData.totalYearlyReserve?.toFixed(2) || (dreData.suggestedCashReserve * 12).toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-4 text-right font-black text-xs text-emerald-600">R$ {dreData.suggestedCashReserve.toFixed(2)}</td>
+                                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-emerald-400">
+                                                            {dreData.grossRevenue > 0 ? ((dreData.suggestedCashReserve / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+
+                                            <tr className="bg-indigo-600 text-white">
+                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-indigo-600 z-10 shadow-[4px_0_10px_rgba(79,70,229,0.3)]">14. (=) SALDO FINAL ESTIMADO</td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => {
+                                                            const final = m.netResult + m.periodInitialBalance;
+                                                            return <td key={m.name} className="px-4 py-6 text-right text-xs font-black border-l border-white/10">{final.toFixed(0)}</td>
+                                                        })}
+                                                        <td className="px-6 py-6 text-right font-black text-xl border-l-2 border-white/20">R$ {(dreData.netResult + dreData.periodInitialBalance).toFixed(2)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-6 text-right font-black text-xl">R$ {(dreData.netResult + dreData.periodInitialBalance).toFixed(2)}</td>
+                                                        <td className="px-8 py-6 text-right font-black text-xs text-white/50">PROJEÇÃO</td>
+                                                    </>
+                                                )}
+                                            </tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -2798,8 +2924,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             </>
                         )}
                     </div>
-                )}
-            </div>
+                )
+                }
+            </div >
 
 
             {
@@ -3072,161 +3199,170 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             </div>
                         </div>
                     </div>
-                )}
+                )
+            }
 
             {/* BATCH DATE ADJUSTMENT MODAL */}
-            {isBatchDateModalOpen && (
-                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
-                        <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
-                            <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Calendar size={18} /> Ajustar Data em Lote</h3>
-                            <button onClick={() => setIsBatchDateModalOpen(false)}><X size={24} /></button>
-                        </div>
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nova Data para os {selectedExpenseIds.length} itens</label>
-                                <input
-                                    type="date"
-                                    required
-                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white outline-none focus:border-black"
-                                    value={batchNewDate}
-                                    onChange={e => setBatchNewDate(e.target.value)}
-                                />
+            {
+                isBatchDateModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                            <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Calendar size={18} /> Ajustar Data em Lote</h3>
+                                <button onClick={() => setIsBatchDateModalOpen(false)}><X size={24} /></button>
                             </div>
-
-                            {selectedExpenseIds.some(id => expenses.find(e => e.id === id)?.recurringId) && (
-                                <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nova Data para os {selectedExpenseIds.length} itens</label>
                                     <input
-                                        type="checkbox"
-                                        id="applyToFuture"
-                                        className="w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500 mt-0.5"
-                                        checked={applyToFuture}
-                                        onChange={e => setApplyToFuture(e.target.checked)}
+                                        type="date"
+                                        required
+                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white outline-none focus:border-black"
+                                        value={batchNewDate}
+                                        onChange={e => setBatchNewDate(e.target.value)}
                                     />
-                                    <label htmlFor="applyToFuture" className="text-[11px] font-bold text-amber-900 dark:text-amber-400 leading-tight cursor-pointer">
-                                        Reajustar automaticamente o vencimento de todas as parcelas futuras das séries selecionadas?
-                                    </label>
                                 </div>
-                            )}
 
-                            <div className="pt-2">
-                                <button
-                                    onClick={handleBatchDateUpdate}
-                                    className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all"
-                                >
-                                    Aplicar Nova Data
-                                </button>
+                                {selectedExpenseIds.some(id => expenses.find(e => e.id === id)?.recurringId) && (
+                                    <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                                        <input
+                                            type="checkbox"
+                                            id="applyToFuture"
+                                            className="w-5 h-5 rounded border-amber-400 text-amber-600 focus:ring-amber-500 mt-0.5"
+                                            checked={applyToFuture}
+                                            onChange={e => setApplyToFuture(e.target.checked)}
+                                        />
+                                        <label htmlFor="applyToFuture" className="text-[11px] font-bold text-amber-900 dark:text-amber-400 leading-tight cursor-pointer">
+                                            Reajustar automaticamente o vencimento de todas as parcelas futuras das séries selecionadas?
+                                        </label>
+                                    </div>
+                                )}
+
+                                <div className="pt-2">
+                                    <button
+                                        onClick={handleBatchDateUpdate}
+                                        className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        Aplicar Nova Data
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             {/* BATCH ACTION BAR (Floating) */}
-            {selectedExpenseIds.length > 0 && (
-                <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 w-[95%] md:w-auto">
-                    <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-1 md:gap-4 p-1.5 md:p-3 backdrop-blur-md justify-between md:justify-start">
-                        <div className="px-2 md:px-6 border-r border-white/20 dark:border-black/20">
-                            <div className="flex flex-col items-center md:items-start">
-                                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-50">Itens</span>
-                                <span className="text-sm md:text-xl font-black leading-none">{selectedExpenseIds.length}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-1 md:gap-2">
-                            <button
-                                onClick={() => setIsBatchDateModalOpen(true)}
-                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
-                            >
-                                <Calendar size={18} className="group-hover:scale-110 transition-transform" />
-                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Ajustar Data</span>
-                            </button>
-
-                            <button
-                                onClick={handleBatchStatusUpdate}
-                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
-                            >
-                                <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
-                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Inverter Status</span>
-                            </button>
-
-                            <button
-                                onClick={handleBatchDelete}
-                                className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-rose-500 dark:hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all group"
-                            >
-                                <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
-                                <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Excluir</span>
-                            </button>
-                        </div>
-
-                        <button
-                            onClick={() => setSelectedExpenseIds([])}
-                            className="ml-2 md:ml-4 p-2 md:p-3 bg-white/10 dark:bg-black/5 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl md:rounded-2xl transition-colors"
-                            title="Limpar seleção"
-                        >
-                            <X size={18} />
-                        </button>
-                    </div>
-                </div>
-            )}
-            {/* Quick Category Modal */}
-            {isQuickAddingCategory && isCategoryFormOpen && (
-                <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
-                        <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
-                            <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><FolderPlus size={18} /> Nova Conta / Categoria</h3>
-                            <button onClick={() => { setIsCategoryFormOpen(false); setIsQuickAddingCategory(false); }}><X size={24} /></button>
-                        </div>
-                        <form onSubmit={handleSaveCategory} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nome da Conta</label>
-                                <input
-                                    type="text"
-                                    required
-                                    autoFocus
-                                    placeholder="Ex: Energia Elétrica"
-                                    value={categoryForm.name}
-                                    onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Classificação DRE</label>
-                                <div className="relative">
-                                    <select
-                                        value={categoryForm.dreClass}
-                                        onChange={e => setCategoryForm({ ...categoryForm, dreClass: e.target.value })}
-                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
-                                    >
-                                        <option value="COSTS">CPV / Custos Operacionais</option>
-                                        <option value="EXPENSE_SALES">Despesas com Vendas</option>
-                                        <option value="EXPENSE_ADM">Despesas Administrativas</option>
-                                        <option value="EXPENSE_FIN">Despesas Financeiras</option>
-                                        <option value="TAX">Impostos e Tributos</option>
-                                        <option value="DEDUCTION">Deduções da Receita</option>
-                                    </select>
-                                    <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            {
+                selectedExpenseIds.length > 0 && (
+                    <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 w-[95%] md:w-auto">
+                        <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-1 md:gap-4 p-1.5 md:p-3 backdrop-blur-md justify-between md:justify-start">
+                            <div className="px-2 md:px-6 border-r border-white/20 dark:border-black/20">
+                                <div className="flex flex-col items-center md:items-start">
+                                    <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-50">Itens</span>
+                                    <span className="text-sm md:text-xl font-black leading-none">{selectedExpenseIds.length}</span>
                                 </div>
                             </div>
-                            <div className="pt-2">
-                                <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
-                                    Adicionar Conta
+
+                            <div className="flex items-center gap-1 md:gap-2">
+                                <button
+                                    onClick={() => setIsBatchDateModalOpen(true)}
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                                >
+                                    <Calendar size={18} className="group-hover:scale-110 transition-transform" />
+                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Ajustar Data</span>
+                                </button>
+
+                                <button
+                                    onClick={handleBatchStatusUpdate}
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                                >
+                                    <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
+                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Inverter Status</span>
+                                </button>
+
+                                <button
+                                    onClick={handleBatchDelete}
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-rose-500 dark:hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all group"
+                                >
+                                    <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
+                                    <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Excluir</span>
                                 </button>
                             </div>
-                        </form>
-                    </div>
-                </div>
-            )}
 
-            {isReconciliationOpen && (
-                <BankReconciliation
-                    expenses={expenses}
-                    setExpenses={setExpenses}
-                    categories={expenseCategories}
-                    suppliers={suppliers}
-                    onClose={() => setIsReconciliationOpen(false)}
-                />
-            )}
-        </div>
+                            <button
+                                onClick={() => setSelectedExpenseIds([])}
+                                className="ml-2 md:ml-4 p-2 md:p-3 bg-white/10 dark:bg-black/5 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl md:rounded-2xl transition-colors"
+                                title="Limpar seleção"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+            {/* Quick Category Modal */}
+            {
+                isQuickAddingCategory && isCategoryFormOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                            <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><FolderPlus size={18} /> Nova Conta / Categoria</h3>
+                                <button onClick={() => { setIsCategoryFormOpen(false); setIsQuickAddingCategory(false); }}><X size={24} /></button>
+                            </div>
+                            <form onSubmit={handleSaveCategory} className="p-6 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nome da Conta</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        autoFocus
+                                        placeholder="Ex: Energia Elétrica"
+                                        value={categoryForm.name}
+                                        onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Classificação DRE</label>
+                                    <div className="relative">
+                                        <select
+                                            value={categoryForm.dreClass}
+                                            onChange={e => setCategoryForm({ ...categoryForm, dreClass: e.target.value })}
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                        >
+                                            <option value="COSTS">CPV / Custos Operacionais</option>
+                                            <option value="EXPENSE_SALES">Despesas com Vendas</option>
+                                            <option value="EXPENSE_ADM">Despesas Administrativas</option>
+                                            <option value="EXPENSE_FIN">Despesas Financeiras</option>
+                                            <option value="TAX">Impostos e Tributos</option>
+                                            <option value="DEDUCTION">Deduções da Receita</option>
+                                        </select>
+                                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                    </div>
+                                </div>
+                                <div className="pt-2">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                        Adicionar Conta
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )
+            }
+
+            {
+                isReconciliationOpen && (
+                    <BankReconciliation
+                        expenses={expenses}
+                        setExpenses={setExpenses}
+                        categories={expenseCategories}
+                        suppliers={suppliers}
+                        onClose={() => setIsReconciliationOpen(false)}
+                    />
+                )
+            }
+        </div >
     );
 };

@@ -398,11 +398,23 @@ export interface FiscalConfig {
   certificatePassword?: string;
   certificateExpiresAt?: string;
   // Salão Parceiro Settings
+  // Settings
   salaoParceiroEnabled: boolean;
   defaultSalonPercentage: number; // Percentage salon keeps (e.g., 30%)
   // Metadata
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FinancialConfig {
+  id: string;
+  anticipationRate: number;
+  anticipationEnabled: boolean;
+  validFrom: string; // ISO Date String
+  initialBalance: number; // Saldo Inicial do Extrato
+  cashFlowReserveRate: number; // Taxa de Reserva de Caixa (%)
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProfessionalFiscalConfig {

@@ -1,4 +1,4 @@
-import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense } from '../types';
+import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig } from '../types';
 
 export const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -18,6 +18,13 @@ export const parseDateSafe = (dateStr: string | undefined): Date => {
     }
 };
 
+export const getAnticipationRate = (dateStr: string, financialConfigs: FinancialConfig[]) => {
+    // financialConfigs must be sorted by validFrom DESC (as done in App.tsx)
+    const config = financialConfigs.find(c => c.validFrom <= dateStr);
+    if (!config || !config.anticipationEnabled) return 0;
+    return config.anticipationRate;
+};
+
 export const generateFinancialTransactions = (
     appointments: Appointment[],
     sales: Sale[],
@@ -26,7 +33,8 @@ export const generateFinancialTransactions = (
     customers: Customer[],
     providers: Provider[],
     commissionSettings: CommissionSetting[],
-    paymentSettings: PaymentSetting[]
+    paymentSettings: PaymentSetting[],
+    financialConfigs: FinancialConfig[] = []
 ): FinancialTransaction[] => {
     const allTrans: FinancialTransaction[] = [];
     const today = new Date();
@@ -192,6 +200,27 @@ export const generateFinancialTransactions = (
             });
         }
 
+        // --- ANTICIPATION FEES ---
+        // Apply anticipation for credit cards if enabled for that date
+        const isCredit = paymentMethodName.toLowerCase().includes('crédito');
+        const antRate = getAnticipationRate(app.date, financialConfigs);
+        if (isCredit && antRate > 0 && actualTotalRevenue > 0) {
+            allTrans.push({
+                id: `app-ant-fee-${app.id}`,
+                date: settlementDate,
+                type: 'DESPESA',
+                category: 'Taxas de Antecipação',
+                description: `Antecipação ${paymentMethodName} (${antRate}%) - Ref: ${customer?.name || 'Cliente'}`,
+                amount: actualTotalRevenue * (antRate / 100),
+                status: status,
+                paymentMethod: paymentMethodName,
+                origin: 'Outro',
+                providerName: provider?.name || 'Não atribuído',
+                customerName: customer?.name || 'Desconhecido',
+                appointmentDate: app.date
+            });
+        }
+
         // Caixinha (Tip)
         if (app.status === 'Concluído' && tipAmount > 0) {
             allTrans.push({
@@ -339,15 +368,16 @@ export const calculateDailySummary = (dailyRelTrans: FinancialTransaction[]) => 
     const totalProducts = dailyRelTrans.filter(t => t.origin === 'Produto').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalAjustes = dailyRelTrans.filter(t => t.category === 'Ajuste de Valor').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalTips = dailyRelTrans.filter(t => t.category === 'Caixinha').reduce((acc, t) => acc + t.amount, 0);
-    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes;
+    const totalAnticipationFees = dailyRelTrans.filter(t => t.category === 'Taxas de Antecipação').reduce((acc, t) => acc + t.amount, 0);
+    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes - totalAnticipationFees;
 
     return {
         totalServices,
         totalProducts,
         totalAjustes,
         totalTips,
+        totalAnticipationFees,
         totalRevenue,
         servicesWithTips: totalServices + totalTips
     };
 };
-
