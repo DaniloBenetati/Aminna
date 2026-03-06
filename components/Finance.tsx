@@ -1281,9 +1281,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 ))}
                             </div>
                             {accountsSubTab === 'PAYABLES' && (
-                                <button onClick={() => handleOpenModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
-                                    <Plus size={12} /> Lançar Despesa
-                                </button>
+                                <>
+                                    <button onClick={() => handleOpenModal()} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                                        <Plus size={12} /> Lançar Despesa
+                                    </button>
+                                    <button onClick={() => handleOpenModal()} className="md:hidden fixed bottom-24 right-5 z-[60] h-14 px-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/30 active:scale-95 transition-all border-2 border-white dark:border-zinc-900 group">
+                                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                                        <span className="font-black text-[11px] uppercase tracking-widest">Lançar</span>
+                                    </button>
+                                </>
                             )}
                             {accountsSubTab === 'SUPPLIERS' && (
                                 <button onClick={() => handleOpenSupplierModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
