@@ -1279,14 +1279,27 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {provAppts.map(appt => {
                                                     const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
                                                     const serviceName = appt.combinedServiceNames || services.find(s => s.id === appt.serviceId)?.name || 'Serviço';
-                                                    const isAnyRunning = appt.status === 'Em Andamento' || appt.status === 'Em atendimento';
+                                                    const myServices = [
+                                                        ...(String(appt.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase() ? [{ status: appt.status }] : []),
+                                                        ...(appt.additionalServices || [])
+                                                            .filter((s: any) => String(s.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase())
+                                                            .map((s: any) => ({ status: s.status }))
+                                                    ];
+                                                    let localStatus = myServices[0]?.status || appt.status;
+                                                    if ((appt.status === 'Em Andamento' || appt.status === 'Em atendimento') && !myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
+                                                        localStatus = 'Aguardando';
+                                                    } else if (myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
+                                                        localStatus = 'Em Andamento';
+                                                    }
+
                                                     const statusColor =
                                                         (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
-                                                            appt.status === 'Concluído' ? 'bg-[#E66A6E]' :
-                                                                isAnyRunning ? 'bg-amber-500' :
-                                                                    appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
-                                                                        appt.status === 'Aguardando' ? 'bg-amber-400' :
+                                                            localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
+                                                                (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
+                                                                    localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                        localStatus === 'Aguardando' ? 'bg-[#f59e0b]' :
                                                                             'bg-[#008877]';
+
 
                                                     return (
                                                         <button
@@ -1302,7 +1315,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                                                 <span className="text-[11px] font-black text-slate-900 dark:text-white">{appt.time}</span>
                                                                 <span className={`text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase ${statusColor}`}>
-                                                                    {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : appt.status}
+                                                                    {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : localStatus}
                                                                 </span>
                                                             </div>
                                                         </button>
@@ -1458,10 +1471,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     let cardHeight: number = 0;
 
                                                                     const myServices = [
-                                                                        ...(String(appt.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase() ? [{ srvId: appt.serviceId, time: appt.time, endTime: appt.endTime }] : []),
+                                                                        ...(String(appt.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase() ? [{ srvId: appt.serviceId, time: appt.time, endTime: appt.endTime, status: appt.status }] : []),
                                                                         ...(appt.additionalServices || [])
                                                                             .filter((s: any) => String(s.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase())
-                                                                            .map((s: any) => ({ srvId: s.serviceId, time: s.startTime || appt.time, endTime: s.endTime }))
+                                                                            .map((s: any) => ({ srvId: s.serviceId, time: s.startTime || appt.time, endTime: s.endTime, status: s.status }))
                                                                     ];
 
                                                                     if (myServices.length > 0) {
@@ -1490,7 +1503,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     // Overlap handling
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
-                                                                    const isAnyServiceRunning = (appt.status === 'Em Andamento' || appt.status === 'Em atendimento') || (appt.status !== 'Concluído' && appt.additionalServices?.some((s: any) => s.status === 'Em Andamento'));
+                                                                    let localStatus = myServices[0]?.status || appt.status;
+                                                                    if ((appt.status === 'Em Andamento' || appt.status === 'Em atendimento') && !myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
+                                                                        localStatus = 'Aguardando';
+                                                                    } else if (myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
+                                                                        localStatus = 'Em Andamento';
+                                                                    }
 
                                                                     return (
                                                                         <DraggableAppointment
@@ -1510,10 +1528,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                                 className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
                                                                     ${(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
-                                                                                        appt.status === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
-                                                                                            isAnyServiceRunning ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
-                                                                                                appt.status === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
-                                                                                                    appt.status === 'Aguardando' ? 'bg-amber-400 border-amber-400 text-white' :
+                                                                                        localStatus === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
+                                                                                            (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e] border-[#22c55e] text-white' :
+                                                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                                    localStatus === 'Aguardando' ? 'bg-[#f59e0b] border-[#f59e0b] text-white' :
                                                                                                         'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
@@ -1537,13 +1555,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     <div className="flex justify-between items-center mt-1.5">
                                                                                         <div className="flex items-center gap-1">
                                                                                             <span className={`w-2 h-2 rounded-full ${(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
-                                                                                                appt.status === 'Confirmado' ? 'bg-[#01A4C6]' :
-                                                                                                    isAnyServiceRunning ? 'bg-[#f59e0b]' :
-                                                                                                        appt.status === 'Aguardando' ? 'bg-amber-400' :
-                                                                                                            appt.status === 'Concluído' ? 'bg-slate-400' :
+                                                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                                                    (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
+                                                                                                        localStatus === 'Aguardando' ? 'bg-[#f59e0b]' :
+                                                                                                            localStatus === 'Concluído' ? 'bg-slate-400' :
                                                                                                                 'bg-amber-400'
                                                                                                 }`}></span>
-                                                                                            <span className="text-[7.5px] font-black text-white/80 uppercase">{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : appt.status}</span>
+                                                                                            <span className="text-[7.5px] font-black text-white/80 uppercase">{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : localStatus}</span>
                                                                                         </div>
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
