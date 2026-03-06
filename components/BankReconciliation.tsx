@@ -1,0 +1,546 @@
+import React, { useState, useMemo } from 'react';
+import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter } from 'lucide-react';
+import { Expense, ExpenseCategory, Supplier } from '../types';
+import { supabase } from '../services/supabase';
+import { parseDateSafe, toLocalDateStr } from '../services/financialService';
+
+interface ReconciledRow {
+    id: string; // Unique ID for table row
+    date: string;
+    description: string;
+    amount: number;
+    type: 'RECEITA' | 'DESPESA';
+    status: 'CONCILIADOS' | 'A_LANCAR' | 'A_CONFERIR';
+    matchId?: string; // ID of the matched expense from system
+    suggestedCategory?: string;
+    divergenceReason?: string;
+    originalLines?: string[];
+}
+
+interface BankReconciliationProps {
+    expenses: Expense[];
+    setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+    categories: ExpenseCategory[];
+    suppliers: Supplier[];
+    onClose: () => void;
+}
+
+const REVENUE_CATEGORIES = [
+    'Outras Receitas',
+    'Receita de Serviços',
+    'Vendas de Produtos',
+    'Rendimento / Aplicação',
+    'Aporte Financeiro'
+];
+
+export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses, setExpenses, categories, suppliers, onClose }) => {
+    const [rawText, setRawText] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [reconciledRows, setReconciledRows] = useState<ReconciledRow[]>([]);
+    const [activeTab, setActiveTab] = useState<'A_CONFERIR' | 'A_LANCAR' | 'CONCILIADOS'>('A_CONFERIR');
+    const [approvalQueue, setApprovalQueue] = useState<string[]>([]);
+
+    // Filtro rápido
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const parseBankText = (text: string) => {
+        setIsProcessing(true);
+        try {
+            const lines = text.split('\n');
+            const parsedTransactions: Omit<ReconciledRow, 'id' | 'status'>[] = [];
+
+            // Sicredi PDF-to-text pattern matcher
+            // Matches: 02/01/2026 COMPRAS NACIONAIS TOULOUSE SAO PAULO BR VE0621684 -49,68 101.130,30
+            const regex = /^(\d{2}\/\d{2}\/\d{4})\s+(.*?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})/;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                const match = line.match(regex);
+                if (match) {
+                    const [_, dateStr, descRaw, valueStr] = match;
+
+                    // Convert dates like 02/01/2026 -> 2026-01-02
+                    const [day, month, year] = dateStr.split('/');
+                    const isoDate = `${year}-${month}-${day}`;
+
+                    // Parse Brazilian currency format
+                    const cleanValStr = valueStr.replace(/\./g, '').replace(',', '.');
+                    const amount = parseFloat(cleanValStr);
+
+                    if (isNaN(amount) || amount === 0) continue;
+
+                    // Clean descriptions
+                    let description = descRaw.trim();
+                    description = description.replace(/VE\d{7}.*$/, '').trim(); // Remove Sicredi Document code
+                    description = description.replace(/PIX_CRED|PIX_DEB|CAPITA/, '').trim(); // Remove tags
+
+                    parsedTransactions.push({
+                        date: isoDate,
+                        description: description,
+                        amount: Math.abs(amount),
+                        type: amount < 0 ? 'DESPESA' : 'RECEITA',
+                        originalLines: [line]
+                    });
+                }
+            }
+
+            // Etapa 2 e 3: Comparação e Classificação
+            const processed = runReconciliationEngine(parsedTransactions);
+            setReconciledRows(processed);
+
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao processar as linhas do extrato. Verifique o padrão copiado.");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const runReconciliationEngine = (rawRows: Omit<ReconciledRow, 'id' | 'status'>[]): ReconciledRow[] => {
+        const results: ReconciledRow[] = [];
+        const systemExpenses = [...expenses]; // Somente válidas
+
+        // System expenses track matches to find "A Conferir" (in system but not in bank)
+        const matchedExpenseIds = new Set<string>();
+
+        // 1. Map Bank Transactions
+        rawRows.forEach((bankTx, index) => {
+            const rowId = `bank_${index}_${bankTx.date}`;
+            const bankDate = parseDateSafe(bankTx.date);
+
+            // Tolerância de 3 dias (antes e depois)
+            const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 3);
+            const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 3);
+
+            let bestMatch: Expense | null = null;
+            let matchConfidence = 0; // The higher, the better
+
+            if (bankTx.type === 'DESPESA') {
+                const candidates = systemExpenses.filter(e => {
+                    if (matchedExpenseIds.has(e.id)) return false;
+                    const expDate = parseDateSafe(e.date);
+                    return expDate >= dStart && expDate <= dEnd && e.amount === bankTx.amount;
+                });
+
+                if (candidates.length > 0) {
+                    // Try to find description similarity
+                    bestMatch = candidates.find(c => {
+                        const bDesc = bankTx.description.toLowerCase();
+                        const cDesc = c.description.toLowerCase();
+                        const supName = suppliers.find(s => s.id === c.supplierId)?.name.toLowerCase() || '';
+
+                        // Check if bank desc contains system description OR supplier name
+                        return bDesc.includes(cDesc.substring(0, 5)) || (supName && bDesc.includes(supName.substring(0, 5)));
+                    }) || candidates[0]; // fallback to first amount/date match if no text matches
+                }
+            } else {
+                // Para RECEITAS (Pix recebidos, cartão), Aminna gerencia vendas/honorários.
+                // Como não cruzamos com Appointments aqui neste mini-módulo, apenas mapeamos.
+                // Idealmente você cruzaria com daily cash fechar/Appointment totals.
+                // Por agora, marcamos como "A LANÇAR", a menos que o admin queira.
+            }
+
+            if (bestMatch) {
+                // Match found!
+                matchedExpenseIds.add(bestMatch.id);
+                results.push({
+                    ...bankTx,
+                    id: rowId,
+                    status: 'CONCILIADOS',
+                    matchId: bestMatch.id
+                });
+            } else {
+                // A Lançar: no banco, mas não no sistema. Define sugestão.
+                let suggestedCat = 'Despesa Geral';
+                const descLower = bankTx.description.toLowerCase();
+
+                if (bankTx.type === 'RECEITA') {
+                    if (descLower.includes('pix')) suggestedCat = 'Receita de Serviços';
+                    else if (descLower.includes('ted')) suggestedCat = 'Receita de Serviços';
+                    else suggestedCat = 'Outras Receitas';
+                } else {
+                    if (descLower.includes('imposto') || descLower.includes('darf') || descLower.includes('das')) suggestedCat = 'Impostos';
+                    else if (descLower.includes('salario') || descLower.includes('rh')) suggestedCat = 'Pessoal';
+                    else if (descLower.includes('ifood') || descLower.includes('rappi')) suggestedCat = 'Alimentação';
+                    else if (descLower.includes('uber') || descLower.includes('99')) suggestedCat = 'Transporte';
+                    else if (descLower.includes('facebook') || descLower.includes('google')) suggestedCat = 'Marketing';
+                    else if (descLower.includes('pao de acucar') || descLower.includes('assai') || descLower.includes('atacadao')) suggestedCat = 'Insumos';
+                }
+
+                results.push({
+                    ...bankTx,
+                    id: rowId,
+                    status: 'A_LANCAR',
+                    suggestedCategory: suggestedCat
+                });
+            }
+        });
+
+        // 2. Map System Transactions that didn't appear in the Bank (A CONFERIR)
+        // Find expenses that happened around the exact period of the bank statement
+        if (rawRows.length > 0) {
+            // Sort to find min/max dates to define the statement "window"
+            const sortedDates = rawRows.map(r => r.date).sort();
+            const minDate = sortedDates[0];
+            const maxDate = sortedDates[sortedDates.length - 1];
+
+            systemExpenses.forEach(sysExp => {
+                if (!matchedExpenseIds.has(sysExp.id)) {
+                    // It wasn't matched. Let's check if it falls within the bank statement date range
+                    if (sysExp.date >= minDate && sysExp.date <= maxDate) {
+                        results.push({
+                            id: `sys_${sysExp.id}`,
+                            date: sysExp.date,
+                            description: sysExp.description,
+                            amount: sysExp.amount,
+                            type: 'DESPESA',
+                            status: 'A_CONFERIR',
+                            divergenceReason: 'Lançado no sistema, mas ausente no extrato bancário. Validar se foi pago por fora (dinheiro) ou outra conta.',
+                            matchId: sysExp.id
+                        });
+                    }
+                }
+            });
+        }
+
+        // Sort results by date
+        return results.sort((a, b) => {
+            const da = new Date(a.date).getTime();
+            const db = new Date(b.date).getTime();
+            return db - da; // Descending
+        });
+    };
+
+    const handleApproveSelected = async () => {
+        if (approvalQueue.length === 0) return;
+
+        setIsProcessing(true);
+        const rowsToProcess = reconciledRows.filter(r => approvalQueue.includes(r.id));
+
+        const newExpenses: Partial<Expense>[] = [];
+        const newSales: any[] = [];
+        const toUpdateStatus: string[] = [];
+
+        for (const row of rowsToProcess) {
+            if (row.status === 'A_LANCAR') {
+                if (row.type === 'DESPESA') {
+                    // Cria uma nova Despesa
+                    const catInfo = categories.find(c => c.name.toLowerCase().includes((row.suggestedCategory || '').toLowerCase()))
+                        || categories[0];
+
+                    newExpenses.push({
+                        description: row.description,
+                        amount: row.amount,
+                        date: row.date,
+                        category: catInfo?.name || 'Gerais',
+                        dreClass: catInfo?.dreClass || 'EXPENSE_ADM',
+                        status: 'Pago',
+                        paymentMethod: 'Transferência' // Automatic mapping for Bank
+                    });
+                } else if (row.type === 'RECEITA') {
+                    newSales.push({
+                        date: row.date,
+                        total_amount: row.amount,
+                        payment_method: 'Transferência',
+                        items: [{ name: row.description, quantity: 1, unitPrice: row.amount, source: row.suggestedCategory }]
+                    });
+                }
+            } else if (row.status === 'A_CONFERIR') {
+                // Marca a despesa do sistema como "Paga" e reconciliada
+                if (row.matchId) {
+                    toUpdateStatus.push(row.matchId);
+                }
+            } else if (row.status === 'CONCILIADOS') {
+                // Poderia marcar uma flag is_reconciled no banco de dados se a Expense tabel tivesse.
+                if (row.matchId) {
+                    toUpdateStatus.push(row.matchId);
+                }
+            }
+        }
+
+        try {
+            if (newExpenses.length > 0) {
+                const mappedInserts = newExpenses.map(e => ({
+                    description: e.description,
+                    amount: e.amount,
+                    date: e.date,
+                    category: e.category,
+                    dre_class: e.dreClass,
+                    status: e.status,
+                    payment_method: e.paymentMethod
+                }));
+                const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
+                if (error) throw error;
+                if (data) {
+                    setExpenses(prev => [...prev, ...data.map(d => ({
+                        id: d.id, description: d.description, amount: d.amount, date: d.date,
+                        category: d.category, dreClass: d.dre_class, status: d.status, paymentMethod: d.payment_method
+                    } as Expense))]);
+                }
+            }
+
+            if (newSales.length > 0) {
+                const { error } = await supabase.from('sales').insert(newSales);
+                if (error) console.error("Error inserting sales:", error);
+            }
+
+            if (toUpdateStatus.length > 0) {
+                // For "A CONFERIR" we will trust the system and assume it was paid since the user clicked Approve.
+                // So we update the status = 'Pago' and visually removing the alert.
+                const { error } = await supabase.from('expenses').update({ status: 'Pago' }).in('id', toUpdateStatus);
+                if (error) throw error;
+
+                setExpenses(prev => prev.map(e => toUpdateStatus.includes(e.id) ? { ...e, status: 'Pago' } : e));
+            }
+
+            // Remove processed items from the list view visually
+            setReconciledRows(prev => prev.filter(r => !approvalQueue.includes(r.id)));
+            setApprovalQueue([]);
+            alert("Lançamentos conciliados com sucesso!");
+
+        } catch (err) {
+            console.error('Conciliation Error:', err);
+            alert("Erro ao salvar reconciliação. Verifique o console.");
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleToggleSelect = (id: string) => {
+        setApprovalQueue(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const handleCategoryChange = (id: string, newCategory: string) => {
+        setReconciledRows(prev => prev.map(r => r.id === id ? { ...r, suggestedCategory: newCategory } : r));
+    };
+
+    const handleSelectAll = () => {
+        const visibleRows = filteredRows;
+        if (approvalQueue.length === visibleRows.length) {
+            setApprovalQueue([]);
+        } else {
+            setApprovalQueue(visibleRows.map(r => r.id));
+        }
+    };
+
+    const filteredRows = useMemo(() => {
+        return reconciledRows.filter(r => {
+            if (r.status !== activeTab) return false;
+            if (searchTerm && !r.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+            return true;
+        });
+    }, [reconciledRows, activeTab, searchTerm]);
+
+    const stats = {
+        conciliados: reconciledRows.filter(r => r.status === 'CONCILIADOS').length,
+        a_lancar: reconciledRows.filter(r => r.status === 'A_LANCAR').length,
+        a_conferir: reconciledRows.filter(r => r.status === 'A_CONFERIR').length,
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center py-10 overflow-y-auto">
+            <div className="bg-white max-w-6xl w-full rounded-2xl shadow-xl border border-slate-200 flex flex-col m-auto min-h-[600px] h-[90vh]">
+
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-indigo-100 p-2 rounded-xl">
+                            <RefreshCw className="w-6 h-6 text-indigo-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900">Conciliação Bancária Inteligente</h2>
+                            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">Sincronize extratos (PDF/Texto) em segundos</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                {/* Body Content */}
+                <div className="flex-1 flex flex-col p-6 overflow-hidden">
+                    {reconciledRows.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center flex-1 space-y-4">
+                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
+                                <Upload className="w-8 h-8" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-800">Importar Extrato Bancário</h3>
+                            <p className="text-sm text-slate-500 max-w-md text-center">Cole abaixo o texto extraído do seu extrato bancário em PDF do Sicredi (ou outro padrão). A inteligência Aminna cruzará os dados com seu sistema para encontrar furos.</p>
+
+                            <textarea
+                                value={rawText}
+                                onChange={(e) => setRawText(e.target.value)}
+                                placeholder="Cole o texto do extrato aqui..."
+                                className="w-full max-w-2xl h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-inner"
+                            />
+
+                            <button
+                                onClick={() => parseBankText(rawText)}
+                                disabled={!rawText || isProcessing}
+                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                            >
+                                {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                                Iniciar Cruzamento de Dados
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full overflow-hidden">
+                            {/* Stats Cards */}
+                            <div className="grid grid-cols-3 gap-4 mb-6 shrink-0">
+                                <button onClick={() => setActiveTab('A_LANCAR')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_LANCAR' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/20' : 'bg-white border-slate-200 hover:border-amber-300'}`}>
+                                    <div className="flex items-center gap-2 text-amber-600 mb-2">
+                                        <PlusCircle className="w-5 h-5" />
+                                        <span className="font-bold uppercase text-[10px] tracking-widest">A Lançar (Novo no Banco)</span>
+                                    </div>
+                                    <span className="text-2xl font-black text-slate-800">{stats.a_lancar}</span>
+                                    <span className="text-xs font-semibold text-slate-500">Encontrados no extrato</span>
+                                </button>
+
+                                <button onClick={() => setActiveTab('A_CONFERIR')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_CONFERIR' ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 hover:border-rose-300'}`}>
+                                    <div className="flex items-center gap-2 text-rose-600 mb-2">
+                                        <AlertCircle className="w-5 h-5" />
+                                        <span className="font-bold uppercase text-[10px] tracking-widest">A Conferir (Divergência)</span>
+                                    </div>
+                                    <span className="text-2xl font-black text-slate-800">{stats.a_conferir}</span>
+                                    <span className="text-xs font-semibold text-slate-500">Lançados, mas sumiram</span>
+                                </button>
+
+                                <button onClick={() => setActiveTab('CONCILIADOS')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'CONCILIADOS' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
+                                    <div className="flex items-center gap-2 text-emerald-600 mb-2">
+                                        <CheckCircle2 className="w-5 h-5" />
+                                        <span className="font-bold uppercase text-[10px] tracking-widest">Já Conciliados (Batem)</span>
+                                    </div>
+                                    <span className="text-2xl font-black text-slate-800">{stats.conciliados}</span>
+                                    <span className="text-xs font-semibold text-slate-500">Despesas validadas no extrato</span>
+                                </button>
+                            </div>
+
+                            {/* Toolbar */}
+                            <div className="flex items-center justify-between mb-4 shrink-0">
+                                <div className="relative">
+                                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <input
+                                        type="text"
+                                        placeholder="Pesquisar histórico..."
+                                        value={searchTerm}
+                                        onChange={e => setSearchTerm(e.target.value)}
+                                        className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold w-64 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    {approvalQueue.length > 0 && (
+                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                                            {approvalQueue.length} selecionados
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={handleApproveSelected}
+                                        disabled={approvalQueue.length === 0 || isProcessing}
+                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-sm shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        <Check className="w-4 h-4" />
+                                        Processar Lançamentos
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* List Component inside Container */}
+                            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 relative">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-100 sticky top-0 z-10 shadow-sm border-b border-slate-200">
+                                        <tr>
+                                            <th className="p-4 w-12 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={filteredRows.length > 0 && approvalQueue.length === filteredRows.length}
+                                                    onChange={handleSelectAll}
+                                                    className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 focus:ring-offset-1"
+                                                />
+                                            </th>
+                                            <th className="p-4 text-[10px] font-black uppercase text-slate-500 tracking-wider">Data do Extrato</th>
+                                            <th className="p-4 text-[10px] font-black uppercase text-slate-500 tracking-wider">Histórico / Descrição</th>
+                                            <th className="p-4 text-[10px] font-black uppercase text-slate-500 tracking-wider">Classificação Sugerida / Info</th>
+                                            <th className="p-4 text-[10px] font-black uppercase text-slate-500 tracking-wider text-right">Valor Extrato</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredRows.map((row, index) => (
+                                            <tr
+                                                key={row.id}
+                                                className={`border-b border-slate-100 hover:bg-white transition-colors cursor-pointer ${approvalQueue.includes(row.id) ? 'bg-indigo-50/50' : ''}`}
+                                                onClick={() => handleToggleSelect(row.id)}
+                                            >
+                                                <td className="p-4 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={approvalQueue.includes(row.id)}
+                                                        onChange={() => handleToggleSelect(row.id)}
+                                                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 focus:ring-offset-1"
+                                                    />
+                                                </td>
+                                                <td className="p-4 align-top">
+                                                    <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                                        <Calendar className="w-4 h-4 text-slate-400 stroke-[2.5]" />
+                                                        {parseDateSafe(row.date).toLocaleDateString('pt-BR')}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 align-top">
+                                                    <p className="text-sm font-bold text-slate-800 uppercase leading-snug">{row.description}</p>
+                                                    {row.type === 'RECEITA' && (
+                                                        <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">
+                                                            <DollarSign className="w-3 h-3 stroke-[3]" />
+                                                            Recebimento em Conta
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 align-top">
+                                                    {row.status === 'A_LANCAR' && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Filter className="w-4 h-4 text-slate-400" />
+                                                            <select
+                                                                value={row.suggestedCategory || (row.type === 'DESPESA' ? categories[0]?.name : REVENUE_CATEGORIES[0])}
+                                                                onChange={(e) => handleCategoryChange(row.id, e.target.value)}
+                                                                className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md border border-indigo-100 outline-none focus:ring-2 focus:ring-indigo-500 min-w-[140px] appearance-none cursor-pointer"
+                                                            >
+                                                                {row.type === 'DESPESA'
+                                                                    ? categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                                                    : REVENUE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    )}
+                                                    {row.status === 'A_CONFERIR' && (
+                                                        <p className="text-xs leading-relaxed text-rose-600 font-semibold bg-rose-50 p-2 rounded-lg border border-rose-100 flex gap-2 items-start">
+                                                            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                                                            {row.divergenceReason}
+                                                        </p>
+                                                    )}
+                                                    {row.status === 'CONCILIADOS' && (
+                                                        <p className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100 inline-flex items-center gap-2">
+                                                            <CheckCircle2 className="w-4 h-4" />
+                                                            Match Sistêmico Efetuado
+                                                        </p>
+                                                    )}
+                                                </td>
+                                                <td className={`p-4 text-right align-top font-black text-sm tabular-nums ${row.type === 'RECEITA' ? 'text-emerald-600' : 'text-slate-900'}`}>
+                                                    {row.type === 'DESPESA' ? '-' : '+'} R$ {row.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredRows.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="py-12 text-center text-slate-400 font-semibold text-sm bg-white">
+                                                    Nenhum resultado encontrado nesta categoria.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};

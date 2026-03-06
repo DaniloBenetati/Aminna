@@ -7,7 +7,7 @@ import {
     Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
     ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
     Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown,
-    BrainCircuit, BarChart2, Zap
+    BrainCircuit, BarChart2, Zap, RefreshCw
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign } from '../types';
@@ -15,6 +15,7 @@ import { supabase } from '../services/supabase';
 import { FinanceCharts } from './FinanceCharts';
 import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
+import { BankReconciliation } from './BankReconciliation';
 
 // --- MOCK DATA GENERATOR FOR OPERATIONAL EXPENSES ---
 const generateMockExpenses = (): Expense[] => {
@@ -210,6 +211,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     // Expense modal category autocomplete
     const [categoryInputSearch, setCategoryInputSearch] = useState('');
     const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+
+    // Bank Reconciliation State
+    const [isReconciliationOpen, setIsReconciliationOpen] = useState(false);
 
     const toggleSection = (section: string) => {
         setExpandedSections(prev => prev.includes(section) ? prev.filter(s => s !== section) : [...prev, section]);
@@ -1280,22 +1284,29 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                     </button>
                                 ))}
                             </div>
-                            {accountsSubTab === 'PAYABLES' && (
-                                <>
-                                    <button onClick={() => handleOpenModal()} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
-                                        <Plus size={12} /> Lançar Despesa
-                                    </button>
-                                    <button onClick={() => handleOpenModal()} className="md:hidden fixed bottom-24 right-5 z-[60] h-14 px-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/30 active:scale-95 transition-all border-2 border-white dark:border-zinc-900 group">
-                                        <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                                        <span className="font-black text-[11px] uppercase tracking-widest">Lançar</span>
-                                    </button>
-                                </>
-                            )}
-                            {accountsSubTab === 'SUPPLIERS' && (
-                                <button onClick={() => handleOpenSupplierModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
-                                    <Plus size={12} /> Novo Fornecedor
+
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                    <RefreshCw size={12} /> Conciliação
                                 </button>
-                            )}
+
+                                {accountsSubTab === 'PAYABLES' && (
+                                    <>
+                                        <button onClick={() => handleOpenModal()} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                                            <Plus size={12} /> Lançar Despesa
+                                        </button>
+                                        <button onClick={() => handleOpenModal()} className="md:hidden fixed bottom-24 right-5 z-[60] h-14 px-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/30 active:scale-95 transition-all border-2 border-white dark:border-zinc-900 group">
+                                            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
+                                            <span className="font-black text-[11px] uppercase tracking-widest">Lançar</span>
+                                        </button>
+                                    </>
+                                )}
+                                {accountsSubTab === 'SUPPLIERS' && (
+                                    <button onClick={() => handleOpenSupplierModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
+                                        <Plus size={12} /> Novo Fornecedor
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {/* ===== EXTRATO / FLUXO ===== */}
@@ -3205,6 +3216,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                         </form>
                     </div>
                 </div>
+            )}
+
+            {isReconciliationOpen && (
+                <BankReconciliation
+                    expenses={expenses}
+                    setExpenses={setExpenses}
+                    categories={expenseCategories}
+                    suppliers={suppliers}
+                    onClose={() => setIsReconciliationOpen(false)}
+                />
             )}
         </div>
     );
