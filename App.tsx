@@ -429,7 +429,8 @@ const App: React.FC = () => {
           status: e.status,
           paymentMethod: e.payment_method,
           supplierId: e.supplier_id,
-          recurringId: e.recurring_id
+          recurringId: e.recurring_id,
+          isReconciled: e.is_reconciled
         })));
       }
 
@@ -490,7 +491,8 @@ const App: React.FC = () => {
           tipAmount: a.tip_amount, // Critical: Map tip_amount
           startTimeActual: a.start_time_actual,
           createdAt: a.created_at,
-          updatedAt: a.updated_at
+          updatedAt: a.updated_at,
+          isReconciled: a.is_reconciled
         })));
       }
 
@@ -500,13 +502,14 @@ const App: React.FC = () => {
           id: s.id,
           customerId: s.customer_id,
           items: s.items || [],
-          total: s.total,
-          totalAmount: s.total,
+          total: s.total_amount || s.total_price || 0,
+          totalAmount: s.total_amount || s.total_price || 0,
           date: s.date,
           paymentMethod: s.payment_method,
           payments: s.payments || [],
           status: s.status,
-          createdAt: s.created_at
+          createdAt: s.created_at,
+          isReconciled: s.is_reconciled
         })));
 
       }
@@ -570,7 +573,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} sales={sales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} campaigns={campaigns} partners={partners} financialConfigs={financialConfigs} />;
+        return <Finance services={services} appointments={appointments} setAppointments={setAppointments} sales={sales} setSales={setSales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} stock={stock} campaigns={campaigns} partners={partners} financialConfigs={financialConfigs} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:

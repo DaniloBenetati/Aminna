@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter } from 'lucide-react';
-import { Expense, ExpenseCategory, Supplier } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Expense, ExpenseCategory, Supplier, Sale, Appointment } from '../types';
 import { supabase } from '../services/supabase';
 import { parseDateSafe, toLocalDateStr } from '../services/financialService';
 
@@ -10,8 +10,10 @@ interface ReconciledRow {
     description: string;
     amount: number;
     type: 'RECEITA' | 'DESPESA';
+    document?: string;
     status: 'CONCILIADOS' | 'A_LANCAR' | 'A_CONFERIR';
     matchId?: string; // ID of the matched expense from system
+    matchType?: 'RECEITA' | 'DESPESA' | 'SERVICO'; // Identifies if it matched a Sale or an Expense or Appointment
     suggestedCategory?: string;
     divergenceReason?: string;
     originalLines?: string[];
@@ -20,8 +22,14 @@ interface ReconciledRow {
 interface BankReconciliationProps {
     expenses: Expense[];
     setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+    sales: Sale[];
+    setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
+    appointments: Appointment[];
+    setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     categories: ExpenseCategory[];
     suppliers: Supplier[];
+    paymentSettings: any[];
+    financialConfigs: any[];
     onClose: () => void;
 }
 
@@ -33,7 +41,10 @@ const REVENUE_CATEGORIES = [
     'Aporte Financeiro'
 ];
 
-export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses, setExpenses, categories, suppliers, onClose }) => {
+export const BankReconciliation: React.FC<BankReconciliationProps> = ({
+    expenses, setExpenses, sales, setSales, appointments, setAppointments,
+    categories, suppliers, paymentSettings, financialConfigs, onClose
+}) => {
     const [rawText, setRawText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [reconciledRows, setReconciledRows] = useState<ReconciledRow[]>([]);
@@ -42,6 +53,77 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
 
     // Filtro rápido
     const [searchTerm, setSearchTerm] = useState('');
+    const [targetDate, setTargetDate] = useState<string | null>(null);
+    const [transactionTypeFilter, setTransactionTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
+    const [learningMap, setLearningMap] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        const fetchLearningData = async () => {
+            try {
+                const map: Record<string, string> = {};
+
+                // Fetch recent expenses
+                const { data: expData } = await supabase.from('expenses').select('description, category').order('date', { ascending: false }).limit(1000);
+                if (expData) {
+                    // Iterate backwards so newer ones overwrite older ones if duplicates exist
+                    for (let i = expData.length - 1; i >= 0; i--) {
+                        if (expData[i].description && expData[i].category) {
+                            map[expData[i].description.toLowerCase()] = expData[i].category;
+                        }
+                    }
+                }
+
+                // Fetch recent sales for revenue mapping
+                const { data: salesData } = await supabase.from('sales').select('items').order('date', { ascending: false }).limit(1000);
+                if (salesData) {
+                    for (let i = salesData.length - 1; i >= 0; i--) {
+                        const items = salesData[i].items || [];
+                        items.forEach((item: any) => {
+                            if (item.name && item.source) {
+                                map[item.name.toLowerCase()] = item.source;
+                            }
+                        });
+                    }
+                }
+
+                setLearningMap(map);
+            } catch (err) {
+                console.error("Error fetching learning data for reconciliation:", err);
+            }
+        };
+        fetchLearningData();
+    }, []);
+
+    const availableDates = useMemo(() => {
+        const dates = new Set(reconciledRows.map(r => r.date));
+        return Array.from(dates).sort();
+    }, [reconciledRows]);
+
+    const changeDate = (direction: number) => {
+        if (availableDates.length === 0) return;
+
+        let currentIndex = targetDate ? availableDates.indexOf(targetDate) : -1;
+
+        if (currentIndex === -1) {
+            currentIndex = direction > 0 ? 0 : availableDates.length - 1;
+        } else {
+            currentIndex += direction;
+        }
+
+        if (currentIndex < 0) currentIndex = 0;
+        if (currentIndex >= availableDates.length) currentIndex = availableDates.length - 1;
+
+        setTargetDate(availableDates[currentIndex]);
+    };
+
+    const formatDateDisplay = (dateStr: string | null) => {
+        if (!dateStr) return 'FILTRAR POR DATA';
+        const d = new Date(dateStr + 'T12:00:00');
+        const day = d.getDate();
+        const month = d.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
+        const year = d.getFullYear();
+        return `${day} DE ${month} DE ${year}`;
+    };
 
     const parseBankText = (text: string) => {
         setIsProcessing(true);
@@ -69,14 +151,27 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
 
                     if (isNaN(amount) || amount === 0) continue;
 
+                    // Extract document code (typically the last alphanumeric string block)
+                    const descParts = descRaw.trim().split(' ');
+                    let document = '';
+                    if (descParts.length > 1) {
+                        const lastPart = descParts[descParts.length - 1];
+                        // Document codes usually are alphanumeric and at least 5 chars long
+                        if (/^[A-Z0-9]{5,}$/i.test(lastPart) && !['PAULO', 'MARKETPLACE'].includes(lastPart.toUpperCase())) {
+                            document = lastPart;
+                            descParts.pop();
+                        }
+                    }
+
                     // Clean descriptions
-                    let description = descRaw.trim();
+                    let description = descParts.join(' ').trim();
                     description = description.replace(/VE\d{7}.*$/, '').trim(); // Remove Sicredi Document code
                     description = description.replace(/PIX_CRED|PIX_DEB|CAPITA/, '').trim(); // Remove tags
 
                     parsedTransactions.push({
                         date: isoDate,
                         description: description,
+                        document: document,
                         amount: Math.abs(amount),
                         type: amount < 0 ? 'DESPESA' : 'RECEITA',
                         originalLines: [line]
@@ -99,72 +194,127 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
     const runReconciliationEngine = (rawRows: Omit<ReconciledRow, 'id' | 'status'>[]): ReconciledRow[] => {
         const results: ReconciledRow[] = [];
         const systemExpenses = [...expenses]; // Somente válidas
+        const systemSales = [...sales];
 
         // System expenses track matches to find "A Conferir" (in system but not in bank)
         const matchedExpenseIds = new Set<string>();
+        const matchedSaleIds = new Set<string>();
+        const matchedAppointmentIds = new Set<string>();
 
         // 1. Map Bank Transactions
         rawRows.forEach((bankTx, index) => {
             const rowId = `bank_${index}_${bankTx.date}`;
             const bankDate = parseDateSafe(bankTx.date);
 
-            // Tolerância de 3 dias (antes e depois)
-            const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 3);
-            const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 3);
+            // 2-day tolerance (before and after) — keeps matches tight and avoids cross-month false positives
+            const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 2);
+            const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 2);
+            const systemAppointments = [...appointments];
 
-            let bestMatch: Expense | null = null;
+            let bestMatch: any = null;
             let matchConfidence = 0; // The higher, the better
 
             if (bankTx.type === 'DESPESA') {
                 const candidates = systemExpenses.filter(e => {
                     if (matchedExpenseIds.has(e.id)) return false;
                     const expDate = parseDateSafe(e.date);
-                    return expDate >= dStart && expDate <= dEnd && e.amount === bankTx.amount;
+                    return expDate >= dStart && expDate <= dEnd && Math.abs(e.amount - bankTx.amount) < 0.01;
                 });
 
                 if (candidates.length > 0) {
-                    // Try to find description similarity
                     bestMatch = candidates.find(c => {
                         const bDesc = bankTx.description.toLowerCase();
                         const cDesc = c.description.toLowerCase();
                         const supName = suppliers.find(s => s.id === c.supplierId)?.name.toLowerCase() || '';
-
-                        // Check if bank desc contains system description OR supplier name
                         return bDesc.includes(cDesc.substring(0, 5)) || (supName && bDesc.includes(supName.substring(0, 5)));
-                    }) || candidates[0]; // fallback to first amount/date match if no text matches
+                    }) || candidates[0];
+                    bankTx.matchType = 'DESPESA';
                 }
-            } else {
-                // Para RECEITAS (Pix recebidos, cartão), Aminna gerencia vendas/honorários.
-                // Como não cruzamos com Appointments aqui neste mini-módulo, apenas mapeamos.
-                // Idealmente você cruzaria com daily cash fechar/Appointment totals.
-                // Por agora, marcamos como "A LANÇAR", a menos que o admin queira.
+            } else if (bankTx.type === 'RECEITA') {
+                // Try Sales first
+                const saleCandidates = systemSales.filter(s => {
+                    if (matchedSaleIds.has(s.id)) return false;
+                    const saleDate = parseDateSafe(s.date);
+                    if (!(saleDate >= dStart && saleDate <= dEnd)) return false;
+
+                    if (Math.abs(s.totalAmount - bankTx.amount) < 0.01) return true;
+
+                    if (s.paymentMethod === 'Cartão de Crédito') {
+                        const method = paymentSettings.find(p => p.method === 'Cartão de Crédito');
+                        const fee = method?.fee || 0;
+                        const anticipation = financialConfigs.find(c => c.validFrom <= s.date && c.anticipationEnabled)?.anticipationRate || 0;
+                        const expectedNet = s.totalAmount * (1 - (fee / 100)) * (1 - (anticipation / 100));
+                        return Math.abs(expectedNet - bankTx.amount) < 0.05;
+                    }
+                    return false;
+                });
+
+                if (saleCandidates.length > 0) {
+                    bestMatch = saleCandidates[0];
+                    bankTx.matchType = 'RECEITA';
+                } else {
+                    // Try Appointments
+                    const appCandidates = systemAppointments.filter(app => {
+                        if (matchedAppointmentIds.has(app.id)) return false;
+                        const appDate = parseDateSafe(app.date);
+                        if (!(appDate >= dStart && appDate <= dEnd)) return false;
+
+                        const amount = app.pricePaid || app.amount || 0;
+                        if (Math.abs(amount - bankTx.amount) < 0.01) return true;
+
+                        if (app.paymentMethod === 'Cartão de Crédito') {
+                            const method = paymentSettings.find(p => p.method === 'Cartão de Crédito');
+                            const fee = method?.fee || 0;
+                            const anticipation = financialConfigs.find(c => c.validFrom <= app.date && c.anticipationEnabled)?.anticipationRate || 0;
+                            const expectedNet = amount * (1 - (fee / 100)) * (1 - (anticipation / 100));
+                            return Math.abs(expectedNet - bankTx.amount) < 0.05;
+                        }
+                        return false;
+                    });
+
+                    if (appCandidates.length > 0) {
+                        bestMatch = appCandidates[0];
+                        bankTx.matchType = 'SERVICO';
+                    }
+                }
             }
 
             if (bestMatch) {
-                // Match found!
-                matchedExpenseIds.add(bestMatch.id);
+                if (bankTx.type === 'DESPESA') matchedExpenseIds.add(bestMatch.id);
+                else {
+                    if (bankTx.matchType === 'SERVICO') matchedAppointmentIds.add(bestMatch.id);
+                    else matchedSaleIds.add(bestMatch.id);
+                }
+
                 results.push({
                     ...bankTx,
                     id: rowId,
                     status: 'CONCILIADOS',
-                    matchId: bestMatch.id
+                    matchId: bestMatch.id,
+                    matchType: bankTx.matchType || bankTx.type
                 });
             } else {
                 // A Lançar: no banco, mas não no sistema. Define sugestão.
-                let suggestedCat = 'Despesa Geral';
                 const descLower = bankTx.description.toLowerCase();
 
-                if (bankTx.type === 'RECEITA') {
-                    if (descLower.includes('pix')) suggestedCat = 'Receita de Serviços';
-                    else if (descLower.includes('ted')) suggestedCat = 'Receita de Serviços';
-                    else suggestedCat = 'Outras Receitas';
-                } else {
-                    if (descLower.includes('imposto') || descLower.includes('darf') || descLower.includes('das')) suggestedCat = 'Impostos';
-                    else if (descLower.includes('salario') || descLower.includes('rh')) suggestedCat = 'Pessoal';
-                    else if (descLower.includes('ifood') || descLower.includes('rappi')) suggestedCat = 'Alimentação';
-                    else if (descLower.includes('uber') || descLower.includes('99')) suggestedCat = 'Transporte';
-                    else if (descLower.includes('facebook') || descLower.includes('google')) suggestedCat = 'Marketing';
-                    else if (descLower.includes('pao de acucar') || descLower.includes('assai') || descLower.includes('atacadao')) suggestedCat = 'Insumos';
+                // First attempt: Learn from past categorizations
+                let suggestedCat = learningMap[descLower];
+
+                if (!suggestedCat) {
+                    // Second attempt: Fallback to rules and defaults
+                    suggestedCat = bankTx.type === 'RECEITA' ? 'Receita de Serviços' : 'Despesas Diversas';
+
+                    if (bankTx.type === 'RECEITA') {
+                        if (descLower.includes('pix')) suggestedCat = 'Receita de Serviços';
+                        else if (descLower.includes('ted')) suggestedCat = 'Receita de Serviços';
+                    } else {
+                        if (descLower.includes('imposto') || descLower.includes('darf') || descLower.includes('das')) suggestedCat = 'Impostos';
+                        else if (descLower.includes('salario') || descLower.includes('rh')) suggestedCat = 'Pessoal';
+                        else if (descLower.includes('ifood') || descLower.includes('rappi')) suggestedCat = 'Alimentação';
+                        else if (descLower.includes('uber') || descLower.includes('99')) suggestedCat = 'Transporte';
+                        else if (descLower.includes('facebook') || descLower.includes('google')) suggestedCat = 'Marketing';
+                        else if (descLower.includes('pao de acucar') || descLower.includes('assai') || descLower.includes('atacadao')) suggestedCat = 'Insumos';
+                    }
                 }
 
                 results.push({
@@ -212,53 +362,66 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
     };
 
     const handleApproveSelected = async () => {
-        if (approvalQueue.length === 0) return;
+        if (approvalQueue.length === 0 && reconciledRows.filter(r => r.status === 'CONCILIADOS').length === 0) return;
 
         setIsProcessing(true);
-        const rowsToProcess = reconciledRows.filter(r => approvalQueue.includes(r.id));
+        // Include selected rows + ALL auto-matched CONCILIADOS rows (they should always be persisted)
+        const selectedRows = reconciledRows.filter(r => approvalQueue.includes(r.id));
+        const allConciliadosRows = reconciledRows.filter(r => r.status === 'CONCILIADOS');
+        // Merge unique rows (selectedRows may also have CONCILIADOS status)
+        const rowsToProcess = [...selectedRows];
+        for (const row of allConciliadosRows) {
+            if (!rowsToProcess.find(r => r.id === row.id)) rowsToProcess.push(row);
+        }
 
         const newExpenses: Partial<Expense>[] = [];
         const newSales: any[] = [];
-        const toUpdateStatus: string[] = [];
+        const toUpdateExpenseStatus: string[] = [];
+        const toUpdateSaleStatus: string[] = [];
+        const toUpdateAppointmentStatus: string[] = [];
 
         for (const row of rowsToProcess) {
             if (row.status === 'A_LANCAR') {
+                // Create a new record for items found in the bank but not in the system.
+                // is_reconciled=false: these are new launches, NOT reconciled matches.
+                // They appear in the regular flow (Extrato/Fluxo), not in CONCILIADOS.
                 if (row.type === 'DESPESA') {
-                    // Cria uma nova Despesa
-                    const catInfo = categories.find(c => c.name.toLowerCase().includes((row.suggestedCategory || '').toLowerCase()))
-                        || categories[0];
-
                     newExpenses.push({
                         description: row.description,
                         amount: row.amount,
                         date: row.date,
-                        category: catInfo?.name || 'Gerais',
-                        dreClass: catInfo?.dreClass || 'EXPENSE_ADM',
+                        category: row.suggestedCategory || 'Despesas Diversas',
+                        dreClass: 'EXPENSE_ADM',
                         status: 'Pago',
-                        paymentMethod: 'Transferência' // Automatic mapping for Bank
+                        paymentMethod: 'Transferência',
+                        isReconciled: true  // Processed A_LANÇAR items are part of the conciliation
                     });
                 } else if (row.type === 'RECEITA') {
                     newSales.push({
                         date: row.date,
+                        total_price: row.amount,
                         total_amount: row.amount,
                         payment_method: 'Transferência',
-                        items: [{ name: row.description, quantity: 1, unitPrice: row.amount, source: row.suggestedCategory }]
+                        is_reconciled: true,  // Part of conciliation once processed
+                        items: [{ name: row.description, quantity: 1, price: row.amount }]
                     });
                 }
-            } else if (row.status === 'A_CONFERIR') {
-                // Marca a despesa do sistema como "Paga" e reconciliada
+            } else if (row.status === 'A_CONFERIR' || row.status === 'CONCILIADOS') {
                 if (row.matchId) {
-                    toUpdateStatus.push(row.matchId);
-                }
-            } else if (row.status === 'CONCILIADOS') {
-                // Poderia marcar uma flag is_reconciled no banco de dados se a Expense tabel tivesse.
-                if (row.matchId) {
-                    toUpdateStatus.push(row.matchId);
+                    if (row.matchType === 'RECEITA') toUpdateSaleStatus.push(row.matchId);
+                    else if (row.matchType === 'SERVICO') toUpdateAppointmentStatus.push(row.matchId);
+                    else toUpdateExpenseStatus.push(row.matchId);
                 }
             }
         }
 
         try {
+            console.log('Starting Batch Approval:', {
+                toUpdateExpenseStatus: toUpdateExpenseStatus.length,
+                toUpdateSaleStatus: toUpdateSaleStatus.length,
+                toUpdateAppointmentStatus: toUpdateAppointmentStatus.length
+            });
+
             if (newExpenses.length > 0) {
                 const mappedInserts = newExpenses.map(e => ({
                     description: e.description,
@@ -267,34 +430,72 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
                     category: e.category,
                     dre_class: e.dreClass,
                     status: e.status,
-                    payment_method: e.paymentMethod
+                    payment_method: e.paymentMethod,
+                    is_reconciled: e.isReconciled ?? true
                 }));
                 const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
-                if (error) throw error;
+                if (error) {
+                    console.error('Error inserting new expenses:', error);
+                    throw error;
+                }
                 if (data) {
                     setExpenses(prev => [...prev, ...data.map(d => ({
                         id: d.id, description: d.description, amount: d.amount, date: d.date,
-                        category: d.category, dreClass: d.dre_class, status: d.status, paymentMethod: d.payment_method
+                        category: d.category, dreClass: d.dre_class, status: d.status, paymentMethod: d.payment_method, isReconciled: true
                     } as Expense))]);
                 }
             }
 
             if (newSales.length > 0) {
-                const { error } = await supabase.from('sales').insert(newSales);
-                if (error) console.error("Error inserting sales:", error);
+                const { data, error } = await supabase.from('sales').insert(newSales).select();
+                if (error) {
+                    console.error("Error inserting sales:", error);
+                    throw error;
+                }
+
+                if (data) {
+                    setSales(prev => [...prev, ...data.map(s => ({
+                        id: s.id,
+                        customerId: s.customer_id,
+                        date: s.date,
+                        totalAmount: s.total_amount,
+                        paymentMethod: s.payment_method,
+                        items: s.items || [],
+                        status: s.status,
+                        isReconciled: s.is_reconciled
+                    } as Sale))]);
+                }
             }
 
-            if (toUpdateStatus.length > 0) {
-                // For "A CONFERIR" we will trust the system and assume it was paid since the user clicked Approve.
-                // So we update the status = 'Pago' and visually removing the alert.
-                const { error } = await supabase.from('expenses').update({ status: 'Pago' }).in('id', toUpdateStatus);
-                if (error) throw error;
-
-                setExpenses(prev => prev.map(e => toUpdateStatus.includes(e.id) ? { ...e, status: 'Pago' } : e));
+            if (toUpdateExpenseStatus.length > 0) {
+                const { error } = await supabase.from('expenses').update({ status: 'Pago', is_reconciled: true }).in('id', toUpdateExpenseStatus);
+                if (error) {
+                    console.error('Error updating expenses as reconciled:', error);
+                    throw error;
+                }
+                setExpenses(prev => prev.map(e => toUpdateExpenseStatus.includes(e.id) ? { ...e, status: 'Pago', isReconciled: true } : e));
             }
 
-            // Remove processed items from the list view visually
-            setReconciledRows(prev => prev.filter(r => !approvalQueue.includes(r.id)));
+            if (toUpdateSaleStatus.length > 0) {
+                const { error } = await supabase.from('sales').update({ is_reconciled: true }).in('id', toUpdateSaleStatus);
+                if (error) {
+                    console.error('Error updating sales as reconciled:', error);
+                    throw error;
+                }
+                setSales(prev => prev.map(s => toUpdateSaleStatus.includes(s.id) ? { ...s, isReconciled: true } : s));
+            }
+
+            if (toUpdateAppointmentStatus.length > 0) {
+                const { error } = await supabase.from('appointments').update({ is_reconciled: true }).in('id', toUpdateAppointmentStatus);
+                if (error) {
+                    console.error('Error updating appointments as reconciled:', error);
+                    throw error;
+                }
+                setAppointments(prev => prev.map(a => toUpdateAppointmentStatus.includes(a.id) ? { ...a, isReconciled: true } : a));
+            }
+
+            // Update processed items to 'CONCILIADOS' so they reflect in the success tab
+            setReconciledRows(prev => prev.map(r => approvalQueue.includes(r.id) ? { ...r, status: 'CONCILIADOS' } : r));
             setApprovalQueue([]);
             alert("Lançamentos conciliados com sucesso!");
 
@@ -327,9 +528,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
         return reconciledRows.filter(r => {
             if (r.status !== activeTab) return false;
             if (searchTerm && !r.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+
+            if (targetDate) {
+                if (r.date !== targetDate) return false;
+            }
+
+            if (transactionTypeFilter !== 'ALL') {
+                if (r.type !== transactionTypeFilter) return false;
+            }
+
             return true;
         });
-    }, [reconciledRows, activeTab, searchTerm]);
+    }, [reconciledRows, activeTab, searchTerm, targetDate, transactionTypeFilter]);
 
     const stats = {
         conciliados: reconciledRows.filter(r => r.status === 'CONCILIADOS').length,
@@ -416,16 +626,64 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
                             </div>
 
                             {/* Toolbar */}
-                            <div className="flex items-center justify-between mb-4 shrink-0">
-                                <div className="relative">
-                                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                                    <input
-                                        type="text"
-                                        placeholder="Pesquisar histórico..."
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold w-64 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
-                                    />
+                            <div className="flex items-center justify-between mb-4 shrink-0 flex-wrap gap-4">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="relative">
+                                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                        <input
+                                            type="text"
+                                            placeholder="Pesquisar histórico..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold w-64 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-sm">
+                                        <button
+                                            onClick={() => changeDate(-1)}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors"
+                                        >
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </button>
+                                        <div className="flex items-center px-2">
+                                            {targetDate ? (
+                                                <button onClick={() => setTargetDate(null)} className="text-[11px] font-black uppercase text-indigo-700 tracking-wider hover:text-rose-500 transition-colors flex items-center gap-1">
+                                                    {formatDateDisplay(targetDate)}
+                                                    <X className="w-3 h-3 ml-1" />
+                                                </button>
+                                            ) : (
+                                                <button onClick={() => setTargetDate(availableDates.length > 0 ? availableDates[0] : new Date().toISOString().split('T')[0])} className="text-[10px] font-black uppercase text-slate-400 tracking-wider hover:text-indigo-600 transition-colors">
+                                                    {formatDateDisplay(null)}
+                                                </button>
+                                            )}
+                                        </div>
+                                        <button
+                                            onClick={() => changeDate(1)}
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors"
+                                        >
+                                            <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setTransactionTypeFilter('ALL')}
+                                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Todos
+                                        </button>
+                                        <button
+                                            onClick={() => setTransactionTypeFilter('RECEITA')}
+                                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'RECEITA' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                                        >
+                                            Créditos
+                                        </button>
+                                        <button
+                                            onClick={() => setTransactionTypeFilter('DESPESA')}
+                                            className={`px-3 py-1.5 text-[10px] font-bold rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'DESPESA' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-rose-600'}`}
+                                        >
+                                            Débitos
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {approvalQueue.length > 0 && (
@@ -435,7 +693,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
                                     )}
                                     <button
                                         onClick={handleApproveSelected}
-                                        disabled={approvalQueue.length === 0 || isProcessing}
+                                        disabled={(approvalQueue.length === 0 && reconciledRows.filter(r => r.status === 'CONCILIADOS').length === 0) || isProcessing}
                                         className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-sm shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                                     >
                                         <Check className="w-4 h-4" />
@@ -486,6 +744,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({ expenses
                                                 </td>
                                                 <td className="p-4 align-top">
                                                     <p className="text-sm font-bold text-slate-800 uppercase leading-snug">{row.description}</p>
+                                                    {row.document && (
+                                                        <p className="text-[11px] text-slate-500 font-medium mt-0.5">Doc/Aut: {row.document}</p>
+                                                    )}
                                                     {row.type === 'RECEITA' && (
                                                         <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">
                                                             <DollarSign className="w-3 h-3 stroke-[3]" />

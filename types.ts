@@ -167,6 +167,7 @@ export interface Sale {
   paymentMethod: string;
   payments?: PaymentInfo[];
   items: any[]; // List of { productId, quantity, unitPrice, name } or service details
+  isReconciled?: boolean;
 }
 
 
@@ -184,6 +185,7 @@ export interface Appointment {
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
   recurrenceId?: string; // ID to track recurring appointment series
+  amount: number;
   pricePaid?: number;
   bookedPrice?: number; // Snapshot of price at booking time
   commissionRateSnapshot?: number; // Snapshot da comissão no momento do agendamento
@@ -217,8 +219,10 @@ export interface Appointment {
   combinedServiceNames?: string;
   rating?: number;
   feedback?: string;
+  observation?: string;
   tipAmount?: number;
   isRemake?: boolean; // Refazer agendamento (zerado)
+  isReconciled?: boolean;
 }
 
 export interface ChatMessage {
@@ -269,6 +273,7 @@ export interface Expense {
   paymentMethod: 'Boleto' | 'Pix' | 'Transferência' | 'Cartão' | 'Dinheiro';
   supplierId?: string;
   recurringId?: string;
+  isReconciled?: boolean;
 }
 
 export interface Supplier {
@@ -301,8 +306,10 @@ export interface FinancialTransaction {
   customerOrProviderName?: string;
   providerName?: string;
   customerName?: string;
+  supplierId?: string;
   serviceName?: string;
   appointmentDate?: string;
+  isReconciled?: boolean;
 }
 
 // --- TIPOS PARA COPA (PANTRY) ---

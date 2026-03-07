@@ -1,4 +1,4 @@
-import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig } from '../types';
+import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig, Supplier } from '../types';
 
 export const toLocalDateStr = (date: Date) => {
     const year = date.getFullYear();
@@ -10,6 +10,14 @@ export const toLocalDateStr = (date: Date) => {
 export const parseDateSafe = (dateStr: string | undefined): Date => {
     if (!dateStr) return new Date();
     try {
+        // Intercept DD/MM/YYYY and convert to YYYY-MM-DD
+        if (dateStr.includes('/') && dateStr.split('/').length === 3) {
+            const parts = dateStr.split('/');
+            if (parts[0].length === 2 && parts[2].length === 4) {
+                dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+        }
+
         const str = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
         const d = new Date(str);
         return isNaN(d.getTime()) ? new Date() : d;
@@ -32,6 +40,7 @@ export const generateFinancialTransactions = (
     services: Service[],
     customers: Customer[],
     providers: Provider[],
+    suppliers: Supplier[],
     commissionSettings: CommissionSetting[],
     paymentSettings: PaymentSetting[],
     financialConfigs: FinancialConfig[] = []
@@ -97,7 +106,8 @@ export const generateFinancialTransactions = (
 
         const paymentDate = app.paymentDate || rawApp.payment_date;
         const baseDate = (app.status === 'Concluído' && paymentDate) ? paymentDate : app.date;
-        const settlementDate = addDays(baseDate, days);
+        // If it's reconciled, it means the money actually hit the bank around this date, so we ignore the theoretical 'days' delay
+        const settlementDate = app.isReconciled ? baseDate : addDays(baseDate, days);
 
         let status: 'Pago' | 'Previsto' | 'Atrasado' = 'Previsto';
         if (app.status === 'Concluído') {
@@ -129,7 +139,7 @@ export const generateFinancialTransactions = (
             type: 'RECEITA',
             category: 'Serviço',
             description: `${service?.name || 'Serviço'} - ${customer?.name}`,
-            amount: mainBooked,
+            amount: totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0,
             status: status,
             paymentMethod: app.status === 'Concluído' && mainBooked === 0 ? 'Cortesia' : paymentMethodName,
             origin: 'Serviço',
@@ -137,7 +147,8 @@ export const generateFinancialTransactions = (
             providerName: provider?.name || 'Não atribuído',
             customerName: customer?.name || 'Desconhecido',
             serviceName: service?.name || 'Serviço',
-            appointmentDate: app.date
+            appointmentDate: app.date,
+            isReconciled: app.isReconciled
         });
 
         // Extras Transactions
@@ -149,7 +160,7 @@ export const generateFinancialTransactions = (
                 type: 'RECEITA',
                 category: 'Serviço',
                 description: `${extra.serviceName} - ${customer?.name}`,
-                amount: extra.bookedPrice,
+                amount: totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualTotalRevenue : 0,
                 status: status,
                 paymentMethod: app.status === 'Concluído' && extra.bookedPrice === 0 ? 'Cortesia' : paymentMethodName,
                 origin: 'Serviço',
@@ -157,30 +168,18 @@ export const generateFinancialTransactions = (
                 providerName: extraProv?.name || 'Não atribuído',
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: extra.serviceName,
-                appointmentDate: app.date
+                appointmentDate: app.date,
+                isReconciled: app.isReconciled
             });
         });
 
-        // Price Discrepancy (Discount/Extra)
+        // Price Discrepancy is now distributed into the service lines themselves
+        /*
         const priceDiscrepancy = actualTotalRevenue - totalBooked;
         if (app.status === 'Concluído' && Math.abs(priceDiscrepancy) > 0.01) {
-            allTrans.push({
-                id: `app-adj-${app.id}`,
-                date: settlementDate,
-                type: priceDiscrepancy > 0 ? 'RECEITA' : 'DESPESA',
-                category: 'Ajuste de Valor',
-                description: priceDiscrepancy > 0 ? `Acréscimo - ${customer?.name}` : `Desconto - ${customer?.name}`,
-                amount: Math.abs(priceDiscrepancy),
-                status: status,
-                paymentMethod: paymentMethodName,
-                origin: 'Outro',
-                customerOrProviderName: customer?.name || 'Cliente',
-                providerName: provider?.name || 'Não atribuído', // Linked to main professional
-                customerName: customer?.name || 'Desconhecido',
-                serviceName: priceDiscrepancy > 0 ? 'Acréscimo de Valor' : 'Desconto Concedido',
-                appointmentDate: app.date
-            });
+            ...
         }
+        */
 
         // Card Fees
         if (fee > 0 && actualTotalRevenue > 0) {
@@ -193,10 +192,12 @@ export const generateFinancialTransactions = (
                 amount: actualTotalRevenue * (fee / 100),
                 status: status,
                 paymentMethod: paymentMethodName,
-                origin: 'Outro',
+                origin: 'Despesa',
                 providerName: provider?.name || 'Não atribuído',
                 customerName: customer?.name || 'Desconhecido',
-                appointmentDate: app.date
+                customerOrProviderName: customer?.name || 'Desconhecido',
+                appointmentDate: app.date,
+                isReconciled: app.isReconciled
             });
         }
 
@@ -214,10 +215,12 @@ export const generateFinancialTransactions = (
                 amount: actualTotalRevenue * (antRate / 100),
                 status: status,
                 paymentMethod: paymentMethodName,
-                origin: 'Outro',
+                origin: 'Despesa',
                 providerName: provider?.name || 'Não atribuído',
                 customerName: customer?.name || 'Desconhecido',
-                appointmentDate: app.date
+                customerOrProviderName: customer?.name || 'Desconhecido',
+                appointmentDate: app.date,
+                isReconciled: app.isReconciled
             });
         }
 
@@ -237,7 +240,8 @@ export const generateFinancialTransactions = (
                 providerName: provider?.name || 'Vários',
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: 'Caixinha / Gorjeta',
-                appointmentDate: app.date
+                appointmentDate: app.date,
+                isReconciled: app.isReconciled
             });
         }
 
@@ -254,12 +258,12 @@ export const generateFinancialTransactions = (
                 id: `comm-main-${app.id}`,
                 date: commissionDate,
                 type: 'DESPESA',
-                category: 'Comissão',
+                category: 'Repasse Comissão',
                 description: `Repasse - ${provider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                 amount: commissionAmount,
                 status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                 paymentMethod: 'Transferência',
-                origin: 'Outro',
+                origin: 'Despesa',
                 customerOrProviderName: provider.name,
                 providerName: provider.name,
                 customerName: customer?.name || 'Desconhecido',
@@ -287,12 +291,12 @@ export const generateFinancialTransactions = (
                         id: `comm-extra-${app.id}-${idx}`,
                         date: commissionDate,
                         type: 'DESPESA',
-                        category: 'Comissão',
+                        category: 'Repasse Comissão',
                         description: `Repasse Extra - ${extraProvider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                         amount: commissionAmount,
                         status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                         paymentMethod: 'Transferência',
-                        origin: 'Outro',
+                        origin: 'Despesa',
                         customerOrProviderName: extraProvider.name,
                         providerName: extraProvider.name,
                         customerName: customer?.name || 'Desconhecido',
@@ -308,7 +312,8 @@ export const generateFinancialTransactions = (
         const paymentMethodName = sale.paymentMethod || 'Dinheiro';
         const { fee, days } = getPaymentDetails(paymentMethodName);
         const grossAmount = sale.totalAmount || 0;
-        const settlementDate = addDays(sale.date, days);
+        // Reconciled items are already in the bank statement near `sale.date`, ignore theoretical delay
+        const settlementDate = sale.isReconciled ? sale.date : addDays(sale.date, days);
 
         const status = settlementDate <= todayStr ? 'Pago' : 'Previsto';
 
@@ -326,7 +331,8 @@ export const generateFinancialTransactions = (
             providerName: 'Venda Direta',
             customerName: 'Cliente Balcão',
             serviceName: 'Venda de Produto',
-            appointmentDate: sale.date
+            appointmentDate: sale.date,
+            isReconciled: sale.isReconciled
         });
 
         // Automated Card Fee for Sales
@@ -341,12 +347,14 @@ export const generateFinancialTransactions = (
                 status: status,
                 paymentMethod: paymentMethodName,
                 origin: 'Outro',
-                appointmentDate: sale.date
+                appointmentDate: sale.date,
+                isReconciled: sale.isReconciled
             });
         }
     });
 
     expenses.forEach(exp => {
+        const supplier = suppliers.find(s => s.id === exp.supplierId);
         allTrans.push({
             id: exp.id,
             date: exp.date,
@@ -356,11 +364,33 @@ export const generateFinancialTransactions = (
             amount: exp.amount,
             status: exp.status === 'Pago' ? 'Pago' : 'Pendente',
             paymentMethod: exp.paymentMethod || 'Dinheiro',
-            origin: 'Despesa'
+            origin: 'Despesa',
+            customerOrProviderName: supplier?.name || '',
+            // Use exp.id as providerName so that DB expense records with category 'Repasse Comissão'
+            // are never merged together in the commission grouping step below.
+            // Appointment-generated commissions use real provider names, DB expenses use UUIDs → no collision.
+            providerName: exp.id,
+            supplierId: exp.supplierId,
+            isReconciled: exp.isReconciled
         });
     });
 
-    return allTrans.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // --- AGGREGATE COMMISSIONS ---
+    const nonCommissions = allTrans.filter(t => t.category !== 'Repasse Comissão');
+    const commissions = allTrans.filter(t => t.category === 'Repasse Comissão');
+
+    const groupedCommissions = commissions.reduce((acc, curr) => {
+        const key = `${curr.providerName}_${curr.date}`;
+        if (!acc[key]) {
+            acc[key] = { ...curr, amount: 0, id: `comm-grouped-${curr.providerName}-${curr.date}` };
+        }
+        acc[key].amount += curr.amount;
+        return acc;
+    }, {} as Record<string, FinancialTransaction>);
+
+    const finalTrans = [...nonCommissions, ...Object.values(groupedCommissions)];
+
+    return finalTrans.sort((a, b) => parseDateSafe(b.date).getTime() - parseDateSafe(a.date).getTime());
 };
 
 export const calculateDailySummary = (dailyRelTrans: FinancialTransaction[]) => {

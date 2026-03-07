@@ -33,6 +33,7 @@ interface FinanceProps {
     sales: Sale[];
     expenses: Expense[];
     setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
+    setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
     paymentSettings: PaymentSetting[];
     commissionSettings?: CommissionSetting[];
     expenseCategories: ExpenseCategory[];
@@ -45,14 +46,16 @@ interface FinanceProps {
     campaigns: Campaign[];
     partners: Partner[];
     financialConfigs: FinancialConfig[];
+    setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock,
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, setAppointments, sales, setSales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock,
     expenses, setExpenses, campaigns = [], partners = [], financialConfigs = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
-    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS'>('DAILY');
+    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
     const [receivablesFilter, setReceivablesFilter] = useState('');
+    const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
@@ -69,7 +72,87 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
     const [isQuickAddingSupplier, setIsQuickAddingSupplier] = useState(false);
     const [isQuickAddingCategory, setIsQuickAddingCategory] = useState(false);
 
-    // Expenses are now passed as props from App.tsx
+    // Reconciled Edit States
+    const [editingReconciled, setEditingReconciled] = useState<FinancialTransaction | null>(null);
+    const [isReconciledEditModalOpen, setIsReconciledEditModalOpen] = useState(false);
+    const [editReconciledForm, setEditReconciledForm] = useState({
+        description: '',
+        category: '',
+        customerOrProviderName: '',
+        supplierId: ''
+    });
+
+    const handleOpenReconciledEditModal = (t: FinancialTransaction) => {
+        setEditingReconciled(t);
+        setEditReconciledForm({
+            description: t.description,
+            category: t.category,
+            customerOrProviderName: t.customerOrProviderName || t.providerName || '',
+            supplierId: t.supplierId || ''
+        });
+        setIsReconciledEditModalOpen(true);
+    };
+
+    const handleSaveReconciledEdit = async () => {
+        if (!editingReconciled) return;
+
+        try {
+            const { origin, id: rawId } = editingReconciled;
+            // More comprehensive prefix removal for all possible transaction types
+            const id = rawId.replace(/^(app-main-|app-extra-rev-|app-fee-|app-ant-fee-|app-tip-|comm-main-|comm-extra-|sale-)/, '');
+
+            if (origin === 'Despesa') {
+                const { error } = await supabase.from('expenses')
+                    .update({
+                        description: editReconciledForm.description,
+                        category: editReconciledForm.category,
+                        supplier_id: editReconciledForm.supplierId || null
+                    })
+                    .eq('id', id);
+                if (error) {
+                    console.error('Supabase Expense Update Error:', error);
+                    throw error;
+                }
+                setExpenses(prev => prev.map(e => e.id === id ? {
+                    ...e,
+                    description: editReconciledForm.description,
+                    category: editReconciledForm.category,
+                    supplierId: editReconciledForm.supplierId
+                } : e));
+            } else if (origin === 'Produto') {
+                try {
+                    const { data: sale, error: fetchError } = await supabase.from('sales').select('items').eq('id', id).single();
+                    if (fetchError) throw fetchError;
+                    if (sale && sale.items && sale.items.length > 0) {
+                        const newItems = [...sale.items];
+                        newItems[0].name = editReconciledForm.description;
+                        newItems[0].source = editReconciledForm.category;
+                        const { error: updateError } = await supabase.from('sales').update({ items: newItems }).eq('id', id);
+                        if (updateError) throw updateError;
+                        setSales(prev => prev.map(s => s.id === id ? { ...s, items: newItems } : s));
+                    }
+                } catch (err) {
+                    console.error("Error updating sale items:", err);
+                    throw err;
+                }
+            } else if (origin === 'Serviço' || origin === 'Outro') {
+                const { error } = await supabase.from('appointments').update({
+                    observation: editReconciledForm.description
+                }).eq('id', id);
+                if (error) {
+                    console.error('Supabase Appointment Update Error:', error);
+                    throw error;
+                }
+                setAppointments(prev => prev.map(a => a.id === id ? { ...a, observation: editReconciledForm.description } : a));
+            }
+
+            setIsReconciledEditModalOpen(false);
+            setEditingReconciled(null);
+        } catch (error) {
+            console.error('Detailed Error updating reconciled transaction:', error);
+            alert('Erro ao atualizar. Verifique os dados e tente novamente.');
+        }
+    };
 
     // Suppliers CRUD States
     const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -283,11 +366,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             services,
             customers,
             providers,
+            suppliers,
             commissionSettings || [],
             paymentSettings,
             financialConfigs
         );
-    }, [appointments, sales, expenses, services, customers, providers, commissionSettings, paymentSettings, financialConfigs]);
+    }, [appointments, sales, expenses, services, customers, providers, suppliers, commissionSettings, paymentSettings, financialConfigs]);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -295,101 +379,113 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
             const matchesDescription = t.description.toLowerCase().includes(detailedFilter.toLowerCase()) ||
                 (t.customerOrProviderName || '').toLowerCase().includes(detailedFilter.toLowerCase()); // Search in both description and name
 
-            // Only apply filters if we are in DETAILED tab ideally, but filteredTransactions is used for the view.
-            // Wait, filteredTransactions is ONLY used in DETAILED rendering and PAYABLES rendering?
-            // PAYABLES uses `filteredPayables` (which I usually see in other codebases or need to check if it exists).
-            // Let's check where `filteredTransactions` is used.
-            // It is used in lines 1399 (DETAILED TABLE).
-
             return matchesDate && matchesDescription;
         });
     }, [transactions, startDate, endDate, detailedFilter]);
+
+    const reconciledTransactions = useMemo(() => {
+        const results = transactions.filter(t => {
+            if (!t.isReconciled) return false;
+            // For the Bank Statement (CONCILIADOS) view, we MUST use the settlement date (t.date)
+            // to match the bank statement lines for the selected period, regardless of when 
+            // the service occurred.
+            const rawDate = t.date;
+            const effectiveDate = rawDate ? rawDate.substring(0, 10) : '';
+            return effectiveDate >= startDate && effectiveDate <= endDate;
+        });
+        return results;
+    }, [transactions, startDate, endDate]);
 
     const summary = useMemo(() => calculateDailySummary(filteredTransactions), [filteredTransactions]);
     const { totalServices, totalProducts, totalAjustes, totalTips, totalAnticipationFees, totalRevenue, servicesWithTips } = summary;
 
     const handlePrintDetailedReport = () => {
+        // Calculate the previous balance (Saldo Anterior)
+        // We take the initial balance from the oldest configuration, as that represents the beginning of the financial records.
+        const oldestConfig = financialConfigs[financialConfigs.length - 1];
+        const initialBalance = oldestConfig?.initialBalance || 0;
+        const previousTransactions = transactions.filter(t => t.date < startDate);
+        const previousBalanceSum = previousTransactions.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+        let currentBalance = initialBalance + previousBalanceSum;
+
+        // Sort transactions chronologically for the printed statement
+        const statementTransactions = [...filteredTransactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        // Generate rows with running balances
+        const rowsHtml = statementTransactions.map((t, index) => {
+            const amount = t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount);
+            currentBalance += amount;
+
+            // Alternate row backgrounds (light gray / white)
+            const bgClass = index % 2 === 0 ? 'bg-even' : 'bg-odd';
+
+            return `
+                <tr class="${bgClass}">
+                    <td class="col-date">${parseDateSafe(t.date).toLocaleDateString('pt-BR')}</td>
+                    <td class="col-desc">${t.description.toUpperCase()}</td>
+                    <td class="col-doc">${t.id.substring(0, 8).toUpperCase()}${t.isReconciled ? '<br/><span style="color:#10b981;font-size:9px;">[CONCILIADO]</span>' : ''}</td>
+                    <td class="col-val text-right">${amount > 0 ? '' : '-'}${Math.abs(amount).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="col-saldo text-right">${currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        }).join('');
+
         const printContent = `
             <html>
             <head>
                 <title>Extrato de Fluxo Financeiro - ${getDateLabel()}</title>
                 <style>
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; background: #fff; }
-                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
-                    .logo { font-size: 24px; font-weight: 900; letter-spacing: -1px; color: #000; }
-                    .report-title { text-align: right; }
-                    h1 { font-size: 18px; margin: 0; text-transform: uppercase; font-weight: 900; }
-                    p { margin: 2px 0; font-size: 12px; font-weight: 600; color: #64748b; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
-                    th { bg: #f8fafc; text-align: left; padding: 12px 10px; border-bottom: 2px solid #e2e8f0; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; }
-                    td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
-                    .amount { text-align: right; font-weight: 800; }
-                    .RECEITA { color: #059669; }
-                    .DESPESA { color: #dc2626; }
-                    .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 10px; color: #94a3b8; }
-                    .summary { display: flex; gap: 40px; justify-content: flex-end; margin-top: 20px; padding: 20px; background: #f8fafc; border-radius: 12px; }
-                    .summary-item { text-align: right; }
-                    .summary-label { font-size: 10px; font-weight: 900; color: #64748b; text-transform: uppercase; }
-                    .summary-value { font-size: 16px; font-weight: 900; margin-top: 2px; }
+                    body { font-family: 'Arial', sans-serif; padding: 20px 40px; color: #333; background: #fff; margin: 0; }
+                    .header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 20px; }
+                    .header h1 { color: #000000; font-size: 24px; font-weight: bold; margin: 0; display: inline-block; }
+                    .header span { color: #888; font-size: 14px; font-weight: normal; }
+                    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+                    th { 
+                        text-align: left; 
+                        padding: 10px 8px; 
+                        color: #000000; 
+                        font-weight: bold; 
+                        border-bottom: 2px solid #000000; 
+                    }
+                    th.text-right { text-align: right; }
+                    td { padding: 8px; border: none; }
+                    td.text-right { text-align: right; }
+                    .bg-even { background-color: #f9f9f9; }
+                    .bg-odd { background-color: #ffffff; }
+                    .col-date { width: 80px; }
+                    .col-desc { }
+                    .col-doc { width: 100px; }
+                    .col-val { width: 80px; }
+                    .col-saldo { width: 80px; }
+                    .saldo-row { background-color: #f4f4f4; font-weight: bold; }
+                    .saldo-row td { color: #888; }
                 </style>
             </head>
             <body>
                 <div class="header">
-                    <div class="logo">AMINNA</div>
-                    <div class="report-title">
-                        <h1>Extrato de Fluxo Financeiro</h1>
-                        <p>Período: ${getDateLabel()}</p>
-                    </div>
+                    <h1>Extrato</h1>
+                    <span>(Período de ${startDate.split('-').reverse().join('/')} a ${endDate.split('-').reverse().join('/')})</span>
                 </div>
                 
                 <table>
                     <thead>
                         <tr>
-                            <th>Data</th>
-                            <th>Tipo</th>
-                            <th>Origem</th>
-                            <th>Descrição</th>
-                            <th>Pagamento</th>
-                            <th class="amount">Valor</th>
+                            <th class="col-date">Data</th>
+                            <th class="col-desc">Descrição</th>
+                            <th class="col-doc">Documento</th>
+                            <th class="col-val text-right">Valor (R$)</th>
+                            <th class="col-saldo text-right">Saldo (R$)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${filteredTransactions.map(t => `
-                            <tr>
-                                <td>${parseDateSafe(t.date).toLocaleDateString('pt-BR')}</td>
-                                <td class="${t.type}"><strong>${t.type}</strong></td>
-                                <td>${t.origin}</td>
-                                <td>
-                                    <div style="font-weight: 800; text-transform: uppercase;">${t.description}</div>
-                                    <div style="font-size: 9px; color: #64748b;">${t.customerOrProviderName || ''}</div>
-                                </td>
-                                <td>${t.paymentMethod}</td>
-                                <td class="amount ${t.type}">${t.type === 'DESPESA' ? '-' : '+'} R$ ${t.amount.toFixed(2)}</td>
-                            </tr>
-                        `).join('')}
+                        <tr class="saldo-row">
+                            <td></td>
+                            <td colspan="3">SALDO ANTERIOR</td>
+                            <td class="text-right">${(initialBalance + previousBalanceSum).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        ${rowsHtml}
                     </tbody>
                 </table>
-
-                <div class="summary">
-                    <div class="summary-item">
-                        <div class="summary-label">Total Entradas</div>
-                        <div class="summary-value RECEITA">R$ ${filteredTransactions.filter(t => t.type === 'RECEITA').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Total Saídas</div>
-                        <div class="summary-value DESPESA">R$ ${filteredTransactions.filter(t => t.type === 'DESPESA').reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="summary-label">Saldo Líquido</div>
-                        <div class="summary-value ${filteredTransactions.reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0) >= 0 ? 'RECEITA' : 'DESPESA'}">
-                            R$ ${filteredTransactions.reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0).toFixed(2)}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="footer">
-                    Relatório gerado em ${new Date().toLocaleString('pt-BR')} - Sistema Aminna Home Nail Gel
-                </div>
                 <script>window.onload = () => { window.print(); window.close(); }</script>
             </body>
             </html>
@@ -452,7 +548,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
 
             const latestConfig = financialConfigs[0];
             const suggestedCashReserve = grossRevenue * ((latestConfig?.cashFlowReserveRate || 0) / 100);
-            const periodInitialBalance = latestConfig?.initialBalance || 0;
+            const oldestConfig = financialConfigs[financialConfigs.length - 1];
+            const periodInitialBalance = oldestConfig?.initialBalance || 0;
 
             const manualDeductions = exps.filter(e => e.dreClass === 'DEDUCTION').reduce((acc, e) => acc + e.amount, 0);
 
@@ -1299,6 +1396,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                             <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
+                                    { id: 'CONCILIADO', label: 'Conciliados', icon: CheckCircle2 },
                                     { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
                                     { id: 'RECEIVABLES', label: 'Contas a Receber', icon: ArrowUpCircle },
                                     { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
@@ -1379,6 +1477,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                                 <th className="px-6 py-4">Descrição</th>
                                                 <th className="px-6 py-4">Pagamento</th>
                                                 <th className="px-6 py-4">Status</th>
+                                                <th className="px-6 py-4 text-center">Conciliação</th>
                                                 <th className="px-6 py-4 text-right">Valor</th>
                                             </tr>
                                         </thead>
@@ -1442,6 +1541,248 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                                 </div>
                             </div>
                         )}
+                        {accountsSubTab === 'CONCILIADO' && (() => {
+                            // Compute opening balance: initial bank balance + all reconciled transactions before this period
+                            const oldestConfig = financialConfigs[financialConfigs.length - 1];
+                            const initialBalance = oldestConfig?.initialBalance || 0;
+                            const transactionsBefore = transactions.filter(t => t.isReconciled && t.date < startDate);
+                            const openingBalance = initialBalance + transactionsBefore.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+
+                            // Calculate totals and running balance using ALL reconciled transactions 
+                            // to ensure financial accuracy (including hidden ledger entries like fees).
+                            const sortedAll = [...reconciledTransactions].sort((a, b) => a.date.localeCompare(b.date));
+
+                            let currentBal = openingBalance;
+                            const allWithBalance = sortedAll.map(t => {
+                                const delta = t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount);
+                                currentBal += delta;
+                                return { t, delta, balance: currentBal };
+                            });
+
+                            const totalIn = reconciledTransactions.filter(t => t.type === 'RECEITA').reduce((s, t) => s + Math.abs(t.amount), 0);
+                            const totalOut = reconciledTransactions.filter(t => t.type === 'DESPESA').reduce((s, t) => s + Math.abs(t.amount), 0);
+                            const runningBalance = currentBal;
+
+                            // Apply visual filter ONLY for the display list and indicator count
+                            const rowsWithBalance = allWithBalance.filter(({ t }) => {
+                                // Exclude strictly internal system-generated garbage from the view
+                                if (t.id.startsWith('sale-fee-') || t.id.startsWith('comm-')) return false;
+                                // IMPORTANT: Removed the exclusion of t.category === 'Taxas de Cartão' 
+                                // because users have legitimate manual expenses with this category in the bank statement.
+
+                                if (!conciliadoFilter) return true;
+                                const q = conciliadoFilter.toLowerCase();
+                                return t.description.toLowerCase().includes(q) ||
+                                    (t.customerOrProviderName || '').toLowerCase().includes(q) ||
+                                    (t.category || '').toLowerCase().includes(q) ||
+                                    t.paymentMethod.toLowerCase().includes(q);
+                            });
+
+                            const filtered = rowsWithBalance.map(r => r.t);
+
+                            const handlePrintConciliado = () => {
+                                let bal = openingBalance;
+                                const rowsHtml = rowsWithBalance.map(({ t, delta, balance }) => `
+                                    <tr>
+                                        <td>${parseDateSafe(t.date).toLocaleDateString('pt-BR')}</td>
+                                        <td>${t.description.toUpperCase()}</td>
+                                        <td>${t.category || ''}</td>
+                                        <td>${t.customerOrProviderName || ''}</td>
+                                        <td>${t.paymentMethod}</td>
+                                        <td style="text-align:right;color:${delta >= 0 ? '#059669' : '#dc2626'}">${delta >= 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                        <td style="text-align:right">${balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    </tr>`).join('');
+                                const w = window.open('', '_blank');
+                                if (!w) return;
+                                w.document.write(`<html><head><title>Extrato Conciliado</title><style>
+                                    body{font-family:Arial,sans-serif;padding:24px;color:#111}
+                                    h2{margin-bottom:4px}p{color:#888;font-size:12px;margin-bottom:20px}
+                                    table{width:100%;border-collapse:collapse;font-size:11px}
+                                    th{text-align:left;padding:8px;border-bottom:2px solid #000;font-size:10px;text-transform:uppercase}
+                                    td{padding:7px 8px;border-bottom:1px solid #eee}
+                                    tr:nth-child(even){background:#f9f9f9}
+                                    .totals{margin-top:20px;display:flex;gap:32px}
+                                    .tot{font-size:12px}
+                                </style></head><body>
+                                <h2>Extrato Conciliado</h2>
+                                <p>Período: ${parseDateSafe(startDate).toLocaleDateString('pt-BR')} a ${parseDateSafe(endDate).toLocaleDateString('pt-BR')} — ${filtered.length} lançamentos</p>
+                                <table><thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Favorecido</th><th>Pagamento</th><th style="text-align:right">Valor (R$)</th><th style="text-align:right">Saldo (R$)</th></tr>
+                                <tr><td colspan="5" style="color:#888">Saldo Anterior</td><td></td><td style="text-align:right">${openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td></tr>
+                                </thead><tbody>${rowsHtml}</tbody></table>
+                                <div class="totals"><div class="tot">✅ Entradas: <b style="color:#059669">R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">❌ Saídas: <b style="color:#dc2626">R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">💰 Saldo Final: <b>R$ ${runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div></div>
+                                </body></html>`);
+                                w.document.close(); w.print();
+                            };
+
+                            const handleDownloadCSV = () => {
+                                const header = ['Data', 'Tipo', 'Origem', 'Categoria', 'Favorecido', 'Descrição', 'Pagamento', 'Valor', 'Saldo'];
+                                let bal = openingBalance;
+                                const rows = rowsWithBalance.map(({ t, delta, balance }) => [
+                                    parseDateSafe(t.date).toLocaleDateString('pt-BR'),
+                                    t.type, t.origin, t.category || '',
+                                    t.customerOrProviderName || '', t.description,
+                                    t.paymentMethod,
+                                    delta.toFixed(2).replace('.', ','),
+                                    balance.toFixed(2).replace('.', ',')
+                                ]);
+                                const csv = [header, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n');
+                                const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a'); a.href = url;
+                                a.download = `extrato-conciliado-${startDate}-${endDate}.csv`;
+                                a.click(); URL.revokeObjectURL(url);
+                            };
+
+                            return (
+                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300">
+                                    {/* Header */}
+                                    <div className="p-5 border-b bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                            <div className="flex-1">
+                                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                                    <CheckCircle2 size={16} className="text-emerald-500" /> Extrato Conciliado
+                                                </h3>
+                                                <p className="text-[9px] text-slate-500 uppercase mt-0.5">
+                                                    {filtered.length} lançamentos validados pelo banco
+                                                </p>
+                                            </div>
+                                            {/* Totals Chips */}
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-200 text-slate-600 border border-slate-300">
+                                                    {filtered.length} lançamentos
+                                                </span>
+                                                <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                    ↑ R$ {totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                                <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
+                                                    ↓ R$ {totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                                <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                                    Saldo Final: R$ {runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            {/* Action buttons */}
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={handlePrintConciliado} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors" title="Imprimir Extrato">
+                                                    <Printer size={16} />
+                                                </button>
+                                                <button onClick={handleDownloadCSV} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors" title="Baixar CSV">
+                                                    <Download size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        {/* Search bar */}
+                                        <div className="mt-3 relative">
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                value={conciliadoFilter}
+                                                onChange={e => setConciliadoFilter(e.target.value)}
+                                                placeholder="Buscar por descrição, categoria, favorecido ou pagamento..."
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl pl-9 pr-4 py-2 text-xs font-medium outline-none focus:border-indigo-400 placeholder:text-slate-400"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Table */}
+                                    <div className="overflow-x-auto scrollbar-hide">
+                                        <table className="w-full text-left border-collapse min-w-[1100px]">
+                                            <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
+                                                <tr>
+                                                    <th className="px-5 py-4">Data</th>
+                                                    <th className="px-5 py-4">Tipo</th>
+                                                    <th className="px-5 py-4">Categoria</th>
+                                                    <th className="px-5 py-4">Favorecido</th>
+                                                    <th className="px-5 py-4">Descrição / Documento</th>
+                                                    <th className="px-5 py-4">Pagamento</th>
+                                                    <th className="px-5 py-4 text-right">Valor (R$)</th>
+                                                    <th className="px-5 py-4 text-right">Saldo (R$)</th>
+                                                    <th className="px-5 py-4 w-10"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                {/* Opening balance row */}
+                                                <tr className="bg-slate-50/70 dark:bg-zinc-800/40">
+                                                    <td colSpan={7} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
+                                                    </td>
+                                                    <td className="px-5 py-3 text-right text-[11px] font-black text-slate-700 dark:text-slate-200">
+                                                        R$ {openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+
+                                                {rowsWithBalance.length > 0 ? rowsWithBalance.map(({ t, delta, balance }) => (
+                                                    <tr key={t.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors group text-sm">
+                                                        <td className="px-5 py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
+                                                            {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
+                                                        </td>
+                                                        <td className="px-5 py-3.5">
+                                                            {(() => {
+                                                                const isReceita = t.type === 'RECEITA';
+                                                                const label = t.origin === 'Serviço' ? 'Serviço'
+                                                                    : t.origin === 'Produto' ? 'Venda'
+                                                                        : t.type === 'RECEITA' ? 'Receita'
+                                                                            : 'Despesa';
+                                                                return (
+                                                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase w-fit border ${isReceita ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                                        {isReceita ? <ArrowUpCircle size={9} /> : <ArrowDownCircle size={9} />}
+                                                                        {label}
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-[120px] truncate">
+                                                            {t.category || '-'}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-[130px] truncate">
+                                                            {t.customerOrProviderName || '-'}
+                                                        </td>
+                                                        <td className="px-5 py-3.5">
+                                                            <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-[280px] truncate">{t.description}</p>
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">
+                                                            {t.paymentMethod}
+                                                        </td>
+                                                        <td className={`px-5 py-3.5 text-right font-black text-[12px] whitespace-nowrap ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            {delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="px-5 py-3.5 text-right font-black text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                                            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        </td>
+                                                        <td className="px-5 py-3.5">
+                                                            <button
+                                                                onClick={() => handleOpenReconciledEditModal(t)}
+                                                                className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                                title="Editar lançamento"
+                                                            >
+                                                                <Edit2 size={13} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                )) : (
+                                                    <tr>
+                                                        <td colSpan={9} className="px-6 py-20 text-center">
+                                                            <div className="flex flex-col items-center gap-3">
+                                                                <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-full text-slate-300"><CheckCircle2 size={32} /></div>
+                                                                <div>
+                                                                    <p className="text-slate-500 font-black text-xs uppercase tracking-widest">
+                                                                        {conciliadoFilter ? 'Nenhum resultado para esta busca' : 'Nenhum item conciliado'}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-slate-400 font-bold mt-1">
+                                                                        {conciliadoFilter ? 'Tente outros termos de busca.' : 'Use a Conciliação Bancária para validar seus lançamentos pelo extrato.'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                         {/* ===== CAIXA DIÁRIO ===== */}
                         {accountsSubTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
 
@@ -3357,12 +3698,113 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, sales,
                     <BankReconciliation
                         expenses={expenses}
                         setExpenses={setExpenses}
+                        appointments={appointments}
+                        setAppointments={setAppointments}
+                        sales={sales}
+                        setSales={setSales}
                         categories={expenseCategories}
                         suppliers={suppliers}
+                        paymentSettings={paymentSettings}
+                        financialConfigs={financialConfigs}
                         onClose={() => setIsReconciliationOpen(false)}
                     />
                 )
             }
+            {/* Modal de Edição de Conciliado */}
+            {isReconciledEditModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-zinc-800 animate-in zoom-in duration-300">
+                        <div className="px-8 py-6 bg-slate-50 dark:bg-zinc-800 border-b flex justify-between items-center">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                                    <Edit2 size={18} className="text-indigo-500" /> Editar Lançamento Conciliado
+                                </h3>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">Ajuste os dados financeiros do lançamento</p>
+                            </div>
+                            <button onClick={() => setIsReconciledEditModalOpen(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-full transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 ml-1">Descrição</label>
+                                    <input
+                                        type="text"
+                                        value={editReconciledForm.description}
+                                        onChange={(e) => setEditReconciledForm({ ...editReconciledForm, description: e.target.value })}
+                                        className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        placeholder="Descreva o lançamento..."
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black uppercase text-slate-400 mb-1.5 ml-1">Categoria</label>
+                                        <select
+                                            value={editReconciledForm.category}
+                                            onChange={(e) => setEditReconciledForm({ ...editReconciledForm, category: e.target.value })}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {expenseCategories.map(cat => (
+                                                <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                            ))}
+                                            <option value="Serviço">Serviço</option>
+                                            <option value="Venda">Venda</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5 ml-1">
+                                            <label className="block text-[10px] font-black uppercase text-slate-400">Favorecido</label>
+                                            <button
+                                                onClick={() => setIsSupplierModalOpen(true)}
+                                                className="text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-700 transition-colors"
+                                            >
+                                                + Novo
+                                            </button>
+                                        </div>
+                                        <select
+                                            value={editReconciledForm.supplierId}
+                                            onChange={(e) => {
+                                                const sup = suppliers.find(s => s.id === e.target.value);
+                                                setEditReconciledForm({
+                                                    ...editReconciledForm,
+                                                    supplierId: e.target.value,
+                                                    customerOrProviderName: sup?.name || ''
+                                                });
+                                            }}
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {suppliers.map(sup => (
+                                                <option key={sup.id} value={sup.id}>{sup.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setIsReconciledEditModalOpen(false)}
+                                    className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={handleSaveReconciledEdit}
+                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Save size={16} /> Salvar Alterações
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

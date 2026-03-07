@@ -161,11 +161,12 @@ export const Agenda: React.FC<AgendaProps> = ({
             services,
             customers,
             providers,
+            [] as any, // Missing suppliers in Agenda.tsx for now, can be added to props if needed
             commissionSettings || [],
             paymentSettings,
             financialConfigs
         );
-    }, [appointments, sales, expenses, services, customers, providers, commissionSettings, paymentSettings]);
+    }, [appointments, sales, expenses, services, customers, providers, commissionSettings, paymentSettings, financialConfigs]);
 
     const dailyTransactions = useMemo(() => {
         const dateStr = toLocalDateStr(dateRef);
@@ -707,7 +708,8 @@ export const Agenda: React.FC<AgendaProps> = ({
             serviceId: draftAppointment.serviceId!,
             date: draftAppointment.date!,
             time: draftAppointment.time!,
-            status: 'Pendente'
+            status: 'Pendente',
+            amount: 0
         };
 
         setSelectedAppointment(newAppt);
@@ -763,7 +765,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                 time: '00:00',
                 endTime: '23:59',
                 status: 'Cancelado',
-                combinedServiceNames: 'BLOQUEIO_INTERNO'
+                combinedServiceNames: 'BLOQUEIO_INTERNO',
+                amount: 0
             };
             setAppointments(prev => [...prev, blockAppt]);
 
