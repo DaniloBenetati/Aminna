@@ -338,6 +338,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     };
 
     const dreLabels: Record<string, string> = {
+        'REVENUE': 'Receita Bruta (Cartão/PIX sem nota)',
+        'OTHER_INCOME': 'Outras Receitas (Devoluções, Reembolsos, Aportes)',
         'COSTS': 'Custos Diretos (CPV/CMV)',
         'EXPENSE_SALES': 'Despesas com Vendas / Mkt',
         'EXPENSE_ADM': 'Despesas Administrativas',

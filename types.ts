@@ -266,7 +266,7 @@ export interface Expense {
   description: string;
   category: string; // User defined category (ex: Aluguel, Marketing)
   subcategory?: string; // User defined subcategory
-  dreClass: 'REVENUE' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION'; // Fixed DRE mapping
+  dreClass: 'REVENUE' | 'OTHER_INCOME' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION'; // Fixed DRE mapping
   amount: number;
   date: string;
   status: 'Pago' | 'Pendente';
@@ -289,7 +289,7 @@ export interface Supplier {
 export interface ExpenseCategory {
   id: string;
   name: string;
-  dreClass: 'REVENUE' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION';
+  dreClass: 'REVENUE' | 'OTHER_INCOME' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION';
   isSystem?: boolean; // If true, cannot be deleted (e.g. basic categories)
 }
 

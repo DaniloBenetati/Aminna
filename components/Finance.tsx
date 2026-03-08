@@ -49,6 +49,7 @@ interface FinanceProps {
     expenses: Expense[];
     setExpenses: React.Dispatch<React.SetStateAction<Expense[]>>;
     setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
+    setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
     paymentSettings: PaymentSetting[];
     commissionSettings?: CommissionSetting[];
     expenseCategories: ExpenseCategory[];
@@ -57,20 +58,21 @@ interface FinanceProps {
     setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>;
     providers: Provider[];
     customers: Customer[];
+    setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
     stock: StockItem[];
     campaigns: Campaign[];
     partners: Partner[];
     financialConfigs: FinancialConfig[];
-    setAppointments: React.Dispatch<React.SetStateAction<Appointment[]>>;
 }
 
-export const Finance: React.FC<FinanceProps> = ({ services, appointments, setAppointments, sales, setSales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, stock,
+export const Finance: React.FC<FinanceProps> = ({ services, appointments, setAppointments, sales, setSales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, setCustomers, stock,
     expenses, setExpenses, campaigns = [], partners = [], financialConfigs = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
     const [receivablesFilter, setReceivablesFilter] = useState('');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
+    const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -620,7 +622,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + productTotal;
             }, 0);
 
-            const grossRevenue = revenueServices + revenueProducts;
+            // Receitas bancárias conciliadas (dreClass=REVENUE) = real service income via card/PIX
+            const reconciledBankRevenues = exps
+                .filter(e => e.dreClass === 'REVENUE')
+                .reduce((acc, e) => acc + e.amount, 0);
+
+            // Outras receitas (dreClass=OTHER_INCOME) = reembolsos, devoluções, aportes
+            // Always shown in section 6 regardless of isClosed
+            const otherIncome = exps
+                .filter(e => e.dreClass === 'OTHER_INCOME')
+                .reduce((acc, e) => acc + e.amount, 0);
+
+            // Fontes de receita mutuamente exclusivas:
+            //   Concluído + receitas bancárias → usa APENAS banco (dados reais)
+            //   Não concluído ou sem receitas bancárias → usa APENAS agendamentos (previsão)
+            const grossRevenue = (isClosed && reconciledBankRevenues > 0)
+                ? (revenueProducts + reconciledBankRevenues)
+                : (revenueServices + revenueProducts);
 
             // Automated Deductions (Fees)
             const automatedDeductions = apps.reduce((acc, a) => {
@@ -708,7 +726,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 }, {});
             };
 
-            const resultBeforeTaxes = grossProfit - totalOpExpenses;
+            // otherRevenues = OTHER_INCOME (reembolsos, devoluções, aportes) — sempre na seção 6
+            const otherRevenues = otherIncome;
+            const resultBeforeTaxes = (grossProfit + otherRevenues) - totalOpExpenses;
             const irpjCsll = exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
             const netResult = resultBeforeTaxes - irpjCsll;
 
@@ -769,15 +789,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
 
             return {
-                grossRevenue, revenueServices, automatedDeductions, anticipationFees,
+                isClosed,
+                grossRevenue, revenueServices, reconciledBankRevenues, automatedDeductions, anticipationFees,
                 deductions, netRevenue,
                 totalCOGS, commissions,
-                grossProfit, totalOpExpenses, amountVendas, amountAdm, amountFin,
+                grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin,
                 resultBeforeTaxes, irpjCsll, netResult,
                 suggestedCashReserve, periodInitialBalance,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
+                // REVENUE = card service income (Receita Bruta) — only show breakdown when not isClosed
+                // (when isClosed they're shown as aggregate Cartão/PIX sub-line in Receita Bruta)
+                breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
+                // OTHER_INCOME = reimbursements/returns — always show in section 6
+                breakdownOtherIncome: groupByCat(exps.filter(e => e.dreClass === 'OTHER_INCOME')),
                 breakdownServices,
                 breakdownCommissions
             };
@@ -1246,20 +1272,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr><td>4. (-) CPV / CMV</td><td class="negative">-${formatValue(dreData.totalCOGS, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.totalCOGS, 0)}</td>`).join('')}</tr>
 
                         <tr class="main-row"><td>5. (=) LUCRO BRUTO</td><td class="positive">${formatValue(dreData.grossProfit, 0)}</td>${months.map(m => `<td class="positive">${formatValue(m.grossProfit, 0)}</td>`).join('')}</tr>
-
-                        <tr><td>6. (-) DESP. VENDAS</td><td class="negative">-${formatValue(dreData.amountVendas, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountVendas, 0)}</td>`).join('')}</tr>
-
-                        <tr><td>7. (-) DESP. ADM</td><td class="negative">-${formatValue(dreData.amountAdm, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountAdm, 0)}</td>`).join('')}</tr>
-
-                        <tr><td>8. (-) DESP. FIN</td><td class="negative">-${formatValue(dreData.amountFin, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountFin, 0)}</td>`).join('')}</tr>
+                        <tr><td>6. (+) OUTRAS RECEITAS</td><td class="positive">+${formatValue(dreData.otherRevenues, 0)}</td>${months.map(m => `<td>+${formatValue(m.otherRevenues, 0)}</td>`).join('')}</tr>
+                        <tr><td>7. (-) DESP. VENDAS</td><td class="negative">-${formatValue(dreData.amountVendas, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountVendas, 0)}</td>`).join('')}</tr>
+                        <tr><td>8. (-) DESP. ADM</td><td class="negative">-${formatValue(dreData.amountAdm, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountAdm, 0)}</td>`).join('')}</tr>
+                        <tr><td>9. (-) DESP. FIN</td><td class="negative">-${formatValue(dreData.amountFin, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountFin, 0)}</td>`).join('')}</tr>
                         <tr class="sub-row"><td>Taxas de Cartão</td><td>${formatValue(dreData.automatedDeductions, 0)}</td>${months.map(m => `<td>${formatValue(m.automatedDeductions, 0)}</td>`).join('')}</tr>
                         <tr class="sub-row"><td>Taxas de Antecipação</td><td>${formatValue(dreData.anticipationFees, 0)}</td>${months.map(m => `<td>${formatValue(m.anticipationFees, 0)}</td>`).join('')}</tr>
-
-                        <tr class="main-row"><td>9. (=) RES. ANTES IRPJ</td><td>${formatValue(dreData.resultBeforeTaxes, 0)}</td>${months.map(m => `<td>${formatValue(m.resultBeforeTaxes, 0)}</td>`).join('')}</tr>
-
-                        <tr><td>10. (-) IRPJ/CSLL</td><td class="negative">-${formatValue(dreData.irpjCsll, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.irpjCsll, 0)}</td>`).join('')}</tr>
-
-                        <tr class="result-row"><td>11. (=) RES. LÍQUIDO</td><td>${formatValue(dreData.netResult, 0)}</td>${months.map(m => `<td>${formatValue(m.netResult, 0)}</td>`).join('')}</tr>
+                        <tr class="main-row"><td>10. (=) RES. ANTES IRPJ</td><td>${formatValue(dreData.resultBeforeTaxes, 0)}</td>${months.map(m => `<td>${formatValue(m.resultBeforeTaxes, 0)}</td>`).join('')}</tr>
+                        <tr><td>11. (-) IRPJ/CSLL</td><td class="negative">-${formatValue(dreData.irpjCsll, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.irpjCsll, 0)}</td>`).join('')}</tr>
+                        <tr class="result-row"><td>12. (=) RES. LÍQUIDO</td><td>${formatValue(dreData.netResult, 0)}</td>${months.map(m => `<td>${formatValue(m.netResult, 0)}</td>`).join('')}</tr>
                     </tbody>
                 </table>
                 <script>window.onload = () => { window.print(); window.close(); }</script>
@@ -1315,28 +1336,33 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         
                         <tr class="main-row"><td>5. (=) LUCRO BRUTO</td><td class="amount positive">${formatCurrency(dreData.grossProfit)}</td><td class="amount">${formatPercent(dreData.grossProfit, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>6. (-) DESPESAS COM VENDAS</td><td class="amount negative">- ${formatCurrency(dreData.amountVendas)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
+                        <tr><td>6. (+) OUTRAS RECEITAS</td><td class="amount positive">+ ${formatCurrency(dreData.otherRevenues)}</td><td class="amount">${formatPercent(dreData.otherRevenues, dreData.grossRevenue)}</td></tr>
+                        ${Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).map(([cat, info]) => `
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                        `).join('')}
+
+                        <tr><td>7. (-) DESPESAS COM VENDAS</td><td class="amount negative">- ${formatCurrency(dreData.amountVendas)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
                         ${Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => `
                             <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
                         
-                        <tr><td>7. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- ${formatCurrency(dreData.amountAdm)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
+                        <tr><td>8. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- ${formatCurrency(dreData.amountAdm)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
                          ${Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => `
                             <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
 
-                        <tr><td>8. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- ${formatCurrency(dreData.amountFin)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
+                        <tr><td>9. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- ${formatCurrency(dreData.amountFin)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
                         <tr class="sub-row"><td>Taxas de Cartão</td><td class="amount">${formatCurrency(dreData.automatedDeductions)}</td><td class="amount">${formatPercent(dreData.automatedDeductions, dreData.grossRevenue)}</td></tr>
                         <tr class="sub-row"><td>Taxas de Antecipação</td><td class="amount">${formatCurrency(dreData.anticipationFees)}</td><td class="amount">${formatPercent(dreData.anticipationFees, dreData.grossRevenue)}</td></tr>
                          ${Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => `
                             <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
 
-                        <tr class="main-row"><td>9. (=) RESULTADO ANTES IRPJ/CSLL</td><td class="amount">${formatCurrency(dreData.resultBeforeTaxes)}</td><td class="amount">${formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)}</td></tr>
+                        <tr class="main-row"><td>10. (=) RESULTADO ANTES IRPJ/CSLL</td><td class="amount">${formatCurrency(dreData.resultBeforeTaxes)}</td><td class="amount">${formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>10. (-) PROVISÕES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
+                        <tr><td>11. (-) PROVISÕES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
                         
-                        <tr class="result-row"><td>11. (=) RESULTADO LÍQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
+                        <tr class="result-row"><td>12. (=) RESULTADO LÍQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
                     </tbody>
                 </table>
                 <p style="margin-top: 20px; font-size: 10px; color: #94a3b8; text-align: center;">Este é um documento confidencial gerado pelo sistema Aminna.</p>
@@ -1372,14 +1398,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             ['3. (=) RECEITA LÍQUIDA', formatValue(dreData.netRevenue), ...(isYearView ? months.map(m => formatValue(m.netRevenue)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
             ['4. (-) CPV / CMV', `-${formatValue(dreData.totalCOGS)}`, ...(isYearView ? months.map(m => `-${formatValue(m.totalCOGS)}`) : [formatPercent(dreData.totalCOGS, dreData.grossRevenue)])],
             ['5. (=) LUCRO BRUTO', formatValue(dreData.grossProfit), ...(isYearView ? months.map(m => formatValue(m.grossProfit)) : [formatPercent(dreData.grossProfit, dreData.grossRevenue)])],
-            ['6. (-) DESPESAS VENDAS', `-${formatValue(dreData.amountVendas)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountVendas)}`) : [formatPercent(dreData.amountVendas, dreData.grossRevenue)])],
-            ['7. (-) DESPESAS ADM', `-${formatValue(dreData.amountAdm)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountAdm)}`) : [formatPercent(dreData.amountAdm, dreData.grossRevenue)])],
-            ['8. (-) DESPESAS FIN', `-${formatValue(dreData.amountFin)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountFin)}`) : [formatPercent(dreData.amountFin, dreData.grossRevenue)])],
+            ['6. (+) OUTRAS RECEITAS', formatValue(dreData.otherRevenues), ...(isYearView ? months.map(m => formatValue(m.otherRevenues)) : [formatPercent(dreData.otherRevenues, dreData.grossRevenue)])],
+            ['7. (-) DESPESAS VENDAS', `-${formatValue(dreData.amountVendas)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountVendas)}`) : [formatPercent(dreData.amountVendas, dreData.grossRevenue)])],
+            ['8. (-) DESPESAS ADM', `-${formatValue(dreData.amountAdm)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountAdm)}`) : [formatPercent(dreData.amountAdm, dreData.grossRevenue)])],
+            ['9. (-) DESPESAS FIN', `-${formatValue(dreData.amountFin)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountFin)}`) : [formatPercent(dreData.amountFin, dreData.grossRevenue)])],
             ['   Taxas de Cartão', `-${formatValue(dreData.automatedDeductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.automatedDeductions)}`) : [formatPercent(dreData.automatedDeductions, dreData.grossRevenue)])],
             ['   Taxas de Antecipação', `-${formatValue(dreData.anticipationFees)}`, ...(isYearView ? months.map(m => `-${formatValue(m.anticipationFees)}`) : [formatPercent(dreData.anticipationFees, dreData.grossRevenue)])],
-            ['9. (=) RESULTADO ANTES IRPJ', formatValue(dreData.resultBeforeTaxes), ...(isYearView ? months.map(m => formatValue(m.resultBeforeTaxes)) : [formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)])],
-            ['10. (-) IRPJ/CSLL', `-${formatValue(dreData.irpjCsll)}`, ...(isYearView ? months.map(m => `-${formatValue(m.irpjCsll)}`) : [formatPercent(dreData.irpjCsll, dreData.grossRevenue)])],
-            ['11. (=) RESULTADO LÍQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
+            ['10. (=) RESULTADO ANTES IRPJ', formatValue(dreData.resultBeforeTaxes), ...(isYearView ? months.map(m => formatValue(m.resultBeforeTaxes)) : [formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)])],
+            ['11. (-) IRPJ/CSLL', `-${formatValue(dreData.irpjCsll)}`, ...(isYearView ? months.map(m => `-${formatValue(m.irpjCsll)}`) : [formatPercent(dreData.irpjCsll, dreData.grossRevenue)])],
+            ['12. (=) RESULTADO LÍQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
         ];
 
         const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(";")).join("\n");
@@ -1693,12 +1720,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             const runningBalance = currentBal;
 
                             const rowsWithBalance = allWithBalance.filter(({ t }) => {
-                                if (!conciliadoFilter) return true;
-                                const q = conciliadoFilter.toLowerCase();
-                                return t.description.toLowerCase().includes(q) ||
-                                    (t.systemCategory || '').toLowerCase().includes(q) ||
-                                    (t.systemEntityName || '').toLowerCase().includes(q) ||
-                                    (t.systemPaymentMethod || '').toLowerCase().includes(q);
+                                const matchesSearch = !conciliadoFilter || (
+                                    t.description.toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    (t.systemCategory || '').toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    (t.systemEntityName || '').toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    (t.systemPaymentMethod || '').toLowerCase().includes(conciliadoFilter.toLowerCase())
+                                );
+
+                                const matchesType = conciliadoTypeFilter === 'ALL' || t.type === conciliadoTypeFilter;
+
+                                return matchesSearch && matchesType;
                             });
 
                             const itemsPerPage = 50;
@@ -1791,6 +1822,28 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
                                                     Saldo Final: R$ {runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
+                                            </div>
+
+                                            {/* Type Filters */}
+                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700">
+                                                <button
+                                                    onClick={() => setConciliadoTypeFilter(prev => prev === 'RECEITA' ? 'ALL' : 'RECEITA')}
+                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'RECEITA'
+                                                        ? 'bg-emerald-500 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
+                                                        }`}
+                                                >
+                                                    <ArrowUpCircle size={12} /> Receitas
+                                                </button>
+                                                <button
+                                                    onClick={() => setConciliadoTypeFilter(prev => prev === 'DESPESA' ? 'ALL' : 'DESPESA')}
+                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'DESPESA'
+                                                        ? 'bg-rose-500 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-rose-600 dark:hover:text-rose-400'
+                                                        }`}
+                                                >
+                                                    <ArrowDownCircle size={12} /> Despesas
+                                                </button>
                                             </div>
                                             {/* Action buttons */}
                                             <div className="flex items-center gap-2">
@@ -2836,63 +2889,91 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </tr>
                                             {expandedSections.includes('gross') && (
                                                 <>
-                                                    <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                            {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                            └ Serviços
-                                                        </td>
-                                                        {timeView === 'year' ? (
-                                                            <>
-                                                                {dreData.monthlySnapshots?.map((m: any) => (
-                                                                    <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{formatValue(m.revenueServices, 0)}</td>
-                                                                ))}
-                                                                <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">{formatCurrency(dreData.revenueServices)}</td>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">{formatCurrency(dreData.revenueServices)}</td>
-                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
-                                                                    {dreData.grossRevenue > 0 ? ((dreData.revenueServices / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
-                                                                </td>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                    {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
-                                                        <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                            <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                    {/* Sub-linha Serviços: apenas quando NÃO concluído (previsão por agendamentos) */}
+                                                    {!dreData.isClosed && (<>
+                                                        <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                            <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                                {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                                └ Serviços
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
-                                                                    {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
-                                                                        // Logic to distribute service revenue if available per month
-                                                                        // Since 'info' here is an aggregate of services by name, we need to know the distribution.
-                                                                        // The current structure of 'breakdownServices' might only have totals. 
-                                                                        // Let's check how 'breakdownServices' is built. 
-                                                                        // If we don't have monthly breakdown in 'info', we can't distribute it easily without refactoring 'breakdownServices' construction.
-                                                                        // However, assuming 'info' has items list or we can iterate items like in Admin expenses.
-                                                                        // Wait, 'breakdownServices' in 'dreData' seems to be Record<string, {count: number, total: number}>. 
-                                                                        // It lacks the items list to group by month.
-
-                                                                        // Inspecting how breakdownServices is built in the backend/calculation logic would be ideal.
-                                                                        // FOR NOW: To fix the user request "Remove parcels", if this is indeed where they see it, 
-                                                                        // but wait, "Aluguel" is usually an expense, not a Service Revenue.
-                                                                        // If the user sees "Aluguel" here, they might have categorized it as Service? Unlikely.
-
-                                                                        // But to be consistent, we should show monthly values here if possible. 
-                                                                        // Since I cannot easily get monthly values without items, I might need to skip this section or simple show average? No that's bad.
-
-                                                                        // Let's assume the user's "Aluguel" is actually in Admin Expenses and my previous fix DID work, 
-                                                                        // but maybe they are looking at "CUSTOS OPERACIONAIS"?
-                                                                        // Let's look for "CUSTOS OPERACIONAIS" breakdown.
-
-                                                                        return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
-                                                                    })}
-                                                                    <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">{formatCurrency(info.total)}</td>
+                                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                                        <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{formatValue(m.revenueServices, 0)}</td>
+                                                                    ))}
+                                                                    <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">{formatCurrency(dreData.revenueServices)}</td>
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">{formatCurrency(info.total)}</td>
+                                                                    <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">{formatCurrency(dreData.revenueServices)}</td>
+                                                                    <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? ((dreData.revenueServices / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                        {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                            <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                                    └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                </td>
+                                                                {timeView === 'year' ? (
+                                                                    <>
+                                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                                            <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                                        ))}
+                                                                        <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">{formatCurrency(info.total)}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">{formatCurrency(info.total)}</td>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                            {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                            </tr>
+                                                        ))}
+                                                    </>)}
+                                                    {/* Sub-linha: Cartão/PIX (sem nota fiscal) - apenas quando concluído */}
+                                                    {dreData.isClosed && dreData.reconciledBankRevenues > 0 && (
+                                                        <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                            <td className="px-12 py-3 text-xs font-bold text-emerald-600 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                                {expandedSections.includes('bank-revenues-list') ? <ChevronDown size={12} /> : <DollarSign size={12} />}
+                                                                └ Cartão/PIX (sem nota)
+                                                            </td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                                        <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-emerald-500 border-l border-slate-100 dark:border-zinc-800">{formatValue(m.reconciledBankRevenues || 0, 0)}</td>
+                                                                    ))}
+                                                                    <td className="px-6 py-3 text-right text-xs font-black bg-emerald-50/30 dark:bg-emerald-800/10 border-l-2 border-slate-200 dark:border-zinc-700 text-emerald-700">{formatCurrency(dreData.reconciledBankRevenues)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-3 text-right text-xs font-black text-emerald-700 dark:text-emerald-400">{formatCurrency(dreData.reconciledBankRevenues)}</td>
+                                                                    <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? ((dreData.reconciledBankRevenues / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    )}
+                                                    {expandedSections.includes('bank-revenues-list') && dreData.reconciledBankRevenues > 0 && Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                        <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-emerald-50/10 dark:bg-zinc-800/10">
+                                                            <td className="px-20 py-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase italic border-l-4 border-emerald-50 dark:border-emerald-900/10 sticky left-0 bg-emerald-50/10 dark:bg-zinc-800/10 z-10">
+                                                                └ {name} <span className="text-[9px] text-slate-300">({info.items.length}x)</span>
+                                                            </td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                                        <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-emerald-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                                    ))}
+                                                                    <td className="px-6 py-2 text-right text-[10px] font-black text-emerald-400 border-l-2 border-slate-100 dark:border-zinc-800">{formatCurrency(info.total)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(info.total)}</td>
                                                                     <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
                                                                         {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
                                                                     </td>
@@ -3057,11 +3138,97 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 6. DESPESAS COM VENDAS */}
+                                            {/* 6. (+) OUTRAS RECEITAS */}
+                                            <tr onClick={() => toggleSection('other-revenues')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
+                                                <td className="px-8 py-4 font-bold text-xs text-emerald-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                    <Menu size={16} />
+                                                    6. (+) OUTRAS RECEITAS
+                                                </td>
+                                                {timeView === 'year' ? (
+                                                    <>
+                                                        {dreData.monthlySnapshots?.map((m: any) => (
+                                                            <td key={m.name} className="px-4 py-4 text-right text-[10px] font-bold text-emerald-500 border-l border-slate-100 dark:border-zinc-800">+{formatValue(m.otherRevenues, 0)}</td>
+                                                        ))}
+                                                        <td className="px-6 py-4 text-right font-black text-xs text-emerald-600 bg-emerald-50/20 dark:bg-emerald-900/10 border-l-2 border-emerald-200 dark:border-emerald-800">+{formatCurrency(dreData.otherRevenues)}</td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-8 py-4 text-right font-black text-xs text-emerald-600">+{formatCurrency(dreData.otherRevenues)}</td>
+                                                        <td className="px-8 py-4 text-right text-[10px] font-bold text-slate-400">
+                                                            {dreData.grossRevenue > 0 ? ((dreData.otherRevenues / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                        </td>
+                                                    </>
+                                                )}
+                                            </tr>
+                                            {expandedSections.includes('other-revenues') && Object.entries((dreData.breakdownOtherIncome || {}) as Record<string, any>).map(([cat, info]) => (
+                                                <React.Fragment key={cat}>
+                                                    <tr onClick={() => toggleSubSection(cat)} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                        <td className="px-14 py-3 text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                            <Menu size={12} />
+                                                            {cat}
+                                                        </td>
+                                                        {timeView === 'year' ? (
+                                                            <>
+                                                                {dreData.monthlySnapshots?.map((m: any) => {
+                                                                    const catTotal = (m.breakdownOtherIncome?.[cat]?.total || 0);
+                                                                    return <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-indigo-400 border-l border-slate-50 dark:border-zinc-800">{formatValue(catTotal, 0)}</td>
+                                                                })}
+                                                                <td className="px-6 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50/20 dark:bg-indigo-900/10 border-l-2 border-indigo-200 dark:border-indigo-800">{formatCurrency(info.total)}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-8 py-3 text-right text-xs font-black text-indigo-600 dark:text-indigo-400">{formatCurrency(info.total)}</td>
+                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                    {dreData.grossRevenue > 0 ? (((info.total as number) / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                    {expandedSubSections.includes(cat) && (() => {
+                                                        const groupedItems: Record<string, { description: string, amounts: Record<number, number>, total: number }> = {};
+                                                        (info.items as Expense[]).forEach(e => {
+                                                            let key = e.recurringId;
+                                                            let displayDesc = e.description || '';
+                                                            const match = displayDesc.match(/^(.*?)\s*\(\d+\/\d+\)$/);
+                                                            if (key) { if (match) displayDesc = match[1]; }
+                                                            else { if (match) { key = match[1]; displayDesc = match[1]; } else { key = displayDesc; } }
+                                                            if (!groupedItems[key || 'no-key']) { groupedItems[key || 'no-key'] = { description: displayDesc || 'Sem descrição', amounts: {}, total: 0 }; }
+                                                            const dateObj = parseDateSafe(e.date);
+                                                            const month = isNaN(dateObj.getTime()) ? 0 : dateObj.getMonth();
+                                                            groupedItems[key || 'no-key'].amounts[month] = (groupedItems[key || 'no-key'].amounts[month] || 0) + e.amount;
+                                                            groupedItems[key || 'no-key'].total += e.amount;
+                                                        });
+                                                        const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
+                                                        return sortedGroups.map((group, idx) => (
+                                                            <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                {timeView === 'year' ? (
+                                                                    <>
+                                                                        {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
+                                                                            const val = group.amounts[mIdx];
+                                                                            return <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">{val ? formatCurrency(val) : ''}</td>
+                                                                        })}
+                                                                        <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">{formatCurrency(group.total)}</td>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">{formatCurrency(group.total)}</td>
+                                                                        <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                            {dreData.grossRevenue > 0 ? ((group.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                        </td>
+                                                                    </>
+                                                                )}
+                                                            </tr>
+                                                        ));
+                                                    })()}
+                                                </React.Fragment>
+                                            ))}
+
+                                            {/* 7. DESPESAS COM VENDAS */}
                                             <tr onClick={() => toggleSection('exp-vendas')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     <Menu size={16} />
-                                                    6. (-) DESPESAS COM VENDAS
+                                                    7. (-) DESPESAS COM VENDAS
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
@@ -3143,11 +3310,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </React.Fragment>
                                             ))}
 
-                                            {/* 7. DESPESAS ADMINISTRATIVAS */}
+                                            {/* 8. DESPESAS ADMINISTRATIVAS */}
                                             <tr onClick={() => toggleSection('exp-adm')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     <Menu size={16} />
-                                                    7. (-) DESPESAS ADMINISTRATIVAS
+                                                    8. (-) DESPESAS ADMINISTRATIVAS
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
@@ -3229,11 +3396,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </React.Fragment>
                                             ))}
 
-                                            {/* 8. DESPESAS FINANCEIRAS */}
+                                            {/* 9. DESPESAS FINANCEIRAS */}
                                             <tr onClick={() => toggleSection('exp-fin')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     <Menu size={16} />
-                                                    8. (-) DESPESAS FINANCEIRAS
+                                                    9. (-) DESPESAS FINANCEIRAS
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
@@ -3355,9 +3522,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </>
                                             )}
 
-                                            {/* 9. RESULTADO ANTES IRPJ */}
+                                            {/* 10. RESULTADO ANTES IRPJ */}
                                             <tr className="bg-slate-100 dark:bg-zinc-800">
-                                                <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase sticky left-0 bg-slate-100 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">9. (=) RESULTADO ANTES IRPJ/CSLL</td>
+                                                <td className="px-8 py-4 font-black text-sm text-slate-800 dark:text-slate-200 uppercase sticky left-0 bg-slate-100 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">10. (=) RESULTADO ANTES IRPJ/CSLL</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -3375,9 +3542,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 10. PROVISÕES IRPJ */}
+                                            {/* 11. PROVISÕES IRPJ */}
                                             <tr>
-                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">10. (-) PROVISÕES IRPJ E CSLL</td>
+                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">11. (-) PROVISÕES IRPJ E CSLL</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -3395,9 +3562,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 11. RESULTADO LÍQUIDO */}
+                                            {/* 12. RESULTADO LÍQUIDO */}
                                             <tr className="bg-black text-white dark:bg-white dark:text-black">
-                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">11. (=) RESULTADO LÍQUIDO DO PERÍODO</td>
+                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">12. (=) RESULTADO LÍQUIDO DO PERÍODO</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -3830,6 +3997,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                         >
                                             <option value="COSTS">CPV / Custos Operacionais</option>
+                                            <option value="REVENUE">Outras Receitas</option>
                                             <option value="EXPENSE_SALES">Despesas com Vendas</option>
                                             <option value="EXPENSE_ADM">Despesas Administrativas</option>
                                             <option value="EXPENSE_FIN">Despesas Financeiras</option>
@@ -3860,8 +4028,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         sales={sales}
                         setSales={setSales}
                         customers={customers}
+                        setCustomers={setCustomers}
                         categories={expenseCategories}
+                        setExpenseCategories={setExpenseCategories}
                         suppliers={suppliers}
+                        setSuppliers={setSuppliers}
+                        providers={providers}
                         paymentSettings={paymentSettings}
                         financialConfigs={financialConfigs}
                         onClose={() => setIsReconciliationOpen(false)}
