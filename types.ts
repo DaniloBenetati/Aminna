@@ -266,7 +266,7 @@ export interface Expense {
   description: string;
   category: string; // User defined category (ex: Aluguel, Marketing)
   subcategory?: string; // User defined subcategory
-  dreClass: 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION'; // Fixed DRE mapping
+  dreClass: 'REVENUE' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION'; // Fixed DRE mapping
   amount: number;
   date: string;
   status: 'Pago' | 'Pendente';
@@ -289,7 +289,7 @@ export interface Supplier {
 export interface ExpenseCategory {
   id: string;
   name: string;
-  dreClass: 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION';
+  dreClass: 'REVENUE' | 'COSTS' | 'EXPENSE_SALES' | 'EXPENSE_ADM' | 'EXPENSE_FIN' | 'TAX' | 'DEDUCTION';
   isSystem?: boolean; // If true, cannot be deleted (e.g. basic categories)
 }
 
@@ -310,6 +310,19 @@ export interface FinancialTransaction {
   serviceName?: string;
   appointmentDate?: string;
   isReconciled?: boolean;
+}
+
+export interface BankTransaction {
+  id: string;
+  date: string;
+  description: string;
+  document?: string;
+  amount: number;
+  type: 'RECEITA' | 'DESPESA';
+  systemCategory?: string;
+  systemEntityName?: string;
+  systemPaymentMethod?: string;
+  createdAt?: string;
 }
 
 // --- TIPOS PARA COPA (PANTRY) ---
