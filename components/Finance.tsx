@@ -989,7 +989,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             date: expenseForm.date,
             status: expenseForm.status,
             payment_method: expenseForm.paymentMethod || 'Pix',
-            supplier_id: expenseForm.supplierId
+            supplier_id: expenseForm.supplierId || null
         };
 
         try {
@@ -1026,13 +1026,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             const suffixMatch = exp.description.match(/\s*\(\d+\/\d+\)$/);
                             const suffix = suffixMatch ? suffixMatch[0] : '';
 
-                            // Calculate new shifted date
+                            // Calculate new shifted date safely
                             const currentExpDate = parseDateSafe(exp.date);
-                            const shiftedDate = new Date(currentExpDate.getTime() + timeDiff);
+                            const shiftedDate = new Date(currentExpDate);
+
+                            // Only apply time shift - this preserves the 'month-apart' structure
+                            // while letting the user shift the whole series by N days.
+                            shiftedDate.setTime(shiftedDate.getTime() + timeDiff);
 
                             return {
                                 ...exp,
                                 ...expenseData, // Apply new Amount, Category, dre_class, etc.
+                                supplier_id: expenseForm.supplierId || null, // Ensure null here too
                                 description: baseDescription + suffix, // New Name + Old Suffix
                                 date: toLocalDateStr(shiftedDate) // Shifted Date
                             };
@@ -1942,7 +1947,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         try {
                                                                             const { error } = await supabase
                                                                                 .from('bank_transactions')
-                                                                                .update({ systemCategory: newCategory })
+                                                                                .update({ system_category: newCategory })
                                                                                 .eq('id', t.id);
                                                                             if (error) throw error;
 
@@ -1950,6 +1955,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                             setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
                                                                         } catch (err) {
                                                                             console.error('Failed to update category', err);
+                                                                            alert('Erro ao atualizar categoria: ' + (err as any).message);
                                                                         }
                                                                     }}
                                                                     className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
@@ -1977,13 +1983,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         try {
                                                                             const { error } = await supabase
                                                                                 .from('bank_transactions')
-                                                                                .update({ systemEntityName: newProvider })
+                                                                                .update({ system_entity_name: newProvider })
                                                                                 .eq('id', t.id);
                                                                             if (error) throw error;
 
                                                                             setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newProvider } : tx));
                                                                         } catch (err) {
                                                                             console.error('Failed to update provider', err);
+                                                                            alert('Erro ao atualizar favorecido: ' + (err as any).message);
                                                                         }
                                                                     }}
                                                                     className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
