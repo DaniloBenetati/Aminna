@@ -120,13 +120,30 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     // Bank Transactions State
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
+    const [openingBalance, setOpeningBalance] = useState(0);
     const [bankTransactionsLoading, setBankTransactionsLoading] = useState(false);
 
     useEffect(() => {
         const fetchBankTransactions = async () => {
             setBankTransactionsLoading(true);
+            setBankTransactions([]); // Clear stale data
+            setOpeningBalance(0);    // Clear stale balance
+
             try {
-                // Fetch strictly within the selected date range
+                // 1. Fetch historical sum for Opening Balance
+                const { data: historyData, error: historyError } = await supabase
+                    .from('bank_transactions')
+                    .select('amount, type')
+                    .lt('date', startDate);
+
+                if (!historyError && historyData) {
+                    const oldestConfig = financialConfigs[financialConfigs.length - 1];
+                    const initialBalance = oldestConfig?.initialBalance || 0;
+                    const historicalSum = historyData.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+                    setOpeningBalance(initialBalance + historicalSum);
+                }
+
+                // 2. Fetch strictly within the selected date range
                 const { data, error } = await supabase
                     .from('bank_transactions')
                     .select('*')
@@ -160,7 +177,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         if (accountsSubTab === 'CONCILIADO') {
             fetchBankTransactions();
         }
-    }, [startDate, endDate, accountsSubTab]);
+    }, [startDate, endDate, accountsSubTab, financialConfigs]);
 
     const handleOpenReconciledEditModal = (t: FinancialTransaction) => {
         setEditingReconciled(t);
@@ -1701,12 +1718,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
                         )}
                         {accountsSubTab === 'CONCILIADO' && (() => {
-                            // Compute opening balance
-                            // We sum standard reconciled local transactions BEFORE startDate
-                            const oldestConfig = financialConfigs[financialConfigs.length - 1];
-                            const initialBalance = oldestConfig?.initialBalance || 0;
-                            const transactionsBefore = transactions.filter(t => t.isReconciled && t.date < startDate);
-                            const openingBalance = initialBalance + transactionsBefore.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+                            // openingBalance is now fetched directly from the DB in a useEffect and stored in state
 
                             let currentBal = openingBalance;
                             const allWithBalance = bankTransactions.map(t => {
@@ -1796,7 +1808,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             };
 
                             return (
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300">
+                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300 relative">
+                                    {bankTransactionsLoading && (
+                                        <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <RefreshCw size={32} className="text-indigo-600 animate-spin" />
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Sincronizando Banco...</p>
+                                            </div>
+                                        </div>
+                                    )}
                                     {/* Header */}
                                     <div className="p-5 border-b bg-slate-50/50 dark:bg-zinc-800/50">
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
