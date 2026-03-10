@@ -368,6 +368,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Filter States for Payables
     const [payablesFilter, setPayablesFilter] = useState('');
     const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('');
+    const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -597,17 +598,37 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const matchesDesc = exp.description.toLowerCase().includes(payablesFilter.toLowerCase());
             const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
             const matchesSupplier = supplierName.toLowerCase().includes(payablesSupplierFilter.toLowerCase());
-            return matchesDate && matchesDesc && matchesSupplier;
+
+            let matchesStatus = true;
+            if (payablesStatusFilter !== 'ALL') {
+                if (payablesStatusFilter === 'Atrasado') {
+                    matchesStatus = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+                } else {
+                    matchesStatus = exp.status === payablesStatusFilter;
+                }
+            }
+
+            return matchesDate && matchesDesc && matchesSupplier && matchesStatus;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesFilter, payablesSupplierFilter, suppliers]);
+    }, [expenses, startDate, endDate, payablesFilter, payablesSupplierFilter, payablesStatusFilter, suppliers]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
             const dateObj = parseDateSafe(start);
             const isClosed = monthlyClosings[`${dateObj.getFullYear()}-${dateObj.getMonth()}`];
 
-            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status !== 'Cancelado');
-            const sls = sales.filter(s => s.date >= start && s.date <= end);
+            const apps = appointments.filter(a => {
+                const matchesDate = a.date >= start && a.date <= end;
+                if (!matchesDate || a.status === 'Cancelado') return false;
+                if (isClosed) return a.isReconciled;
+                return true;
+            });
+            const sls = sales.filter(s => {
+                const matchesDate = s.date >= start && s.date <= end;
+                if (!matchesDate) return false;
+                if (isClosed) return s.isReconciled;
+                return true;
+            });
 
             // If the month is closed, show only reconciled expenses.
             // If NOT closed, show ALL expenses (forecast).
@@ -650,11 +671,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 .filter(e => e.dreClass === 'OTHER_INCOME')
                 .reduce((acc, e) => acc + e.amount, 0);
 
-            // Fontes de receita mutuamente exclusivas:
-            //   Concluído + receitas bancárias → usa APENAS banco (dados reais)
-            //   Não concluído ou sem receitas bancárias → usa APENAS agendamentos (previsão)
-            const grossRevenue = (isClosed && reconciledBankRevenues > 0)
-                ? (revenueProducts + reconciledBankRevenues)
+            // Fontes de receita:
+            // Se fechado, soma apenas itens reconciliados (banco + apps/vendas marcados como ok)
+            // Se aberto, soma tudo (previsão)
+            const grossRevenue = isClosed
+                ? (revenueServices + revenueProducts + reconciledBankRevenues)
                 : (revenueServices + revenueProducts);
 
             // Automated Deductions (Fees)
@@ -2103,29 +2124,61 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <>
                                 {/* Indicadores Contas a Pagar */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {[
-                                        { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + curr.amount, 0), icon: FileText, color: 'indigo' },
-                                        { label: 'Total Pago', value: filteredPayables.filter(p => p.status === 'Pago').reduce((acc, curr) => acc + curr.amount, 0), icon: CheckCircle2, color: 'emerald' },
-                                        { label: 'Pendente', value: filteredPayables.filter(p => p.status === 'Pendente').reduce((acc, curr) => acc + curr.amount, 0), icon: Clock, color: 'amber' },
-                                        { label: 'Atrasado', value: filteredPayables.filter(p => p.status === 'Pendente' && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + curr.amount, 0), icon: AlertCircle, color: 'rose' },
-                                    ].map((card, idx) => (
-                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
-                                                    <card.icon size={20} />
+                                    {(() => {
+                                        const payablesForPeriod = expenses.filter(exp => exp.date >= startDate && exp.date <= endDate);
+                                        const cards = [
+                                            { id: 'ALL', label: 'Total no Período', value: payablesForPeriod.reduce((acc, curr) => acc + curr.amount, 0), icon: FileText, color: 'indigo' },
+                                            { id: 'Pago', label: 'Total Pago', value: payablesForPeriod.filter(p => p.status === 'Pago').reduce((acc, curr) => acc + curr.amount, 0), icon: CheckCircle2, color: 'emerald' },
+                                            { id: 'Pendente', label: 'Pendente', value: payablesForPeriod.filter(p => p.status === 'Pendente').reduce((acc, curr) => acc + curr.amount, 0), icon: Clock, color: 'amber' },
+                                            { id: 'Atrasado', label: 'Atrasado', value: payablesForPeriod.filter(p => p.status === 'Pendente' && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + curr.amount, 0), icon: AlertCircle, color: 'rose' },
+                                        ];
+
+                                        return cards.map((card, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setPayablesStatusFilter(card.id as any)}
+                                                className={`bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border transition-all text-left group hover:shadow-md active:scale-95 ${payablesStatusFilter === card.id ? `border-${card.color}-500 ring-2 ring-${card.color}-500/20 shadow-sm` : 'border-slate-200 dark:border-zinc-800 shadow-sm'}`}
+                                            >
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
+                                                        <card.icon size={20} />
+                                                    </div>
+                                                    {payablesStatusFilter === card.id && (
+                                                        <div className={`w-2 h-2 rounded-full bg-${card.color}-500 animate-pulse`}></div>
+                                                    )}
                                                 </div>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                                                <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
-                                            </div>
-                                        </div>
-                                    ))}
+                                                <div>
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
+                                                    <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
+                                                </div>
+                                            </button>
+                                        ));
+                                    })()}
                                 </div>
 
                                 <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-                                        <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                                    <div className="p-5 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <div className="flex items-center gap-4 flex-wrap">
+                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+
+                                            {/* Status Filter */}
+                                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl shadow-inner ml-2">
+                                                {[
+                                                    { id: 'ALL', label: 'Todos', color: 'slate' },
+                                                    { id: 'Pago', label: 'Pago', color: 'emerald' },
+                                                    { id: 'Pendente', label: 'Pendente', color: 'amber' },
+                                                    { id: 'Atrasado', label: 'Atrasado', color: 'rose' }
+                                                ].map(f => (
+                                                    <button
+                                                        key={f.id}
+                                                        onClick={() => setPayablesStatusFilter(f.id as any)}
+                                                        className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${payablesStatusFilter === f.id ? `bg-${f.color}-500 text-white shadow-md` : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                                    >
+                                                        {f.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                         <button onClick={handlePrintPayablesReport} className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
                                     </div>
                                     <div className="overflow-x-auto scrollbar-hide">
