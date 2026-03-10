@@ -900,39 +900,64 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 // is_reconciled=false: these are new launches, NOT reconciled matches.
                 // They appear in the regular flow (Extrato/Fluxo), not in CONCILIADOS.
                 if (row.type === 'DESPESA') {
-                    newExpenses.push({
-                        description: row.description,
-                        amount: row.amount,
-                        date: row.date,
-                        supplierId: row.suggestedProvider || null,
-                        category: row.suggestedCategory || 'Despesas Diversas',
-                        dreClass: 'EXPENSE_ADM',
-                        status: 'Pago',
-                        paymentMethod: 'Transferência',
-                        isReconciled: true  // Processed A_LANÇAR items are part of the conciliation
-                    });
+                    // PREVENÇÃO DE DUPLICADOS: Antes de lançar como novo, verifica se já não existe uma despesa idêntica manualmente no sistema
+                    // que o motor de busca pode ter perdido por causa da janela de 2 dias.
+                    const existingExp = expenses.find(e =>
+                        e.description === row.description &&
+                        Math.abs(e.amount - row.amount) < 0.01 &&
+                        e.date === row.date
+                    );
+
+                    if (existingExp) {
+                        toUpdateExpenseStatus.push(existingExp.id);
+                        updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                    } else {
+                        newExpenses.push({
+                            description: row.description,
+                            amount: row.amount,
+                            date: row.date,
+                            supplierId: row.suggestedProvider || null,
+                            category: row.suggestedCategory || 'Despesas Diversas',
+                            dreClass: 'EXPENSE_ADM',
+                            status: 'Pago',
+                            paymentMethod: 'Transferência',
+                            isReconciled: true  // Processed A_LANÇAR items are part of the conciliation
+                        });
+                    }
                 } else if (row.type === 'RECEITA') {
-                    // Determina o dreClass com base na categoria selecionada:
-                    // REVENUE = receita de serviços (Receita Bruta), OTHER_INCOME = devoluções/reembolsos (Outras Receitas)
-                    const selectedCat = categories.find(c => c.name === row.suggestedCategory);
-                    const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
-                    const fallbackCat = categories.find(c => c.dreClass === 'REVENUE');
-                    const entityForRevenue = row.suggestedProvider
-                        ? (customers.find(x => x.id === row.suggestedProvider)?.name ||
-                            providers.find(x => x.id === row.suggestedProvider)?.name ||
-                            null)
-                        : null;
-                    newExpenses.push({
-                        description: row.description,
-                        amount: row.amount,
-                        date: row.date,
-                        category: row.suggestedCategory || fallbackCat?.name || 'Outras Receitas',
-                        dreClass: revDreClass,
-                        status: 'Pago',
-                        paymentMethod: 'Transferência',
-                        isReconciled: true,
-                        ...(entityForRevenue ? { notes: entityForRevenue } : {})
-                    } as any);
+                    // PREVENÇÃO DE DUPLICADOS PARA RECEITA: Evita criar duplicatas de entradas manuais ou re-processamento
+                    const existingExp = expenses.find(e =>
+                        e.description === row.description &&
+                        Math.abs(e.amount - row.amount) < 0.01 &&
+                        e.date === row.date
+                    );
+
+                    if (existingExp) {
+                        toUpdateExpenseStatus.push(existingExp.id);
+                        updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                    } else {
+                        // Determina o dreClass com base na categoria selecionada:
+                        // REVENUE = receita de serviços (Receita Bruta), OTHER_INCOME = devoluções/reembolsos (Outras Receitas)
+                        const selectedCat = categories.find(c => c.name === row.suggestedCategory);
+                        const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
+                        const fallbackCat = categories.find(c => c.dreClass === 'REVENUE');
+                        const entityForRevenue = row.suggestedProvider
+                            ? (customers.find(x => x.id === row.suggestedProvider)?.name ||
+                                providers.find(x => x.id === row.suggestedProvider)?.name ||
+                                null)
+                            : null;
+                        newExpenses.push({
+                            description: row.description,
+                            amount: row.amount,
+                            date: row.date,
+                            category: row.suggestedCategory || fallbackCat?.name || 'Outras Receitas',
+                            dreClass: revDreClass,
+                            status: 'Pago',
+                            paymentMethod: 'Transferência',
+                            isReconciled: true,
+                            ...(entityForRevenue ? { notes: entityForRevenue } : {})
+                        } as any);
+                    }
                 }
             } else if (row.status === 'A_CONFERIR' || row.status === 'CONCILIADOS') {
                 if (row.matchId) {

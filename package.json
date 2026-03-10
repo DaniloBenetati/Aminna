@@ -14,7 +14,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@google/genai": "1.3.0",
-    "@supabase/supabase-js": "^2.91.1",
+    "@supabase/supabase-js": "^2.99.0",
     "dotenv": "^17.3.1",
     "lucide-react": "0.460.0",
     "react": "^19.2.3",

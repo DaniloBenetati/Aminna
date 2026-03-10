@@ -89,6 +89,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Quick add states
     const [isQuickAddingSupplier, setIsQuickAddingSupplier] = useState(false);
     const [isQuickAddingCategory, setIsQuickAddingCategory] = useState(false);
+    const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'PAGO' | 'PENDENTE' | 'ATRASADO'>('ALL');
 
     // Reconciled Edit States
     const [editingReconciled, setEditingReconciled] = useState<FinancialTransaction | null>(null);
@@ -366,9 +367,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
     // Filter States for Payables
+<<<<<<< HEAD
     const [payablesFilter, setPayablesFilter] = useState('');
     const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('');
     const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
+=======
+    const [payablesSearch, setPayablesSearch] = useState('');
+>>>>>>> 148315a01b34210198f44da9c51264ecf9ddbb26
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -594,9 +599,25 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const filteredPayables = useMemo(() => {
         return expenses.filter(exp => {
+            // Excluir Receitas e Outras Receitas do Contas a Pagar
+            const isPayable = exp.dreClass !== 'REVENUE' && exp.dreClass !== 'OTHER_INCOME';
+            if (!isPayable) return false;
+
             const matchesDate = exp.date >= startDate && exp.date <= endDate;
-            const matchesDesc = exp.description.toLowerCase().includes(payablesFilter.toLowerCase());
+
+            let matchesStatus = true;
+            if (payablesStatusFilter === 'PAGO') {
+                matchesStatus = exp.status === 'Pago';
+            } else if (payablesStatusFilter === 'PENDENTE') {
+                matchesStatus = exp.status === 'Pendente';
+            } else if (payablesStatusFilter === 'ATRASADO') {
+                const isOverdue = exp.status === 'Pendente' && new Date(exp.date + 'T12:00:00') < new Date(new Date().setHours(0, 0, 0, 0));
+                matchesStatus = isOverdue;
+            }
+
+            const search = payablesSearch.toLowerCase();
             const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
+<<<<<<< HEAD
             const matchesSupplier = supplierName.toLowerCase().includes(payablesSupplierFilter.toLowerCase());
 
             let matchesStatus = true;
@@ -611,6 +632,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             return matchesDate && matchesDesc && matchesSupplier && matchesStatus;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [expenses, startDate, endDate, payablesFilter, payablesSupplierFilter, payablesStatusFilter, suppliers]);
+=======
+            const amountStr = exp.amount.toFixed(2).replace('.', ',');
+            const dateStr = new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR');
+
+            const matchesSearch = !search ||
+                exp.description.toLowerCase().includes(search) ||
+                supplierName.toLowerCase().includes(search) ||
+                exp.category.toLowerCase().includes(search) ||
+                amountStr.includes(search) ||
+                dateStr.includes(search);
+
+            return matchesDate && matchesStatus && matchesSearch;
+        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [expenses, startDate, endDate, payablesSearch, suppliers, payablesStatusFilter]);
+>>>>>>> 148315a01b34210198f44da9c51264ecf9ddbb26
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -1511,26 +1547,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                 <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto items-stretch md:items-center">
                     {activeTab === 'ACCOUNTS' && accountsSubTab === 'PAYABLES' && (
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
-                            <div className="relative w-full md:w-48">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                <input
-                                    type="text"
-                                    placeholder="Descrição..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
-                                    value={payablesFilter}
-                                    onChange={e => setPayablesFilter(e.target.value)}
-                                />
+                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
+                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                                {[
+                                    { id: 'ALL', label: 'Todos' },
+                                    { id: 'PAGO', label: 'Pagos' },
+                                    { id: 'PENDENTE', label: 'Pendentes' },
+                                    { id: 'ATRASADO', label: 'Atrasados' },
+                                ].map(st => (
+                                    <button
+                                        key={st.id}
+                                        onClick={() => setPayablesStatusFilter(st.id as any)}
+                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${payablesStatusFilter === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                    >
+                                        {st.label}
+                                    </button>
+                                ))}
                             </div>
-                            <div className="relative w-full md:w-48">
-                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                <input
-                                    type="text"
-                                    placeholder="Favorecido..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
-                                    value={payablesSupplierFilter}
-                                    onChange={e => setPayablesSupplierFilter(e.target.value)}
-                                />
+                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                                <div className="relative w-full md:w-72">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar por descrição, favorecido, valor ou data..."
+                                        className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
+                                        value={payablesSearch}
+                                        onChange={e => setPayablesSearch(e.target.value)}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
