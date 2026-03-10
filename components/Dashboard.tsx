@@ -286,6 +286,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 value: val,
                 avatar: providers.find(p => p.id === id)?.avatar
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
     }, [filteredAppointments, services, providers]);
@@ -304,6 +305,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 full: customers.find(c => c.id === id)?.name,
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers, services]);
 
@@ -319,6 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers]);
 
@@ -337,6 +340,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
                 value: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers, services]);
 
@@ -358,6 +362,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: PARTNERS.find((p: any) => p.id === id)?.name || 'Desc.',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, services, campaigns]);
 
@@ -378,6 +383,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: services.find(s => s.id === id)?.name || 'Desc.',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
     }, [filteredAppointments, services]);
@@ -398,6 +404,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: stock.find(p => p.id === id)?.name || 'Prod. Removido',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value)
             .slice(0, 5);
     }, [filteredSales, stock]);
@@ -417,6 +424,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const camp = campaigns.find(c => c.couponCode === code);
                 return { name: code, value: val, full: camp?.name };
             })
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, services, campaigns]);
 
@@ -434,6 +442,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const camp = campaigns.find(c => c.couponCode === code);
                 return { name: code, value: val, full: camp?.name };
             })
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, campaigns]);
 
@@ -450,6 +459,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return Object.entries(channelCounts)
             .map(([name, value]) => ({ name, value }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [customers, timeView, dateRef, customRange]);
 
@@ -498,6 +508,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, providers]);
 
@@ -516,6 +527,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 name: services.find(s => s.id === id)?.name || 'Desc.',
                 value: val
             }))
+            .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, services]);
 
@@ -542,7 +554,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
             faturamento: data.faturamento,
             ticketMedio: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
-        }));
+        })).filter(item => item.faturamento > 0);
 
         return {
             revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
@@ -573,7 +585,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             name: services.find(s => s.id === id)?.name || 'Desc.',
             faturamento: data.faturamento,
             ticketMedio: data.qtd > 0 ? data.faturamento / data.qtd : 0
-        }));
+        })).filter(item => item.faturamento > 0);
 
         return {
             revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
