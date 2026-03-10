@@ -1,0 +1,24 @@
+﻿Total Pago (Simulation): 279535.41
+Count: 222
+By Category: {
+  "Aluguel Im├│veis": 19341.32,
+  "Despesas Diversas": 75831.33999999995,
+  "Pessoal Marketing": 8400,
+  "Pronampe": 1846.86,
+  "Insumos": 11879.710000000001,
+  "Repasse Comiss├úo": 115894.2,
+  "Marketing": 3000,
+  "Transporte por Aplicativo": 2236.0299999999997,
+  "Alimenta├º├úo": 176.92000000000002,
+  "Cozinha": 1358.1100000000001,
+  "Simples Nacional": 6569.58,
+  "Telefonia e Internet": 651.15,
+  "Sistemas": 10000,
+  "Sindicato": 105,
+  "Sal├írios CLT": 2420,
+  "Distribui├º├úo de Lucros": 15000,
+  "Contabilidade": 1067.9,
+  "Empr├®stimo": 1231.33,
+  "Pessoal Copa": 2300,
+  "Impostos": 225.96
+}
