@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { Expense, ExpenseCategory, Supplier, Sale, Appointment, Customer, PaymentSetting, FinancialConfig } from '../types';
 import { supabase } from '../services/supabase';
 import { parseDateSafe, toLocalDateStr } from '../services/financialService';
@@ -210,6 +210,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 }) => {
     const [rawText, setRawText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isCleaning, setIsCleaning] = useState(false);
     const [reconciledRows, setReconciledRows] = useState<ReconciledRow[]>([]);
     const [activeTab, setActiveTab] = useState<'A_CONFERIR' | 'A_LANCAR' | 'CONCILIADOS'>('A_CONFERIR');
     const [approvalQueue, setApprovalQueue] = useState<Set<string>>(new Set());
@@ -570,11 +571,22 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             }
 
             // Filtrar as transações que já existem no banco
-            const newTransactions = parsedTransactions.filter(t => !existingFingerprints.includes(t.fingerprint || ''));
+            const existingMatches = parsedTransactions.filter(t => existingFingerprints.includes(t.fingerprint || ''));
+            let newTransactions = parsedTransactions.filter(t => !existingFingerprints.includes(t.fingerprint || ''));
+
+            // Se houver duplicatas, oferecer re-processamento
+            if (existingMatches.length > 0) {
+                const confirmReprocess = window.confirm(`Foram encontrados ${existingMatches.length} itens que já foram processados anteriormente. Deseja re-processá-los para realizar ajustes?`);
+                if (confirmReprocess) {
+                    newTransactions = parsedTransactions; // Process everything
+                }
+            }
 
             // Se não sobrar nada, avisar o usuário
             if (newTransactions.length === 0 && parsedTransactions.length > 0) {
                 alert("Todos os lançamentos deste extrato já foram conciliados anteriormente!");
+                setIsProcessing(false);
+                return;
             }
 
             // Etapa 2 e 3: Comparação e Classificação apenas para os novos
@@ -808,9 +820,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
             sales.forEach(sysSale => {
                 const method = sysSale.paymentMethod?.toLowerCase() || '';
-                const isBankMethod = method.includes('pix') || method.includes('transferência') || method.includes('doc') || method.includes('ted');
+                // Only sync Pix and Cash (Dinheiro) as requested. Exclude Cards/Boleto.
+                const isSyncMethod = method.includes('pix') || method.includes('dinheiro') || method.includes('transferência') || method.includes('doc') || method.includes('ted');
 
-                if (!matchedSaleIds.has(sysSale.id) && !sysSale.isReconciled && isBankMethod) {
+                if (!matchedSaleIds.has(sysSale.id) && !sysSale.isReconciled && isSyncMethod) {
                     if (sysSale.date >= minDate && sysSale.date <= maxDate) {
                         results.push({
                             id: `sys_sale_${sysSale.id}`,
@@ -829,9 +842,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
             appointments.forEach(app => {
                 const method = app.paymentMethod?.toLowerCase() || '';
-                const isBankMethod = method.includes('pix') || method.includes('transferência') || method.includes('doc') || method.includes('ted');
+                // Only sync Pix and Cash (Dinheiro) as requested. Exclude Cards/Boleto.
+                const isSyncMethod = method.includes('pix') || method.includes('dinheiro') || method.includes('transferência') || method.includes('doc') || method.includes('ted');
 
-                if (!matchedAppointmentIds.has(app.id) && !app.isReconciled && isBankMethod) {
+                if (!matchedAppointmentIds.has(app.id) && !app.isReconciled && isSyncMethod) {
                     if (app.date >= minDate && app.date <= maxDate) {
                         const custName = customers.find(c => c.id === app.customerId)?.name || 'Cliente';
                         results.push({
@@ -1094,6 +1108,51 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         }
     };
 
+    const handleResetMonth = async () => {
+        if (!targetDate) {
+            alert("Por favor, selecione um dia no mês que deseja limpar usando o filtro de data.");
+            return;
+        }
+        const [year, month] = targetDate.split('-');
+        const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
+        const monthName = dateObj.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+        if (!window.confirm(`⚠️ ATENÇÃO: Isso irá remover TODA a conciliação de ${monthName}. \n\nIsso desmarcará despesas, vendas e agendamentos como conciliados para que você possa refazer o processo do zero. \n\nDeseja continuar?`)) {
+            return;
+        }
+
+        setIsCleaning(true);
+        try {
+            // Get first and last day of month
+            const start = `${year}-${month}-01`;
+            const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+            const end = `${year}-${month}-${lastDay}`;
+
+            console.log(`Resetting month: ${start} to ${end}`);
+
+            // 1. Reset entries
+            const { error: err1 } = await supabase.from('expenses').update({ is_reconciled: false }).gte('date', start).lte('date', end);
+            const { error: err2 } = await supabase.from('sales').update({ is_reconciled: false }).gte('date', start).lte('date', end);
+            const { error: err3 } = await supabase.from('appointments').update({ is_reconciled: false }).gte('payment_date', start).lte('payment_date', end);
+
+            // 2. Delete bank transactions fingerprints for this month to allow re-entry
+            const { error: err4 } = await supabase.from('bank_transactions').delete().gte('date', start).lte('date', end);
+
+            if (err1 || err2 || err3 || err4) {
+                console.error('Error resetting month:', { err1, err2, err3, err4 });
+                alert("Ocorreu um problema ao limpar alguns registros. Verifique o console.");
+            } else {
+                alert("Conciliação mensal limpa com sucesso! Feche e abra a tela para atualizar os dados.");
+                onClose();
+            }
+        } catch (err) {
+            console.error('General Error resetting month:', err);
+            alert("Erro ao limpar conciliação.");
+        } finally {
+            setIsCleaning(false);
+        }
+    };
+
     const filteredRows = useMemo(() => {
         return reconciledRows.filter(r => {
             if (r.status !== activeTab) return false;
@@ -1256,16 +1315,56 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </button>
-                                        <div className="flex items-center px-2">
+                                        <div className="flex items-center px-2 min-w-[150px] justify-center">
                                             {targetDate ? (
                                                 <button onClick={() => setTargetDate(null)} className="text-[11px] font-black uppercase text-indigo-700 tracking-wider hover:text-rose-500 transition-colors flex items-center gap-1">
                                                     {formatDateDisplay(targetDate)}
                                                     <X className="w-3 h-3 ml-1" />
                                                 </button>
                                             ) : (
-                                                <button onClick={() => setTargetDate(availableDates.length > 0 ? availableDates[0] : new Date().toISOString().split('T')[0])} className="text-[10px] font-black uppercase text-slate-400 tracking-wider hover:text-indigo-600 transition-colors">
-                                                    {formatDateDisplay(null)}
-                                                </button>
+                                                <div className="flex items-center gap-1 group">
+                                                    <select
+                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200"
+                                                        onChange={(e) => {
+                                                            const month = e.target.value;
+                                                            if (month) {
+                                                                const year = (document.getElementById('reset-year-select') as HTMLSelectElement)?.value || '2026';
+                                                                setTargetDate(`${year}-${month}-01`);
+                                                            }
+                                                        }}
+                                                        defaultValue=""
+                                                    >
+                                                        <option value="" disabled>MÊS</option>
+                                                        <option value="01">JANEIRO</option>
+                                                        <option value="02">FEVEREIRO</option>
+                                                        <option value="03">MARÇO</option>
+                                                        <option value="04">ABRIL</option>
+                                                        <option value="05">MAIO</option>
+                                                        <option value="06">JUNHO</option>
+                                                        <option value="07">JULHO</option>
+                                                        <option value="08">AGOSTO</option>
+                                                        <option value="09">SETEMBRO</option>
+                                                        <option value="10">OUTUBRO</option>
+                                                        <option value="11">NOVEMBRO</option>
+                                                        <option value="12">DEZEMBRO</option>
+                                                    </select>
+                                                    <select
+                                                        id="reset-year-select"
+                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200"
+                                                        onChange={(e) => {
+                                                            const year = e.target.value;
+                                                            const month = (document.querySelector('select:has(option[value="01"])') as HTMLSelectElement)?.value;
+                                                            if (year && month) {
+                                                                setTargetDate(`${year}-${month}-01`);
+                                                            }
+                                                        }}
+                                                        defaultValue="2026"
+                                                    >
+                                                        <option value="2025">2025</option>
+                                                        <option value="2026">2026</option>
+                                                        <option value="2027">2027</option>
+                                                    </select>
+                                                </div>
                                             )}
                                         </div>
                                         <button
@@ -1312,6 +1411,15 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                             {approvalQueue.size} selecionados
                                         </span>
                                     )}
+                                    <button
+                                        onClick={handleResetMonth}
+                                        disabled={isProcessing || isCleaning || !targetDate}
+                                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-sm border border-rose-200 transition-all flex items-center gap-2"
+                                        title="Limpar toda a conciliação deste mês para refazer"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                        Limpar Mês
+                                    </button>
                                     <button
                                         onClick={handleApproveSelected}
                                         disabled={(approvalQueue.size === 0 && reconciledRows.filter(r => r.status === 'CONCILIADOS').length === 0) || isProcessing}

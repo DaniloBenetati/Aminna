@@ -606,11 +606,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const dateObj = parseDateSafe(start);
             const isClosed = monthlyClosings[`${dateObj.getFullYear()}-${dateObj.getMonth()}`];
 
-            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status !== 'Cancelado');
-            const sls = sales.filter(s => s.date >= start && s.date <= end);
+            const apps = appointments.filter(a => {
+                const realizationDate = a.paymentDate || a.date;
+                const matchesDate = isClosed
+                    ? (realizationDate >= start && realizationDate <= end)
+                    : (a.date >= start && a.date <= end);
+                return matchesDate && a.status !== 'Cancelado' && (isClosed ? a.isReconciled : true);
+            });
+            const sls = sales.filter(s => s.date >= start && s.date <= end && (isClosed ? s.isReconciled : true));
 
-            // If the month is closed, show only reconciled expenses.
-            // If NOT closed, show ALL expenses (forecast).
             const exps = expenses.filter(e => {
                 const matchesDate = e.date >= start && e.date <= end;
                 if (!matchesDate) return false;
@@ -618,8 +622,29 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return true;
             });
 
+            // Calculate reconciled sums for services and products to avoid double counting with bank
+            const reconciledAppsSum = apps.filter(a => a.isReconciled).reduce((acc, a) => {
+                if (a.pricePaid !== null && a.pricePaid !== undefined && Number(a.pricePaid) > 0) {
+                    return acc + Number(a.pricePaid);
+                }
+                const mainPrice = (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
+                    return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                }, 0);
+                return acc + mainPrice + extraPrice;
+            }, 0);
+
+            const reconciledSalesSum = sls.filter(s => s.isReconciled).reduce((acc, s) => {
+                return acc + (s.items || []).reduce((sum, item) => {
+                    return sum + (item.totalAmount || (item.quantity * item.unitPrice) || item.price || 0);
+                }, 0);
+            }, 0);
+
             const revenueServices = apps.reduce((acc, a) => {
-                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                if (a.pricePaid !== null && a.pricePaid !== undefined && Number(a.pricePaid) > 0) {
+                    return acc + Number(a.pricePaid);
+                }
+                const mainPrice = (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
                 const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
                     return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
                 }, 0);
@@ -628,10 +653,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
-                    // Only count as product revenue if it has a productId (real stock product)
-                    // This automatically excludes bank description launches (which don't have productId)
-                    // and service checkouts (which have serviceId)
-                    if (item.productId) {
+                    // Count as revenue if it has a productId (stock) OR if the sale is already reconciled (bank match)
+                    if (item.productId || s.isReconciled) {
                         return sum + (item.totalAmount || (item.quantity * item.unitPrice) || item.price || 0);
                     }
                     return sum;
@@ -639,23 +662,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + productTotal;
             }, 0);
 
-            // Receitas bancárias conciliadas (dreClass=REVENUE) = real service income via card/PIX
-            const reconciledBankRevenues = exps
-                .filter(e => e.dreClass === 'REVENUE')
-                .reduce((acc, e) => acc + e.amount, 0);
+            // Total bank revenue items (REVENUE and OTHER_INCOME)
+            const bankRevenueTotal = exps.filter(e => e.dreClass === 'REVENUE' && e.isReconciled).reduce((acc, e) => acc + e.amount, 0);
+            const bankOtherIncomeTotal = exps.filter(e => e.dreClass === 'OTHER_INCOME' && e.isReconciled).reduce((acc, e) => acc + e.amount, 0);
 
-            // Outras receitas (dreClass=OTHER_INCOME) = reembolsos, devoluções, aportes
-            // Always shown in section 6 regardless of isClosed
-            const otherIncome = exps
-                .filter(e => e.dreClass === 'OTHER_INCOME')
-                .reduce((acc, e) => acc + e.amount, 0);
+            // Reconciled bank revenues that EXCEED known apps/sales (e.g. "Cartão sem nota")
+            // This prevents double counting.
+            const reconciledBankRevenues = Math.max(0, bankRevenueTotal - (reconciledAppsSum + reconciledSalesSum));
 
-            // Fontes de receita mutuamente exclusivas:
-            //   Concluído + receitas bancárias → usa APENAS banco (dados reais)
-            //   Não concluído ou sem receitas bancárias → usa APENAS agendamentos (previsão)
-            const grossRevenue = (isClosed && reconciledBankRevenues > 0)
-                ? (revenueProducts + reconciledBankRevenues)
-                : (revenueServices + revenueProducts);
+            // Outras receitas (reembolsos, devoluções)
+            const otherIncome = bankOtherIncomeTotal;
+
+            // Gross Revenue = Services + Products + Extra Bank Revenue
+            const grossRevenue = (revenueServices + revenueProducts + reconciledBankRevenues);
 
             // Automated Deductions (Fees)
             const automatedDeductions = apps.reduce((acc, a) => {
@@ -816,9 +835,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
-                // REVENUE = card service income (Receita Bruta) — only show breakdown when not isClosed
-                // (when isClosed they're shown as aggregate Cartão/PIX sub-line in Receita Bruta)
-                breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
+                // REVENUE = card service income (Receita Bruta)
+                breakdownBankRevenues: groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
                 // OTHER_INCOME = reimbursements/returns — always show in section 6
                 breakdownOtherIncome: groupByCat(exps.filter(e => e.dreClass === 'OTHER_INCOME')),
                 breakdownServices,
@@ -2917,7 +2935,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('gross') && (
                                                 <>
                                                     {/* Sub-linha Serviços: apenas quando NÃO concluído (previsão por agendamentos) */}
-                                                    {!dreData.isClosed && (<>
+                                                    {(dreData.revenueServices > 0 || !dreData.isClosed) && (<>
                                                         <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
@@ -2963,7 +2981,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         ))}
                                                     </>)}
                                                     {/* Sub-linha: Cartão/PIX (sem nota fiscal) - apenas quando concluído */}
-                                                    {dreData.isClosed && dreData.reconciledBankRevenues > 0 && (
+                                                    {(dreData.reconciledBankRevenues > 0 || !dreData.isClosed) && (
                                                         <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-emerald-600 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('bank-revenues-list') ? <ChevronDown size={12} /> : <DollarSign size={12} />}
