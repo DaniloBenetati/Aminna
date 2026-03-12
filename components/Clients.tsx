@@ -167,6 +167,30 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     };
 
     if (isNew) {
+      // Check for existing customer locally first
+      const normalizedPhone = (formData.phone || '').replace(/\D/g, '');
+      const existingCustomer = customers.find(c => {
+        const cPhone = (c.phone || '').replace(/\D/g, '');
+        return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === formData.name!.toLowerCase());
+      });
+
+      if (existingCustomer) {
+        alert(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nPor favor, use a busca para encontrar o cadastro existente.`);
+        return;
+      }
+
+      // Secondary check: query DB directly in case local state is out of sync
+      const { data: dbCustomer } = await supabase
+        .from('customers')
+        .select('*')
+        .or(`phone.eq.${normalizedPhone},name.eq.${formData.name}`)
+        .maybeSingle();
+
+      if (dbCustomer) {
+        alert(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" diretamente no banco de dados.\n\nPor favor, atualize a lista de clientes para sincronizar.`);
+        return;
+      }
+
       const newItem = {
         ...formData,
         id: Date.now().toString(),
@@ -179,7 +203,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       // Save to Supabase
       const { data, error } = await supabase.from('customers').insert({
         name: formData.name,
-        phone: formData.phone,
+        phone: normalizedPhone,
         email: formData.email,
         birth_date: formData.birthDate,
         address: formData.address,

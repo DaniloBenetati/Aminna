@@ -1608,6 +1608,50 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const handleDeleteAppointment = async () => {
+        const confirmDelete = window.confirm('⚠️ ATENÇÃO: EXCLUIR AGENDAMENTO\n\nEsta ação excluirá PERMANENTEMENTE este agendamento do banco de dados.\nNão será possível recuperar os dados.\n\nDeseja realmente excluir este agendamento?');
+        if (!confirmDelete) return;
+
+        setIsSaving(true);
+
+        try {
+            // 1. Identify all appointment IDs to delete (main + merged ones)
+            const allAppointmentIdsToDelete = Array.from(new Set(
+                lines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))
+            ));
+            
+            if (appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id)) {
+                allAppointmentIdsToDelete.push(appointment.id);
+            }
+
+            if (allAppointmentIdsToDelete.length === 0) {
+                // Draft appointment, just close
+                onClose();
+                return;
+            }
+
+            // 2. Delete from Supabase
+            const { error: deleteError } = await supabase
+                .from('appointments')
+                .delete()
+                .in('id', allAppointmentIdsToDelete);
+
+            if (deleteError) throw deleteError;
+
+            // 3. Update local state
+            onUpdateAppointments(prev => prev.filter(a => !allAppointmentIdsToDelete.includes(a.id)));
+
+            onClose();
+        } catch (error) {
+            console.error('Error deleting appointment:', error);
+            alert('Erro ao excluir agendamento do banco de dados.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const toggleFutureStatus = (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'Confirmado' ? 'Pendente' : 'Confirmado';
         onUpdateAppointments(prev => prev.map(a => a.id === id ? { ...a, status: newStatus as Appointment['status'] } : a));
@@ -2317,9 +2361,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <div className="flex gap-2 w-full">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setIsCancelling(true)}
+                                                                onClick={handleDeleteAppointment}
                                                                 className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
-                                                                title="Cancelar Agendamento"
+                                                                title="Excluir Permanentemente (Sumir da Agenda)"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setIsCancelling(true)}
+                                                                className="py-4 px-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700"
+                                                                title="Cancelar Agendamento (Fica no Histórico)"
                                                             >
                                                                 <XCircle size={16} />
                                                             </button>

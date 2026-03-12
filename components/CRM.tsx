@@ -247,33 +247,89 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
         }
     };
 
-    const handleConvertLead = (lead: Lead) => {
-        const existingCustomer = customers.find(c => c.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, ''));
+    const handleConvertLead = async (lead: Lead) => {
+        const cleanPhone = lead.phone.replace(/\D/g, '');
+        const existingCustomer = customers.find(c => c.phone.replace(/\D/g, '') === cleanPhone);
+        
         if (existingCustomer) {
             setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'CONVERTIDO', updatedAt: new Date().toISOString() } : l));
             alert(`Lead vinculado à cliente existente: ${existingCustomer.name}`);
-        } else {
-            setConvertModal({ isOpen: true, lead });
+            return;
         }
+
+        // Secondary check: query DB directly
+        const { data: dbCustomer } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('phone', cleanPhone)
+            .maybeSingle();
+
+        if (dbCustomer) {
+            alert(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" com este telefone no banco de dados.\n\nO Lead será vinculado a esta cliente.`);
+            setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'CONVERTIDO', updatedAt: new Date().toISOString() } : l));
+            return;
+        }
+
+        setConvertModal({ isOpen: true, lead });
     };
 
-    const confirmConversion = () => {
+    const confirmConversion = async () => {
         if (!convertModal.lead) return;
-        const newCustomer: Customer = {
-            id: `cust-${Date.now()}`,
-            name: convertModal.lead.name,
-            phone: convertModal.lead.phone,
-            registrationDate: new Date().toISOString().split('T')[0],
+        
+        const lead = convertModal.lead;
+        const cleanPhone = lead.phone.replace(/\D/g, '');
+        const newCustomerPayload = {
+            name: lead.name,
+            phone: cleanPhone,
+            registration_date: new Date().toISOString().split('T')[0],
             status: 'Novo',
-            totalSpent: 0,
-            lastVisit: '',
-            history: [],
-            acquisitionChannel: convertModal.lead.source,
+            total_spent: 0,
+            acquisition_channel: lead.source,
             preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
         };
-        setCustomers(prev => [...prev, newCustomer]);
-        setLeads(prev => prev.map(l => l.id === convertModal.lead!.id ? { ...l, status: 'CONVERTIDO', updatedAt: new Date().toISOString() } : l));
-        setConvertModal({ isOpen: false, lead: null });
+
+        try {
+            // 1. Insert Customer
+            const { data: custData, error: custError } = await supabase
+                .from('customers')
+                .insert([newCustomerPayload])
+                .select()
+                .single();
+
+            if (custError) throw custError;
+
+            // 2. Update Lead Status in Supabase
+            const { error: leadError } = await supabase
+                .from('leads')
+                .update({ status: 'CONVERTIDO', updated_at: new Date().toISOString() })
+                .eq('id', lead.id);
+
+            if (leadError) throw leadError;
+
+            // 3. Update Local State
+            const mappedCustomer: Customer = {
+                id: custData.id,
+                name: custData.name,
+                phone: custData.phone,
+                registrationDate: custData.registration_date,
+                status: 'Novo',
+                totalSpent: 0,
+                lastVisit: '',
+                history: [],
+                acquisitionChannel: lead.source,
+                preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
+            };
+
+            setCustomers(prev => [...prev, mappedCustomer]);
+            setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, status: 'CONVERTIDO', updatedAt: new Date().toISOString() } : l));
+            setConvertModal({ isOpen: false, lead: null });
+            
+            alert(`Lead "${lead.name}" convertido com sucesso!`);
+
+        } catch (error) {
+            console.error('Error converting lead:', error);
+            alert('Erro ao converter lead. Verifique o console.');
+        }
     };
 
     const openWhatsApp = (phone: string, name: string) => {

@@ -61,12 +61,23 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
 }) => {
     const [innerSearch, setInnerSearch] = useState('');
     const [selectedItems, setSelectedItems] = useState<{ id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]>([]);
+    const [filterMonth, setFilterMonth] = useState<string>('all');
+    const [filterYear, setFilterYear] = useState<string>('all');
+    const [filterType, setFilterType] = useState<string>('all');
 
     // Reset state when bankTx changes or modal opens
     useEffect(() => {
         if (isOpen && bankTx) {
             setInnerSearch('');
             setSelectedItems(bankTx.systemMatches || []);
+            
+            // Auto-filter by month and year of the bank transaction
+            const txDate = new Date(bankTx.date);
+            setFilterMonth((txDate.getMonth() + 1).toString());
+            setFilterYear(txDate.getFullYear().toString());
+            
+            // Auto-filter by type: BANK RECEITA matches SALE/APPOINTMENT, BANK DESPESA matches EXPENSE
+            setFilterType(bankTx.type === 'RECEITA' ? 'REVENUE' : 'EXPENSE');
         }
     }, [isOpen, bankTx?.id]);
 
@@ -86,20 +97,48 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
         }),
         ...pendingAppointments.map(a => {
             const cus = (customers || []).find(c => c.id === a.customerId);
-            return { id: a.id, type: 'APPOINTMENT' as const, description: `Agendamento: ${a.combinedServiceNames || 'Serviço'}`, amount: a.amount || 0, date: a.date, origin: 'Serviço', entity: cus?.name || '' };
+            return { id: a.id, type: 'APPOINTMENT' as const, description: `Agendamento: ${a.combinedServiceNames || 'Serviço'}`, amount: a.bookedPrice || a.pricePaid || 0, date: a.date, origin: 'Serviço', entity: cus?.name || '' };
         })
     ].filter(item => {
+        const itemDate = parseDateSafe(item.date);
+        const matchesMonth = filterMonth === 'all' || (itemDate.getMonth() + 1).toString() === filterMonth;
+        const matchesYear = filterYear === 'all' || itemDate.getFullYear().toString() === filterYear;
+        
+        // REVENUE type matches SALE and APPOINTMENT
+        const matchesType = filterType === 'all' || 
+                           (filterType === 'EXPENSE' && item.type === 'EXPENSE') || 
+                           (filterType === 'REVENUE' && (item.type === 'SALE' || item.type === 'APPOINTMENT'));
+        
         const desc = (item.description || '').toLowerCase();
         const ent = (item.entity || '').toLowerCase();
         const amt = (item.amount || 0).toString();
         const search = (innerSearch || '').toLowerCase();
-        return desc.includes(search) || ent.includes(search) || amt.includes(search);
+        return matchesMonth && matchesYear && matchesType && (desc.includes(search) || ent.includes(search) || amt.includes(search));
     }).sort((a,b) => {
         const dateA = a.date ? new Date(a.date).getTime() : 0;
         const dateB = b.date ? new Date(b.date).getTime() : 0;
         if (isNaN(dateA) || isNaN(dateB)) return 0;
         return dateB - dateA;
     });
+
+    const months = [
+        { value: 'all', label: 'Todos os Meses' },
+        { value: '1', label: 'Janeiro' },
+        { value: '2', label: 'Fevereiro' },
+        { value: '3', label: 'Março' },
+        { value: '4', label: 'Abril' },
+        { value: '5', label: 'Maio' },
+        { value: '6', label: 'Junho' },
+        { value: '7', label: 'Julho' },
+        { value: '8', label: 'Agosto' },
+        { value: '9', label: 'Setembro' },
+        { value: '10', label: 'Outubro' },
+        { value: '11', label: 'Novembro' },
+        { value: '12', label: 'Dezembro' }
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const years = ['all', ...Array.from({ length: 5 }, (_, i) => (currentYear - 2 + i).toString())];
 
     const totalSelected = selectedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
     const bankAmount = Math.abs(bankTx.amount || 0);
@@ -139,20 +178,72 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         </div>
                     </div>
                 </div>
-                <div className="p-6 border-b dark:border-zinc-800 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="relative flex-1 w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Buscar..."
-                            value={innerSearch}
-                            onChange={e => setInnerSearch(e.target.value)}
-                            className="w-full pl-12 pr-4 py-4 bg-slate-100 dark:bg-zinc-800 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
+                <div className="p-6 border-b dark:border-zinc-800 flex flex-col gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Buscar por descrição, valor ou entidade..."
+                                value={innerSearch}
+                                onChange={e => setInnerSearch(e.target.value)}
+                                className="w-full pl-12 pr-4 py-4 bg-slate-100 dark:bg-zinc-800 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                        <div className={`px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[150px] ${Math.abs(diff) < 0.01 ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600'}`}>
+                            <span className="text-[9px] font-black uppercase">Total Selecionado</span>
+                            <span className="text-lg font-black font-mono">R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
                     </div>
-                    <div className={`px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[150px] ${Math.abs(diff) < 0.01 ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600'}`}>
-                        <span className="text-[9px] font-black uppercase">Total Selecionado</span>
-                        <span className="text-lg font-black font-mono">R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                            <Calendar size={14} className="text-slate-400 ml-1" />
+                            <select 
+                                value={filterMonth}
+                                onChange={e => setFilterMonth(e.target.value)}
+                                className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300 min-w-[120px]"
+                            >
+                                {months.map(m => (
+                                    <option key={m.value} value={m.value} className="dark:bg-zinc-900">{m.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                            <Clock size={14} className="text-slate-400 ml-1" />
+                            <select 
+                                value={filterYear}
+                                onChange={e => setFilterYear(e.target.value)}
+                                className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300"
+                            >
+                                {years.map(y => (
+                                    <option key={y} value={y} className="dark:bg-zinc-900">{y === 'all' ? 'Todos os Anos' : y}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                            <BarChart2 size={14} className="text-slate-400 ml-1" />
+                            <select 
+                                value={filterType}
+                                onChange={e => setFilterType(e.target.value)}
+                                className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300 min-w-[100px]"
+                            >
+                                <option value="all" className="dark:bg-zinc-900">Todos os Tipos</option>
+                                <option value="EXPENSE" className="dark:bg-zinc-900">Despesas</option>
+                                <option value="REVENUE" className="dark:bg-zinc-900">Receitas (Vendas/Serviços)</option>
+                            </select>
+                        </div>
+
+                        {(filterMonth !== 'all' || filterYear !== 'all' || filterType !== 'all') && (
+                            <button 
+                                onClick={() => { setFilterMonth('all'); setFilterYear('all'); setFilterType('all'); }}
+                                className="text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-600 ml-2"
+                            >
+                                Limpar Filtros
+                            </button>
+                        )}
                     </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 space-y-3">
@@ -1078,9 +1169,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     acc[name].count += 1;
                 };
 
-                addProf(a.providerId, (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), a.commissionRateSnapshot);
+                addProf(a.providerId, (a.bookedPrice || services.find(s => s.id === a.serviceId)?.price || 0), a.commissionRateSnapshot ?? null);
                 (a.additionalServices || []).forEach(extra => {
-                    addProf(extra.providerId, (extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0), extra.commissionRateSnapshot);
+                    addProf(extra.providerId, (extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0), extra.commissionRateSnapshot ?? null);
                 });
                 return acc;
             }, {} as Record<string, { total: number, count: number }>);

@@ -532,6 +532,36 @@ export const Agenda: React.FC<AgendaProps> = ({
                 setQuickRegisterData({ name: '', phone: '', cpf: '' });
                 return;
             }
+        } else {
+            // Secondary check: query DB directly in case local state is out of sync
+            const { data: dbCustomer } = await supabase
+                .from('customers')
+                .select('*')
+                .or(`phone.eq.${normalizedPhone},name.eq.${quickRegisterData.name}`)
+                .maybeSingle();
+
+            if (dbCustomer) {
+                const mappedCustomer: Customer = {
+                    id: dbCustomer.id,
+                    name: dbCustomer.name,
+                    phone: dbCustomer.phone,
+                    email: dbCustomer.email,
+                    registrationDate: dbCustomer.registration_date,
+                    lastVisit: '',
+                    totalSpent: 0,
+                    status: dbCustomer.status,
+                    history: [],
+                    preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
+                };
+                
+                if (window.confirm(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" diretamente no banco de dados.\n\nDeseja usar o cadastro existente?`)) {
+                    setCustomers(prev => [...prev, mappedCustomer]);
+                    handleSelectCustomerForAppointment(mappedCustomer);
+                    setIsQuickRegisterOpen(false);
+                    setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                    return;
+                }
+            }
         }
 
         setIsRegisteringClient(true);
@@ -543,7 +573,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             const newCustomerPayload = {
                 name: quickRegisterData.name,
-                phone: quickRegisterData.phone,
+                phone: normalizedPhone,
                 cpf: quickRegisterData.cpf,
                 registration_date: new Date().toISOString().split('T')[0],
                 status: 'Novo',

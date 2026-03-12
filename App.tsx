@@ -219,7 +219,7 @@ const App: React.FC = () => {
         fetchCustomers(),
         fetchAppointments(),
         supabase.from('sales').select('*').gte('date', minDate),
-        supabase.from('expenses').select('*'),
+        supabase.from('expenses').select('*').gte('date', minDate).order('date', { ascending: false }),
         supabase.from('financial_config').select('*').order('valid_from', { ascending: false })
       ]);
 

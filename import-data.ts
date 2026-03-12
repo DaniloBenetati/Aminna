@@ -48,8 +48,30 @@ async function main() {
         process.exit(1);
     }
 
-    const { data: customers, error: custError } = await supabase.from('customers').select('id, name, phone');
-    if (custError) throw custError;
+    // Helper function to fetch all customers in batches
+    async function fetchAllCustomers() {
+        console.log("Loading customers in batches...");
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+            .from('customers')
+            .select('*', { count: 'exact', head: true });
+
+        if (countError) throw countError;
+        if (count === null) return [];
+
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+            supabase
+                .from('customers')
+                .select('id, name, phone')
+                .range(i * pageSize, (i + 1) * pageSize - 1)
+        );
+
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+    }
+
+    const customers = await fetchAllCustomers();
     console.log(`Loaded ${customers.length} customers.`);
 
     // 2. Read Excel
@@ -176,7 +198,7 @@ async function main() {
             console.log(` -> Creating new customer: ${clientName}`);
             const { data: newCust, error: createError } = await supabase.from('customers').insert({
                 name: clientName,
-                phone: clientPhone,
+                phone: normalizedPhone,
                 registration_date: new Date().toISOString(),
                 status: 'Novo',
                 total_spent: 0
