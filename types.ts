@@ -272,6 +272,7 @@ export interface Expense {
   status: 'Pago' | 'Pendente';
   paymentMethod: 'Boleto' | 'Pix' | 'Transferência' | 'Cartão' | 'Dinheiro';
   supplierId?: string;
+  providerId?: string;
   recurringId?: string;
   isReconciled?: boolean;
 }
@@ -322,6 +323,7 @@ export interface BankTransaction {
   systemCategory?: string;
   systemEntityName?: string;
   systemPaymentMethod?: string;
+  systemMatches?: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[];
   createdAt?: string;
 }
 

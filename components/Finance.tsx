@@ -7,7 +7,7 @@ import {
     Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
     ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
     TrendingDown, Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown,
-    BrainCircuit, BarChart2, Zap, RefreshCw
+    BrainCircuit, BarChart2, Zap, RefreshCw, Link2, Check, FilePlus
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig } from '../types';
@@ -41,6 +41,195 @@ const generateMockExpenses = (): Expense[] => {
 // --- DAILY CLOSE COMPONENT ---
 // DailyCloseView is now imported from ./DailyCloseView
 
+// --- MANUAL LINK MODAL COMPONENT ---
+interface ManualLinkModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    bankTx: BankTransaction | null;
+    expenses: Expense[];
+    sales: Sale[];
+    appointments: Appointment[];
+    onLink: (bankTxId: string, items: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]) => Promise<void>;
+    isProcessing: boolean;
+    parseDateSafe: (date: any) => Date;
+    suppliers: Supplier[];
+    customers: Customer[];
+}
+
+const ManualLinkModal: React.FC<ManualLinkModalProps> = ({ 
+    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers 
+}) => {
+    const [innerSearch, setInnerSearch] = useState('');
+    const [selectedItems, setSelectedItems] = useState<{ id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]>([]);
+
+    // Reset state when bankTx changes or modal opens
+    useEffect(() => {
+        if (isOpen && bankTx) {
+            setInnerSearch('');
+            setSelectedItems(bankTx.systemMatches || []);
+        }
+    }, [isOpen, bankTx?.id]);
+
+    if (!isOpen || !bankTx) return null;
+
+    const pendingExpenses = (expenses || []).filter(e => (e.status === 'Pendente' && !e.isReconciled) || (bankTx.systemMatches || []).some(m => m.type === 'EXPENSE' && m.id === e.id));
+    const pendingSales = (sales || []).filter(s => !s.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'SALE' && m.id === s.id));
+    const pendingAppointments = (appointments || []).filter(a => (a.status === 'Concluído' && !a.isReconciled) || (bankTx.systemMatches || []).some(m => m.type === 'APPOINTMENT' && m.id === a.id));
+    const allPending = [
+        ...pendingExpenses.map(e => {
+            const sup = (suppliers || []).find(s => s.id === e.supplierId);
+            return { id: e.id, type: 'EXPENSE' as const, description: e.description || '', amount: e.amount || 0, date: e.date, origin: 'Despesa', entity: sup?.name || '' };
+        }),
+        ...pendingSales.map(s => {
+            const cus = (customers || []).find(c => c.id === s.customerId);
+            return { id: s.id, type: 'SALE' as const, description: `Venda #${(s.id || '').slice(0,5)}`, amount: s.totalAmount || 0, date: s.date, origin: 'Venda', entity: cus?.name || '' };
+        }),
+        ...pendingAppointments.map(a => {
+            const cus = (customers || []).find(c => c.id === a.customerId);
+            return { id: a.id, type: 'APPOINTMENT' as const, description: `Agendamento: ${a.combinedServiceNames || 'Serviço'}`, amount: a.amount || 0, date: a.date, origin: 'Serviço', entity: cus?.name || '' };
+        })
+    ].filter(item => {
+        const desc = (item.description || '').toLowerCase();
+        const ent = (item.entity || '').toLowerCase();
+        const amt = (item.amount || 0).toString();
+        const search = (innerSearch || '').toLowerCase();
+        return desc.includes(search) || ent.includes(search) || amt.includes(search);
+    }).sort((a,b) => {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        if (isNaN(dateA) || isNaN(dateB)) return 0;
+        return dateB - dateA;
+    });
+
+    const totalSelected = selectedItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+    const bankAmount = Math.abs(bankTx.amount || 0);
+    const diff = bankAmount - totalSelected;
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-zinc-900 w-full md:max-w-4xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+                <div className="p-8 border-b dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                                <Link2 size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Vincular Lançamentos</h2>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Selecione contas que totalizam o valor do banco</p>
+                            </div>
+                        </div>
+                        <button onClick={onClose} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-400">
+                            <X size={20} />
+                        </button>
+                    </div>
+                    <div className="mt-6 p-4 bg-white dark:bg-zinc-800 border-2 border-dashed border-indigo-200 dark:border-indigo-900/50 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bankTx.type === 'RECEITA' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {bankTx.type === 'RECEITA' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase text-slate-400 font-mono">LANÇAMENTO DO BANCO</p>
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{bankTx.description}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-[10px] font-black uppercase text-slate-400 font-mono">VALOR EXTRATO</p>
+                            <p className="text-xl font-black text-slate-900 dark:text-white">R$ {bankAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-6 border-b dark:border-zinc-800 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative flex-1 w-full">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Buscar..."
+                            value={innerSearch}
+                            onChange={e => setInnerSearch(e.target.value)}
+                            className="w-full pl-12 pr-4 py-4 bg-slate-100 dark:bg-zinc-800 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                        />
+                    </div>
+                    <div className={`px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[150px] ${Math.abs(diff) < 0.01 ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600'}`}>
+                        <span className="text-[9px] font-black uppercase">Total Selecionado</span>
+                        <span className="text-lg font-black font-mono">R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-3">
+                    {allPending.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+                            <Search size={40} className="mb-2 opacity-20" />
+                            <p className="font-bold uppercase text-[10px]">Nada pendente encontrado</p>
+                        </div>
+                    ) : allPending.map(item => {
+                        const isSelected = selectedItems.some(si => si.id === item.id && si.type === item.type);
+                        return (
+                            <button
+                                key={`${item.type}-${item.id}`}
+                                onClick={() => {
+                                    if (isSelected) {
+                                        setSelectedItems(prev => prev.filter(si => !(si.id === item.id && si.type === item.type)));
+                                    } else {
+                                        setSelectedItems(prev => [...prev, { id: item.id, type: item.type, amount: item.amount }]);
+                                    }
+                                }}
+                                className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10' : 'border-slate-50 dark:border-zinc-800/50 hover:border-slate-200'}`}
+                            >
+                                <div className="flex items-center gap-4 text-left">
+                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-zinc-700'}`}>
+                                        <Check size={12} strokeWidth={4} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[8px] font-black uppercase bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-slate-500">{item.origin}</span>
+                                            <span className="text-[8px] font-black text-slate-400">{parseDateSafe(item.date).toLocaleDateString('pt-BR')}</span>
+                                        </div>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.description}</p>
+                                    </div>
+                                </div>
+                                <p className="text-sm font-black text-slate-900 dark:text-white">R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+                <div className="p-8 border-t dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
+                    <div className="flex-1">
+                        {Math.abs(diff) > 0.01 && (
+                            <div className="flex items-center gap-2 text-rose-500">
+                                <AlertCircle size={14} />
+                                <p className="text-[9px] font-black uppercase">Diferença de R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                            </div>
+                        )}
+                        {Math.abs(diff) < 0.01 && selectedItems.length > 0 && (
+                            <div className="flex items-center gap-2 text-emerald-500">
+                                <CheckCircle2 size={14} />
+                                <p className="text-[9px] font-black uppercase">Valores conferem!</p>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex gap-3">
+                        <button onClick={onClose} className="px-6 py-3.5 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-xl font-black uppercase text-[10px] tracking-widest">
+                            Fechar
+                        </button>
+                        <button
+                            disabled={selectedItems.length === 0 || isProcessing}
+                            onClick={async () => {
+                                if (Math.abs(diff) > 0.01) {
+                                    if (!window.confirm(`Valores não batem. Deseja vincular assim mesmo?`)) return;
+                                }
+                                await onLink(bankTx.id, selectedItems);
+                            }}
+                            className="px-8 py-3.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 flex items-center gap-2"
+                        >
+                            {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 size={14} />} 
+                            Vincular {selectedItems.length > 1 ? `(${selectedItems.length})` : ''}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 interface FinanceProps {
     services: Service[];
@@ -99,6 +288,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         customerOrProviderName: '',
         supplierId: ''
     });
+
+    // Manual Linking States
+    const [linkingBankTx, setLinkingBankTx] = useState<BankTransaction | null>(null);
+    const [isManualLinkModalOpen, setIsManualLinkModalOpen] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Monthly Closing State
     const [monthlyClosings, setMonthlyClosings] = useState<Record<string, boolean>>(() => {
@@ -164,6 +358,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         systemCategory: d.system_category,
                         systemEntityName: d.system_entity_name,
                         systemPaymentMethod: d.system_payment_method,
+                        systemMatches: d.system_matches,
                         createdAt: d.created_at
                     })));
                 }
@@ -248,6 +443,79 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         } catch (error) {
             console.error('Detailed Error updating reconciled transaction:', error);
             alert('Erro ao atualizar. Verifique os dados e tente novamente.');
+        }
+    };
+
+    const handleManualLink = async (bankTxId: string, matches: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]) => {
+        try {
+            // 1. Identify items that are being UNLINKED (present in previous matches but not in new matches)
+            const prevMatches = bankTransactions.find(tx => tx.id === bankTxId)?.systemMatches || [];
+            const unlinkedItems = prevMatches.filter(pm => !matches.some(m => m.id === pm.id && m.type === pm.type));
+
+            // 2. Update bank_transaction
+            const { error: txError } = await supabase
+                .from('bank_transactions')
+                .update({ system_matches: matches })
+                .eq('id', bankTxId);
+            if (txError) throw txError;
+
+            // 3. Update status of LINKED items
+            const linkPromises = matches.map(m => {
+                if (m.type === 'EXPENSE') {
+                    return supabase.from('expenses').update({ is_reconciled: true, status: 'Pago', date: linkingBankTx?.date }).eq('id', m.id);
+                } else if (m.type === 'SALE') {
+                    return supabase.from('sales').update({ is_reconciled: true }).eq('id', m.id);
+                } else {
+                    return supabase.from('appointments').update({ is_reconciled: true, payment_date: linkingBankTx?.date }).eq('id', m.id);
+                }
+            });
+
+            // 4. Update status of UNLINKED items
+            const unlinkPromises = unlinkedItems.map(m => {
+                if (m.type === 'EXPENSE') {
+                    return supabase.from('expenses').update({ is_reconciled: false }).eq('id', m.id);
+                } else if (m.type === 'SALE') {
+                    return supabase.from('sales').update({ is_reconciled: false }).eq('id', m.id);
+                } else {
+                    return supabase.from('appointments').update({ is_reconciled: false }).eq('id', m.id);
+                }
+            });
+
+            await Promise.all([...linkPromises, ...unlinkPromises]);
+
+            // 5. Update local state
+            setBankTransactions(prev => prev.map(tx => tx.id === bankTxId ? { ...tx, systemMatches: matches } : tx));
+            
+            setExpenses(prev => prev.map(e => {
+                const isLinked = matches.find(m => m.type === 'EXPENSE' && m.id === e.id);
+                const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
+                if (isLinked) return { ...e, isReconciled: true, status: 'Pago', date: linkingBankTx!.date };
+                if (isUnlinked) return { ...e, isReconciled: false };
+                return e;
+            }));
+
+            setSales(prev => prev.map(s => {
+                const isLinked = matches.find(m => m.type === 'SALE' && m.id === s.id);
+                const isUnlinked = unlinkedItems.find(m => m.type === 'SALE' && m.id === s.id);
+                if (isLinked) return { ...s, isReconciled: true };
+                if (isUnlinked) return { ...s, isReconciled: false };
+                return s;
+            }));
+
+            setAppointments(prev => prev.map(a => {
+                const isLinked = matches.find(m => m.type === 'APPOINTMENT' && m.id === a.id);
+                const isUnlinked = unlinkedItems.find(m => m.type === 'APPOINTMENT' && m.id === a.id);
+                if (isLinked) return { ...a, isReconciled: true, paymentDate: linkingBankTx!.date };
+                if (isUnlinked) return { ...a, isReconciled: false };
+                return a;
+            }));
+
+            setIsManualLinkModalOpen(false);
+            setLinkingBankTx(null);
+            alert("Vínculo atualizado com sucesso!");
+        } catch (err) {
+            console.error("Error manual linking/unlinking:", err);
+            alert("Erro ao atualizar vínculos.");
         }
     };
 
@@ -375,6 +643,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Date Navigation & View States
     const [dateRef, setDateRef] = useState(new Date());
     const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+    const [payablesIgnoreDateFilter, setPayablesIgnoreDateFilter] = useState(false);
     const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
     const [applyToFuture, setApplyToFuture] = useState(false);
     const [batchNewDate, setBatchNewDate] = useState(new Date().toISOString().split('T')[0]);
@@ -593,7 +862,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const filteredPayables = useMemo(() => {
         return expenses.filter(exp => {
-            const matchesDate = exp.date >= startDate && exp.date <= endDate;
+            const isPendenteOuAtrasado = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(23, 59, 59, 999));
+            const matchesDate = payablesIgnoreDateFilter 
+                ? (exp.status === 'Pendente' || (exp.date >= startDate && exp.date <= endDate))
+                : (exp.date >= startDate && exp.date <= endDate);
+            
             const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
             const searchLower = payablesSearch.toLowerCase();
             const matchesSearch = exp.description.toLowerCase().includes(searchLower) || 
@@ -607,7 +880,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             return matchesDate && matchesSearch && matchesStatus && isNotRevenue;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, suppliers]);
+    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, suppliers, payablesIgnoreDateFilter]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -873,8 +1146,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     }, [appointments, sales, expenses, startDate, endDate, timeView, financialConfigs, monthlyClosings]);
 
     const handleOpenModal = (expense?: Expense) => {
-        if (expense) { setEditingExpenseId(expense.id); setExpenseForm(expense); setRecurrenceMonths(1); }
-        else { setEditingExpenseId(null); setRecurrenceMonths(1); setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); }
+        if (expense) { 
+            setEditingExpenseId(expense.id); 
+            setExpenseForm(expense); 
+            setCategoryInputSearch(expense.category || '');
+            setRecurrenceMonths(1); 
+        }
+        else { 
+            setEditingExpenseId(null); 
+            setRecurrenceMonths(1); 
+            setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); 
+            setCategoryInputSearch('');
+        }
         setIsModalOpen(true);
     };
 
@@ -992,11 +1275,39 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         if (win) { win.document.write(printContent); win.document.close(); }
     };
 
+    const sanitizeAmount = (val: any): number => {
+        if (val === undefined || val === null || val === '') return 0;
+        if (typeof val === 'number') return val;
+        let str = String(val);
+        // Remove R$ and spaces
+        str = str.replace('R$', '').trim();
+        // If it has a comma and a dot, it's likely 1.234,56
+        if (str.includes(',') && str.includes('.')) {
+            str = str.replace(/\./g, '').replace(',', '.');
+        } else if (str.includes(',')) {
+            // If only comma, it's 1234,56
+            str = str.replace(',', '.');
+        }
+        const num = parseFloat(str);
+        return isNaN(num) ? 0 : num;
+    };
+
 
     const handleSaveExpense = async (e?: React.FormEvent, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
         if (e) e.preventDefault();
-        if (!expenseForm.description || expenseForm.amount === undefined || !expenseForm.category) {
-            alert('Por favor, preencha a descrição, o valor e a categoria.');
+        
+        const finalAmount = sanitizeAmount(expenseForm.amount);
+
+        if (!expenseForm.description) {
+            alert('Por favor, preencha a descrição da despesa.');
+            return;
+        }
+        if (finalAmount <= 0) {
+            alert('Por favor, informe um valor maior que zero.');
+            return;
+        }
+        if (!expenseForm.category) {
+            alert('Por favor, selecione uma categoria (conta) para a despesa.');
             return;
         }
 
@@ -1004,14 +1315,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         const expenseData = {
             description: expenseForm.description,
-            amount: expenseForm.amount,
+            amount: finalAmount,
             category: expenseForm.category,
             subcategory: expenseForm.subcategory,
             dre_class: expenseForm.dreClass, // Mapping to snake_case column
             date: expenseForm.date,
             status: expenseForm.status,
             payment_method: expenseForm.paymentMethod || 'Pix',
-            supplier_id: expenseForm.supplierId || null
+            supplier_id: expenseForm.supplierId?.startsWith('prov_') ? null : (expenseForm.supplierId || null),
+            provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null)
         };
 
         try {
@@ -1059,7 +1371,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             return {
                                 ...exp,
                                 ...expenseData, // Apply new Amount, Category, dre_class, etc.
-                                supplier_id: expenseForm.supplierId || null, // Ensure null here too
+                                supplier_id: expenseForm.supplierId?.startsWith('prov_') ? null : (expenseForm.supplierId || null),
+                                provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null),
+                                recurring_id: originalExpense.recurringId,
                                 description: baseDescription + suffix, // New Name + Old Suffix
                                 date: toLocalDateStr(shiftedDate) // Shifted Date
                             };
@@ -1724,22 +2038,68 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             // openingBalance is now fetched directly from the DB in a useEffect and stored in state
 
                             let currentBal = openingBalance;
-                            const allWithBalance = bankTransactions.map(t => {
-                                const delta = t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount);
-                                currentBal += delta;
-                                return { t, delta, balance: currentBal };
+                            const expandedRows: { t: BankTransaction; delta: number; balance: number; match?: { id: string, type: string, amount: number }; isSplit?: boolean }[] = [];
+
+                            bankTransactions.forEach(t => {
+                                if (t.systemMatches && t.systemMatches.length > 0) {
+                                    // Expand into multiple rows (even for 1 match to show system data)
+                                    t.systemMatches.forEach(m => {
+                                        const delta = t.type === 'RECEITA' ? Math.abs(m.amount) : -Math.abs(m.amount);
+                                        currentBal += delta;
+                                        expandedRows.push({ t, delta, balance: currentBal, match: m, isSplit: true });
+                                    });
+                                } else {
+                                    // Single row (Not linked)
+                                    const delta = t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount);
+                                    currentBal += delta;
+                                    expandedRows.push({ t, delta, balance: currentBal, isSplit: false });
+                                }
                             });
+
+                            const allWithBalance = expandedRows;
 
                             const totalIn = bankTransactions.filter(t => t.type === 'RECEITA').reduce((s, t) => s + Math.abs(t.amount), 0);
                             const totalOut = bankTransactions.filter(t => t.type === 'DESPESA').reduce((s, t) => s + Math.abs(t.amount), 0);
                             const runningBalance = currentBal;
 
-                            const rowsWithBalance = allWithBalance.filter(({ t }) => {
+                            const rowsWithBalance = allWithBalance.filter(({ t, match }) => {
+                                let desc = t.description;
+                                let cat = t.systemCategory || '';
+                                let ent = t.systemEntityName || '';
+
+                                if (match) {
+                                    if (match.type === 'EXPENSE') {
+                                        const exp = expenses.find(e => e.id === match.id);
+                                        if (exp) {
+                                            desc = exp.description;
+                                            cat = exp.category;
+                                            const sup = suppliers.find(s => s.id === exp.supplierId);
+                                            ent = sup?.name || '';
+                                        }
+                                    } else if (match.type === 'SALE') {
+                                        const sale = sales.find(s => s.id === match.id);
+                                        if (sale) {
+                                            desc = `Venda #${sale.id.slice(0,5)}`;
+                                            cat = 'Venda';
+                                            const cust = customers.find(c => c.id === sale.customerId);
+                                            ent = cust?.name || '';
+                                        }
+                                    } else if (match.type === 'APPOINTMENT') {
+                                        const app = appointments.find(a => a.id === match.id);
+                                        if (app) {
+                                            desc = `Agendamento: ${app.combinedServiceNames || 'Serviço'}`;
+                                            cat = 'Serviço';
+                                            const cust = customers.find(c => c.id === app.customerId);
+                                            ent = cust?.name || '';
+                                        }
+                                    }
+                                }
+
                                 const matchesSearch = !conciliadoFilter || (
-                                    t.description.toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
-                                    (t.systemCategory || '').toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
-                                    (t.systemEntityName || '').toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
-                                    (t.systemPaymentMethod || '').toLowerCase().includes(conciliadoFilter.toLowerCase())
+                                    desc.toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    cat.toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    ent.toLowerCase().includes(conciliadoFilter.toLowerCase()) ||
+                                    t.description.toLowerCase().includes(conciliadoFilter.toLowerCase())
                                 );
 
                                 const matchesType = conciliadoTypeFilter === 'ALL' || t.type === conciliadoTypeFilter;
@@ -1759,16 +2119,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                             const handlePrintConciliado = () => {
                                 let bal = openingBalance;
-                                const rowsHtml = rowsWithBalance.map(({ t, delta, balance }) => `
+                                const rowsHtml = rowsWithBalance.map(({ t, delta, balance, match }) => {
+                                    let d = t.description;
+                                    let c = t.systemCategory || '';
+                                    let e = t.systemEntityName || '';
+                                    
+                                    if (match) {
+                                        if (match.type === 'EXPENSE') {
+                                            const x = expenses.find(ex => ex.id === match.id);
+                                            if (x) { d = x.description; c = x.category; e = suppliers.find(s => s.id === x.supplierId)?.name || ''; }
+                                        } else if (match.type === 'SALE') {
+                                            const s = sales.find(sl => sl.id === match.id);
+                                            if (s) { d = `Venda #${s.id.slice(0,5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
+                                        } else if (match.type === 'APPOINTMENT') {
+                                            const a = appointments.find(ap => ap.id === match.id);
+                                            if (a) { d = `Agendamento: ${a.combinedServiceNames || 'Serviço'}`; c = 'Serviço'; e = customers.find(cu => cu.id === a.customerId)?.name || ''; }
+                                        }
+                                    }
+
+                                    return `
                                     <tr>
                                         <td>${parseDateSafe(t.date).toLocaleDateString('pt-BR')}</td>
-                                        <td>${t.description.toUpperCase()}</td>
-                                        <td>${t.systemCategory || ''}</td>
-                                        <td>${t.systemEntityName || ''}</td>
+                                        <td>${d.toUpperCase()}</td>
+                                        <td>${c}</td>
+                                        <td>${e}</td>
                                         <td>${t.systemPaymentMethod || ''}</td>
                                         <td style="text-align:right;color:${delta >= 0 ? '#059669' : '#dc2626'}">${delta >= 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                         <td style="text-align:right">${balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    </tr>`).join('');
+                                    </tr>`;}).join('');
                                 const w = window.open('', '_blank');
                                 if (!w) return;
                                 w.document.write(`<html><head><title>Extrato Conciliado</title><style>
@@ -1794,14 +2172,33 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             const handleDownloadCSV = () => {
                                 const header = ['Data', 'Tipo', 'Categoria Sinc.', 'Favorecido', 'Descrição Banco', 'Pagamento', 'Valor', 'Saldo'];
                                 let bal = openingBalance;
-                                const rows = rowsWithBalance.map(({ t, delta, balance }) => [
-                                    parseDateSafe(t.date).toLocaleDateString('pt-BR'),
-                                    t.type, t.systemCategory || '',
-                                    t.systemEntityName || '', t.description,
-                                    t.systemPaymentMethod || '',
-                                    delta.toFixed(2).replace('.', ','),
-                                    balance.toFixed(2).replace('.', ',')
-                                ]);
+                                const rows = rowsWithBalance.map(({ t, delta, balance, match }) => {
+                                    let d = t.description;
+                                    let c = t.systemCategory || '';
+                                    let e = t.systemEntityName || '';
+                                    
+                                    if (match) {
+                                        if (match.type === 'EXPENSE') {
+                                            const x = expenses.find(ex => ex.id === match.id);
+                                            if (x) { d = x.description; c = x.category; e = suppliers.find(s => s.id === x.supplierId)?.name || ''; }
+                                        } else if (match.type === 'SALE') {
+                                            const s = sales.find(sl => sl.id === match.id);
+                                            if (s) { d = `Venda #${s.id.slice(0,5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
+                                        } else if (match.type === 'APPOINTMENT') {
+                                            const a = appointments.find(ap => ap.id === match.id);
+                                            if (a) { d = `Agendamento: ${a.combinedServiceNames || 'Serviço'}`; c = 'Serviço'; e = customers.find(cu => cu.id === a.customerId)?.name || ''; }
+                                        }
+                                    }
+
+                                    return [
+                                        parseDateSafe(t.date).toLocaleDateString('pt-BR'),
+                                        t.type, c,
+                                        e, d,
+                                        t.systemPaymentMethod || '',
+                                        delta.toFixed(2).replace('.', ','),
+                                        balance.toFixed(2).replace('.', ',')
+                                    ];
+                                });
                                 const csv = [header, ...rows].map(r => r.map(c => `"${c}"`).join(';')).join('\n');
                                 const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
                                 const url = URL.createObjectURL(blob);
@@ -1904,13 +2301,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <th className="px-5 py-4">Pagamento</th>
                                                     <th className="px-5 py-4 text-right">Valor (R$)</th>
                                                     <th className="px-5 py-4 text-right">Saldo (R$)</th>
+                                                    <th className="px-5 py-4">Vínculo</th>
                                                     <th className="px-5 py-4 w-10"></th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                                 {/* Opening balance row */}
                                                 <tr className="bg-slate-50/70 dark:bg-zinc-800/40">
-                                                    <td colSpan={7} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                    <td colSpan={8} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                         Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
                                                     </td>
                                                     <td className="px-5 py-3 text-right text-[11px] font-black text-slate-700 dark:text-slate-200">
@@ -1919,107 +2317,177 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <td></td>
                                                 </tr>
 
-                                                {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance }) => (
-                                                    <tr key={t.id} className="hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors group text-sm">
-                                                        <td className="px-5 py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
-                                                            {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
-                                                        </td>
-                                                        <td className="px-5 py-3.5">
-                                                            {(() => {
-                                                                const isReceita = t.type === 'RECEITA';
-                                                                const label = isReceita ? 'Receita' : 'Despesa';
-                                                                return (
-                                                                    <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase w-fit border ${isReceita ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
-                                                                        {isReceita ? <ArrowUpCircle size={9} /> : <ArrowDownCircle size={9} />}
-                                                                        {label}
+                                                {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance, match, isSplit }) => {
+                                                    let displayDesc = t.description;
+                                                    let displayCat = t.systemCategory || '';
+                                                    let displayEnt = t.systemEntityName || '';
+
+                                                    if (match) {
+                                                        if (match.type === 'EXPENSE') {
+                                                            const exp = expenses.find(e => e.id === match.id);
+                                                            if (exp) {
+                                                                displayDesc = exp.description;
+                                                                displayCat = exp.category;
+                                                                displayEnt = suppliers.find(s => s.id === exp.supplierId)?.name || '';
+                                                            }
+                                                        } else if (match.type === 'SALE') {
+                                                            const sale = sales.find(s => s.id === match.id);
+                                                            if (sale) {
+                                                                displayDesc = `Venda #${sale.id.slice(0, 5)}`;
+                                                                displayCat = 'Venda';
+                                                                displayEnt = customers.find(c => c.id === sale.customerId)?.name || '';
+                                                            }
+                                                        } else if (match.type === 'APPOINTMENT') {
+                                                            const app = appointments.find(a => a.id === match.id);
+                                                            if (app) {
+                                                                displayDesc = `Agendamento: ${app.combinedServiceNames || 'Serviço'}`;
+                                                                displayCat = 'Serviço';
+                                                                displayEnt = customers.find(c => c.id === app.customerId)?.name || '';
+                                                            }
+                                                        }
+                                                    }
+
+                                                    return (
+                                                        <tr key={`${t.id}-${match?.id || 'main'}`} className={`hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors group text-sm ${isSplit ? 'bg-slate-50/30 dark:bg-zinc-900/20' : ''}`}>
+                                                            <td className="px-5 py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
+                                                                {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                                {(() => {
+                                                                    const isReceita = t.type === 'RECEITA';
+                                                                    const label = isReceita ? 'Receita' : 'Despesa';
+                                                                    return (
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase w-fit border ${isReceita ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                                                {isReceita ? <ArrowUpCircle size={9} /> : <ArrowDownCircle size={9} />}
+                                                                                {label}
+                                                                            </div>
+                                                                            {isSplit && (
+                                                                                <span className="text-[8px] font-black uppercase bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit">Desmembrado</span>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-[120px] truncate">
+                                                                {isSplit ? (
+                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold">{displayCat}</span>
+                                                                ) : (
+                                                                    <div className="relative">
+                                                                        <select
+                                                                            value={t.systemCategory || ''}
+                                                                            onChange={async (e) => {
+                                                                                const newCategory = e.target.value;
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('bank_transactions')
+                                                                                        .update({ system_category: newCategory })
+                                                                                        .eq('id', t.id);
+                                                                                    if (error) throw error;
+                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
+                                                                                } catch (err) {
+                                                                                    console.error('Failed to update category', err);
+                                                                                    alert('Erro ao atualizar categoria: ' + (err as any).message);
+                                                                                }
+                                                                            }}
+                                                                            className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
+                                                                        >
+                                                                            <option value="">Selecione...</option>
+                                                                            {t.type === 'RECEITA' ? (
+                                                                                expenseCategories.filter(c => c.dreClass === 'REVENUE').map(c => (
+                                                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                                                ))
+                                                                            ) : (
+                                                                                expenseCategories.filter(c => c.dreClass !== 'REVENUE').map(c => (
+                                                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                                                ))
+                                                                            )}
+                                                                        </select>
+                                                                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                                                     </div>
-                                                                );
-                                                            })()}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-[120px] truncate">
-                                                            <div className="relative">
-                                                                <select
-                                                                    value={t.systemCategory || ''}
-                                                                    onChange={async (e) => {
-                                                                        const newCategory = e.target.value;
-                                                                        try {
-                                                                            const { error } = await supabase
-                                                                                .from('bank_transactions')
-                                                                                .update({ system_category: newCategory })
-                                                                                .eq('id', t.id);
-                                                                            if (error) throw error;
-
-                                                                            // Update localized state to reflect immediately
-                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
-                                                                        } catch (err) {
-                                                                            console.error('Failed to update category', err);
-                                                                            alert('Erro ao atualizar categoria: ' + (err as any).message);
-                                                                        }
-                                                                    }}
-                                                                    className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
-                                                                >
-                                                                    <option value="">Selecione...</option>
-                                                                    {t.type === 'RECEITA' ? (
-                                                                        expenseCategories.filter(c => c.dreClass === 'REVENUE').map(c => (
-                                                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                                                        ))
-                                                                    ) : (
-                                                                        expenseCategories.filter(c => c.dreClass !== 'REVENUE').map(c => (
-                                                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                                                        ))
+                                                                )}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-[130px] truncate">
+                                                                {isSplit ? (
+                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold">{displayEnt || '-'}</span>
+                                                                ) : (
+                                                                    <div className="relative">
+                                                                        <select
+                                                                            value={t.systemEntityName || ''}
+                                                                            onChange={async (e) => {
+                                                                                const newProvider = e.target.value;
+                                                                                try {
+                                                                                    const { error } = await supabase
+                                                                                        .from('bank_transactions')
+                                                                                        .update({ system_entity_name: newProvider })
+                                                                                        .eq('id', t.id);
+                                                                                    if (error) throw error;
+                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newProvider } : tx));
+                                                                                } catch (err) {
+                                                                                    console.error('Failed to update provider', err);
+                                                                                    alert('Erro ao atualizar favorecido: ' + (err as any).message);
+                                                                                }
+                                                                            }}
+                                                                            className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
+                                                                        >
+                                                                            <option value="">Selecione...</option>
+                                                                            {t.type === 'DESPESA'
+                                                                                ? [
+                                                                                    ...suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>),
+                                                                                    ...providers.map(p => <option key={`prov_${p.id}`} value={p.name}>{p.name}</option>)
+                                                                                ]
+                                                                                : customers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                                                            }
+                                                                        </select>
+                                                                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                                <div className="flex flex-col gap-0.5">
+                                                                    <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-[280px] truncate">{displayDesc}</p>
+                                                                    {isSplit && (
+                                                                        <p className="text-[9px] text-slate-400 font-mono italic truncate">Ref. Banco: {t.description}</p>
                                                                     )}
-                                                                </select>
-                                                                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-[130px] truncate">
-                                                            <div className="relative">
-                                                                <select
-                                                                    value={t.systemEntityName || ''}
-                                                                    onChange={async (e) => {
-                                                                        const newProvider = e.target.value;
-                                                                        try {
-                                                                            const { error } = await supabase
-                                                                                .from('bank_transactions')
-                                                                                .update({ system_entity_name: newProvider })
-                                                                                .eq('id', t.id);
-                                                                            if (error) throw error;
-
-                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newProvider } : tx));
-                                                                        } catch (err) {
-                                                                            console.error('Failed to update provider', err);
-                                                                            alert('Erro ao atualizar favorecido: ' + (err as any).message);
-                                                                        }
-                                                                    }}
-                                                                    className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
-                                                                >
-                                                                    <option value="">Selecione...</option>
-                                                                    {t.type === 'DESPESA'
-                                                                        ? suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)
-                                                                        : customers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
-                                                                    }
-                                                                </select>
-                                                                <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-5 py-3.5">
-                                                            <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-[280px] truncate">{t.description}</p>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">
-                                                            {t.systemPaymentMethod || '-'}
-                                                        </td>
-                                                        <td className={`px-5 py-3.5 text-right font-black text-[12px] whitespace-nowrap ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                            {delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-right font-black text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                                            R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                        </td>
-                                                        <td className="px-5 py-3.5">
-                                                        </td>
-                                                    </tr>
-                                                )) : (
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">
+                                                                {t.systemPaymentMethod || '-'}
+                                                            </td>
+                                                            <td className={`px-5 py-3.5 text-right font-black text-[12px] whitespace-nowrap ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                {delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5 text-right font-black text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
+                                                                R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setLinkingBankTx(t);
+                                                                            setIsManualLinkModalOpen(true);
+                                                                        }}
+                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors"
+                                                                        title="Gerenciar Vínculo"
+                                                                    >
+                                                                        <Link2 size={14} />
+                                                                    </button>
+                                                                    {t.systemMatches && t.systemMatches.length > 0 && !isSplit && (
+                                                                        <div className="flex -space-x-1.5 overflow-hidden">
+                                                                            <div className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[8px] font-black border-2 border-white dark:border-zinc-900" title={`${t.systemMatches.length} itens vinculados`}>
+                                                                                {t.systemMatches.length}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-5 py-3.5">
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }) : (
                                                     <tr>
-                                                        <td colSpan={9} className="px-6 py-20 text-center">
+                                                        <td colSpan={10} className="px-6 py-20 text-center">
                                                             <div className="flex flex-col items-center gap-3">
                                                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-full text-slate-300"><CheckCircle2 size={32} /></div>
                                                                 <div>
@@ -2161,6 +2629,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </button>
                                                 ))}
                                             </div>
+
+                                            <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-zinc-800 px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-slate-50 transition-all">
+                                                <input
+                                                    type="checkbox"
+                                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                    checked={payablesIgnoreDateFilter}
+                                                    onChange={e => setPayablesIgnoreDateFilter(e.target.checked)}
+                                                />
+                                                <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">Exibir todos pendentes</span>
+                                            </label>
 
                                             <button onClick={handlePrintPayablesReport} className="hidden sm:flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
                                         </div>
@@ -2406,23 +2884,54 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                            {suppliers.map(sup => (
-                                                <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
-                                                    <td className="px-6 py-4 font-black text-xs uppercase">{sup.name}</td>
-                                                    <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{sup.category || '-'}</td>
-                                                    <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</span>
-                                                            <span className="text-[9px] text-slate-400">{sup.email || '-'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4 flex items-center justify-center gap-2">
-                                                        <button onClick={() => handleOpenSupplierModal(sup)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                                        <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                            {useMemo(() => {
+                                                const combined = [
+                                                    ...suppliers.map(s => ({ ...s, isProvider: false })),
+                                                    ...providers.map(p => ({ 
+                                                        id: `prov_${p.id}`, 
+                                                        name: p.name, 
+                                                        category: p.specialty, 
+                                                        document: p.pixKey ? `PIX: ${p.pixKey}` : '-', 
+                                                        phone: p.phone, 
+                                                        email: '', 
+                                                        isProvider: true,
+                                                        originalProvider: p
+                                                    }))
+                                                ].sort((a, b) => a.name.localeCompare(b.name));
+
+                                                return combined.map(sup => (
+                                                    <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-xs uppercase">{sup.name}</span>
+                                                                {sup.isProvider ? (
+                                                                    <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100 dark:border-indigo-800">Profissional</span>
+                                                                ) : (
+                                                                    <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100 dark:border-zinc-700">Fornecedor</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{sup.category || '-'}</td>
+                                                        <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</span>
+                                                                <span className="text-[9px] text-slate-400">{sup.email || '-'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 flex items-center justify-center gap-2">
+                                                            {!sup.isProvider ? (
+                                                                <>
+                                                                    <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                                                    <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                                </>
+                                                            ) : (
+                                                                <span className="text-[10px] font-black text-slate-300 uppercase italic">Gerenciado em Profissionais</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ));
+                                            }, [suppliers, providers])}
                                             {suppliers.length === 0 && (
                                                 <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
                                             )}
@@ -3662,7 +4171,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200 my-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200 my-auto">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
                                 <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
@@ -3675,7 +4184,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Valor (R$)</label>
-                                        <input type="number" step="0.01" placeholder="0.00" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: parseFloat(e.target.value) || 0 })} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="0,00" 
+                                            required 
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" 
+                                            value={expenseForm.amount || ''} 
+                                            onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value as any })} 
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
@@ -3805,11 +4321,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         <div className="relative">
                                             <select
                                                 value={expenseForm.supplierId || ''}
-                                                onChange={e => setExpenseForm({ ...expenseForm, supplierId: e.target.value })}
+                                                onChange={e => {
+                                                    const val = e.target.value;
+                                                    let updatedForm = { ...expenseForm, supplierId: val };
+                                                    
+                                                    // Auto-fill category if supplier has one
+                                                    if (val && !val.startsWith('prov_')) {
+                                                        const sup = suppliers.find(s => s.id === val);
+                                                        if (sup?.category) {
+                                                            const cat = expenseCategories.find(c => c.name === sup.category);
+                                                            if (cat) {
+                                                                updatedForm.category = cat.name;
+                                                                updatedForm.dreClass = cat.dreClass as any;
+                                                                setCategoryInputSearch(cat.name);
+                                                            }
+                                                        }
+                                                    }
+                                                    
+                                                    setExpenseForm(updatedForm);
+                                                }}
                                                 className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                             >
                                                 <option value="">Nenhum</option>
-                                                {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                <optgroup label="Fornecedores">
+                                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Profissionais">
+                                                    {providers.map(p => <option key={p.id} value={`prov_${p.id}`}>{p.name}</option>)}
+                                                </optgroup>
                                             </select>
                                             <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                                         </div>
@@ -3829,7 +4368,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isSupplierModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Users size={18} /> {editingSupplierId ? 'Editar' : 'Novo'} Fornecedor</h3>
                                 <button onClick={() => setIsSupplierModalOpen(false)}><X size={24} /></button>
@@ -3936,7 +4475,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isBatchDateModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Calendar size={18} /> Ajustar Data em Lote</h3>
                                 <button onClick={() => setIsBatchDateModalOpen(false)}><X size={24} /></button>
@@ -4035,7 +4574,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isQuickAddingCategory && isCategoryFormOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><FolderPlus size={18} /> Nova Conta / Categoria</h3>
                                 <button onClick={() => { setIsCategoryFormOpen(false); setIsQuickAddingCategory(false); }}><X size={24} /></button>
@@ -4109,7 +4648,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isReconciledEditModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 dark:border-zinc-800 animate-in zoom-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden border border-slate-200 dark:border-zinc-800 animate-in zoom-in duration-300">
                             <div className="px-8 py-6 bg-slate-50 dark:bg-zinc-800 border-b flex justify-between items-center">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
@@ -4202,6 +4741,27 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     </div>
                 )
             }
+
+            {/* Manual Link Modal */}
+            <ManualLinkModal 
+                isOpen={isManualLinkModalOpen}
+                onClose={() => { setIsManualLinkModalOpen(false); setLinkingBankTx(null); }}
+                bankTx={linkingBankTx}
+                expenses={expenses}
+                sales={sales}
+                appointments={appointments}
+                onLink={async (id, items) => {
+                    setIsProcessing(true);
+                    await handleManualLink(id, items);
+                    setIsProcessing(false);
+                    setIsManualLinkModalOpen(false);
+                    setLinkingBankTx(null);
+                }}
+                isProcessing={isProcessing}
+                parseDateSafe={parseDateSafe}
+                suppliers={suppliers}
+                customers={customers}
+            />
         </div >
     );
 };

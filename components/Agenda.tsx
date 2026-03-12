@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 
 const formatLocalDate = (date: Date) => {
     const year = date.getFullYear();
@@ -517,6 +517,22 @@ export const Agenda: React.FC<AgendaProps> = ({
     const handleQuickRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!quickRegisterData.name || !quickRegisterData.phone) return;
+
+        // Check for existing customer locally first
+        const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
+        const existingCustomer = customers.find(c => {
+            const cPhone = (c.phone || '').replace(/\D/g, '');
+            return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
+        });
+
+        if (existingCustomer) {
+            if (window.confirm(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nDeseja usar o cadastro existente em vez de criar um novo?`)) {
+                handleSelectCustomerForAppointment(existingCustomer);
+                setIsQuickRegisterOpen(false);
+                setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                return;
+            }
+        }
 
         setIsRegisteringClient(true);
         try {
@@ -1933,7 +1949,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isCustomerSelectionOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[80vh]">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[80vh]">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
                                     <User size={18} /> Selecione a Cliente
@@ -2048,7 +2064,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isWhatsAppModalOpen && (
                     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-slate-100 dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[85vh]">
+                        <div className="bg-slate-100 dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[85vh]">
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">

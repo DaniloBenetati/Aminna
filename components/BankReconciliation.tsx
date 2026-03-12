@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight, Trash2, Link2 } from 'lucide-react';
 import { Expense, ExpenseCategory, Supplier, Sale, Appointment, Customer, PaymentSetting, FinancialConfig } from '../types';
 import { supabase } from '../services/supabase';
 import { parseDateSafe, toLocalDateStr } from '../services/financialService';
@@ -12,8 +12,9 @@ interface ReconciledRow {
     type: 'RECEITA' | 'DESPESA';
     document?: string;
     status: 'CONCILIADOS' | 'A_LANCAR' | 'A_CONFERIR';
-    matchId?: string; // ID of the matched expense from system
-    matchType?: 'RECEITA' | 'DESPESA' | 'SERVICO'; // Identifies if it matched a Sale or an Expense or Appointment
+    matchId?: string; // ID of the matched expense from system (primary/single)
+    matchType?: 'RECEITA' | 'DESPESA' | 'SERVICO'; 
+    linkedMatches?: { id: string; type: 'RECEITA' | 'DESPESA' | 'SERVICO'; amount: number }[]; // For many-to-one
     suggestedCategory?: string;
     suggestedProvider?: string;
     divergenceReason?: string;
@@ -224,7 +225,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     const [targetDate, setTargetDate] = useState<string | null>(null);
     const [transactionTypeFilter, setTransactionTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [learningMap, setLearningMap] = useState<Record<string, string>>({});
-    const [linkingSourceId, setLinkingSourceId] = useState<string | null>(null);
+    const [linkingSourceIds, setLinkingSourceIds] = useState<string[]>([]);
 
     // MEMOIZE CALLBACKS TO PREVENT ROW RE-RENDERS
     const handleToggleSelect = React.useCallback((id: string) => {
@@ -240,15 +241,28 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const row = reconciledRows.find(r => r.id === id);
         if (!row) return;
 
-        const sameDescRows = reconciledRows.filter(r => r.id !== id && r.description === row.description && r.status === row.status);
-        let updateAll = false;
+        const cleanDesc = (s: string) => s?.trim().toLowerCase() || '';
+        const targetClean = cleanDesc(row.description);
+        
+        // Buscamos itens similares: descrição idêntica (trimmed) ou mesmo prefixo (mínimo 10 chars)
+        const similarRows = reconciledRows.filter(r => 
+            r.id !== id && 
+            r.status === row.status && 
+            (cleanDesc(r.description) === targetClean || 
+             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15))))
+        );
 
-        if (sameDescRows.length > 0) {
-            updateAll = window.confirm(`Atenção: Existem outros ${sameDescRows.length} lançamentos EXATAMENTE com a mesma descrição "${row.description}". \n\nDeseja aplicar "${newCategory}" a TODOS eles de uma vez? \n\n(Clique em Cancelar se quiser alterar apenas este item específico)`);
+        let updateAll = false;
+        if (similarRows.length > 0) {
+            updateAll = window.confirm(`Deseja aplicar a categoria "${newCategory}" a todos os ${similarRows.length} lançamentos similares encontrados?`);
         }
 
         setReconciledRows(prev => prev.map(r => {
-            if (r.id === id || (updateAll && r.description === row.description && r.status === row.status)) {
+            const matches = r.id === id || (updateAll && r.status === row.status && (
+                cleanDesc(r.description) === targetClean || 
+                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15)))
+            ));
+            if (matches) {
                 return { ...r, suggestedCategory: newCategory };
             }
             return r;
@@ -259,15 +273,27 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const row = reconciledRows.find(r => r.id === id);
         if (!row) return;
 
-        const sameDescRows = reconciledRows.filter(r => r.id !== id && r.description === row.description && r.status === row.status);
-        let updateAll = false;
+        const cleanDesc = (s: string) => s?.trim().toLowerCase() || '';
+        const targetClean = cleanDesc(row.description);
 
-        if (sameDescRows.length > 0) {
-            updateAll = window.confirm(`Atenção: Existem outros ${sameDescRows.length} lançamentos EXATAMENTE com a mesma descrição "${row.description}". \n\nDeseja aplicar este favorecido a TODOS eles de uma vez? \n\n(Clique em Cancelar se quiser alterar apenas este item específico)`);
+        const similarRows = reconciledRows.filter(r => 
+            r.id !== id && 
+            r.status === row.status && 
+            (cleanDesc(r.description) === targetClean || 
+             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15))))
+        );
+
+        let updateAll = false;
+        if (similarRows.length > 0) {
+            updateAll = window.confirm(`Deseja aplicar este favorecido a todos os ${similarRows.length} lançamentos similares encontrados?`);
         }
 
         setReconciledRows(prev => prev.map(r => {
-            if (r.id === id || (updateAll && r.description === row.description && r.status === row.status)) {
+            const matches = r.id === id || (updateAll && r.status === row.status && (
+                cleanDesc(r.description) === targetClean || 
+                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15)))
+            ));
+            if (matches) {
                 return { ...r, suggestedProvider: newProvider };
             }
             return r;
@@ -305,58 +331,54 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         }
     }, [reconciledRows]);
 
-    const handleStartLinking = React.useCallback((id: string) => {
-        setLinkingSourceId(id);
+    const handleStartLinking = React.useCallback((ids: string | string[]) => {
+        const idArray = Array.isArray(ids) ? ids : [ids];
+        setLinkingSourceIds(idArray);
         setActiveTab('A_LANCAR');
-        alert("Agora encontre a linha correspondente no Extrato (A Lançar) e clique em 'Confirmar Vínculo aqui'.");
+        setApprovalQueue(new Set()); // Limpa seleção após iniciar vínculo
+        alert(`Vinculando ${idArray.length} item(s). Agora encontre a linha correspondente no Extrato (A Lançar) e clique em 'Confirmar Vínculo aqui'.`);
     }, []);
 
     const handleCancelLinking = React.useCallback(() => {
-        setLinkingSourceId(null);
+        setLinkingSourceIds([]);
     }, []);
 
     const handleCompleteLinking = React.useCallback((bankRowId: string) => {
+        if (linkingSourceIds.length === 0) return;
+
         setReconciledRows(prev => {
-            const sourceRow = prev.find(r => r.id === linkingSourceId);
-            if (!sourceRow) return prev;
+            const sourceRows = prev.filter(r => linkingSourceIds.includes(r.id));
+            if (sourceRows.length === 0) return prev;
 
-            const mType = sourceRow.matchType || (sourceRow.type === 'DESPESA' ? 'DESPESA' : 'RECEITA');
-            let sysCat = sourceRow.suggestedCategory;
-            let sysProv = sourceRow.suggestedProvider;
+            const primarySource = sourceRows[0];
+            const totalAmount = sourceRows.reduce((sum, r) => sum + r.amount, 0);
 
-            if (mType === 'DESPESA') {
-                const e = expenses.find(x => x.id === sourceRow.matchId);
-                if (e) {
-                    sysCat = sysCat || e.category;
-                    sysProv = sysProv || e.supplierId;
-                }
-            } else if (mType === 'RECEITA') {
-                const s = sales.find(x => x.id === sourceRow.matchId);
-                if (s) {
-                    sysCat = sysCat || 'Produto';
-                    sysProv = sysProv || s.customerId;
-                }
-            } else if (mType === 'SERVICO') {
-                const a = appointments.find(x => x.id === sourceRow.matchId);
-                if (a) {
-                    sysCat = sysCat || 'Serviço';
-                    sysProv = sysProv || a.customerId;
-                }
-            }
+            const mType = primarySource.matchType || (primarySource.type === 'DESPESA' ? 'DESPESA' : 'RECEITA');
+            let sysCat = primarySource.suggestedCategory;
+            let sysProv = primarySource.suggestedProvider;
+
+            // Extrai detalhes para muitos-para-um
+            const linkedMatches = sourceRows.map(s => ({
+                id: s.matchId || '', 
+                type: (s.matchType || (s.type === 'DESPESA' ? 'DESPESA' : 'RECEITA')) as any,
+                amount: s.amount
+            })).filter(m => m.id);
 
             return prev
-                .filter(r => r.id !== linkingSourceId) // Remove the divergence source
+                .filter(r => !linkingSourceIds.includes(r.id)) // Remove as fontes de divergência
                 .map(r => r.id === bankRowId ? {
                     ...r,
                     status: 'CONCILIADOS' as const,
-                    matchId: sourceRow.matchId,
+                    matchId: primarySource.matchId,
                     matchType: mType,
+                    linkedMatches: linkedMatches,
                     suggestedCategory: sysCat,
-                    suggestedProvider: sysProv
+                    suggestedProvider: sysProv,
+                    divergenceReason: linkedMatches.length > 1 ? `Vínculo múltiplo: ${linkedMatches.length} itens (Total R$ ${totalAmount.toFixed(2)})` : undefined
                 } : r);
         });
-        setLinkingSourceId(null);
-    }, [linkingSourceId, expenses, sales, appointments]);
+        setLinkingSourceIds([]);
+    }, [linkingSourceIds]);
 
     const executeQuickCreate = async () => {
         if (!newItemName.trim() || !quickCreatePayload || !quickCreateType) return;
@@ -916,12 +938,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             description: row.description,
                             amount: row.amount,
                             date: row.date,
-                            supplierId: row.suggestedProvider || null,
+                            supplierId: row.suggestedProvider?.startsWith('prov_') ? null : (row.suggestedProvider || null),
+                            providerId: row.suggestedProvider?.startsWith('prov_') ? row.suggestedProvider.replace('prov_', '') : null,
                             category: row.suggestedCategory || 'Despesas Diversas',
                             dreClass: 'EXPENSE_ADM',
                             status: 'Pago',
                             paymentMethod: 'Transferência',
-                            isReconciled: true  // Processed A_LANÇAR items are part of the conciliation
+                            isReconciled: true
                         });
                     }
                 } else if (row.type === 'RECEITA') {
@@ -960,16 +983,20 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     }
                 }
             } else if (row.status === 'A_CONFERIR' || row.status === 'CONCILIADOS') {
-                if (row.matchId) {
-                    if (row.matchType === 'RECEITA') {
-                        toUpdateSaleStatus.push(row.matchId);
-                        updatesToExecute.push({ type: 'SALE', id: row.matchId, date: row.date });
-                    } else if (row.matchType === 'SERVICO') {
-                        toUpdateAppointmentStatus.push(row.matchId);
-                        updatesToExecute.push({ type: 'APPOINTMENT', id: row.matchId, date: row.date });
+                const matches = row.linkedMatches && row.linkedMatches.length > 0 
+                    ? row.linkedMatches 
+                    : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
+
+                for (const m of matches) {
+                    if (m.type === 'RECEITA') {
+                        toUpdateSaleStatus.push(m.id);
+                        updatesToExecute.push({ type: 'SALE', id: m.id, date: row.date });
+                    } else if (m.type === 'SERVICO') {
+                        toUpdateAppointmentStatus.push(m.id);
+                        updatesToExecute.push({ type: 'APPOINTMENT', id: m.id, date: row.date });
                     } else {
-                        toUpdateExpenseStatus.push(row.matchId);
-                        updatesToExecute.push({ type: 'EXPENSE', id: row.matchId, date: row.date });
+                        toUpdateExpenseStatus.push(m.id);
+                        updatesToExecute.push({ type: 'EXPENSE', id: m.id, date: row.date });
                     }
                 }
             }
@@ -1047,7 +1074,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     dre_class: e.dreClass,
                     status: e.status,
                     payment_method: e.paymentMethod,
-                    is_reconciled: e.isReconciled ?? true
+                    is_reconciled: e.isReconciled ?? true,
+                    supplier_id: e.supplierId,
+                    provider_id: e.providerId
                 }));
                 const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
                 if (error) {
@@ -1233,18 +1262,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     // Receitas podem ter como favorecido tanto clientes quanto profissionais (para repasses etc)
     const revenueEntityOptions = useMemo(() => [
         ...customers.map(c => <option key={`cust-${c.id}`} value={c.id}>{c.name}</option>),
-        ...providers.map(p => <option key={`prov-${p.id}`} value={p.id}>[💇] {p.name}</option>)
+        ...providers.map(p => <option key={`prov-${p.id}`} value={`prov_${p.id}`}>[💇] {p.name}</option>)
     ], [customers, providers]);
 
     // Despesas podem ter como favorecido fornecedores E profissionais (ex: Repasse Comissão)
     const expenseEntityOptions = useMemo(() => [
         ...suppliers.map(s => <option key={`sup-${s.id}`} value={s.id}>{s.name}</option>),
-        ...providers.map(p => <option key={`prov-${p.id}`} value={p.id}>[💇] {p.name}</option>)
+        ...providers.map(p => <option key={`prov-${p.id}`} value={`prov_${p.id}`}>[💇] {p.name}</option>)
     ], [suppliers, providers]);
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center py-10 overflow-y-auto">
-            <div className="bg-white max-w-6xl w-full rounded-2xl shadow-xl border border-slate-200 flex flex-col m-auto min-h-[600px] h-[90vh]">
+            <div className="bg-white max-w-7xl w-full rounded-2xl shadow-xl border border-slate-200 flex flex-col m-auto min-h-[600px] h-[90vh]">
 
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100">
@@ -1420,21 +1449,32 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                         </button>
                                     </div>
 
-                                    {linkingSourceId && (
+                                    {linkingSourceIds.length > 0 && (
                                         <button
                                             onClick={handleCancelLinking}
                                             className="px-3 py-1.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded-lg border border-rose-200 hover:bg-rose-200 transition-all flex items-center gap-2"
                                         >
                                             <X className="w-3 h-3" />
-                                            Cancelar Vínculo Manual
+                                            Cancelar Vínculo Manual ({linkingSourceIds.length})
                                         </button>
                                     )}
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {approvalQueue.size > 0 && (
-                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
-                                            {approvalQueue.size} selecionados
-                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                                                {approvalQueue.size} selecionados
+                                            </span>
+                                            {activeTab === 'A_CONFERIR' && (
+                                                <button
+                                                    onClick={() => handleStartLinking([...approvalQueue])}
+                                                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-lg shadow-sm hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                                >
+                                                    <Link2 className="w-3.5 h-3.5" />
+                                                    Vincular ao Extrato
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                     <button
                                         onClick={handleResetMonth}
@@ -1493,8 +1533,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                                 onAdjustDate={handleAdjustDate}
                                                 onStartLinking={handleStartLinking}
                                                 onCompleteLinking={handleCompleteLinking}
-                                                isLinkingSource={linkingSourceId === row.id}
-                                                isLinkingActive={!!linkingSourceId}
+                                                isLinkingSource={linkingSourceIds.includes(row.id)}
+                                                isLinkingActive={linkingSourceIds.length > 0}
                                             />
                                         ))}
                                         {filteredRows.length > 50 && (

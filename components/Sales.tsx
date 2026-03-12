@@ -101,8 +101,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const filteredSales = useMemo(() => {
         return sales.filter(s => {
             const dateMatch = isDateInPeriod(s.date);
-            const searchMatch = getCustomerName(s.customerId).toLowerCase().includes(searchTerm.toLowerCase()) ||
-                getProductName(s.productId).toLowerCase().includes(searchTerm.toLowerCase());
+            const customerMatch = getCustomerName(s.customerId).toLowerCase().includes(searchTerm.toLowerCase());
+            const productMatch = s.items?.some((item: any) => 
+                (item.name || getProductName(item.productId)).toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            const searchMatch = customerMatch || productMatch;
             const paymentMatch = paymentFilter === 'all' || s.paymentMethod === paymentFilter;
             return dateMatch && searchMatch && paymentMatch;
         });
@@ -478,13 +481,17 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         {getCustomerName(sale.customerId)}
                                     </td>
                                     <td className="px-6 py-4 font-bold text-slate-700 dark:text-slate-300">
-                                        {getProductName(sale.productId)}
+                                        {sale.items?.map((item: any, idx: number) => (
+                                            <div key={idx} className="truncate max-w-[200px]">
+                                                {item.name || getProductName(item.productId)}
+                                            </div>
+                                        )) || 'Sem itens'}
                                     </td>
                                     <td className="px-6 py-4 text-center font-black text-slate-900 dark:text-white">
-                                        {sale.quantity}
+                                        {sale.items?.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0) || 0}
                                     </td>
                                     <td className="px-6 py-4 text-right text-slate-500 dark:text-slate-400 font-bold">
-                                        R$ {sale.unitPrice.toFixed(2)}
+                                        {sale.items?.length === 1 ? `R$ ${(sale.items[0].unitPrice || 0).toFixed(2)}` : '-'}
                                     </td>
                                     <td className="px-6 py-4 text-right font-black text-emerald-700 dark:text-emerald-400">
                                         R$ {(sale.totalAmount || 0).toFixed(2)}
@@ -521,12 +528,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 <h4 className="text-sm font-black text-slate-900 dark:text-white truncate">{getCustomerName(sale.customerId)}</h4>
                                 <div className="flex items-center gap-1.5 mt-1">
                                     <span className="p-1 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-lg"><Package size={12} /></span>
-                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{getProductName(sale.productId)}</span>
+                                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                                        {sale.items?.map((i: any) => i.name || getProductName(i.productId)).join(', ') || 'Sem itens'}
+                                    </span>
                                 </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-lg font-black text-emerald-700 dark:text-emerald-400 leading-none">R$ {(sale.totalAmount || 0).toFixed(2)}</p>
-                                <span className="text-[9px] font-black uppercase text-slate-400">{sale.quantity} unid.</span>
+                                <span className="text-[9px] font-black uppercase text-slate-400">
+                                    {sale.items?.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0) || 0} unid.
+                                </span>
                             </div>
                         </div>
                         <div className="pt-3 border-t border-slate-50 dark:border-zinc-800 flex justify-between items-center">
@@ -534,7 +545,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-full font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1">
                                     <Search size={10} /> DETALHES
                                 </button>
-                                <p className="text-[9px] font-bold text-slate-400 uppercase">Unit: R${sale.unitPrice.toFixed(2)}</p>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                                    {sale.items?.length === 1 ? `Unit: R$${(sale.items[0].unitPrice || 0).toFixed(2)}` : `${sale.items?.length || 0} itens`}
+                                </p>
                             </div>
                             <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-rose-200 dark:text-rose-900 active:text-rose-600 dark:active:text-rose-400">
                                 <Trash2 size={16} />
@@ -553,7 +566,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* New Sale Modal (Updated for Cart) */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border border-slate-200 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border border-slate-200 dark:border-zinc-800">
                         {/* Header Updated to be Light by default, Dark in Dark Mode */}
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-black flex justify-between items-center bg-white dark:bg-zinc-950 text-slate-900 dark:text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
@@ -846,7 +859,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Sale Details Modal */}
             {selectedSaleDetail && (
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border border-slate-200 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border border-slate-200 dark:border-zinc-800">
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50 dark:bg-zinc-950">
                             <div>
                                 <h3 className="font-black text-sm uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">

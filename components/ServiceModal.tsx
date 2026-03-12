@@ -596,7 +596,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const checkForCustomerConflictAndMerge = async () => {
         const concurrentAppt = allAppointments.find(a => {
             if (a.id === appointment.id) return false;
-            if (a.customerId !== customer.id) return false;
+
+            // Check if it's the same customer (by ID, Name, or Phone to catch duplicates)
+            const isSameCustomer = a.customerId === customer.id || (() => {
+                const otherCust = customers.find(c => c.id === a.customerId);
+                if (!otherCust) return false;
+
+                const normOtherPhone = (otherCust.phone || '').replace(/\D/g, '');
+                const normCurrentPhone = (customer.phone || '').replace(/\D/g, '');
+
+                return (normCurrentPhone && normOtherPhone === normCurrentPhone) ||
+                    (otherCust.name.toLowerCase() === customer.name.toLowerCase());
+            })();
+
+            if (!isSameCustomer) return false;
 
             // Normalize time
             const apptTime = a.time.slice(0, 5);
@@ -1729,7 +1742,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-            <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
+            <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
 
                 {/* Header */}
                 <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
@@ -3067,7 +3080,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 isCancelling && (
                     <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-10">
                                 <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
                                     <X size={40} className="animate-pulse" />
@@ -3116,7 +3129,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showDebtConfirmModal && (
                     <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-10">
                                 <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
                                     <AlertTriangle size={40} className="animate-pulse" />
@@ -3164,7 +3177,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showCpfPrompt && (
                     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-8">
                                 <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
                                     <User size={32} />

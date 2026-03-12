@@ -858,7 +858,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             {/* Edit/Add Modal - Adapted for Mobile as Bottom Sheet */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[95vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[95vh]">
                         <div className="px-6 py-4 md:py-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-950 dark:bg-black text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
                                 <User size={20} className="text-indigo-400" />
