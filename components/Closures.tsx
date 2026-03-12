@@ -129,6 +129,23 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           }
         });
       }
+
+      // 3. Tip (Caixinha) - 100% to the professional who received it
+      if (app.tipAmount && app.tipAmount > 0) {
+        // If the main provider is the one we are auditing
+        if (app.providerId === providerId) {
+          commissionVal += app.tipAmount;
+          detailedServices.push({
+            date: displayDate,
+            time: app.time,
+            serviceName: 'Caixinha / Gorjeta',
+            clientName: customer?.name || 'Cliente Avulso',
+            price: app.tipAmount,
+            originalValue: app.tipAmount,
+            rate: 1
+          });
+        }
+      }
     });
 
     // Calculate effective average rate for display, handling division by zero
@@ -332,8 +349,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     });
 
     message += `\n * RESUMO FINANCEIRO:*\n`;
-    message += `Minha Comissão(${(data.commissionRate * 100).toFixed(0)}%): R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} \n`;
-    message += `\n * VALOR A RECEBER: R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
+    message += `* VALOR A RECEBER: R$ ${data.commissionVal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
     message += `_Gerado automaticamente pelo Sistema Aminna._`;
 
     return { message, phone };

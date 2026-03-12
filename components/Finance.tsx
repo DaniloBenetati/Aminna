@@ -6,7 +6,7 @@ import {
     ArrowDownCircle, AlertTriangle, BarChart3, Target, Calculator, Files,
     Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
     ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
-    Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown,
+    TrendingDown, Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown,
     BrainCircuit, BarChart2, Zap, RefreshCw
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
@@ -89,7 +89,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Quick add states
     const [isQuickAddingSupplier, setIsQuickAddingSupplier] = useState(false);
     const [isQuickAddingCategory, setIsQuickAddingCategory] = useState(false);
-    const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'PAGO' | 'PENDENTE' | 'ATRASADO'>('ALL');
 
     // Reconciled Edit States
     const [editingReconciled, setEditingReconciled] = useState<FinancialTransaction | null>(null);
@@ -367,13 +366,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
 
     // Filter States for Payables
-<<<<<<< HEAD
-    const [payablesFilter, setPayablesFilter] = useState('');
-    const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('');
-    const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
-=======
     const [payablesSearch, setPayablesSearch] = useState('');
->>>>>>> 148315a01b34210198f44da9c51264ecf9ddbb26
+    const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -599,99 +593,41 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const filteredPayables = useMemo(() => {
         return expenses.filter(exp => {
-            // Excluir Receitas e Outras Receitas do Contas a Pagar
-            const isPayable = exp.dreClass !== 'REVENUE' && exp.dreClass !== 'OTHER_INCOME';
-            if (!isPayable) return false;
-
             const matchesDate = exp.date >= startDate && exp.date <= endDate;
-
-            let matchesStatus = true;
-            if (payablesStatusFilter === 'PAGO') {
-                matchesStatus = exp.status === 'Pago';
-            } else if (payablesStatusFilter === 'PENDENTE') {
-                matchesStatus = exp.status === 'Pendente';
-            } else if (payablesStatusFilter === 'ATRASADO') {
-                const isOverdue = exp.status === 'Pendente' && new Date(exp.date + 'T12:00:00') < new Date(new Date().setHours(0, 0, 0, 0));
-                matchesStatus = isOverdue;
-            }
-
-            const search = payablesSearch.toLowerCase();
             const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
-<<<<<<< HEAD
-            const matchesSupplier = supplierName.toLowerCase().includes(payablesSupplierFilter.toLowerCase());
+            const searchLower = payablesSearch.toLowerCase();
+            const matchesSearch = exp.description.toLowerCase().includes(searchLower) || 
+                                supplierName.toLowerCase().includes(searchLower);
+            
+            const isAtrasado = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+            const matchesStatus = payablesStatusFilter === 'ALL' || 
+                                (payablesStatusFilter === 'Atrasado' ? isAtrasado : exp.status === payablesStatusFilter);
+            
+            const isNotRevenue = exp.dreClass !== 'REVENUE';
 
-            let matchesStatus = true;
-            if (payablesStatusFilter !== 'ALL') {
-                if (payablesStatusFilter === 'Atrasado') {
-                    matchesStatus = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
-                } else {
-                    matchesStatus = exp.status === payablesStatusFilter;
-                }
-            }
-
-            return matchesDate && matchesDesc && matchesSupplier && matchesStatus;
+            return matchesDate && matchesSearch && matchesStatus && isNotRevenue;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesFilter, payablesSupplierFilter, payablesStatusFilter, suppliers]);
-=======
-            const amountStr = exp.amount.toFixed(2).replace('.', ',');
-            const dateStr = new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR');
-
-            const matchesSearch = !search ||
-                exp.description.toLowerCase().includes(search) ||
-                supplierName.toLowerCase().includes(search) ||
-                exp.category.toLowerCase().includes(search) ||
-                amountStr.includes(search) ||
-                dateStr.includes(search);
-
-            return matchesDate && matchesStatus && matchesSearch;
-        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, suppliers, payablesStatusFilter]);
->>>>>>> 148315a01b34210198f44da9c51264ecf9ddbb26
+    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, suppliers]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
             const dateObj = parseDateSafe(start);
             const isClosed = monthlyClosings[`${dateObj.getFullYear()}-${dateObj.getMonth()}`];
 
-            const apps = appointments.filter(a => {
-                const realizationDate = a.paymentDate || a.date;
-                const matchesDate = isClosed
-                    ? (realizationDate >= start && realizationDate <= end)
-                    : (a.date >= start && a.date <= end);
-                return matchesDate && a.status !== 'Cancelado' && (isClosed ? a.isReconciled : true);
-            });
-            const sls = sales.filter(s => s.date >= start && s.date <= end && (isClosed ? s.isReconciled : true));
-
+            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status !== 'Cancelado');
+            const sls = sales.filter(s => s.date >= start && s.date <= end);
+            // If the month is closed, show only reconciled expenses.
+            // If NOT closed, show ALL expenses (forecast).
             const exps = expenses.filter(e => {
-                const matchesDate = e.date >= start && e.date <= end;
+                const eDateClean = e.date ? e.date.substring(0, 10) : '';
+                const matchesDate = eDateClean >= start && eDateClean <= end;
                 if (!matchesDate) return false;
                 if (isClosed) return e.isReconciled;
                 return true;
             });
 
-            // Calculate reconciled sums for services and products to avoid double counting with bank
-            const reconciledAppsSum = apps.filter(a => a.isReconciled).reduce((acc, a) => {
-                if (a.pricePaid !== null && a.pricePaid !== undefined && Number(a.pricePaid) > 0) {
-                    return acc + Number(a.pricePaid);
-                }
-                const mainPrice = (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-                const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
-                    return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-                }, 0);
-                return acc + mainPrice + extraPrice;
-            }, 0);
-
-            const reconciledSalesSum = sls.filter(s => s.isReconciled).reduce((acc, s) => {
-                return acc + (s.items || []).reduce((sum, item) => {
-                    return sum + (item.totalAmount || (item.quantity * item.unitPrice) || item.price || 0);
-                }, 0);
-            }, 0);
-
             const revenueServices = apps.reduce((acc, a) => {
-                if (a.pricePaid !== null && a.pricePaid !== undefined && Number(a.pricePaid) > 0) {
-                    return acc + Number(a.pricePaid);
-                }
-                const mainPrice = (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
                 const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
                     return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
                 }, 0);
@@ -700,8 +636,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
-                    // Count as revenue if it has a productId (stock) OR if the sale is already reconciled (bank match)
-                    if (item.productId || s.isReconciled) {
+                    // Only count as product revenue if it has a productId (real stock product)
+                    // This automatically excludes bank description launches (which don't have productId)
+                    // and service checkouts (which have serviceId)
+                    if (item.productId) {
                         return sum + (item.totalAmount || (item.quantity * item.unitPrice) || item.price || 0);
                     }
                     return sum;
@@ -709,19 +647,25 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + productTotal;
             }, 0);
 
-            // Total bank revenue items (REVENUE and OTHER_INCOME)
-            const bankRevenueTotal = exps.filter(e => e.dreClass === 'REVENUE' && e.isReconciled).reduce((acc, e) => acc + e.amount, 0);
-            const bankOtherIncomeTotal = exps.filter(e => e.dreClass === 'OTHER_INCOME' && e.isReconciled).reduce((acc, e) => acc + e.amount, 0);
+            // Receitas bancárias conciliadas (dreClass=REVENUE) = real service income via card/PIX
+            const reconciledBankRevenues = exps
+                .filter(e => e.dreClass === 'REVENUE')
+                .reduce((acc, e) => acc + e.amount, 0);
 
-            // Reconciled bank revenues that EXCEED known apps/sales (e.g. "Cartão sem nota")
-            // This prevents double counting.
-            const reconciledBankRevenues = Math.max(0, bankRevenueTotal - (reconciledAppsSum + reconciledSalesSum));
+            // Outras receitas (dreClass=OTHER_INCOME) = reembolsos, devoluções, aportes
+            // Always shown in section 6 regardless of isClosed
+            const otherIncome = exps
+                .filter(e => e.dreClass === 'OTHER_INCOME')
+                .reduce((acc, e) => acc + e.amount, 0);
 
-            // Outras receitas (reembolsos, devoluções)
-            const otherIncome = bankOtherIncomeTotal;
-
-            // Gross Revenue = Services + Products + Extra Bank Revenue
-            const grossRevenue = (revenueServices + revenueProducts + reconciledBankRevenues);
+            // Fontes de receita:
+            // Se o mês estiver fechado, somamos as receitas conciliadas (sistema + banco).
+            // Se NÃO estiver fechado, usamos os dados do sistema (vendas + serviços).
+            const grossRevenue = isClosed 
+                ? (apps.filter(a => a.isReconciled && (a.date ? a.date.substring(0, 10) : '') >= start && (a.date ? a.date.substring(0, 10) : '') <= end).reduce((acc, a) => acc + (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0), 0) +
+                   sls.filter(s => s.isReconciled && (s.date ? s.date.substring(0, 10) : '') >= start && (s.date ? s.date.substring(0, 10) : '') <= end).reduce((acc, s) => acc + (s.totalAmount || 0), 0) +
+                   reconciledBankRevenues)
+                : (revenueServices + revenueProducts);
 
             // Automated Deductions (Fees)
             const automatedDeductions = apps.reduce((acc, a) => {
@@ -754,7 +698,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const periodInitialBalance = oldestConfig?.initialBalance || 0;
 
             const realRepasses = exps.filter(e => e.category.toLowerCase().includes('repasse') || e.category.toLowerCase().includes('comissão')).reduce((acc, e) => acc + e.amount, 0);
-            const otherDeductions = exps.filter(e => e.dreClass === 'DEDUCTION' && !e.category.toLowerCase().includes('repasse') && !e.category.toLowerCase().includes('comissão')).reduce((acc, e) => acc + e.amount, 0);
+            const otherDeductions = exps.filter(e => {
+                const cat = e.category.toLowerCase();
+                return e.dreClass === 'DEDUCTION' && !cat.includes('repasse') && !cat.includes('comissão');
+            }).reduce((acc, e) => acc + e.amount, 0);
 
             // Theoretical commissions based on all appointments in the period
             const theoreticalCommissions = apps.reduce((acc, a) => {
@@ -792,7 +739,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const expensesVendas = exps.filter(e => e.dreClass === 'EXPENSE_SALES');
             // Exclude Repasses/Comissões from ADM since they are in Deductions (Line 2)
-            const expensesAdm = exps.filter(e => e.dreClass === 'EXPENSE_ADM' && !e.category.toLowerCase().includes('repasse') && !e.category.toLowerCase().includes('comissão'));
+            const expensesAdm = exps.filter(e => {
+                const cat = e.category.toLowerCase();
+                return e.dreClass === 'EXPENSE_ADM' && !cat.includes('repasse') && !cat.includes('comissão');
+            });
             const expensesFin = exps.filter(e => e.dreClass === 'EXPENSE_FIN');
 
             const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
@@ -836,7 +786,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }, {} as Record<string, { total: number, count: number }>);
 
             // Separation: Manual Deductions (taxes etc) vs Repasses/Commissions
-            const repasseExpenses = exps.filter(e => e.category.toLowerCase().includes('repasse') || e.category.toLowerCase().includes('comissão'));
+            const repasseExpenses = exps.filter(e => {
+                const cat = e.category.toLowerCase();
+                return cat.includes('repasse') || cat.includes('comissão');
+            });
             const manualRepassesByCat = groupByCat(repasseExpenses);
 
             // Theoretical commissions based on all appointments in the period
@@ -871,6 +824,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 });
             }
 
+            const totalOutflows = deductions + totalCOGS + totalOpExpenses + irpjCsll;
+
             return {
                 isClosed,
                 grossRevenue, revenueServices, reconciledBankRevenues, automatedDeductions, anticipationFees,
@@ -878,12 +833,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 totalCOGS, commissions,
                 grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin,
                 resultBeforeTaxes, irpjCsll, netResult,
+                totalOutflows,
                 suggestedCashReserve, periodInitialBalance,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
-                // REVENUE = card service income (Receita Bruta)
-                breakdownBankRevenues: groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
+                // REVENUE = card service income (Receita Bruta) — only show breakdown when not isClosed
+                // (when isClosed they're shown as aggregate Cartão/PIX sub-line in Receita Bruta)
+                breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
                 // OTHER_INCOME = reimbursements/returns — always show in section 6
                 breakdownOtherIncome: groupByCat(exps.filter(e => e.dreClass === 'OTHER_INCOME')),
                 breakdownServices,
@@ -1546,38 +1503,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto items-stretch md:items-center">
-                    {activeTab === 'ACCOUNTS' && accountsSubTab === 'PAYABLES' && (
-                        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
-                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
-                                {[
-                                    { id: 'ALL', label: 'Todos' },
-                                    { id: 'PAGO', label: 'Pagos' },
-                                    { id: 'PENDENTE', label: 'Pendentes' },
-                                    { id: 'ATRASADO', label: 'Atrasados' },
-                                ].map(st => (
-                                    <button
-                                        key={st.id}
-                                        onClick={() => setPayablesStatusFilter(st.id as any)}
-                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${payablesStatusFilter === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                                    >
-                                        {st.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-                                <div className="relative w-full md:w-72">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                    <input
-                                        type="text"
-                                        placeholder="Buscar por descrição, favorecido, valor ou data..."
-                                        className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all placeholder:text-[9px]"
-                                        value={payablesSearch}
-                                        onChange={e => setPayablesSearch(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
                     {activeTab === 'ACCOUNTS' && accountsSubTab === 'RECEIVABLES' && (
                         <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
                             <div className="relative w-full md:w-64">
@@ -2176,62 +2101,69 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <>
                                 {/* Indicadores Contas a Pagar */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    {(() => {
-                                        const payablesForPeriod = expenses.filter(exp => exp.date >= startDate && exp.date <= endDate);
-                                        const cards = [
-                                            { id: 'ALL', label: 'Total no Período', value: payablesForPeriod.reduce((acc, curr) => acc + curr.amount, 0), icon: FileText, color: 'indigo' },
-                                            { id: 'Pago', label: 'Total Pago', value: payablesForPeriod.filter(p => p.status === 'Pago').reduce((acc, curr) => acc + curr.amount, 0), icon: CheckCircle2, color: 'emerald' },
-                                            { id: 'Pendente', label: 'Pendente', value: payablesForPeriod.filter(p => p.status === 'Pendente').reduce((acc, curr) => acc + curr.amount, 0), icon: Clock, color: 'amber' },
-                                            { id: 'Atrasado', label: 'Atrasado', value: payablesForPeriod.filter(p => p.status === 'Pendente' && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + curr.amount, 0), icon: AlertCircle, color: 'rose' },
-                                        ];
-
-                                        return cards.map((card, idx) => (
-                                            <button
-                                                key={idx}
-                                                onClick={() => setPayablesStatusFilter(card.id as any)}
-                                                className={`bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border transition-all text-left group hover:shadow-md active:scale-95 ${payablesStatusFilter === card.id ? `border-${card.color}-500 ring-2 ring-${card.color}-500/20 shadow-sm` : 'border-slate-200 dark:border-zinc-800 shadow-sm'}`}
-                                            >
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
-                                                        <card.icon size={20} />
-                                                    </div>
-                                                    {payablesStatusFilter === card.id && (
-                                                        <div className={`w-2 h-2 rounded-full bg-${card.color}-500 animate-pulse`}></div>
-                                                    )}
+                                    {[
+                                        { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + curr.amount, 0), icon: FileText, color: 'indigo' },
+                                        { label: 'Total Pago', value: filteredPayables.filter(p => p.status === 'Pago').reduce((acc, curr) => acc + curr.amount, 0), icon: CheckCircle2, color: 'emerald' },
+                                        { label: 'Pendente', value: filteredPayables.filter(p => p.status === 'Pendente').reduce((acc, curr) => acc + curr.amount, 0), icon: Clock, color: 'amber' },
+                                        { label: 'Atrasado', value: filteredPayables.filter(p => p.status === 'Pendente' && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + curr.amount, 0), icon: AlertCircle, color: 'rose' },
+                                    ].map((card, idx) => (
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
+                                                    <card.icon size={20} />
                                                 </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                                                    <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
-                                                </div>
-                                            </button>
-                                        ));
-                                    })()}
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
+                                                <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
 
                                 <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="p-5 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
-                                        <div className="flex items-center gap-4 flex-wrap">
-                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                                    <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <div className="flex items-center gap-4 w-full md:w-auto">
+                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                                            
+                                            <div className="hidden md:flex relative flex-1 min-w-[300px]">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar por descrição ou favorecido..."
+                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
+                                                    value={payablesSearch}
+                                                    onChange={e => setPayablesSearch(e.target.value)}
+                                                />
+                                            </div>
+                                        </div>
 
-                                            {/* Status Filter */}
-                                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl shadow-inner ml-2">
-                                                {[
-                                                    { id: 'ALL', label: 'Todos', color: 'slate' },
-                                                    { id: 'Pago', label: 'Pago', color: 'emerald' },
-                                                    { id: 'Pendente', label: 'Pendente', color: 'amber' },
-                                                    { id: 'Atrasado', label: 'Atrasado', color: 'rose' }
-                                                ].map(f => (
+                                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                                            <div className="md:hidden relative w-full">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar descrição ou favorecido..."
+                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
+                                                    value={payablesSearch}
+                                                    onChange={e => setPayablesSearch(e.target.value)}
+                                                />
+                                            </div>
+                                            
+                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-full sm:w-auto justify-center">
+                                                {(['ALL', 'Pago', 'Pendente', 'Atrasado'] as const).map(s => (
                                                     <button
-                                                        key={f.id}
-                                                        onClick={() => setPayablesStatusFilter(f.id as any)}
-                                                        className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${payablesStatusFilter === f.id ? `bg-${f.color}-500 text-white shadow-md` : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                                        key={s}
+                                                        onClick={() => setPayablesStatusFilter(s)}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesStatusFilter === s ? 'bg-slate-900 dark:bg-zinc-700 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                                     >
-                                                        {f.label}
+                                                        {s === 'ALL' ? 'Todos' : s}
                                                     </button>
                                                 ))}
                                             </div>
+
+                                            <button onClick={handlePrintPayablesReport} className="hidden sm:flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
                                         </div>
-                                        <button onClick={handlePrintPayablesReport} className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl flex items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
                                     </div>
                                     <div className="overflow-x-auto scrollbar-hide">
                                         <table className="w-full text-left text-sm min-w-[800px]">
@@ -2954,9 +2886,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                 {/* DRE Indicators / Insights at Top */}
                                 <div className="p-6 bg-slate-50/50 dark:bg-zinc-800/20 border-b border-slate-200 dark:border-zinc-700">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                                         {[
                                             { label: 'Receita Bruta', value: formatCurrency(dreData.grossRevenue), color: 'indigo', icon: TrendingUp },
+                                            { label: 'Total de Saídas', value: '-' + formatCurrency(dreData.totalOutflows), color: 'rose', icon: TrendingDown },
                                             { label: 'Margem de Lucro', value: (dreData.grossRevenue > 0 ? (dreData.netResult / dreData.grossRevenue) * 100 : 0).toFixed(1) + '%', color: 'emerald', icon: Info },
                                             { label: 'Ponto de Equilíbrio', value: formatCurrency((dreData.grossProfit / dreData.grossRevenue) > 0 ? (dreData.totalOpExpenses / (dreData.grossProfit / dreData.grossRevenue)) : 0), color: 'amber', icon: FileText },
                                             { label: 'Resultado Líquido', value: formatCurrency(dreData.netResult), color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CheckCircle2 },
@@ -3022,7 +2955,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('gross') && (
                                                 <>
                                                     {/* Sub-linha Serviços: apenas quando NÃO concluído (previsão por agendamentos) */}
-                                                    {(dreData.revenueServices > 0 || !dreData.isClosed) && (<>
+                                                    {!dreData.isClosed && (<>
                                                         <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
@@ -3068,7 +3001,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         ))}
                                                     </>)}
                                                     {/* Sub-linha: Cartão/PIX (sem nota fiscal) - apenas quando concluído */}
-                                                    {(dreData.reconciledBankRevenues > 0 || !dreData.isClosed) && (
+                                                    {dreData.isClosed && dreData.reconciledBankRevenues > 0 && (
                                                         <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-emerald-600 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('bank-revenues-list') ? <ChevronDown size={12} /> : <DollarSign size={12} />}
