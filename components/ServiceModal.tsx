@@ -223,7 +223,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             });
         }
 
-        // AUTO-MERGE: Find other appointments for the same client on the same day
         const related = allAppointments.filter(a =>
             a.customerId === appointment.customerId &&
             a.date === appointment.date &&
@@ -232,49 +231,59 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         );
 
         related.forEach((rel, rIdx) => {
-            const relService = services.find(s => s.id === rel.serviceId);
-            initialLines.push({
-                id: `rel-${rIdx}`,
-                serviceId: rel.serviceId,
-                providerId: rel.providerId,
-                products: rel.mainServiceProducts || [],
-                currentSearchTerm: '',
-                discount: rel.discountAmount || 0,
-                isCourtesy: rel.isCourtesy || false,
-                showProductResults: false,
-                rating: 5,
-                feedback: '',
-                unitPrice: rel.bookedPrice || relService?.price || 0,
-                startTime: rel.time,
-                endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
-                appointmentId: rel.id,
-                quantity: 1,
-                tipAmount: rel.tipAmount || 0
-            });
+            // Check if this related appointment's main service is already in initialLines
+            const alreadyExists = initialLines.some(l => l.serviceId === rel.serviceId && l.providerId === rel.providerId);
+            
+            if (!alreadyExists) {
+                const relService = services.find(s => s.id === rel.serviceId);
+                initialLines.push({
+                    id: `rel-${rIdx}`,
+                    serviceId: rel.serviceId,
+                    providerId: rel.providerId,
+                    products: rel.mainServiceProducts || [],
+                    currentSearchTerm: '',
+                    discount: rel.discountAmount || 0,
+                    isCourtesy: rel.isCourtesy || false,
+                    showProductResults: false,
+                    rating: 5,
+                    feedback: '',
+                    unitPrice: rel.bookedPrice || relService?.price || 0,
+                    startTime: rel.time,
+                    endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
+                    appointmentId: rel.id,
+                    quantity: 1,
+                    tipAmount: rel.tipAmount || 0
+                });
+            }
 
             if (rel.additionalServices) {
                 rel.additionalServices.forEach((extra, eIdx) => {
-                    initialLines.push({
-                        id: `rel-${rIdx}-extra-${eIdx}`,
-                        serviceId: extra.serviceId,
-                        providerId: extra.providerId,
-                        products: extra.products || [],
-                        currentSearchTerm: '',
-                        discount: extra.discount,
-                        isCourtesy: extra.isCourtesy,
-                        showProductResults: false,
-                        rating: 5,
-                        feedback: '',
-                        unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
-                        startTime: extra.startTime || rel.time,
-                        endTime: extra.endTime || (services.find(s => s.id === extra.serviceId) ? calculateEndTime(extra.startTime || rel.time, services.find(s => s.id === extra.serviceId)!.durationMinutes) : (extra.startTime || rel.time)),
-                        appointmentId: rel.id,
-                        clientName: extra.clientName,
-                        clientPhone: extra.clientPhone,
-                        isCompanion: !!extra.clientName,
-                        quantity: extra.quantity || 1,
-                        tipAmount: extra.tipAmount || 0
-                    });
+                    // Check if this extra service from related appointment is already in initialLines
+                    const extraExists = initialLines.some(l => l.serviceId === extra.serviceId && l.providerId === extra.providerId);
+                    
+                    if (!extraExists) {
+                        initialLines.push({
+                            id: `rel-${rIdx}-extra-${eIdx}`,
+                            serviceId: extra.serviceId,
+                            providerId: extra.providerId,
+                            products: extra.products || [],
+                            currentSearchTerm: '',
+                            discount: extra.discount,
+                            isCourtesy: extra.isCourtesy,
+                            showProductResults: false,
+                            rating: 5,
+                            feedback: '',
+                            unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
+                            startTime: extra.startTime || rel.time,
+                            endTime: extra.endTime || (services.find(s => s.id === extra.serviceId) ? calculateEndTime(extra.startTime || rel.time, services.find(s => s.id === extra.serviceId)!.durationMinutes) : (extra.startTime || rel.time)),
+                            appointmentId: rel.id,
+                            clientName: extra.clientName,
+                            clientPhone: extra.clientPhone,
+                            isCompanion: !!extra.clientName,
+                            quantity: extra.quantity || 1,
+                            tipAmount: extra.tipAmount || 0
+                        });
+                    }
                 });
             }
         });
@@ -666,7 +675,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }));
 
         const combinedNames = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
-        const extras = updatedLines.slice(1).map(l => ({
+        const extrasUnprocessed = updatedLines.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -681,6 +690,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             status: l.status,
             startTimeActual: l.startTimeActual
         }));
+
+        // Deduplicate extras by service and provider to be absolutely safe
+        const extras: typeof extrasUnprocessed = [];
+        const seen = new Set<string>();
+        
+        // Add main service to seen to avoid adding it as extra
+        seen.add(`${updatedLines[0].serviceId}-${updatedLines[0].providerId}`);
+
+        extrasUnprocessed.forEach(e => {
+            const key = `${e.serviceId}-${e.providerId}`;
+            if (!seen.has(key)) {
+                extras.push(e);
+                seen.add(key);
+            }
+        });
 
         const dataToSave = {
             status: 'Aguardando',
@@ -779,7 +803,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const allProductsUsed = lines.flatMap(l => l.products);
 
-        const extras = lines.slice(1).map(l => ({
+        const extrasUnprocessed = lines.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -794,6 +818,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             status: 'Concluído',
             startTimeActual: l.startTimeActual
         }));
+
+        // Deduplicate extras by service and provider to be absolutely safe
+        const extras: typeof extrasUnprocessed = [];
+        const seen = new Set<string>();
+        seen.add(`${lines[0].serviceId}-${lines[0].providerId}`);
+
+        extrasUnprocessed.forEach(e => {
+            const key = `${e.serviceId}-${e.providerId}`;
+            if (!seen.has(key)) {
+                extras.push(e);
+                seen.add(key);
+            }
+        });
 
         const dischargeDate = appointment.date || formatLocalDate(new Date());
 
@@ -1080,7 +1117,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const serviceNamesArray = linesToUse.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
         const uniqueNames = Array.from(new Set(serviceNamesArray));
         const combinedNames = uniqueNames.join(' + ');
-        const extras = linesToUse.slice(1).map(l => ({
+        const extrasUnprocessed = linesToUse.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -1095,6 +1132,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             status: l.status || 'Pendente',
             startTimeActual: l.startTimeActual
         }));
+
+        // Deduplicate extras by service and provider to be absolutely safe
+        const extras: typeof extrasUnprocessed = [];
+        const seen = new Set<string>();
+        seen.add(`${linesToUse[0].serviceId}-${linesToUse[0].providerId}`);
+
+        extrasUnprocessed.forEach(e => {
+            const key = `${e.serviceId}-${e.providerId}`;
+            if (!seen.has(key)) {
+                extras.push(e);
+                seen.add(key);
+            }
+        });
 
         const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
 
@@ -1290,7 +1340,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         try {
             const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
             const allProductsUsed = lines.flatMap(l => l.products);
-            const extras = lines.slice(1).map(l => ({
+            const extrasUnprocessed = lines.slice(1).map(l => ({
                 serviceId: l.serviceId,
                 providerId: l.providerId,
                 isCourtesy: l.isCourtesy,
@@ -1302,6 +1352,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 clientPhone: l.clientPhone,
                 tipAmount: l.tipAmount
             }));
+
+            // Deduplicate extras by service and provider to be absolutely safe
+            const extras: typeof extrasUnprocessed = [];
+            const seen = new Set<string>();
+            seen.add(`${lines[0].serviceId}-${lines[0].providerId}`);
+
+            extrasUnprocessed.forEach(e => {
+                const key = `${e.serviceId}-${e.providerId}`;
+                if (!seen.has(key)) {
+                    extras.push(e);
+                    seen.add(key);
+                }
+            });
 
             const dischargeDate = appointment.date || formatLocalDate(new Date());
 
@@ -1682,10 +1745,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const addServiceLine = () => {
+        const defaultServiceId = services[0].id;
+        const defaultProviderId = customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id;
+
+        // Check if this specific service+provider is already in lines
+        const alreadyExists = lines.some(l => l.serviceId === defaultServiceId && l.providerId === defaultProviderId && !l.isCompanion);
+        if (alreadyExists) {
+            const srvName = services.find(s => s.id === defaultServiceId)?.name || 'Este serviço';
+            const prvName = providers.find(p => p.id === defaultProviderId)?.name || 'este profissional';
+            alert(`⚠️ Atenção: ${srvName} com ${prvName} já está na lista.\n\nPara adicionar novamente, selecione a linha e ajuste a quantidade, ou escolha outro serviço/profissional.`);
+            return;
+        }
+
         setLines([...lines, {
             id: Date.now().toString(),
-            serviceId: services[0].id,
-            providerId: customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id,
+            serviceId: defaultServiceId,
+            providerId: defaultProviderId,
             products: [],
             currentSearchTerm: '',
             discount: 0,
@@ -1699,7 +1774,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCompanion: false,
             quantity: 1,
             tipAmount: 0,
-            // If appointment already started (Aguardando or Em Andamento), new services inherit Aguardando
             status: (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento') ? 'Aguardando' : 'Pendente'
         }]);
     };
