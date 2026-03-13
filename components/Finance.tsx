@@ -49,21 +49,27 @@ interface ManualLinkModalProps {
     expenses: Expense[];
     sales: Sale[];
     appointments: Appointment[];
-    onLink: (bankTxId: string, items: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]) => Promise<void>;
+    onLink: (bankTxId: string, items: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[], newExpense?: { description: string, category: string, amount: number }) => Promise<void>;
     isProcessing: boolean;
     parseDateSafe: (date: any) => Date;
     suppliers: Supplier[];
     customers: Customer[];
+    expenseCategories: ExpenseCategory[];
 }
 
 const ManualLinkModal: React.FC<ManualLinkModalProps> = ({ 
-    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers 
+    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories 
 }) => {
     const [innerSearch, setInnerSearch] = useState('');
     const [selectedItems, setSelectedItems] = useState<{ id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]>([]);
     const [filterMonth, setFilterMonth] = useState<string>('all');
     const [filterYear, setFilterYear] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
+    
+    // Quick Expense Creation State
+    const [isCreatingQuickExpense, setIsCreatingQuickExpense] = useState(false);
+    const [quickExpenseCategory, setQuickExpenseCategory] = useState('');
+    const [quickExpenseDescription, setQuickExpenseDescription] = useState('');
 
     // Reset state when bankTx changes or modal opens
     useEffect(() => {
@@ -78,6 +84,11 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
             
             // Auto-filter by type: BANK RECEITA matches SALE/APPOINTMENT, BANK DESPESA matches EXPENSE
             setFilterType(bankTx.type === 'RECEITA' ? 'REVENUE' : 'EXPENSE');
+            
+            // Reset quick expense creation
+            setIsCreatingQuickExpense(false);
+            setQuickExpenseCategory('');
+            setQuickExpenseDescription(bankTx.description || '');
         }
     }, [isOpen, bankTx?.id]);
 
@@ -285,10 +296,43 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                 </div>
                 <div className="p-8 border-t dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
                     <div className="flex-1">
-                        {Math.abs(diff) > 0.01 && (
-                            <div className="flex items-center gap-2 text-rose-500">
-                                <AlertCircle size={14} />
-                                <p className="text-[9px] font-black uppercase">Diferença de R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                        {Math.abs(diff) > 0.01 && !isCreatingQuickExpense && (
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2 text-rose-500">
+                                    <AlertCircle size={14} />
+                                    <p className="text-[9px] font-black uppercase">Diferença de R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                </div>
+                                <button 
+                                    onClick={() => setIsCreatingQuickExpense(true)}
+                                    className="text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                >
+                                    <Plus size={12} /> Resolver com Nova Despesa
+                                </button>
+                            </div>
+                        )}
+                        {isCreatingQuickExpense && (
+                            <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-900/30 flex flex-col gap-3 max-w-md animate-in slide-in-from-bottom-2 duration-200">
+                                <div className="flex justify-between items-center mb-1">
+                                    <p className="text-[9px] font-black uppercase text-slate-500">Nova Despesa de Ajuste (R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</p>
+                                    <button onClick={() => setIsCreatingQuickExpense(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
+                                </div>
+                                <div className="space-y-2">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Descrição do ajuste..." 
+                                        value={quickExpenseDescription} 
+                                        onChange={e => setQuickExpenseDescription(e.target.value)}
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                    />
+                                    <select 
+                                        value={quickExpenseCategory}
+                                        onChange={e => setQuickExpenseCategory(e.target.value)}
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                    >
+                                        <option value="">Selecione a Categoria...</option>
+                                        {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
                             </div>
                         )}
                         {Math.abs(diff) < 0.01 && selectedItems.length > 0 && (
@@ -303,17 +347,25 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             Fechar
                         </button>
                         <button
-                            disabled={selectedItems.length === 0 || isProcessing}
+                            disabled={(selectedItems.length === 0 && !isCreatingQuickExpense) || isProcessing || (isCreatingQuickExpense && !quickExpenseCategory)}
                             onClick={async () => {
-                                if (Math.abs(diff) > 0.01) {
+                                let newExpense = undefined;
+                                if (isCreatingQuickExpense) {
+                                    if (!quickExpenseCategory) return alert('Selecione uma categoria para a nova despesa.');
+                                    newExpense = {
+                                        description: quickExpenseDescription || bankTx.description,
+                                        category: quickExpenseCategory,
+                                        amount: Math.abs(diff)
+                                    };
+                                } else if (Math.abs(diff) > 0.01) {
                                     if (!window.confirm(`Valores não batem. Deseja vincular assim mesmo?`)) return;
                                 }
-                                await onLink(bankTx.id, selectedItems);
+                                await onLink(bankTx.id, selectedItems, newExpense);
                             }}
                             className="px-8 py-3.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 flex items-center gap-2"
                         >
                             {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 size={14} />} 
-                            Vincular {selectedItems.length > 1 ? `(${selectedItems.length})` : ''}
+                            {isCreatingQuickExpense ? 'Criar e Vincular' : `Vincular ${selectedItems.length > 1 ? `(${selectedItems.length})` : ''}`}
                         </button>
                     </div>
                 </div>
@@ -537,21 +589,64 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         }
     };
 
-    const handleManualLink = async (bankTxId: string, matches: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]) => {
+    const handleManualLink = async (
+        bankTxId: string, 
+        matches: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[],
+        newExpenseData?: { description: string, category: string, amount: number }
+    ) => {
         try {
             // 1. Identify items that are being UNLINKED (present in previous matches but not in new matches)
             const prevMatches = bankTransactions.find(tx => tx.id === bankTxId)?.systemMatches || [];
             const unlinkedItems = prevMatches.filter(pm => !matches.some(m => m.id === pm.id && m.type === pm.type));
 
+            let finalMatches = [...matches];
+
+            // 1.5 Handle quick expense creation if needed
+            if (newExpenseData) {
+                const cat = expenseCategories.find(c => c.name === newExpenseData.category);
+                const { data: newExp, error: expErr } = await supabase
+                    .from('expenses')
+                    .insert([{
+                        description: newExpenseData.description,
+                        category: newExpenseData.category,
+                        amount: newExpenseData.amount,
+                        dre_class: cat?.dreClass || 'EXPENSE_ADM',
+                        date: linkingBankTx?.date || new Date().toISOString().split('T')[0],
+                        status: 'Pago',
+                        is_reconciled: true,
+                        payment_method: 'Pix'
+                    }])
+                    .select()
+                    .single();
+                
+                if (expErr) throw expErr;
+                if (newExp) {
+                    finalMatches.push({ id: newExp.id, type: 'EXPENSE', amount: newExp.amount });
+                    // Add to local state
+                    const mappedExp: Expense = {
+                        id: newExp.id,
+                        description: newExp.description,
+                        category: newExp.category,
+                        dreClass: newExp.dre_class as any,
+                        amount: newExp.amount,
+                        date: newExp.date,
+                        status: newExp.status as any,
+                        paymentMethod: newExp.payment_method as any,
+                        isReconciled: true
+                    };
+                    setExpenses(prev => [mappedExp, ...prev]);
+                }
+            }
+
             // 2. Update bank_transaction
             const { error: txError } = await supabase
                 .from('bank_transactions')
-                .update({ system_matches: matches })
+                .update({ system_matches: finalMatches })
                 .eq('id', bankTxId);
             if (txError) throw txError;
 
             // 3. Update status of LINKED items
-            const linkPromises = matches.map(m => {
+            const linkPromises = finalMatches.map(m => {
                 if (m.type === 'EXPENSE') {
                     return supabase.from('expenses').update({ is_reconciled: true, status: 'Pago', date: linkingBankTx?.date }).eq('id', m.id);
                 } else if (m.type === 'SALE') {
@@ -575,10 +670,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             await Promise.all([...linkPromises, ...unlinkPromises]);
 
             // 5. Update local state
-            setBankTransactions(prev => prev.map(tx => tx.id === bankTxId ? { ...tx, systemMatches: matches } : tx));
+            setBankTransactions(prev => prev.map(tx => tx.id === bankTxId ? { ...tx, systemMatches: finalMatches } : tx));
             
             setExpenses(prev => prev.map(e => {
-                const isLinked = matches.find(m => m.type === 'EXPENSE' && m.id === e.id);
+                const isLinked = finalMatches.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 if (isLinked) return { ...e, isReconciled: true, status: 'Pago', date: linkingBankTx!.date };
                 if (isUnlinked) return { ...e, isReconciled: false };
@@ -586,7 +681,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }));
 
             setSales(prev => prev.map(s => {
-                const isLinked = matches.find(m => m.type === 'SALE' && m.id === s.id);
+                const isLinked = finalMatches.find(m => m.type === 'SALE' && m.id === s.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'SALE' && m.id === s.id);
                 if (isLinked) return { ...s, isReconciled: true };
                 if (isUnlinked) return { ...s, isReconciled: false };
@@ -594,7 +689,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }));
 
             setAppointments(prev => prev.map(a => {
-                const isLinked = matches.find(m => m.type === 'APPOINTMENT' && m.id === a.id);
+                const isLinked = finalMatches.find(m => m.type === 'APPOINTMENT' && m.id === a.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'APPOINTMENT' && m.id === a.id);
                 if (isLinked) return { ...a, isReconciled: true, paymentDate: linkingBankTx!.date };
                 if (isUnlinked) return { ...a, isReconciled: false };
@@ -1239,7 +1334,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const handleOpenModal = (expense?: Expense) => {
         if (expense) { 
             setEditingExpenseId(expense.id); 
-            setExpenseForm(expense); 
+            // Map supplierId/providerId to the select format (prov_ID for professionals)
+            const combinedId = expense.providerId ? `prov_${expense.providerId}` : (expense.supplierId || '');
+            setExpenseForm({ ...expense, supplierId: combinedId }); 
             setCategoryInputSearch(expense.category || '');
             setRecurrenceMonths(1); 
         }
@@ -1266,6 +1363,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 status: e.status,
                 paymentMethod: e.payment_method,
                 supplierId: e.supplier_id,
+                providerId: e.provider_id,
                 recurringId: e.recurring_id
             })));
         }
@@ -4841,9 +4939,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 expenses={expenses}
                 sales={sales}
                 appointments={appointments}
-                onLink={async (id, items) => {
+                onLink={async (id, items, newExp) => {
                     setIsProcessing(true);
-                    await handleManualLink(id, items);
+                    await handleManualLink(id, items, newExp);
                     setIsProcessing(false);
                     setIsManualLinkModalOpen(false);
                     setLinkingBankTx(null);
@@ -4852,6 +4950,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 parseDateSafe={parseDateSafe}
                 suppliers={suppliers}
                 customers={customers}
+                expenseCategories={expenseCategories}
             />
         </div >
     );

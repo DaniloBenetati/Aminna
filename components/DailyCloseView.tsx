@@ -40,6 +40,46 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     );
 
     const { totalServices, totalProducts, totalAjustes, totalTips, totalRevenue, servicesWithTips } = calculateDailySummary(dailyRelTrans);
+    const discountsData = useMemo(() => {
+        const dailyApps = appointments.filter(app => app.date === dateStr && app.status === 'Concluído');
+        let total = 0;
+        const items: { name: string, value: number, type?: string }[] = [];
+
+        dailyApps.forEach(app => {
+            const booked = (app.bookedPrice || 0) + (app.additionalServices?.reduce((sum, s) => sum + (s.bookedPrice || 0), 0) || 0);
+            const totalTipsApp = (app.tipAmount || 0) + (app.additionalServices?.reduce((sum, s) => sum + (s.tipAmount || 0), 0) || 0);
+            const actualPaidRevenue = (app.pricePaid || 0) - totalTipsApp;
+            const discount = Math.max(0, booked - actualPaidRevenue);
+
+            if (discount > 0.01) {
+                total += discount;
+                const trans = dailyRelTrans.find(t => t.customerName && (t.id.includes(app.id) || t.description.includes(app.id)));
+                
+                let type = 'DESCONTO';
+                if (app.appliedCoupon) type = 'CUPOM';
+                else if (app.isCourtesy || app.paymentMethod === 'Cortesia') type = 'VIP';
+
+                items.push({
+                    name: trans?.customerName || 'Cliente',
+                    value: discount,
+                    type
+                });
+            }
+        });
+
+        // Agrupa por nome e tipo para detalhamento preciso
+        const grouped = items.reduce((acc, curr) => {
+            const key = `${curr.name}_${curr.type}`;
+            if (!acc[key]) acc[key] = { name: curr.name, value: 0, type: curr.type };
+            acc[key].value += curr.value;
+            return acc;
+        }, {} as Record<string, { name: string, value: number, type?: string }>);
+
+        return {
+            total,
+            items: Object.values(grouped).sort((a, b) => b.value - a.value)
+        };
+    }, [appointments, dateStr, dailyRelTrans]);
 
     // Fixed Indicators Calculation
     const revisedRevenue = totalRevenue;
@@ -281,8 +321,9 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         message += `*FECHAMENTO DE CAIXA - ${date.toLocaleDateString('pt-BR')}* \uD83D\uDD12\n\n`;
 
         message += `*RESUMO GERAL:*\n`;
-        message += `\u2728 Serviços: R$ ${(servicesWithTips).toFixed(2)}\n`;
+        message += `\u2728 Serviços: R$ ${(totalServices).toFixed(2)}\n`;
         message += `\uD83D\uDECD️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        message += `\uD83C\uDFAB Descontos: R$ ${discountsData.total.toFixed(2)}\n`;
         message += `\uD83D\uDCA0 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
@@ -327,14 +368,48 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 print:hidden">
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                     <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {servicesWithTips.toFixed(2)}</p></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalServices.toFixed(2)}</p></div>
                 </div>
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                     <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><ShoppingBag size={20} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Produtos</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalProducts.toFixed(2)}</p></div>
+                </div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3 relative group">
+                    <div className="p-2 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-xl"><Copy size={20} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Descontos</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {discountsData.total.toFixed(2)}</p></div>
+
+                    {/* Tooltip Popup */}
+                    {discountsData.items.length > 0 && (
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+                            <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-zinc-800 pb-1.5 mb-2">Detalhamento de Descontos</h5>
+                            <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                                {discountsData.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between items-center text-[10px]">
+                                        <span className="font-bold text-slate-700 dark:text-slate-300 truncate pr-2 uppercase flex items-center gap-1.5">
+                                            {item.name}
+                                            {item.type && (
+                                                <span className={`text-[7px] px-1 rounded-full ${
+                                                    item.type === 'VIP' ? 'bg-amber-100 text-amber-600' : 
+                                                    item.type === 'CUPOM' ? 'bg-indigo-100 text-indigo-600' : 
+                                                    'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    {item.type}
+                                                </span>
+                                            )}
+                                        </span>
+                                        <span className="font-black text-slate-900 dark:text-white whitespace-nowrap">R$ {item.value.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-2 pt-1.5 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-[10px] font-black">
+                                <span className="uppercase text-slate-400">Total</span>
+                                <span className="text-zinc-900 dark:text-white">R$ {discountsData.total.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                     <div className="p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl"><Target size={20} /></div>
