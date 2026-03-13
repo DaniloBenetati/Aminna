@@ -49,6 +49,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         customDurations?: Record<string, number>;
     }>({
         name: '',
+        nickname: '',
         phone: '',
         specialty: '', // Legacy/Main label
         specialties: [], // New multi-select list
@@ -416,6 +417,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         setCommissionChangeReason(''); // Reset reason
         setFormData({
             ...provider,
+            nickname: provider.nickname || '',
             workDays: provider.workDays || [1, 2, 3, 4, 5, 6], // Fallback if legacy data missing
             specialties: provider.specialties || [provider.specialty], // Fallback
             fiscalFantasyName: '',
@@ -484,6 +486,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
         const providerData = {
             name: formData.name,
+            nickname: formData.nickname || (formData.name?.split(' ')[0] || ''),
             phone: formData.phone,
             specialty: formData.specialty,
             specialties: formData.specialties || [],
@@ -1049,17 +1052,45 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="md:col-span-2">
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome Completo</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={formData.name}
-                                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
-                                        placeholder="Ex: Maria Carolina Silva"
-                                    />
-                                </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome Completo (Para Recibos)</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.name}
+                                            onChange={e => {
+                                                const newName = e.target.value;
+                                                // If nickname is empty or matches the first name of the old name, update it
+                                                const oldFirstName = formData.name?.split(' ')[0] || '';
+                                                const currentNickname = formData.nickname || '';
+                                                
+                                                let updatedNickname = currentNickname;
+                                                if (!currentNickname || currentNickname === oldFirstName) {
+                                                    updatedNickname = newName.split(' ')[0];
+                                                }
+
+                                                setFormData({ ...formData, name: newName, nickname: updatedNickname });
+                                            }}
+                                            className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            placeholder="Ex: Maria Carolina Silva"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                            <Sparkles size={14} /> Apelido (Para a Agenda)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.nickname}
+                                            onChange={e => setFormData({ ...formData, nickname: e.target.value })}
+                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
+                                            placeholder="Ex: Mari"
+                                        />
+                                        <p className="text-[9px] font-bold text-slate-400 mt-1.5 ml-1">
+                                            Este nome será usado para identificar o profissional na agenda e facilitar a leitura.
+                                        </p>
+                                    </div>
                                 <div className="md:col-span-2">
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Função Principal / Especialidade</label>
                                     <div className="relative">

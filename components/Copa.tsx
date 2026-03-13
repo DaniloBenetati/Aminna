@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { Coffee, Plus, Search, Minus, X, Edit2, History, Package, Clock, DollarSign, TrendingUp, Filter, AlertTriangle, CheckCircle2, ChevronRight, Tag, Save, Info, ChevronDown, ChevronUp, ClipboardList, CalendarRange, ChevronLeft, User } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
 import { PantryItem, PantryLog, Appointment, Customer, Provider } from '../types';
+import { supabase } from '../services/supabase';
 
 interface CopaProps {
     pantryItems: PantryItem[];
@@ -113,7 +114,7 @@ export const Copa: React.FC<CopaProps> = ({
 
     // --- ACTIONS ---
 
-    const handleSaveItem = (e: React.FormEvent) => {
+    const handleSaveItem = async (e: React.FormEvent) => {
         e.preventDefault();
         const form = e.target as HTMLFormElement;
         const formData = {
@@ -125,22 +126,50 @@ export const Copa: React.FC<CopaProps> = ({
             referencePrice: parseFloat((form.elements.namedItem('referencePrice') as HTMLInputElement).value) || 0,
         };
 
-        if (editingItem) {
-            setPantryItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...formData } : i));
-        } else {
-            const newItem: PantryItem = {
-                id: Date.now().toString(),
-                quantity: 0,
-                ...formData
+        try {
+            const dbData = {
+                name: formData.name,
+                unit: formData.unit,
+                category: formData.category,
+                min_quantity: formData.minQuantity,
+                cost_price: formData.costPrice,
+                reference_price: formData.referencePrice,
+                quantity: editingItem ? editingItem.quantity : 0
             };
-            setPantryItems(prev => [...prev, newItem]);
+
+            if (editingItem) {
+                const { error } = await supabase.from('pantry_items').update(dbData).eq('id', editingItem.id);
+                if (error) throw error;
+                setPantryItems(prev => prev.map(i => i.id === editingItem.id ? { ...i, ...formData } : i));
+            } else {
+                const { data, error } = await supabase.from('pantry_items').insert([dbData]).select();
+                if (error) throw error;
+                if (data && data[0]) {
+                    setPantryItems(prev => [...prev, { ...data[0], minQuantity: data[0].min_quantity, costPrice: data[0].cost_price, referencePrice: data[0].reference_price }]);
+                }
+            }
+            setIsItemModalOpen(false);
+            setIsCustomCategory(false);
+        } catch (error) {
+            console.error('Error saving pantry item:', error);
+            alert('Erro ao salvar item no banco de dados.');
         }
-        setIsItemModalOpen(false);
-        setIsCustomCategory(false);
     };
 
-    const handleUpdateStock = (itemId: string, delta: number) => {
-        setPantryItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i));
+    const handleUpdateStock = async (itemId: string, delta: number) => {
+        const item = pantryItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        const newQuantity = Math.max(0, item.quantity + delta);
+
+        try {
+            const { error } = await supabase.from('pantry_items').update({ quantity: newQuantity }).eq('id', itemId);
+            if (error) throw error;
+            setPantryItems(prev => prev.map(i => i.id === itemId ? { ...i, quantity: newQuantity } : i));
+        } catch (error) {
+            console.error('Error updating stock:', error);
+            alert('Erro ao atualizar estoque no banco de dados.');
+        }
     };
 
     const handleAddConsumptionItem = (itemId: string) => {
@@ -163,24 +192,35 @@ export const Copa: React.FC<CopaProps> = ({
         });
     };
 
-    const confirmConsumption = () => {
+    const confirmConsumption = async () => {
         if (!selectedAppointment) return;
 
         const newLogs: PantryLog[] = [];
         const updatedItems = [...pantryItems];
+        const dbLogs: any[] = [];
+        const dbStockUpdates: { id: string, quantity: number }[] = [];
 
         consumptionSelection.forEach(sel => {
             const itemIndex = updatedItems.findIndex(i => i.id === sel.itemId);
             if (itemIndex >= 0) {
                 const item = updatedItems[itemIndex];
-                // Decrement Stock
-                updatedItems[itemIndex] = { ...item, quantity: Math.max(0, item.quantity - sel.quantity) };
+                const newQty = Math.max(0, item.quantity - sel.quantity);
+                
+                // Update Local State copy
+                updatedItems[itemIndex] = { ...item, quantity: newQty };
 
-                // Create Log
+                // Prepare DB items
+                dbStockUpdates.push({ id: sel.itemId, quantity: newQty });
+
+                const logId = Date.now().toString() + Math.random();
+                const logDate = new Date().toISOString().split('T')[0];
+                const logTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+                // Local Log
                 newLogs.push({
-                    id: Date.now().toString() + Math.random(),
-                    date: new Date().toISOString().split('T')[0],
-                    time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                    id: logId,
+                    date: logDate,
+                    time: logTime,
                     itemId: sel.itemId,
                     quantity: sel.quantity,
                     appointmentId: selectedAppointment.id,
@@ -189,17 +229,43 @@ export const Copa: React.FC<CopaProps> = ({
                     costAtMoment: item.costPrice,
                     referenceAtMoment: item.referencePrice
                 });
+
+                // DB Log
+                dbLogs.push({
+                    item_id: sel.itemId,
+                    quantity: sel.quantity,
+                    appointment_id: selectedAppointment.id,
+                    customer_id: selectedAppointment.customerId,
+                    provider_id: selectedAppointment.providerId,
+                    cost_at_moment: item.costPrice,
+                    reference_at_moment: item.referencePrice,
+                    date: logDate,
+                    time: logTime
+                });
             }
         });
 
-        setPantryItems(updatedItems);
-        setPantryLogs(prev => [...prev, ...newLogs]);
-        setIsConsumptionModalOpen(false);
-        setConsumptionSelection([]);
-        // Não fecha o modal imediatamente para permitir ver o histórico atualizado ou adicionar mais, 
-        // ou descomente abaixo para fechar:
-        setIsConsumptionModalOpen(false);
-        setSelectedAppointment(null);
+        if (dbLogs.length === 0) return;
+
+        try {
+            // Update stock levels in DB
+            await Promise.all(dbStockUpdates.map(update => 
+                supabase.from('pantry_items').update({ quantity: update.quantity }).eq('id', update.id)
+            ));
+
+            // Insert logs in DB
+            const { error: logError } = await supabase.from('pantry_logs').insert(dbLogs);
+            if (logError) throw logError;
+
+            setPantryItems(updatedItems);
+            setPantryLogs(prev => [...prev, ...newLogs]);
+            setIsConsumptionModalOpen(false);
+            setConsumptionSelection([]);
+            setSelectedAppointment(null);
+        } catch (error) {
+            console.error('Error confirming consumption:', error);
+            alert('Erro ao registrar consumo no banco de dados.');
+        }
     };
 
     // --- SUB-COMPONENTS ---

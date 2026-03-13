@@ -1378,7 +1378,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate flex items-center justify-center gap-1.5">
-                                                                {p.name.split(' ')[0]}
+                                                                {p.nickname || p.name.split(' ')[0]}
                                                                 {((p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd) || p.daysOff?.includes(gridDateStr)) && (
                                                                     <span className="bg-amber-400 text-amber-950 text-[6px] font-black px-1 rounded-sm">
                                                                         {p.daysOff?.includes(gridDateStr) ? 'FOLGA' : 'FÉRIAS'}

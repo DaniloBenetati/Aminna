@@ -52,6 +52,7 @@ export interface Provider {
   vacationEnd?: string;   // ISO date string
   daysOff?: string[];     // Array de datas específicas de folga (ISO date strings)
   avatar: string;
+  nickname?: string;
   phone?: string;
   birthDate?: string;
   pixKey?: string;

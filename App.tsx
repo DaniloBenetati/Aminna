@@ -241,6 +241,7 @@ const App: React.FC = () => {
           specialties: p.specialties || [],
           commissionRate: p.commission_rate,
           avatar: p.avatar,
+          nickname: p.nickname,
           phone: p.phone,
           birthDate: p.birth_date,
           pixKey: p.pix_key,
