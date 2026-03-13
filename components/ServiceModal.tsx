@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -110,6 +110,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancellationReason, setCancellationReason] = useState('');
+    const [isZeroing, setIsZeroing] = useState(false);
+    const [zeroOutReason, setZeroOutReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
@@ -160,6 +162,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setAppliedCampaign(campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null);
         setIsCancelling(false);
         setCancellationReason('');
+        setIsZeroing(false);
+        setZeroOutReason('');
         setIncludeDebt(!!customer.outstandingBalance && customer.outstandingBalance > 0);
 
         if (appointment.status === 'Concluído') setMode('HISTORY');
@@ -1603,6 +1607,152 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const handleConfirmZeroOut = async () => {
+        if (!zeroOutReason.trim()) {
+            alert('Por favor, informe a justificativa para zerar a comanda.');
+            return;
+        }
+
+        setIsSaving(true);
+
+        try {
+            const dischargeDate = appointment.date || formatLocalDate(new Date());
+            const zeroPaymentMethod = 'Bonificação';
+
+            // 1. Prepare data with 0 values
+            const updatedLines = lines.map(l => ({
+                ...l,
+                unitPrice: 0,
+                discount: 0,
+                bookedPrice: 0,
+                status: 'Concluído' as const
+            }));
+
+            const serviceNamesArray = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
+            const uniqueNames = Array.from(new Set(serviceNamesArray));
+            const combinedNames = uniqueNames.join(' + ');
+
+            const extras = updatedLines.slice(1).map(l => ({
+                serviceId: l.serviceId,
+                providerId: l.providerId,
+                isCourtesy: l.isCourtesy,
+                discount: 0,
+                bookedPrice: 0,
+                products: l.products,
+                startTime: l.startTime,
+                endTime: l.endTime,
+                clientName: l.clientName,
+                clientPhone: l.clientPhone,
+                quantity: l.quantity || 1,
+                status: 'Concluído',
+                startTimeActual: l.startTimeActual
+            }));
+
+            const updatedData: any = {
+                status: 'Concluído',
+                price_paid: 0,
+                payment_date: dischargeDate,
+                payment_method: zeroPaymentMethod,
+                combined_service_names: combinedNames,
+                service_id: updatedLines[0].serviceId,
+                booked_price: 0,
+                provider_id: updatedLines[0].providerId,
+                main_service_products: updatedLines[0].products,
+                additional_services: extras,
+                applied_coupon: null,
+                discount_amount: 0,
+                payments: [{ id: 'zero-' + Date.now(), method: zeroPaymentMethod, amount: 0 }],
+                end_time: updatedLines[0].endTime,
+                tip_amount: 0,
+                start_time_actual: updatedLines[0].startTimeActual,
+                observations: (appointment.observations ? appointment.observations + '\n' : '') + `JUSTIFICATIVA COMANDA ZERADA: ${zeroOutReason}`
+            };
+
+            // Identify secondary appointments to "cancel/merge"
+            const secondaryAppointmentIds = Array.from(new Set(
+                updatedLines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+            ));
+
+            // 2. Update Appointment
+            const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
+            if (apptError) throw apptError;
+
+            // 2.1 Handle Secondary Appointments (Auto-Merge)
+            if (secondaryAppointmentIds.length > 0) {
+                const { error: secondaryError } = await supabase
+                    .from('appointments')
+                    .update({
+                        status: 'Cancelado',
+                        combined_service_names: '[MESCLADO ATENDIMENTO PRINCIPAL]'
+                    })
+                    .in('id', secondaryAppointmentIds);
+                if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
+            }
+
+            // 3. Update Customer History
+            const historyEntry: CustomerHistoryItem = {
+                id: `zero-${Date.now()}`,
+                date: dischargeDate,
+                type: 'VISIT',
+                description: 'AGENDAMENTO ZERADO (BONIFICAÇÃO)',
+                details: `Justificativa: ${zeroOutReason}`,
+                amount: 0,
+                providerId: updatedLines[0].providerId
+            };
+
+            const { error: custError } = await supabase.from('customers').update({
+                last_visit: dischargeDate,
+                history: [historyEntry, ...(customer.history || [])]
+            }).eq('id', customer.id);
+            if (custError) throw custError;
+
+            // 4. Update local state
+            onUpdateAppointments(prev => prev.map(a => {
+                if (a.id === appointment.id) {
+                    return {
+                        ...a,
+                        status: 'Concluído',
+                        pricePaid: 0,
+                        paymentDate: dischargeDate,
+                        paymentMethod: zeroPaymentMethod,
+                        combinedServiceNames: combinedNames,
+                        bookedPrice: 0,
+                        providerId: updatedLines[0].providerId,
+                        mainServiceProducts: updatedLines[0].products,
+                        additionalServices: extras as any,
+                        appliedCoupon: undefined,
+                        discountAmount: 0,
+                        payments: [{ id: 'zero-' + Date.now().toString(), method: zeroPaymentMethod, amount: 0 }],
+                        endTime: updatedLines[0].endTime,
+                        tipAmount: 0,
+                        startTimeActual: updatedLines[0].startTimeActual,
+                        observations: updatedData.observations
+                    } as Appointment;
+                }
+                if (secondaryAppointmentIds.includes(a.id)) {
+                    return { ...a, status: 'Cancelado' as Appointment['status'] };
+                }
+                return a;
+            }));
+
+            onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
+                ...c,
+                lastVisit: dischargeDate,
+                history: [historyEntry, ...(c.history || [])]
+            } : c));
+
+            alert('Comanda zerada com sucesso.');
+            onClose();
+        } catch (error) {
+            console.error('Error zeroing out comanda:', error);
+            alert('Erro ao zerar comanda no banco de dados.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleSkipCpf = () => {
         setShowCpfPrompt(false);
         performIssuance(''); // Issue without CPF (Consumer)
@@ -2402,7 +2552,36 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <div className="flex flex-col gap-2">
                                             {isAgendaMode ? (
                                                 <>
-                                                    {isCancelling ? (
+                                                    {isZeroing ? (
+                                                        <div className="space-y-3 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border-2 border-amber-100 dark:border-amber-900 animate-in zoom-in-95 duration-200">
+                                                            <h4 className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <Coins size={12} /> Zerar Comanda / Bonificação
+                                                            </h4>
+                                                            <textarea
+                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                                                placeholder="Descreva o motivo para zerar esta comanda..."
+                                                                value={zeroOutReason}
+                                                                onChange={e => setZeroOutReason(e.target.value)}
+                                                                autoFocus
+                                                            />
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsZeroing(false)}
+                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                                >
+                                                                    Voltar
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleConfirmZeroOut}
+                                                                    className="flex-[2] py-3 bg-amber-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-amber-700"
+                                                                >
+                                                                    Confirmar e Zerar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ) : isCancelling ? (
                                                         <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
                                                             <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
                                                                 <AlertTriangle size={12} /> Cancelamento de Agendamento
@@ -2448,6 +2627,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 title="Cancelar Agendamento (Fica no Histórico)"
                                                             >
                                                                 <XCircle size={16} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setIsZeroing(true)}
+                                                                className="py-4 px-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                                                title="Zerar Comanda (Bonificação/Cortesia Especial)"
+                                                            >
+                                                                <Coins size={16} />
                                                             </button>
                                                             <button
                                                                 type="button"
