@@ -1665,7 +1665,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 end_time: updatedLines[0].endTime,
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
-                observations: (appointment.observations ? appointment.observations + '\n' : '') + `JUSTIFICATIVA COMANDA ZERADA: ${zeroOutReason}`
+                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA COMANDA ZERADA: ${zeroOutReason}`
             };
 
             // Identify secondary appointments to "cancel/merge"
@@ -1698,7 +1698,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 type: 'VISIT',
                 description: 'AGENDAMENTO ZERADO (BONIFICAÇÃO)',
                 details: `Justificativa: ${zeroOutReason}`,
-                amount: 0,
                 providerId: updatedLines[0].providerId
             };
 
@@ -1728,7 +1727,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         endTime: updatedLines[0].endTime,
                         tipAmount: 0,
                         startTimeActual: updatedLines[0].startTimeActual,
-                        observations: updatedData.observations
+                        observation: updatedData.observation
                     } as Appointment;
                 }
                 if (secondaryAppointmentIds.includes(a.id)) {
@@ -1804,9 +1803,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         details: `Motivo: ${cancellationReason}`,
                         providerId: appointment.providerId
                     };
+                    const updatedHistory = [cancelEntry, ...(c.history || [])];
+                    
+                    // Update database
+                    supabase.from('customers').update({ 
+                        history: updatedHistory 
+                    }).eq('id', customer.id).then(({ error }) => {
+                        if (error) console.error('Error updating customer history in DB:', error);
+                    });
+
                     return {
                         ...c,
-                        history: [cancelEntry, ...c.history]
+                        history: updatedHistory
                     };
                 }
                 return c;
