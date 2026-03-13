@@ -196,34 +196,41 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }];
 
         if (appointment.additionalServices) {
+            const seenExtras = new Set<string>();
+            seenExtras.add(`${appointment.serviceId}-${appointment.providerId}`);
+
             appointment.additionalServices.forEach((extra, idx) => {
-                initialLines.push({
-                    id: `extra-${idx}`,
-                    serviceId: extra.serviceId,
-                    providerId: extra.providerId,
-                    products: extra.products || [],
-                    currentSearchTerm: '',
-                    discount: extra.discount,
-                    isCourtesy: extra.isCourtesy,
-                    showProductResults: false,
-                    rating: 5,
-                    feedback: '',
-                    unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
-                    startTime: extra.startTime || appointment.time,
-                    endTime: extra.endTime || (() => {
-                        const srv = services.find(s => s.id === extra.serviceId);
-                        const prv = activeProviders.find(p => p.id === extra.providerId);
-                        return srv ? calculateEndTime(extra.startTime || appointment.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || appointment.time);
-                    })(),
-                    appointmentId: appointment.id,
-                    clientName: extra.clientName,
-                    clientPhone: extra.clientPhone,
-                    isCompanion: !!extra.clientName, // Assume if name exists, it's a companion (or explicit flag if we saved it)
-                    quantity: extra.quantity || 1,
-                    tipAmount: extra.tipAmount || 0,
-                    status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado') ? appointment.status : ((extra.status as any) || 'Pendente'),
-                    startTimeActual: extra.startTimeActual
-                });
+                const key = `${extra.serviceId}-${extra.providerId}`;
+                if (!seenExtras.has(key)) {
+                    initialLines.push({
+                        id: `extra-${idx}`,
+                        serviceId: extra.serviceId,
+                        providerId: extra.providerId,
+                        products: extra.products || [],
+                        currentSearchTerm: '',
+                        discount: extra.discount,
+                        isCourtesy: extra.isCourtesy,
+                        showProductResults: false,
+                        rating: 5,
+                        feedback: '',
+                        unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
+                        startTime: extra.startTime || appointment.time,
+                        endTime: extra.endTime || (() => {
+                            const srv = services.find(s => s.id === extra.serviceId);
+                            const prv = activeProviders.find(p => p.id === extra.providerId);
+                            return srv ? calculateEndTime(extra.startTime || appointment.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || appointment.time);
+                        })(),
+                        appointmentId: appointment.id,
+                        clientName: extra.clientName,
+                        clientPhone: extra.clientPhone,
+                        isCompanion: !!extra.clientName,
+                        quantity: extra.quantity || 1,
+                        tipAmount: extra.tipAmount || 0,
+                        status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado') ? appointment.status : ((extra.status as any) || 'Pendente'),
+                        startTimeActual: extra.startTimeActual
+                    });
+                    seenExtras.add(key);
+                }
             });
         }
 
@@ -1632,7 +1639,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const uniqueNames = Array.from(new Set(serviceNamesArray));
             const combinedNames = uniqueNames.join(' + ');
 
-            const extras = updatedLines.slice(1).map(l => ({
+            const extrasUnprocessed = updatedLines.slice(1).map(l => ({
                 serviceId: l.serviceId,
                 providerId: l.providerId,
                 isCourtesy: l.isCourtesy,
@@ -1647,6 +1654,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 status: 'Concluído',
                 startTimeActual: l.startTimeActual
             }));
+
+            const extras: typeof extrasUnprocessed = [];
+            const seen = new Set<string>();
+            seen.add(`${updatedLines[0].serviceId}-${updatedLines[0].providerId}`);
+
+            extrasUnprocessed.forEach(e => {
+                const key = `${e.serviceId}-${e.providerId}`;
+                if (!seen.has(key)) {
+                    extras.push(e);
+                    seen.add(key);
+                }
+            });
 
             const updatedData: any = {
                 status: 'Concluído',
