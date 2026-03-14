@@ -242,8 +242,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         );
 
         related.forEach((rel, rIdx) => {
-            // Check if this related appointment's main service is already in initialLines
-            const alreadyExists = initialLines.some(l => l.serviceId === rel.serviceId && l.providerId === rel.providerId);
+            // Check if this related appointment's main service is already represented in initialLines BY ITS ID
+            // Previously it checked by serviceId + providerId, which prevented identical duplicates from being merged.
+            const alreadyExists = initialLines.some(l => l.appointmentId === rel.id && l.id === `rel-${rIdx}`);
             
             if (!alreadyExists) {
                 const relService = services.find(s => s.id === rel.serviceId);
@@ -262,7 +263,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     startTime: rel.time,
                     endTime: rel.endTime || (relService ? calculateEndTime(rel.time, relService.durationMinutes) : rel.time),
                     appointmentId: rel.id,
-                    quantity: 1,
+                    quantity: rel.quantity || 1,
                     tipAmount: rel.tipAmount || 0
                 });
             }
@@ -270,11 +271,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             if (rel.additionalServices) {
                 rel.additionalServices.forEach((extra, eIdx) => {
                     // Check if this extra service from related appointment is already in initialLines
-                    const extraExists = initialLines.some(l => l.serviceId === extra.serviceId && l.providerId === extra.providerId);
+                    const ExtraId = `rel-${rIdx}-extra-${eIdx}`;
+                    const extraExists = initialLines.some(l => l.id === ExtraId);
                     
                     if (!extraExists) {
                         initialLines.push({
-                            id: `rel-${rIdx}-extra-${eIdx}`,
+                            id: ExtraId,
                             serviceId: extra.serviceId,
                             providerId: extra.providerId,
                             products: extra.products || [],
@@ -1291,7 +1293,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         return a;
                     }).concat(others);
                 } else {
-                    return [...prev, ...newLocalAppts];
+                    // CRITICAL: If we are replacing a local draft ID with a persistence ID, 
+                    // ensure we remove the draft ID from the state.
+                    const filtered = prev.filter(a => a.id !== appointment.id);
+                    return [...filtered, ...newLocalAppts];
                 }
             });
 

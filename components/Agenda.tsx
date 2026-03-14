@@ -655,8 +655,14 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         if (existingToday.length > 0) {
             const list = existingToday.map(a => `- ${a.time} (${a.status})`).join('\n');
-            if (!window.confirm(`⚠️ CLIENTE JÁ POSSUI AGENDAMENTO(S) NESTA DATA:\n\n${list}\n\nDeseja continuar com um novo registro?`)) {
+            const confirmMerge = window.confirm(`⚠️ CLIENTE JÁ POSSUI AGENDAMENTO(S) NESTA DATA:\n\n${list}\n\nDeseja abrir o agendamento existente para ADICIONAR este novo serviço? (Recomendado)\n\nClique em CANCELAR se desejar criar um registro separado.`);
+            
+            if (confirmMerge) {
+                // Open the first existing appointment. The ServiceModal will then find this new draft as "related"
+                // and allow merging them.
+                setSelectedAppointment(existingToday[0]);
                 setIsCustomerSelectionOpen(false);
+                setIsServiceModalOpen(true);
                 return;
             }
         }
