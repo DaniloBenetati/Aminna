@@ -69,6 +69,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [previewProduct, setPreviewProduct] = useState<StockItem | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [showThumbsUp, setShowThumbsUp] = useState(false);
+    const touchStartRef = React.useRef<number | null>(null);
 
     const getCustomerName = (id: string) => (customers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
     const getProductName = (id: string) => stock.find(s => s.id === id)?.name || 'Produto Removido';
@@ -1263,41 +1264,65 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         {/* Close Button - Sticky/Fixed at top right */}
                         <button 
                             onClick={() => setPreviewProduct(null)}
-                            className="absolute top-6 right-6 z-50 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-black rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
+                            className="absolute top-6 right-6 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-xl text-white rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
                         >
                             <X size={24} />
                         </button>
 
                         {/* Image Section - The STAR */}
-                        <div className="flex-1 relative bg-zinc-50 dark:bg-black flex items-center justify-center group overflow-hidden min-h-0">
+                        <div 
+                            className="flex-1 relative bg-zinc-50 dark:bg-black flex items-center justify-center group overflow-hidden min-h-0 touch-pan-y"
+                            onTouchStart={(e) => {
+                                touchStartRef.current = e.touches[0].clientX;
+                            }}
+                            onTouchEnd={(e) => {
+                                if (touchStartRef.current === null) return;
+                                const touchEnd = e.changedTouches[0].clientX;
+                                const diff = touchStartRef.current - touchEnd;
+                                const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                
+                                if (Math.abs(diff) > 50) { // Threshold for swipe
+                                    if (diff > 0) {
+                                        // Swipe Left -> Next
+                                        setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                                    } else {
+                                        // Swipe Right -> Prev
+                                        setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                                    }
+                                }
+                                touchStartRef.current = null;
+                            }}
+                        >
                             {/* Main Image - Fully Expanded */}
                             <img 
                                 src={[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean)[activeImageIndex] as string || ''} 
                                 alt={previewProduct.name}
-                                className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-700"
+                                className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-700 select-none pointer-events-none"
                                 referrerPolicy="no-referrer"
                             />
 
-                            {/* Navigation Arrows - Sleeker */}
+                            {/* Navigation Arrows - Visible on mobile/iPad too if multiple images */}
                             {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length > 1 && (
                                 <>
                                     <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setActiveImageIndex(prev => prev > 0 ? prev - 1 : [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length - 1);
+                                            const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                            setActiveImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
                                         }}
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-slate-800/40 hover:bg-slate-800/60 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 opacity-0 group-hover:opacity-100 hidden md:flex active:scale-95"
+                                        className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 p-4 md:p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[1.5rem] md:rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10"
                                     >
-                                        <ChevronLeft size={32} />
+                                        <ChevronLeft size={24} className="md:w-8 md:h-8" />
                                     </button>
                                     <button 
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            setActiveImageIndex(prev => prev < [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length - 1 ? prev + 1 : 0);
+                                            const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                            setActiveImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
                                         }}
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-slate-800/40 hover:bg-slate-800/60 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 opacity-0 group-hover:opacity-100 hidden md:flex active:scale-95"
+                                        className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 p-4 md:p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[1.5rem] md:rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10"
                                     >
-                                        <ChevronRight size={32} />
+                                        <ChevronRight size={24} className="md:w-8 md:h-8" />
                                     </button>
                                 </>
                             )}
@@ -1318,27 +1343,27 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 md:gap-8 items-center md:items-center">
                                 
                                 {/* 1. Product Identify */}
-                                <div className="flex-1 space-y-2 text-center md:text-left min-w-0 w-full">
+                                <div className="flex-1 space-y-1 text-center md:text-left min-w-0 w-full">
                                     <div className="flex justify-center md:justify-start items-center gap-3">
                                         <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em]">{previewProduct.group || 'Semi Joia'}</p>
                                     </div>
-                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tight truncate" style={{ color: '#75787B' }}>{previewProduct.name}</h2>
+                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tight truncate text-slate-900 dark:text-white">{previewProduct.name}</h2>
                                     <div className="flex items-center justify-center md:justify-start gap-4">
-                                        <span className="text-lg font-black italic tracking-tighter" style={{ color: '#75787B' }}>R$ {previewProduct.price?.toFixed(2)}</span>
-                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">por unidade</span>
+                                        <span className="text-lg font-black italic tracking-tighter text-slate-950 dark:text-emerald-400">R$ {previewProduct.price?.toFixed(2)}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">por unidade</span>
                                     </div>
                                 </div>
 
                                 {/* 2. Gallery & Controls */}
-                                <div className="flex flex-col md:flex-row items-center gap-8 w-full md:w-auto">
+                                <div className="flex flex-col md:flex-row items-center gap-6 w-full md:w-auto">
                                     {/* Tiny Gallery */}
                                     {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length > 1 && (
-                                        <div className="hidden md:flex gap-1.5">
+                                        <div className="hidden md:flex gap-1.5 overflow-x-auto max-w-[200px] scrollbar-hide">
                                             {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).map((url, i) => (
                                                 <button 
                                                     key={i}
                                                     onClick={() => setActiveImageIndex(i)}
-                                                    className={`w-8 h-8 rounded-lg overflow-hidden border-2 transition-all ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
+                                                    className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
                                                 >
                                                     <img src={url as string} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                 </button>
@@ -1346,49 +1371,51 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </div>
                                     )}
 
-                                    {/* Qty Selector */}
-                                    <div className="flex items-center gap-4 bg-slate-50 dark:bg-zinc-900 px-4 py-2 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                                        {/* Qty Selector */}
+                                        <div className="flex items-center gap-4 bg-slate-50 dark:bg-zinc-900 px-4 py-2 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                            <button 
+                                                onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
+                                                className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
+                                            >
+                                                <Minus size={16} />
+                                            </button>
+                                            <span className="text-xl font-black text-zinc-950 dark:text-white tabular-nums min-w-[24px] text-center">{currentQuantity}</span>
+                                            <button 
+                                                onClick={() => setCurrentQuantity(prev => prev + 1)}
+                                                className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        </div>
+
+                                        {/* Action Button - Icon Only */}
                                         <button 
-                                            onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
-                                            className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
+                                            onClick={() => {
+                                                const newItem: CartItem = {
+                                                    id: Date.now().toString(),
+                                                    productId: previewProduct.id,
+                                                    productName: previewProduct.name,
+                                                    quantity: currentQuantity,
+                                                    unitPrice: previewProduct.price || 0,
+                                                    total: (previewProduct.price || 0) * currentQuantity
+                                                };
+                                                setCart([...cart, newItem]);
+                                                
+                                                // Trigger Thumbs Up Animation
+                                                setShowThumbsUp(true);
+                                                setTimeout(() => {
+                                                    setShowThumbsUp(false);
+                                                    setPreviewProduct(null);
+                                                }, 1500);
+                                            }}
+                                            title="Adicionar ao Carrinho"
+                                            className="h-12 flex-1 md:flex-none md:w-20 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group px-6 md:px-0"
                                         >
-                                            <Minus size={16} />
-                                        </button>
-                                        <span className="text-xl font-black text-zinc-950 dark:text-white tabular-nums min-w-[24px] text-center">{currentQuantity}</span>
-                                        <button 
-                                            onClick={() => setCurrentQuantity(prev => prev + 1)}
-                                            className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
-                                        >
-                                            <Plus size={16} />
+                                            <Plus size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                            <ShoppingCart size={20} className="group-hover:scale-110 transition-transform" /> 
                                         </button>
                                     </div>
-
-                                    {/* Action Button - Icon Only */}
-                                    <button 
-                                        onClick={() => {
-                                            const newItem: CartItem = {
-                                                id: Date.now().toString(),
-                                                productId: previewProduct.id,
-                                                productName: previewProduct.name,
-                                                quantity: currentQuantity,
-                                                unitPrice: previewProduct.price || 0,
-                                                total: (previewProduct.price || 0) * currentQuantity
-                                            };
-                                            setCart([...cart, newItem]);
-                                            
-                                            // Trigger Thumbs Up Animation
-                                            setShowThumbsUp(true);
-                                            setTimeout(() => {
-                                                setShowThumbsUp(false);
-                                                setPreviewProduct(null);
-                                            }, 1500);
-                                        }}
-                                        title="Adicionar ao Carrinho"
-                                        className="w-16 h-12 md:w-20 md:h-12 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group"
-                                    >
-                                        <Plus size={16} className="group-hover:translate-x-0.5 transition-transform" />
-                                        <ShoppingCart size={20} className="group-hover:scale-110 transition-transform" /> 
-                                    </button>
                                 </div>
                             </div>
                             
