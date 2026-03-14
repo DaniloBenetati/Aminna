@@ -272,7 +272,9 @@ export const generateFinancialTransactions = (
             
             // Calculate proportional revenue for this line
             const mainRevenueAmount = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
-            const commissionLiquidBase = mainRevenueAmount * (1 - (fee / 100));
+            // Base commission on FULL price if coupon is applied (company absorbs the discount)
+            const commissionBase = (app.appliedCoupon && mainBooked > 0) ? mainBooked : mainRevenueAmount;
+            const commissionLiquidBase = commissionBase * (1 - (fee / 100));
             const commissionAmount = commissionLiquidBase * rate;
             const commissionDate = getCommissionDate(baseDate);
 
@@ -295,8 +297,8 @@ export const generateFinancialTransactions = (
         }
 
         // Additional Services Commissions
-        if (app.additionalServices && app.additionalServices.length > 0) {
-            app.additionalServices.forEach((extra, idx) => {
+        if (extrasList && extrasList.length > 0) {
+            extrasList.forEach((extra, idx) => {
                 const extraProvider = providers.find(p => p.id === extra.providerId);
                 const extraService = services.find(s => s.id === extra.serviceId);
                 if (extraProvider) {
@@ -305,9 +307,11 @@ export const generateFinancialTransactions = (
                     const rate = extraRateSnapshot ?? extraProvider.commissionRate;
                     
                     // Calculate proportional revenue for this extra line
-                    const extraBookedPrice = extra.bookedPrice; // Already multiplied by quantity above
+                    const extraBookedPrice = extra.bookedPrice; // Already multiplied by quantity in extrasList mapping
                     const extraRevenueAmount = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
-                    const commissionLiquidBase = extraRevenueAmount * (1 - (fee / 100));
+                    // Base commission on FULL price if coupon is applied
+                    const extraCommBase = (app.appliedCoupon && extraBookedPrice > 0) ? extraBookedPrice : extraRevenueAmount;
+                    const commissionLiquidBase = extraCommBase * (1 - (fee / 100));
                     const commissionAmount = commissionLiquidBase * rate;
                     const commissionDate = getCommissionDate(baseDate);
 

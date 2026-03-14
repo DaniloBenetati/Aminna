@@ -646,6 +646,22 @@ export const Agenda: React.FC<AgendaProps> = ({
             return;
         }
 
+        // --- DUPLICITY WARNING ---
+        const existingToday = appointments.filter(a => 
+            String(a.customerId).trim().toLowerCase() === String(customer.id).trim().toLowerCase() && 
+            a.date === draftAppointment.date && 
+            a.status !== 'Cancelado'
+        );
+
+        if (existingToday.length > 0) {
+            const list = existingToday.map(a => `- ${a.time} (${a.status})`).join('\n');
+            if (!window.confirm(`⚠️ CLIENTE JÁ POSSUI AGENDAMENTO(S) NESTA DATA:\n\n${list}\n\nDeseja continuar com um novo registro?`)) {
+                setIsCustomerSelectionOpen(false);
+                return;
+            }
+        }
+        // -------------------------
+
         // --- LEAD CONVERSION LOGIC ---
         // Check if this customer corresponds to an existing Lead based on Phone
         const canIssueNFSe = !!(fiscalConfig?.autoIssueNfse);

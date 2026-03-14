@@ -410,7 +410,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="hidden md:block">
-                    <img src="/logo.png" alt="Aminna Logo" className="h-10 md:h-14 w-auto object-contain" />
+                    <img src="/logo.png" alt="Aminna Logo" className="h-14 w-auto object-contain dark:invert" />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Responsive Tab Switcher */}
@@ -1444,7 +1444,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
             )}
 
-            <style jsx>{`
+            <style dangerouslySetInnerHTML={{ __html: `
                 @keyframes thumbsUp {
                     0% { transform: translateY(100px) scale(0); opacity: 0; }
                     20% { transform: translateY(0) scale(1.2); opacity: 1; }
@@ -1454,7 +1454,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 .animate-conversation-thumbs-up {
                     animation: thumbsUp 1.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
                 }
-            `}</style>
+            ` }} />
         </div>
     );
 };

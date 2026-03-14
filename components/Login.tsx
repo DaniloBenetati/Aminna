@@ -64,7 +64,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
               <img
                 src="/logo.png"
                 alt="Aminna Logo"
-                className="h-24 md:h-28 relative z-10 dark:invert dark:brightness-200"
+                className="h-24 md:h-28 w-auto relative z-10 object-contain dark:invert"
               />
             </div>
             <div className="space-y-1">

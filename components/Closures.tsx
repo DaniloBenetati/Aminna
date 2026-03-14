@@ -91,8 +91,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         if (isRemake) serviceRevenue = 0;
 
         // Commission (Based on proportional revenue unless it's a remake)
+        // If a coupon is applied, the commission base is the FULL booked price
+        const commissionBase = (app.appliedCoupon && mainBooked > 0 && !isRemake) ? mainBooked : serviceRevenue;
         const rate = app.commissionRateSnapshot ?? defaultRate;
-        const payout = serviceRevenue * rate;
+        const payout = commissionBase * rate;
 
         revenue += serviceRevenue;
         serviceCommission += payout;
@@ -120,8 +122,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           if (isRemake) serviceRevenue = 0;
 
           // Commission (Based on proportional revenue)
+          const extraBookedPrice = extra.bookedPrice;
+          const commissionBase = (app.appliedCoupon && extraBookedPrice > 0 && !isRemake) ? extraBookedPrice : serviceRevenue;
           const rate = extra.commissionRateSnapshot ?? defaultRate;
-          const payout = serviceRevenue * rate;
+          const payout = commissionBase * rate;
 
           revenue += serviceRevenue;
           serviceCommission += payout;
@@ -229,7 +233,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       <div className="w-[210mm] min-h-[297mm] bg-white text-black p-12 flex flex-col gap-10">
         <div className="flex justify-between items-center border-b-2 border-slate-900 pb-8">
           <div className="flex items-center gap-6">
-            <img src="/logo.png" alt="Aminna" className="w-16 h-16 object-contain" />
+            <img src="/logo.png" alt="Aminna" className="w-16 h-16 object-contain dark:invert" />
             <div>
               <h1 className="text-xl font-black uppercase tracking-tighter">Provisão de Pagamento</h1>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
@@ -304,7 +308,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       <div className={`flex flex-col ${type === 'summary' ? 'h-[50%]' : 'min-h-[148mm]'} p-12 relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
         <div className="flex justify-between items-start mb-10">
           <div className="flex items-center gap-8">
-            <img src="/logo.png" alt="Aminna" className="w-20 h-20 object-contain grayscale opacity-90" />
+            <img src="/logo.png" alt="Aminna" className="w-20 h-20 object-contain dark:invert" />
             <div className="text-[9px] font-medium text-slate-400 space-y-0.5 uppercase tracking-[0.2em]">
               <p>Aminna Gestão de Atendimentos</p>
               <p>CNPJ: 00.000.000/0001-00</p>

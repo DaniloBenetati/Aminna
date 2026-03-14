@@ -21,7 +21,7 @@ const Logo = ({ className = "h-16", collapsed = false }: { className?: string; c
     <img
       src="/logo.png"
       alt="Aminna Logo"
-      className={`object-contain transition-all duration-500 ${collapsed ? 'w-10 h-10' : 'w-full h-full'} dark:invert dark:brightness-200`}
+      className={`object-contain transition-all duration-500 dark:invert ${collapsed ? 'w-10 h-10' : 'max-w-full max-h-full'}`}
       onError={(e) => {
         e.currentTarget.style.display = 'none';
         const parent = e.currentTarget.parentElement;
@@ -242,24 +242,28 @@ export const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-30 p-4 flex justify-between items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
-        <button
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-xl transition-colors border border-slate-100 dark:border-zinc-700"
-        >
-          <Menu size={24} className="text-slate-700 dark:text-slate-300" />
-        </button>
-        
-        <div className="absolute left-1/2 -translate-x-1/2">
-          <Logo className="h-8" />
+      <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-30 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
+        <div className="flex justify-start">
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
         </div>
 
-        <button
-          onClick={toggleTheme}
-          className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
-        >
-          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
+        <div className="flex justify-center">
+          <Logo className="h-8 md:h-10" />
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-xl transition-colors border border-slate-100 dark:border-zinc-700"
+          >
+            <Menu size={24} className="text-slate-700 dark:text-slate-300" />
+          </button>
+        </div>
       </div>
 
       {/* Main Content */}

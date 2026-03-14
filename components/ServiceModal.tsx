@@ -186,7 +186,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTime: appointment.time,
             endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
             appointmentId: appointment.id,
-            quantity: 1,
+            quantity: appointment.quantity || 1,
             tipAmount: appointment.tipAmount || 0,
             status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado')
                 ? appointment.status
@@ -474,7 +474,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 // 1. Basic exclusions
                 if (currentApptIds.has(a.id)) return false;
                 if (a.date !== modalDate) return false;
-                if (a.customerId === currentCustomerId) return false; // SELF-EXCLUSION
+                // if (a.customerId === currentCustomerId) return false; // REMOVED: Should detect if same customer is double-booked
 
                 const isInternalBlock = a.combinedServiceNames === 'BLOQUEIO_INTERNO';
                 if (a.status === 'Cancelado' && !isInternalBlock) return false;
@@ -636,14 +636,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const currentTime = appointmentTime.slice(0, 5);
 
             if (a.date !== appointmentDate || apptTime !== currentTime) return false;
-            if (a.status === 'Cancelado' || a.status === 'Concluído') return false;
+            if (a.status === 'Cancelado') return false;
+            // If it's already finished, we should probably warn or allow merging to fix duplication
 
             return true;
         });
 
         if (concurrentAppt) {
             const providerName = providers.find(p => p.id === concurrentAppt.providerId)?.name || 'Profissional';
-            const confirmMerge = window.confirm(`A cliente ${customer.name} já tem um agendamento às ${appointmentTime} com ${providerName}.\n\nDeseja JUNTAR este serviço ao agendamento existente?`);
+            const statusLabel = concurrentAppt.status === 'Concluído' ? 'já CONCLUÍDO' : `agendado (${concurrentAppt.status})`;
+            const confirmMerge = window.confirm(`A cliente ${customer.name} já tem um atendimento ${statusLabel} às ${appointmentTime} com ${providerName}.\n\nDeseja JUNTAR este serviço ao registro existente para evitar duplicidade?`);
 
             if (confirmMerge) {
                 return await performMerge(concurrentAppt);
@@ -1187,6 +1189,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             end_time: linesToUse[0].endTime,
             tip_amount: linesToUse.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             recurrence_id: recId,
+            quantity: linesToUse[0].quantity || 1,
             start_time_actual: linesToUse[0].startTimeActual
         };
 
@@ -1275,6 +1278,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     payments: s.payments || [],
                     recurrenceId: s.recurrence_id,
                     endTime: s.end_time,
+                    quantity: s.quantity || 1,
                     startTimeActual: s.start_time_actual
                 } as Appointment));
 

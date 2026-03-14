@@ -145,6 +145,8 @@ const App: React.FC = () => {
           supabase
             .from('customers')
             .select('*')
+            .order('name', { ascending: true })
+            .order('id', { ascending: true })
             .range(i * pageSize, (i + 1) * pageSize - 1)
         );
 
@@ -174,6 +176,8 @@ const App: React.FC = () => {
             .gte('date', minDate)
             .range(i * pageSize, (i + 1) * pageSize - 1)
             .order('date', { ascending: true })
+            .order('time', { ascending: true })
+            .order('id', { ascending: true })
         );
 
         const results = await Promise.all(promises);
@@ -439,7 +443,7 @@ const App: React.FC = () => {
 
       // Set Customers
       if (fetchedCustomers && fetchedCustomers.length > 0) {
-        setCustomers(fetchedCustomers.map((c: any) => ({
+        const mappedCustomers = fetchedCustomers.map((c: any) => ({
           id: c.id,
           name: c.name,
           email: c.email,
@@ -463,13 +467,16 @@ const App: React.FC = () => {
           isVip: c.is_vip,
           vipDiscountPercent: c.vip_discount_percent,
           creditBalance: c.credit_balance
-        })));
+        }));
 
+        // Frontend Deduplication
+        const uniqueCustomers = Array.from(new Map(mappedCustomers.map(c => [c.id, c])).values());
+        setCustomers(uniqueCustomers);
       }
 
       // Set Appointments
       if (fetchedAppointments && fetchedAppointments.length > 0) {
-        setAppointments(fetchedAppointments.map((a: any) => ({
+        const mappedAppts = fetchedAppointments.map((a: any) => ({
           id: a.id,
           customerId: a.customer_id,
           providerId: a.provider_id,
@@ -492,11 +499,16 @@ const App: React.FC = () => {
           pricePaid: a.price_paid, // Critical: Map price_paid
           bookedPrice: a.booked_price, // Critical: Map booked_price
           tipAmount: a.tip_amount, // Critical: Map tip_amount
+          quantity: a.quantity, // Added quantity mapping
           startTimeActual: a.start_time_actual,
           createdAt: a.created_at,
           updatedAt: a.updated_at,
           isReconciled: a.is_reconciled
-        })));
+        }));
+
+        // Frontend Deduplication
+        const uniqueAppointments = Array.from(new Map(mappedAppts.map(a => [a.id, a])).values());
+        setAppointments(uniqueAppointments);
       }
 
       // Set Sales
