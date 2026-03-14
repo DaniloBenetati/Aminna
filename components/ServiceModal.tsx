@@ -1624,7 +1624,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         try {
             const dischargeDate = appointment.date || formatLocalDate(new Date());
-            const zeroPaymentMethod = 'Bonificação';
+            const zeroPaymentMethod = 'Justificativa: ' + zeroOutReason;
 
             // 1. Prepare data with 0 values
             const updatedLines = lines.map(l => ({
@@ -1684,7 +1684,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 end_time: updatedLines[0].endTime,
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
-                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA COMANDA ZERADA: ${zeroOutReason}`
+                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason}`
             };
 
             // Identify secondary appointments to "cancel/merge"
@@ -1710,19 +1710,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
             }
 
-            // 3. Update Customer History
-            const historyEntry: CustomerHistoryItem = {
-                id: `zero-${Date.now()}`,
-                date: dischargeDate,
-                type: 'VISIT',
-                description: 'AGENDAMENTO ZERADO (BONIFICAÇÃO)',
-                details: `Justificativa: ${zeroOutReason}`,
-                providerId: updatedLines[0].providerId
-            };
-
             const { error: custError } = await supabase.from('customers').update({
-                last_visit: dischargeDate,
-                history: [historyEntry, ...(customer.history || [])]
+                last_visit: dischargeDate
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -1757,8 +1746,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
                 ...c,
-                lastVisit: dischargeDate,
-                history: [historyEntry, ...(c.history || [])]
+                lastVisit: dischargeDate
             } : c));
 
             alert('Comanda zerada com sucesso.');
@@ -2582,7 +2570,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     {isZeroing ? (
                                                         <div className="space-y-3 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border-2 border-amber-100 dark:border-amber-900 animate-in zoom-in-95 duration-200">
                                                             <h4 className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
-                                                                <Coins size={12} /> Zerar Comanda / Bonificação
+                                                                <Coins size={12} /> Zerar Comanda (Justificativa)
                                                             </h4>
                                                             <textarea
                                                                 className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
@@ -2659,7 +2647,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 type="button"
                                                                 onClick={() => setIsZeroing(true)}
                                                                 className="py-4 px-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
-                                                                title="Zerar Comanda (Bonificação/Cortesia Especial)"
+                                                                title="Zerar Comanda (Justificativa)"
                                                             >
                                                                 <Coins size={16} />
                                                             </button>
