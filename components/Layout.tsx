@@ -243,21 +243,23 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-30 p-4 flex justify-between items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
-        <Logo className="h-10" />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <button
-            onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-xl transition-colors border border-slate-100 dark:border-zinc-700"
-          >
-            <Menu size={24} className="text-slate-700 dark:text-slate-300" />
-          </button>
+        <button
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-xl transition-colors border border-slate-100 dark:border-zinc-700"
+        >
+          <Menu size={24} className="text-slate-700 dark:text-slate-300" />
+        </button>
+        
+        <div className="absolute left-1/2 -translate-x-1/2">
+          <Logo className="h-8" />
         </div>
+
+        <button
+          onClick={toggleTheme}
+          className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </div>
 
       {/* Main Content */}

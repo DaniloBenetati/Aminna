@@ -409,7 +409,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         <div className="space-y-4 md:space-y-6 pb-24 md:pb-8 text-black dark:text-white">
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
+                <div className="hidden md:block">
                     <img src="/logo.png" alt="Aminna Logo" className="h-10 md:h-14 w-auto object-contain" />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
