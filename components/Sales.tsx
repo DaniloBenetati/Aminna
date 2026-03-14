@@ -1264,9 +1264,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         {/* Close Button - Sticky/Fixed at top right */}
                         <button 
                             onClick={() => setPreviewProduct(null)}
-                            className="absolute top-6 right-6 z-50 p-4 bg-black/20 hover:bg-black/40 backdrop-blur-xl text-white rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
+                            className="absolute top-3 right-3 md:top-6 md:right-6 z-50 p-1.5 md:p-4 bg-black/40 hover:bg-black/60 backdrop-blur-xl text-white rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
                         >
-                            <X size={24} />
+                            <X size={14} className="md:w-6 md:h-6" />
                         </button>
 
                         {/* Image Section - The STAR */}
@@ -1310,9 +1310,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
                                         }}
-                                        className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 p-4 md:p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[1.5rem] md:rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
-                                        <ChevronLeft size={24} className="md:w-8 md:h-8" />
+                                        <ChevronLeft size={32} />
                                     </button>
                                     <button 
                                         onClick={(e) => {
@@ -1320,9 +1320,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
                                         }}
-                                        className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 p-4 md:p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[1.5rem] md:rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
-                                        <ChevronRight size={24} className="md:w-8 md:h-8" />
+                                        <ChevronRight size={32} />
                                     </button>
                                 </>
                             )}
@@ -1343,14 +1343,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 md:gap-8 items-center md:items-center">
                                 
                                 {/* 1. Product Identify */}
-                                <div className="flex-1 space-y-1 text-center md:text-left min-w-0 w-full">
-                                    <div className="flex justify-center md:justify-start items-center gap-3">
-                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em]">{previewProduct.group || 'Semi Joia'}</p>
+                                <div className="flex-1 space-y-0.5 text-center md:text-left min-w-0 w-full">
+                                    <div className="flex justify-center md:justify-start items-center gap-2">
+                                        <p className="text-[8px] md:text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em]">{previewProduct.group || 'Semi Joia'}</p>
                                     </div>
-                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tight truncate text-slate-900 dark:text-white">{previewProduct.name}</h2>
-                                    <div className="flex items-center justify-center md:justify-start gap-4">
-                                        <span className="text-lg font-black italic tracking-tighter text-slate-950 dark:text-emerald-400">R$ {previewProduct.price?.toFixed(2)}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">por unidade</span>
+                                    <h2 className="text-[11px] md:text-base font-black uppercase tracking-tight truncate text-slate-900 dark:text-white">{previewProduct.name}</h2>
+                                    {/* Desktop Price */}
+                                    <div className="hidden md:flex items-center justify-start gap-3">
+                                        <span className="text-base md:text-lg font-black italic tracking-tighter text-slate-950 dark:text-emerald-400">R$ {previewProduct.price?.toFixed(2)}</span>
+                                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest">por unidade</span>
                                     </div>
                                 </div>
 
@@ -1371,21 +1372,26 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </div>
                                     )}
 
-                                    <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                                    <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+                                        {/* Mobile/iPad Price & Qty Combo */}
+                                        <div className="flex flex-col items-start md:hidden">
+                                            <span className="text-sm font-black italic tracking-tighter text-slate-950 dark:text-emerald-400">R$ {previewProduct.price?.toFixed(2)}</span>
+                                        </div>
+
                                         {/* Qty Selector */}
-                                        <div className="flex items-center gap-4 bg-slate-50 dark:bg-zinc-900 px-4 py-2 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-zinc-800">
                                             <button 
                                                 onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
                                                 className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
                                             >
-                                                <Minus size={16} />
+                                                <Minus size={14} />
                                             </button>
-                                            <span className="text-xl font-black text-zinc-950 dark:text-white tabular-nums min-w-[24px] text-center">{currentQuantity}</span>
+                                            <span className="text-lg font-black text-zinc-950 dark:text-white tabular-nums min-w-[20px] text-center">{currentQuantity}</span>
                                             <button 
                                                 onClick={() => setCurrentQuantity(prev => prev + 1)}
                                                 className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
                                             >
-                                                <Plus size={16} />
+                                                <Plus size={14} />
                                             </button>
                                         </div>
 
@@ -1410,10 +1416,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 }, 1500);
                                             }}
                                             title="Adicionar ao Carrinho"
-                                            className="h-12 flex-1 md:flex-none md:w-20 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group px-6 md:px-0"
+                                            className="h-10 flex-1 md:flex-none md:w-20 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group px-4 md:px-0"
                                         >
-                                            <Plus size={16} className="group-hover:translate-x-0.5 transition-transform" />
-                                            <ShoppingCart size={20} className="group-hover:scale-110 transition-transform" /> 
+                                            <Plus size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                            <ShoppingCart size={18} className="group-hover:scale-110 transition-transform" /> 
                                         </button>
                                     </div>
                                 </div>
@@ -1421,7 +1427,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             
                             <button 
                                 onClick={() => setPreviewProduct(null)}
-                                className="w-full mt-4 text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 hover:text-slate-500 transition-colors"
+                                className="w-full mt-2 text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 hover:text-slate-500 transition-colors"
                             >
                                 Voltar para o Catálogo
                             </button>
