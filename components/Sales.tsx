@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, D
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
+import { formatDateBR, parseDateSafe, toLocalDateStr } from '../services/financialService';
 
 interface SalesProps {
     sales: Sale[];
@@ -58,6 +59,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [saleTab, setSaleTab] = useState<'SEARCH' | 'CATALOG'>('CATALOG');
     const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG'>('CATALOG');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
     // Catalog Filters
     const [selectedGroup, setSelectedGroup] = useState<string>('all');
@@ -66,14 +68,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     // Multi-Image Catalog Preview
     const [previewProduct, setPreviewProduct] = useState<StockItem | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const [showThumbsUp, setShowThumbsUp] = useState(false);
 
     const getCustomerName = (id: string) => (customers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
     const getProductName = (id: string) => stock.find(s => s.id === id)?.name || 'Produto Removido';
-
-    const formatDateBR = (dateStr: string) => {
-        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
-        return d.toLocaleDateString('pt-BR');
-    };
 
     // --- DATE HELPERS ---
     const navigateDate = (direction: 'prev' | 'next') => {
@@ -97,18 +95,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     };
 
     const isDateInPeriod = (dateStr: string) => {
-        const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+        const d = parseDateSafe(dateStr);
+        const refD = parseDateSafe(toLocalDateStr(dateRef)); 
 
         if (timeView === 'day') {
-            return d.getDate() === dateRef.getDate() &&
-                d.getMonth() === dateRef.getMonth() &&
-                d.getFullYear() === dateRef.getFullYear();
+            return toLocalDateStr(d) === toLocalDateStr(refD);
         } else if (timeView === 'month') {
-            return d.getMonth() === dateRef.getMonth() && d.getFullYear() === dateRef.getFullYear();
+            return d.getMonth() === refD.getMonth() && d.getFullYear() === refD.getFullYear();
         } else if (timeView === 'year') {
-            return d.getFullYear() === dateRef.getFullYear();
+            return d.getFullYear() === refD.getFullYear();
         } else if (timeView === 'custom') {
-            return dateStr >= customRange.start && dateStr <= customRange.end;
+            const dStr = toLocalDateStr(d);
+            return dStr >= customRange.start && dStr <= customRange.end;
         }
         return false;
     };
@@ -324,7 +322,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         }
 
         const now = new Date();
-        const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const localDate = toLocalDateStr(new Date());
 
         try {
             // 1. Prepare single sale data for insertion
@@ -411,27 +409,34 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Header Area */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Vendas de Produtos</h2>
-                    <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Painel comercial e histórico</p>
+                    <img src="/logo.png" alt="Aminna Logo" className="h-10 md:h-14 w-auto object-contain" />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Responsive Tab Switcher */}
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
-                        {(['ACTIVITY', 'CATALOG'] as const).map(tab => (
+                        {/* Desktop Version */}
+                        <div className="hidden lg:flex">
+                            {(['ACTIVITY', 'CATALOG'] as const).map(tab => (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveMainTab(tab)}
+                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                >
+                                    {tab === 'ACTIVITY' ? 'Atividade' : 'Catálogo'}
+                                </button>
+                            ))}
+                        </div>
+                        {/* Mobile/iPad Collapsed Version */}
+                        <div className="lg:hidden flex w-full">
                             <button
-                                key={tab}
-                                onClick={() => setActiveMainTab(tab)}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                onClick={() => setActiveMainTab(activeMainTab === 'ACTIVITY' ? 'CATALOG' : 'ACTIVITY')}
+                                className="w-full px-4 py-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center justify-between"
                             >
-                                {tab === 'ACTIVITY' ? 'Atividade' : 'Catálogo'}
+                                <span>{activeMainTab === 'ACTIVITY' ? 'Atividade' : 'Catálogo'}</span>
+                                <ChevronDown size={14} className="opacity-50" />
                             </button>
-                        ))}
+                        </div>
                     </div>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-                    >
-                        <Plus size={18} /> Nova Venda
-                    </button>
                 </div>
             </div>
 
@@ -642,99 +647,74 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm space-y-6">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div>
-                                        <h3 className="text-xl font-black uppercase tracking-tight" style={{ color: '#75787B' }}>Catálogo de Produtos</h3>
-                                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Navegue e adicione itens para venda</p>
-                                    </div>
-                                    {cart.length > 0 && (
-                                        <button 
-                                            onClick={() => setIsModalOpen(true)}
-                                            className="px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800 flex items-center gap-2 animate-bounce-subtle"
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
+                                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
+                                    <button
+                                        onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
+                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
+                                    >
+                                        Todos
+                                    </button>
+                                    {uniqueGroups.map(group => (
+                                        <button
+                                            key={group}
+                                            onClick={() => { setSelectedGroup(group); setSelectedSubGroup('all'); }}
+                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === group ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
                                         >
-                                            <ShoppingCart size={14} /> Ver Carrinho ({cart.length})
+                                            {group}
                                         </button>
-                                    )}
+                                    ))}
                                 </div>
-                                <div className="flex flex-col md:flex-row items-center gap-3 w-full md:w-auto">
-                                    {/* Quick Customer Selector in Catalog */}
-                                    <div className="relative w-full md:w-72">
-                                        <User size={16} className={`absolute left-4 top-1/2 -translate-y-1/2 ${customerId ? 'text-indigo-600' : 'text-slate-400'}`} />
-                                        <input
-                                            type="text"
-                                            placeholder={customerId ? getCustomerName(customerId) : "Selecionar Cliente..."}
-                                            className={`w-full pl-11 pr-10 py-3 rounded-2xl text-xs font-black outline-none transition-all shadow-inner border-2 ${customerId ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100' : 'bg-slate-50 dark:bg-zinc-800 border-transparent focus:border-zinc-950 dark:focus:border-white'}`}
-                                            value={customerSearch}
-                                            onChange={e => setCustomerSearch(e.target.value)}
-                                        />
-                                        {customerId && (
-                                            <button 
-                                                type="button"
-                                                onClick={() => setCustomerId('')}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500 p-1"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        )}
-                                        {customerSearch && (
-                                            <div className="absolute z-50 w-full mt-2 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-                                                {filteredCustomerOptions.length > 0 ? filteredCustomerOptions.map(c => (
-                                                    <button
-                                                        key={c.id}
-                                                        type="button"
-                                                        className="w-full text-left px-5 py-3 hover:bg-slate-50 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/client"
-                                                        onClick={() => {
-                                                            setCustomerId(c.id);
-                                                            setCustomerSearch('');
-                                                            setTriedToSubmit(false);
-                                                        }}
-                                                    >
-                                                        <div>
-                                                            <p className="font-black text-xs text-slate-900 dark:text-white uppercase">{c.name}</p>
-                                                            <p className="text-[10px] font-bold text-slate-500 uppercase">{c.phone}</p>
-                                                        </div>
-                                                        <ArrowRight size={14} className="text-slate-300 group-hover/client:text-indigo-600" />
-                                                    </button>
-                                                )) : (
-                                                    <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Não encontrado</div>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
+                            </div>
 
-                                    <div className="relative w-full md:w-64">
-                                        <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                                {cart.length > 0 && (
+                                    <button 
+                                        onClick={() => setIsModalOpen(true)}
+                                        className="px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-base font-black flex items-center justify-center animate-bounce-subtle border border-indigo-100 dark:border-indigo-800"
+                                        title="Ver Carrinho"
+                                    >
+                                        🛒 <span className="text-xs ml-1">({cart.length})</span>
+                                    </button>
+                                )}
+                                <div className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded ? 'w-full sm:w-64 md:w-80' : 'w-10 h-10 overflow-hidden'}`}>
+                                    <button 
+                                        onClick={() => {
+                                            if (isSearchExpanded) {
+                                                setProductSearch('');
+                                                setIsSearchExpanded(false);
+                                            } else {
+                                                setIsSearchExpanded(true);
+                                            }
+                                        }}
+                                        className={`absolute ${isSearchExpanded ? 'right-4' : 'left-0 w-full h-full flex items-center justify-center'} top-1/2 -translate-y-1/2 z-10 transition-all`}
+                                    >
+                                        {isSearchExpanded ? <X size={16} className="text-slate-400 hover:text-slate-900 dark:hover:text-white" /> : <Search size={22} className="text-slate-600 dark:text-slate-400" />}
+                                    </button>
+                                    
+                                    {!isSearchExpanded && (
+                                        <button 
+                                            onClick={() => setIsSearchExpanded(true)}
+                                            className="absolute inset-0 z-0 bg-slate-50 dark:bg-zinc-800 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
+                                        />
+                                    )}
+
+                                    <div className={`relative w-full transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100 pl-4 pr-10' : 'opacity-0 pointer-events-none'}`}>
+                                        <Search size={16} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-400" />
                                         <input
                                             type="text"
+                                            autoFocus={isSearchExpanded}
                                             placeholder="Filtrar catálogo..."
-                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-zinc-950 dark:focus:border-white rounded-2xl text-xs font-black outline-none transition-all shadow-inner"
+                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-zinc-950 dark:focus:border-white rounded-2xl text-[10px] font-black outline-none transition-all shadow-inner"
                                             value={productSearch}
                                             onChange={e => setProductSearch(e.target.value)}
                                         />
                                     </div>
                                 </div>
+                            </div>
                         </div>
 
-                        {/* Category & Subcategory Filters */}
-                        <div className="space-y-4">
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
-                                    className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
-                                >
-                                    Todos
-                                </button>
-                                {uniqueGroups.map(group => (
-                                    <button
-                                        key={group}
-                                        onClick={() => { setSelectedGroup(group); setSelectedSubGroup('all'); }}
-                                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === group ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
-                                    >
-                                        {group}
-                                    </button>
-                                ))}
-                            </div>
 
                             {uniqueSubGroups.length > 0 && (
                                 <div className="flex flex-wrap gap-2 pt-0.5 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -755,7 +735,6 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     ))}
                                 </div>
                             )}
-                        </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {filteredCatalog.map(product => (
@@ -788,12 +767,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             </div>
                                         </div>
                                         <div className="px-1">
-                                            <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">{product.name}</p>
+                                            {/* Truncated Name for Mobile/iPad (first word) */}
+                                            <p className="lg:hidden text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
+                                                {product.name?.split(' ')[0]}
+                                            </p>
+                                            {/* Full Name for Desktop */}
+                                            <p className="hidden lg:block text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
+                                                {product.name}
+                                            </p>
                                             <div className="flex justify-between items-end mt-2">
                                                 <p className="text-sm font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                                <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase ${product.quantity > 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20'}`}>
-                                                    {product.quantity} un
-                                                </span>
                                             </div>
                                         </div>
                                     </button>
@@ -1017,7 +1000,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                                 <p className="text-[10px] font-black truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors" style={{ color: '#75787B' }}>{product.name}</p>
                                                                 <div className="flex justify-between items-end mt-1">
                                                                     <p className="text-[11px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                                                    <p className="text-[8px] font-bold text-slate-400 uppercase">{product.quantity} un</p>
+                                                                    <p className={`text-[8px] font-bold uppercase ${product.quantity > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                        {product.quantity > 0 ? 'Em Estoque' : 'Sem Estoque'}
+                                                                    </p>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -1040,7 +1025,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                         <div className="flex items-center gap-2 mt-1">
                                                             <span className="text-xs font-black" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</span>
                                                             <span className="w-1 h-1 bg-slate-300 dark:bg-zinc-600 rounded-full"></span>
-                                                            <span className="text-[9px] font-bold text-slate-400 uppercase">{selectedStockItem?.quantity} em estoque</span>
+                                                            <span className={`text-[9px] font-bold uppercase ${(selectedStockItem?.quantity || 0) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                                {(selectedStockItem?.quantity || 0) > 0 ? 'Em Estoque' : 'Sem Estoque'}
+                                                            </span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1270,18 +1257,19 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
             {/* Catalog Preview Modal */}
             {previewProduct && (
-                <div className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-0 md:p-6 backdrop-blur-xl animate-in fade-in duration-500">
-                    <div className="bg-white dark:bg-zinc-950 md:rounded-[3rem] shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col md:flex-row h-full md:h-[85vh] border border-white/5">
+                <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-0 md:p-6 backdrop-blur-2xl animate-in fade-in duration-500">
+                    <div className="bg-white dark:bg-zinc-950 md:rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-full md:h-[85vh] border border-white/5 relative">
                         
-                        {/* Image Section - The STAR */}
-                        <div className="md:flex-[3] relative bg-zinc-100 dark:bg-black flex items-center justify-center group overflow-hidden">
-                            <button 
-                                onClick={() => setPreviewProduct(null)}
-                                className="absolute top-6 left-6 z-20 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white rounded-full transition-all border border-white/10 shadow-lg md:hidden"
-                            >
-                                <X size={24} />
-                            </button>
+                        {/* Close Button - Sticky/Fixed at top right */}
+                        <button 
+                            onClick={() => setPreviewProduct(null)}
+                            className="absolute top-6 right-6 z-50 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-black rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
+                        >
+                            <X size={24} />
+                        </button>
 
+                        {/* Image Section - The STAR */}
+                        <div className="flex-1 relative bg-zinc-50 dark:bg-black flex items-center justify-center group overflow-hidden min-h-0">
                             {/* Main Image - Fully Expanded */}
                             <img 
                                 src={[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean)[activeImageIndex] as string || ''} 
@@ -1298,7 +1286,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             e.stopPropagation();
                                             setActiveImageIndex(prev => prev > 0 ? prev - 1 : [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length - 1);
                                         }}
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white rounded-3xl transition-all border border-white/5 opacity-0 group-hover:opacity-100 hidden md:flex"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-slate-800/40 hover:bg-slate-800/60 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 opacity-0 group-hover:opacity-100 hidden md:flex active:scale-95"
                                     >
                                         <ChevronLeft size={32} />
                                     </button>
@@ -1307,7 +1295,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             e.stopPropagation();
                                             setActiveImageIndex(prev => prev < [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length - 1 ? prev + 1 : 0);
                                         }}
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-4 bg-white/5 hover:bg-white/10 backdrop-blur-md text-white rounded-3xl transition-all border border-white/5 opacity-0 group-hover:opacity-100 hidden md:flex"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-slate-800/40 hover:bg-slate-800/60 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 opacity-0 group-hover:opacity-100 hidden md:flex active:scale-95"
                                     >
                                         <ChevronRight size={32} />
                                     </button>
@@ -1315,7 +1303,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             )}
 
                             {/* Indicators */}
-                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 px-4 py-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
+                            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 px-4 py-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
                                 {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).map((_, i) => (
                                     <div 
                                         key={i} 
@@ -1325,98 +1313,115 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             </div>
                         </div>
 
-                        {/* Side Info Panel - Discrete & Functional */}
-                        <div className="md:flex-[1.2] p-8 md:p-10 flex flex-col bg-white dark:bg-zinc-950 border-l border-slate-50 dark:border-zinc-900">
-                            <div className="flex justify-between items-start mb-10">
-                                <div className="space-y-0.5 opacity-60">
-                                    <p className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.2em]">{previewProduct.group || 'Geral'}</p>
-                                    <h2 className="text-lg font-bold uppercase leading-tight tracking-tight" style={{ color: '#75787B' }}>{previewProduct.name}</h2>
-                                </div>
-                                <button 
-                                    onClick={() => setPreviewProduct(null)}
-                                    className="hidden md:flex p-2 text-slate-200 hover:text-rose-500 transition-colors"
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <div className="flex-1 space-y-12">
-                                <div className="flex items-baseline gap-2 pb-6 border-b border-slate-50 dark:border-zinc-900">
-                                    <span className="text-2xl font-black italic tracking-tighter opacity-70" style={{ color: '#75787B' }}>R$ {previewProduct.price?.toFixed(2)}</span>
-                                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest opacity-50">unid.</span>
+                        {/* Bottom Info Panel - Compact & Premium */}
+                        <div className="bg-white dark:bg-zinc-950 p-4 md:p-6 border-t border-slate-100 dark:border-zinc-900 flex-shrink-0">
+                            <div className="max-w-4xl mx-auto flex flex-col md:flex-row gap-4 md:gap-8 items-center md:items-center">
+                                
+                                {/* 1. Product Identify */}
+                                <div className="flex-1 space-y-2 text-center md:text-left min-w-0 w-full">
+                                    <div className="flex justify-center md:justify-start items-center gap-3">
+                                        <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-[0.3em]">{previewProduct.group || 'Semi Joia'}</p>
+                                    </div>
+                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tight truncate" style={{ color: '#75787B' }}>{previewProduct.name}</h2>
+                                    <div className="flex items-center justify-center md:justify-start gap-4">
+                                        <span className="text-lg font-black italic tracking-tighter" style={{ color: '#75787B' }}>R$ {previewProduct.price?.toFixed(2)}</span>
+                                        <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">por unidade</span>
+                                    </div>
                                 </div>
 
-                                {/* Thumbnails - Discrete Strip */}
-                                {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length > 1 && (
-                                    <div className="space-y-3">
-                                        <p className="text-[8px] font-black text-slate-300 uppercase tracking-widest">Galeria</p>
-                                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                {/* 2. Gallery & Controls */}
+                                <div className="flex flex-col md:flex-row items-center gap-8 w-full md:w-auto">
+                                    {/* Tiny Gallery */}
+                                    {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length > 1 && (
+                                        <div className="hidden md:flex gap-1.5">
                                             {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).map((url, i) => (
                                                 <button 
                                                     key={i}
                                                     onClick={() => setActiveImageIndex(i)}
-                                                    className={`w-12 h-12 rounded-xl overflow-hidden border transition-all duration-300 flex-shrink-0 ${i === activeImageIndex ? 'border-zinc-950 dark:border-white scale-105' : 'border-transparent opacity-30 hover:opacity-100'}`}
+                                                    className={`w-8 h-8 rounded-lg overflow-hidden border-2 transition-all ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
                                                 >
                                                     <img src={url as string} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                 </button>
                                             ))}
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                <div className="space-y-6 pt-4">
-                                    <div className="flex flex-col items-center gap-4">
-                                        <label className="text-[8px] font-black text-slate-300 dark:text-zinc-600 uppercase tracking-[0.3em]">Quantidade</label>
-                                        <div className="flex items-center gap-10">
-                                            <button 
-                                                onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
-                                                className="w-10 h-10 flex items-center justify-center text-slate-200 hover:text-zinc-950 dark:hover:text-white transition-all active:scale-75"
-                                            >
-                                                <Minus size={20} />
-                                            </button>
-                                            <span className="text-3xl font-black text-zinc-950 dark:text-white w-10 text-center tabular-nums opacity-80">{currentQuantity}</span>
-                                            <button 
-                                                onClick={() => setCurrentQuantity(prev => prev + 1)}
-                                                className="w-10 h-10 flex items-center justify-center text-slate-200 hover:text-zinc-950 dark:hover:text-white transition-all active:scale-75"
-                                            >
-                                                <Plus size={20} />
-                                            </button>
-                                        </div>
+                                    {/* Qty Selector */}
+                                    <div className="flex items-center gap-4 bg-slate-50 dark:bg-zinc-900 px-4 py-2 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                        <button 
+                                            onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
+                                            className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
+                                        >
+                                            <Minus size={16} />
+                                        </button>
+                                        <span className="text-xl font-black text-zinc-950 dark:text-white tabular-nums min-w-[24px] text-center">{currentQuantity}</span>
+                                        <button 
+                                            onClick={() => setCurrentQuantity(prev => prev + 1)}
+                                            className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
                                     </div>
+
+                                    {/* Action Button - Icon Only */}
+                                    <button 
+                                        onClick={() => {
+                                            const newItem: CartItem = {
+                                                id: Date.now().toString(),
+                                                productId: previewProduct.id,
+                                                productName: previewProduct.name,
+                                                quantity: currentQuantity,
+                                                unitPrice: previewProduct.price || 0,
+                                                total: (previewProduct.price || 0) * currentQuantity
+                                            };
+                                            setCart([...cart, newItem]);
+                                            
+                                            // Trigger Thumbs Up Animation
+                                            setShowThumbsUp(true);
+                                            setTimeout(() => {
+                                                setShowThumbsUp(false);
+                                                setPreviewProduct(null);
+                                            }, 1500);
+                                        }}
+                                        title="Adicionar ao Carrinho"
+                                        className="w-16 h-12 md:w-20 md:h-12 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group"
+                                    >
+                                        <Plus size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                        <ShoppingCart size={20} className="group-hover:scale-110 transition-transform" /> 
+                                    </button>
                                 </div>
                             </div>
-
-                            <div className="pt-10 space-y-4">
-                                <button 
-                                    onClick={() => {
-                                        const newItem: CartItem = {
-                                            id: Date.now().toString(),
-                                            productId: previewProduct.id,
-                                            productName: previewProduct.name,
-                                            quantity: currentQuantity,
-                                            unitPrice: previewProduct.price || 0,
-                                            total: (previewProduct.price || 0) * currentQuantity
-                                        };
-                                        setCart([...cart, newItem]);
-                                        setPreviewProduct(null);
-                                        // Optional: Auto-open checkout or show a snackbar
-                                    }}
-                                    className="w-full py-5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-[0.25em] shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3 group"
-                                >
-                                    <ShoppingCart size={16} className="group-hover:scale-110 transition-transform" /> 
-                                    Adicionar ao Carrinho
-                                </button>
-                                <button 
-                                    onClick={() => setPreviewProduct(null)}
-                                    className="w-full py-2 text-[8px] font-black uppercase tracking-[0.3em] text-slate-300 hover:text-slate-500 transition-colors"
-                                >
-                                    Voltar para o Catálogo
-                                </button>
-                            </div>
+                            
+                            <button 
+                                onClick={() => setPreviewProduct(null)}
+                                className="w-full mt-4 text-[8px] font-black uppercase tracking-[0.4em] text-slate-300 hover:text-slate-500 transition-colors"
+                            >
+                                Voltar para o Catálogo
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
+            {/* Thumbs Up Animation (Teams-like) */}
+            {showThumbsUp && (
+                <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center">
+                    <div className="text-8xl animate-conversation-thumbs-up">
+                        👍
+                    </div>
+                </div>
+            )}
+
+            <style jsx>{`
+                @keyframes thumbsUp {
+                    0% { transform: translateY(100px) scale(0); opacity: 0; }
+                    20% { transform: translateY(0) scale(1.2); opacity: 1; }
+                    80% { transform: translateY(-50px) scale(1); opacity: 1; }
+                    100% { transform: translateY(-150px) scale(0.8); opacity: 0; }
+                }
+                .animate-conversation-thumbs-up {
+                    animation: thumbsUp 1.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
+                }
+            `}</style>
         </div>
     );
 };

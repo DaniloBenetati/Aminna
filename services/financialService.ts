@@ -10,20 +10,38 @@ export const toLocalDateStr = (date: Date) => {
 export const parseDateSafe = (dateStr: string | undefined): Date => {
     if (!dateStr) return new Date();
     try {
-        // Intercept DD/MM/YYYY and convert to YYYY-MM-DD
-        if (dateStr.includes('/') && dateStr.split('/').length === 3) {
-            const parts = dateStr.split('/');
+        // 1. Handle common Supabase/Postgres formats: "YYYY-MM-DD HH:mm:ss+ZZ"
+        // If there's a space followed by time, we extract just the date part to avoid timezone shifts
+        let cleanDate = dateStr;
+        if (cleanDate.includes(' ')) {
+            cleanDate = cleanDate.split(' ')[1].includes(':') ? cleanDate.split(' ')[0] : cleanDate;
+        } else if (cleanDate.includes('T')) {
+            cleanDate = cleanDate.split('T')[0];
+        }
+
+        // 2. Intercept DD/MM/YYYY and convert to YYYY-MM-DD
+        if (cleanDate.includes('/') && cleanDate.split('/').length === 3) {
+            const parts = cleanDate.split('/');
             if (parts[0].length === 2 && parts[2].length === 4) {
-                dateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                cleanDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
             }
         }
 
-        const str = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
-        const d = new Date(str);
+        // 3. Create date at midday to avoid day jumps
+        const d = new Date(`${cleanDate}T12:00:00`);
         return isNaN(d.getTime()) ? new Date() : d;
     } catch (e) {
         return new Date();
     }
+};
+
+export const formatDateBR = (dateStr: string | undefined): string => {
+    if (!dateStr) return "-";
+    const d = parseDateSafe(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
 };
 
 export const getAnticipationRate = (dateStr: string, financialConfigs: FinancialConfig[]) => {

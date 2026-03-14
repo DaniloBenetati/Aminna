@@ -1095,16 +1095,27 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
-                    // Only count as product revenue if it has a productId (real stock product)
-                    // This automatically excludes bank description launches (which don't have productId)
-                    // and service checkouts (which have serviceId)
                     if (item.productId) {
-                        return sum + (item.totalAmount || (item.quantity * item.unitPrice) || item.price || 0);
+                        const amount = Number(item.totalAmount) || (Number(item.quantity || 1) * Number(item.unitPrice || item.price || 0)) || 0;
+                        return sum + amount;
                     }
                     return sum;
                 }, 0);
-                return acc + productTotal;
+                return acc + (Number(productTotal) || 0);
             }, 0);
+
+            const breakdownProducts = sls.reduce((acc, s) => {
+                (s.items || []).forEach(item => {
+                    if (item.productId) {
+                        const name = item.name || item.productName || 'Produto sem nome';
+                        if (!acc[name]) acc[name] = { total: 0, count: 0 };
+                        const amount = Number(item.totalAmount) || (Number(item.quantity || 1) * Number(item.unitPrice || item.price || 0)) || 0;
+                        acc[name].total += amount;
+                        acc[name].count += (Number(item.quantity) || 1);
+                    }
+                });
+                return acc;
+            }, {} as Record<string, { total: number, count: number }>);
 
             // Receitas bancárias conciliadas (dreClass=REVENUE) = real service income via card/PIX
             const reconciledBankRevenues = exps
@@ -1287,7 +1298,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             return {
                 isClosed,
-                grossRevenue, revenueServices, reconciledBankRevenues, automatedDeductions, anticipationFees,
+                grossRevenue, revenueServices, revenueProducts, reconciledBankRevenues, automatedDeductions, anticipationFees,
                 deductions, netRevenue,
                 totalCOGS, commissions,
                 grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin,
@@ -1302,6 +1313,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
                 // OTHER_INCOME = reimbursements/returns — always show in section 6
                 breakdownOtherIncome: groupByCat(exps.filter(e => e.dreClass === 'OTHER_INCOME')),
+                breakdownProducts,
                 breakdownServices,
                 breakdownCommissions
             };
@@ -3698,6 +3710,51 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </tr>
                                                         ))}
                                                     </>)}
+                                                    
+                                                    {/* Sub-linha: Venda de Produtos */}
+                                                    <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
+                                                        <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                            {expandedSections.includes('products-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
+                                                            └ Venda de Produtos
+                                                        </td>
+                                                        {timeView === 'year' ? (
+                                                            <>
+                                                                {dreData.monthlySnapshots?.map((m: any) => (
+                                                                    <td key={m.name} className="px-4 py-3 text-right text-[10px] font-bold text-slate-500 border-l border-slate-100 dark:border-zinc-800">{formatValue(m.revenueProducts, 0)}</td>
+                                                                ))}
+                                                                <td className="px-6 py-3 text-right text-xs font-black bg-slate-50/50 dark:bg-zinc-800/30 border-l-2 border-slate-200 dark:border-zinc-700">{formatCurrency(dreData.revenueProducts)}</td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-8 py-3 text-right text-xs font-black text-slate-950 dark:text-white">{formatCurrency(dreData.revenueProducts)}</td>
+                                                                <td className="px-8 py-3 text-right text-[10px] font-bold text-slate-400">
+                                                                    {dreData.grossRevenue > 0 ? ((dreData.revenueProducts / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                    {expandedSections.includes('products-list') && Object.entries((dreData.breakdownProducts || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
+                                                        <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
+                                                            <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
+                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                            </td>
+                                                            {timeView === 'year' ? (
+                                                                <>
+                                                                    {dreData.monthlySnapshots?.map((m: any) => (
+                                                                        <td key={m.name} className="px-4 py-2 text-right text-[10px] font-bold text-slate-400 border-l border-slate-100/50 dark:border-zinc-800/50">-</td>
+                                                                    ))}
+                                                                    <td className="px-6 py-2 text-right text-[10px] font-black text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800">{formatCurrency(info.total)}</td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-black text-slate-500 dark:text-slate-400">{formatCurrency(info.total)}</td>
+                                                                    <td className="px-8 py-2 text-right text-[10px] font-bold text-slate-400">
+                                                                        {dreData.grossRevenue > 0 ? ((info.total / dreData.grossRevenue) * 100).toFixed(1) : '0.0'}%
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    ))}
                                                     {/* Sub-linha: Cartão/PIX (sem nota fiscal) - apenas quando concluído */}
                                                     {dreData.isClosed && dreData.reconciledBankRevenues > 0 && (
                                                         <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">

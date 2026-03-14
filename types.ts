@@ -241,6 +241,11 @@ export interface Partner {
   id: string;
   name: string;
   socialMedia: string;
+  socialMediaSecondary?: string;
+  socialMediaList?: string[];
+  thermometer?: 'QUENTE' | 'FRIO' | 'MORNO';
+  contractScope?: string;
+  contractUrl?: string;
   category: string; // Influencer, Local Business, etc.
   phone: string;
   email?: string;
