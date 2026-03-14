@@ -46,7 +46,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         const items: { name: string, value: number, type?: string }[] = [];
 
         dailyApps.forEach(app => {
-            const booked = (app.bookedPrice || 0) + (app.additionalServices?.reduce((sum, s) => sum + (s.bookedPrice || 0), 0) || 0);
+            const booked = ((app.bookedPrice || 0) * (app.quantity || 1)) + (app.additionalServices?.reduce((sum, s) => sum + ((s.bookedPrice || 0) * (s.quantity || 1)), 0) || 0);
             const totalTipsApp = (app.tipAmount || 0) + (app.additionalServices?.reduce((sum, s) => sum + (s.tipAmount || 0), 0) || 0);
             const actualPaidRevenue = (app.pricePaid || 0) - totalTipsApp;
             const discount = Math.max(0, booked - actualPaidRevenue);

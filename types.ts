@@ -158,6 +158,8 @@ export interface StockItem {
   priceHistory?: PriceHistoryItem[];
   usageHistory?: StockUsageLog[];
   costPrice: number;
+  imageUrl?: string;
+  imageUrls?: string[];
 }
 
 export interface Sale {
@@ -165,6 +167,7 @@ export interface Sale {
   date: string;
   customerId: string;
   totalAmount: number;
+  totalPrice?: number; // Matches database total_price
   paymentMethod: string;
   payments?: PaymentInfo[];
   items: any[]; // List of { productId, quantity, unitPrice, name } or service details

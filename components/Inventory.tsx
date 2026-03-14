@@ -35,7 +35,6 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [productSearch, setProductSearch] = useState('');
     const [providerSearch, setProviderSearch] = useState('');
 
-    // Form state for products
     const [productFormData, setProductFormData] = useState({
         code: '',
         name: '',
@@ -45,7 +44,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         minQuantity: 5,
         unit: 'unidade',
         costPrice: 0,
-        price: 0
+        price: 0,
+        imageUrl: '',
+        imageUrls: [] as string[]
     });
 
     const totalStockValue = stock.reduce((acc, item) => acc + (item.quantity * item.costPrice), 0);
@@ -388,6 +389,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 unit: productFormData.unit,
                 cost_price: productFormData.costPrice,
                 sale_price: productFormData.price,
+                image_url: productFormData.imageUrl,
+                image_urls: productFormData.imageUrls,
                 active: true
             };
 
@@ -439,7 +442,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             minQuantity: item.minQuantity,
             unit: item.unit,
             costPrice: item.costPrice,
-            price: item.price || 0
+            price: item.price || 0,
+            imageUrl: item.imageUrl || '',
+            imageUrls: item.imageUrls || []
         });
         setIsAddingNewGroup(false);
         setIsAddingNewSubGroup(false);
@@ -456,7 +461,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             minQuantity: 5,
             unit: 'unidade',
             costPrice: 0,
-            price: 0
+            price: 0,
+            imageUrl: '',
+            imageUrls: []
         });
         setIsAddingNewGroup(false);
         setIsAddingNewSubGroup(false);
@@ -530,6 +537,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <tr>
                                 <th className="px-6 py-3">Código</th>
                                 <th className="px-6 py-3">Produto</th>
+                                <th className="px-6 py-3">Categoria</th>
                                 <th className="px-6 py-3">Classificação</th>
                                 <th className="px-6 py-3 text-center">Quantidade</th>
                                 <th className="px-6 py-3 text-right">Último Custo</th>
@@ -546,6 +554,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <td className="px-6 py-4 font-black text-slate-950 dark:text-white">
                                             {item.name}
                                             <div className="md:hidden mt-1 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{item.category}</div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full border ${item.category === 'Venda' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-950 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-slate-300 border-slate-300 dark:border-zinc-700'}`}>
+                                                {item.category}
+                                            </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-900 dark:text-slate-300">
                                             {/* Display combined classification */}
@@ -674,6 +687,91 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome do Produto</label>
                                 <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
+                            </div>
+                            <div>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Fotos do Produto (URLs)</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setProductFormData({ ...productFormData, imageUrls: [...productFormData.imageUrls, ''] })}
+                                        className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline"
+                                    >
+                                        <Plus size={12} /> Adicionar Foto
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {/* Primary Image URL */}
+                                    <div className="relative">
+                                        <input
+                                            type="url"
+                                            required
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            placeholder="URL da foto principal..."
+                                            value={productFormData.imageUrl}
+                                            onChange={e => setProductFormData({ ...productFormData, imageUrl: e.target.value })}
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-600 uppercase bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">Principal</span>
+                                    </div>
+
+                                    {/* Additional Image URLs */}
+                                    {productFormData.imageUrls.map((url, index) => (
+                                        <div key={index} className="flex gap-2 animate-in fade-in slide-in-from-top-1">
+                                            <input
+                                                type="url"
+                                                className="flex-1 bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                                placeholder={`URL da foto ${index + 2}...`}
+                                                value={url}
+                                                onChange={e => {
+                                                    const newUrls = [...productFormData.imageUrls];
+                                                    newUrls[index] = e.target.value;
+                                                    setProductFormData({ ...productFormData, imageUrls: newUrls });
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newUrls = productFormData.imageUrls.filter((_, i) => i !== index);
+                                                    setProductFormData({ ...productFormData, imageUrls: newUrls });
+                                                }}
+                                                className="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 border-2 border-rose-200 dark:border-rose-800 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Previews */}
+                                {(productFormData.imageUrl || productFormData.imageUrls.some(u => u)) && (
+                                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                        {[productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u).map((url, i) => (
+                                            <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800">
+                                                <img 
+                                                    src={url} 
+                                                    alt="Preview" 
+                                                    className="w-full h-full object-cover" 
+                                                    referrerPolicy="no-referrer"
+                                                />
+                                                {i === 0 && <div className="absolute inset-0 border-2 border-indigo-600 rounded-xl pointer-events-none" />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Categoria (Visibilidade no PDV)</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {(['Venda', 'Uso Interno'] as const).map(cat => (
+                                        <button
+                                            key={cat}
+                                            type="button"
+                                            onClick={() => setProductFormData({ ...productFormData, category: cat })}
+                                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${productFormData.category === cat ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-black dark:border-white shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600'}`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* DYNAMIC FIELDS: GROUP & SUBGROUP */}

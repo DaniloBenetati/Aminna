@@ -66,13 +66,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       // Unify logic with DailyCloseView: Calculate total booked and actual collected revenue
       const mainService = services.find(s => s.id === app.serviceId);
-      const mainBooked = app.bookedPrice || mainService?.price || 0;
+      const mainBooked = (app.bookedPrice || mainService?.price || 0) * (app.quantity || 1);
       
       const extrasList = (app.additionalServices || []).map(extra => {
         const extraS = services.find(s => s.id === extra.serviceId);
         return {
           ...extra,
-          bookedPrice: extra.bookedPrice || extraS?.price || 0,
+          bookedPrice: (extra.bookedPrice || extraS?.price || 0) * (extra.quantity || 1),
           serviceName: extraS?.name || 'Serviço Extra'
         };
       });
@@ -90,10 +90,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         let serviceRevenue = totalBooked > 0 ? (mainBooked / totalBooked) * actualCollectedRevenue : 0;
         if (isRemake) serviceRevenue = 0;
 
-        // Commission (Based on original value unless it's a remake)
-        const baseValueForCommission = isRemake ? 0 : mainBooked;
+        // Commission (Based on proportional revenue unless it's a remake)
         const rate = app.commissionRateSnapshot ?? defaultRate;
-        const payout = baseValueForCommission * rate;
+        const payout = serviceRevenue * rate;
 
         revenue += serviceRevenue;
         serviceCommission += payout;
@@ -120,10 +119,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           let serviceRevenue = totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualCollectedRevenue : 0;
           if (isRemake) serviceRevenue = 0;
 
-          // Commission
-          const baseValueForCommission = isRemake ? 0 : extra.bookedPrice;
+          // Commission (Based on proportional revenue)
           const rate = extra.commissionRateSnapshot ?? defaultRate;
-          const payout = baseValueForCommission * rate;
+          const payout = serviceRevenue * rate;
 
           revenue += serviceRevenue;
           serviceCommission += payout;

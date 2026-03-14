@@ -289,6 +289,8 @@ const App: React.FC = () => {
           unit: s.unit,
           costPrice: s.cost_price,
           price: s.sale_price,
+          imageUrl: s.image_url,
+          imageUrls: s.image_urls || [],
           usageHistory: (usageLogsData || [])
             .filter((l: any) => l.stock_item_id === s.id)
             .map((l: any) => ({
