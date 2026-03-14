@@ -423,13 +423,40 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
                     type: 'VISIT',
                     description: service?.name || 'Serviço',
                     providerId: a.providerId,
-                    details: `Atendimento com ${provider?.name || 'Profissional'}. Status: ${a.status}`,
+                    details: `${provider?.name || 'Profissional'}. Status: ${a.status}${a.observation ? ` | ${a.observation}` : ''}`,
                     rating: 0 // Could be connected to a rating system later
                 };
             });
 
-        // Merge with manual history and sort by date descending
-        const merged = [...appointmentHistory, ...(selectedCustomer.history || [])];
+        // Normalize legacy manual history (Bonificação -> Justificativa)
+        const normalizedManualHistory = (selectedCustomer.history || []).map(item => {
+            if (item.description?.includes('BONIFICAÇÃO') || item.description?.includes('Bonificação')) {
+                return {
+                    ...item,
+                    description: item.description.replace(/BONIFICAÇÃO/g, 'JUSTIFICATIVA').replace(/Bonificação/g, 'Justificativa'),
+                    details: item.details?.replace(/BONIFICAÇÃO/g, 'JUSTIFICATIVA').replace(/Bonificação/g, 'Justificativa')
+                };
+            }
+            return item;
+        });
+
+        // Filter out manual history items that are already covered by appointment observation to avoid duplication
+        const filteredManualHistory = normalizedManualHistory.filter(manualItem => {
+            if (manualItem.type === 'VISIT') return true; // Keep manual visits if any
+            // If it's a zero-out record, check if we already have it in appointments
+            const isZeroOutManual = manualItem.description?.includes('JUSTIFICATIVA');
+            if (isZeroOutManual) {
+                const hasMatchingApp = appointmentHistory.some(appItem => 
+                    appItem.date === manualItem.date && 
+                    appItem.details.includes(manualItem.details || '')
+                );
+                if (hasMatchingApp) return false;
+            }
+            return true;
+        });
+
+        // Merge and sort by date descending
+        const merged = [...appointmentHistory, ...filteredManualHistory];
         return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [selectedCustomer, appointments, services, providers]);
 

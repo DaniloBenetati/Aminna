@@ -99,6 +99,7 @@ export const generateFinancialTransactions = (
         const rawApp = app as any;
         const pricePaid = Number(app.pricePaid ?? rawApp.price_paid ?? 0);
         const bookedPrice = Number(app.bookedPrice ?? rawApp.booked_price ?? 0);
+        const quantity = Number(app.quantity ?? rawApp.quantity ?? 1);
         const tipAmount = Number(app.tipAmount ?? rawApp.tip_amount ?? 0);
 
         let paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
@@ -116,13 +117,14 @@ export const generateFinancialTransactions = (
             status = 'Atrasado';
         }
 
-        const mainBooked = bookedPrice || service?.price || 0;
+        const mainBooked = (bookedPrice || service?.price || 0) * quantity;
         const extrasList = (app.additionalServices || []).map(extra => {
             const extraRaw = extra as any;
             const extraS = services.find(s => s.id === extra.serviceId);
+            const extraQty = Number(extra.quantity ?? extraRaw.quantity ?? 1);
             return {
                 ...extra,
-                bookedPrice: extra.bookedPrice ?? extraRaw.booked_price ?? extraS?.price ?? 0,
+                bookedPrice: (extra.bookedPrice ?? extraRaw.booked_price ?? extraS?.price ?? 0) * extraQty,
                 serviceName: extraS?.name || 'Serviço Extra'
             };
         });
@@ -249,8 +251,10 @@ export const generateFinancialTransactions = (
         if (provider) {
             const commissionRateSnapshot = app.commissionRateSnapshot ?? rawApp.commission_rate_snapshot;
             const rate = commissionRateSnapshot ?? provider.commissionRate;
-            const mainServiceBookedPrice = bookedPrice || service?.price || 0;
-            const commissionLiquidBase = mainServiceBookedPrice * (1 - (fee / 100));
+            
+            // Calculate proportional revenue for this line
+            const mainRevenueAmount = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            const commissionLiquidBase = mainRevenueAmount * (1 - (fee / 100));
             const commissionAmount = commissionLiquidBase * rate;
             const commissionDate = getCommissionDate(baseDate);
 
@@ -281,9 +285,11 @@ export const generateFinancialTransactions = (
                     const rawExtra = extra as any;
                     const extraRateSnapshot = extra.commissionRateSnapshot ?? rawExtra.commission_rate_snapshot;
                     const rate = extraRateSnapshot ?? extraProvider.commissionRate;
-                    const extraBooked = extra.bookedPrice ?? rawExtra.booked_price;
-                    const extraBookedPrice = extraBooked || extraService?.price || 0;
-                    const commissionLiquidBase = extraBookedPrice * (1 - (fee / 100));
+                    
+                    // Calculate proportional revenue for this extra line
+                    const extraBookedPrice = extra.bookedPrice; // Already multiplied by quantity above
+                    const extraRevenueAmount = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                    const commissionLiquidBase = extraRevenueAmount * (1 - (fee / 100));
                     const commissionAmount = commissionLiquidBase * rate;
                     const commissionDate = getCommissionDate(baseDate);
 

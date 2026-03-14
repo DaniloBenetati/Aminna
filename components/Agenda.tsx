@@ -1650,8 +1650,16 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                                                 'bg-[#008877] text-white'
                                                                                                                 }`}>
                                                                                                                 {(item.ca.isRemake || item.ca.paymentMethod === 'Refazer') ? 'REFAZER' : item.status}
-                                                                                                            </span>
-                                                                                                        </div>
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            {item.ca.observation && (
+                                                                                                                <div className="mt-2 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                                                                                    <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">Justificativa:</p>
+                                                                                                                    <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 leading-tight whitespace-pre-wrap">
+                                                                                                                        {item.ca.observation}
+                                                                                                                    </p>
+                                                                                                                </div>
+                                                                                                            )}
                                                                                                     </div>
                                                                                                 );
                                                                                             });

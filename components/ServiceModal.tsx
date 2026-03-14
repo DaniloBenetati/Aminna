@@ -733,6 +733,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payments: payments,
             end_time: updatedLines[0].endTime,
             tip_amount: updatedLines[0].tipAmount,
+            quantity: updatedLines[0].quantity || 1,
             start_time_actual: updatedLines[0].startTimeActual
         };
 
@@ -765,7 +766,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
                     payments: payments,
-                    endTime: updatedLines[0].endTime
+                    endTime: updatedLines[0].endTime,
+                    quantity: updatedLines[0].quantity || 1
                 } as Appointment;
 
                 let updated = prev;
@@ -862,6 +864,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payments: payments,
             end_time: lines[0].endTime,
             tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+            quantity: lines[0].quantity || 1,
             start_time_actual: lines[0].startTimeActual
         };
 
@@ -943,7 +946,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     discountAmount: couponDiscountAmount,
                     payments: payments,
                     endTime: lines[0].endTime,
-                    tipAmount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
+                    tipAmount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+                    quantity: lines[0].quantity || 1
                 } as Appointment;
 
                 return prev.map(a => {
@@ -1684,7 +1688,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 end_time: updatedLines[0].endTime,
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
-                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason}`
+                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`
             };
 
             // Identify secondary appointments to "cancel/merge"

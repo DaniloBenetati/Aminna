@@ -223,6 +223,7 @@ export interface Appointment {
   observation?: string;
   tipAmount?: number;
   isRemake?: boolean; // Refazer agendamento (zerado)
+  quantity?: number; // Nova propriedade para quantidade do serviço principal
   isReconciled?: boolean;
 }
 
