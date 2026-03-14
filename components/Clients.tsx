@@ -4,7 +4,7 @@ import {
   Search, Plus, MapPin, Phone, Mail, User, FileText, Check, X,
   Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar,
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
-  Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet
+  Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save
 } from 'lucide-react';
 import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile } from '../types';
 
@@ -34,6 +34,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [localPrefDays, setLocalPrefDays] = useState('');
   const [localPrefNotes, setLocalPrefNotes] = useState('');
   const [localAssignedProviderIds, setLocalAssignedProviderIds] = useState<string[]>([]);
+
+  // Quick Registration State
+  const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
+  const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
+  const [isRegisteringClient, setIsRegisteringClient] = useState(false);
 
   React.useEffect(() => {
     if (selectedCustomerId) {
@@ -286,6 +291,72 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     setIsEditing(false); setIsNew(false);
   };
 
+  const handleQuickRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickRegisterData.name || !quickRegisterData.phone) return;
+
+    // Check for existing customer locally first
+    const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
+    const existingCustomer = customers.find(c => {
+      const cPhone = (c.phone || '').replace(/\D/g, '');
+      return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
+    });
+
+    if (existingCustomer) {
+      alert(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.`);
+      setIsQuickRegisterOpen(false);
+      setQuickRegisterData({ name: '', phone: '', cpf: '' });
+      setSelectedCustomer(existingCustomer);
+      return;
+    }
+
+    setIsRegisteringClient(true);
+    try {
+      const newCustomerPayload = {
+        name: quickRegisterData.name,
+        phone: normalizedPhone,
+        cpf: quickRegisterData.cpf,
+        registration_date: new Date().toISOString().split('T')[0],
+        status: 'Novo',
+        total_spent: 0,
+        acquisition_channel: 'Cadastro Rápido'
+      };
+
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([newCustomerPayload])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const newCustomer: Customer = {
+          id: data.id,
+          name: data.name,
+          phone: data.phone,
+          email: data.email,
+          registrationDate: data.registration_date,
+          lastVisit: '',
+          totalSpent: 0,
+          status: data.status,
+          history: [],
+          preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
+        };
+
+        setCustomers(prev => [...prev, newCustomer]);
+        setSelectedCustomer(newCustomer);
+        setIsQuickRegisterOpen(false);
+        setQuickRegisterData({ name: '', phone: '', cpf: '' });
+      }
+    } catch (error) {
+      console.error('Error creating customer:', error);
+      alert('Erro ao criar cliente.');
+    } finally {
+      setIsRegisteringClient(false);
+    }
+  };
+
   const handleCancel = () => {
     if (isNew) {
       setSelectedCustomer(null);
@@ -352,6 +423,54 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          {isQuickRegisterOpen ? (
+            <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-3xl animate-in slide-in-from-top-2">
+              <div className="flex justify-between items-center mb-4">
+                <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
+                <button onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
+              </div>
+              <form onSubmit={handleQuickRegister} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <input
+                  type="text"
+                  placeholder="Nome Completo"
+                  className="w-full px-4 py-3 rounded-2xl border border-indigo-100 dark:border-zinc-700 text-sm font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
+                  value={quickRegisterData.name}
+                  onChange={e => setQuickRegisterData({ ...quickRegisterData, name: e.target.value })}
+                  autoFocus
+                />
+                <input
+                  type="tel"
+                  placeholder="Telefone / WhatsApp"
+                  className="w-full px-4 py-3 rounded-2xl border border-indigo-100 dark:border-zinc-700 text-sm font-black focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
+                  value={quickRegisterData.phone}
+                  onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
+                />
+                <button
+                  type="submit"
+                  disabled={!quickRegisterData.name || !quickRegisterData.phone || isRegisteringClient}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isRegisteringClient ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  {isRegisteringClient ? 'Salvando...' : 'Salvar Cliente'}
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setIsQuickRegisterOpen(true);
+                  if (searchTerm && isNaN(Number(searchTerm))) {
+                    setQuickRegisterData(prev => ({ ...prev, name: searchTerm }));
+                  }
+                }}
+                className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-4 py-2 rounded-xl transition-colors"
+              >
+                <Plus size={14} /> Cadastrar Nova Cliente
+              </button>
+            </div>
+          )}
         </div>
       )}
 

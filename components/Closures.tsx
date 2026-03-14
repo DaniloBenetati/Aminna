@@ -83,20 +83,26 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       const actualCollectedRevenue = app.status === 'Concluído' ? (pricePaid - tipAmount) : totalBooked;
 
       const isRemake = app.isRemake || app.paymentMethod === 'Refazer';
+      const isDebt = app.paymentMethod === 'Dívida' || (app.payments || []).some((p: any) => p.method === 'Dívida');
+      const isCourtesy = app.isCourtesy || app.paymentMethod === 'Cortesia';
 
       // 1. Process Main Service for this provider
       if (app.providerId === providerId) {
-        // Revenue (Proportional to what was actually paid)
+        // Revenue: For Production, we count the full booked price if it's a Debt or Courtesy
+        // otherwise we use what was actually collected.
         let serviceRevenue = totalBooked > 0 ? (mainBooked / totalBooked) * actualCollectedRevenue : 0;
+        if (isDebt || isCourtesy) serviceRevenue = mainBooked;
         if (isRemake) serviceRevenue = 0;
 
         // Commission (Based on proportional revenue unless it's a remake)
-        // If a coupon is applied, the commission base is the FULL booked price
-        const commissionBase = (app.appliedCoupon && mainBooked > 0 && !isRemake) ? mainBooked : serviceRevenue;
+        // If a coupon, debt or courtesy is applied, the commission base is the FULL booked price
+        const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
+        const commissionBase = (hasCoupon || isDebt || isCourtesy) && mainBooked > 0 && !isRemake ? mainBooked : serviceRevenue;
+        
         const rate = app.commissionRateSnapshot ?? defaultRate;
         const payout = commissionBase * rate;
 
-        revenue += serviceRevenue;
+        revenue += (isDebt || isCourtesy) ? mainBooked : serviceRevenue;
         serviceCommission += payout;
         commissionVal += payout;
         count += 1;
@@ -110,24 +116,33 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           clientName: customer?.name || 'Cliente Avulso',
           price: payout, // Commission displayed as "Valor"
           originalValue: serviceRevenue, // Collected Revenue displayed as "Faturamento"
-          rate: rate
+          rate: rate,
+          appliedCoupon: app.appliedCoupon,
+          isDebt,
+          isCourtesy,
+          isRemake
         });
       }
 
       // 2. Process Additional Services for this provider
       extrasList.forEach(extra => {
         if (extra.providerId === providerId) {
+          const extraIsCourtesy = extra.isCourtesy || app.paymentMethod === 'Cortesia';
+          
           // Revenue (Proportional)
           let serviceRevenue = totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualCollectedRevenue : 0;
+          if (isDebt || extraIsCourtesy) serviceRevenue = extra.bookedPrice;
           if (isRemake) serviceRevenue = 0;
 
           // Commission (Based on proportional revenue)
           const extraBookedPrice = extra.bookedPrice;
-          const commissionBase = (app.appliedCoupon && extraBookedPrice > 0 && !isRemake) ? extraBookedPrice : serviceRevenue;
+          const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
+          const commissionBase = (hasCoupon || isDebt || extraIsCourtesy) && extraBookedPrice > 0 && !isRemake ? extraBookedPrice : serviceRevenue;
+          
           const rate = extra.commissionRateSnapshot ?? defaultRate;
           const payout = commissionBase * rate;
 
-          revenue += serviceRevenue;
+          revenue += (isDebt || extraIsCourtesy) ? extraBookedPrice : serviceRevenue;
           serviceCommission += payout;
           commissionVal += payout;
           count += 1;
@@ -139,7 +154,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             clientName: extra.clientName || customer?.name || 'Cliente Avulso',
             price: payout,
             originalValue: serviceRevenue,
-            rate: rate
+            rate: rate,
+            appliedCoupon: app.appliedCoupon,
+            isDebt,
+            isCourtesy: extraIsCourtesy,
+            isRemake
           });
         }
       });
@@ -385,8 +404,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       </td>
                       <td className="py-4 text-right">
                         <div className="flex flex-col items-end">
-                          <span className="font-bold text-slate-400">R$ {item.originalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                          {item.originalValue === 0 && <span className="text-[7px] font-black text-rose-500 uppercase">SEM CUPOM</span>}
+                          <span className="font-bold text-slate-900">R$ {item.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          {item.faturamento === 0 && (
+                            <span className="text-[7px] font-black text-rose-500 uppercase">
+                              {item.appliedCoupon ? `CUPOM: ${item.appliedCoupon}` : item.isRemake ? 'REFAZER' : item.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-4 text-right pr-2 font-black text-slate-900">
@@ -642,8 +665,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         <div className="text-right">
                           <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Faturamento</p>
                           <div className="flex flex-col items-end">
-                             <p className="text-[10px] font-bold text-slate-400">R$ {service.originalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                             {service.originalValue === 0 && <span className="text-[7px] font-black text-rose-500 uppercase leading-none">SEM CUPOM</span>}
+                             <p className="text-[10px] font-bold text-slate-900 dark:text-white">R$ {service.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                             {service.faturamento === 0 && (
+                               <span className="text-[7px] font-black text-rose-500 uppercase leading-none">
+                                 {service.appliedCoupon ? `CUPOM: ${service.appliedCoupon}` : service.isRemake ? 'REFAZER' : service.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
+                               </span>
+                             )}
                           </div>
                         </div>
                         <div className="text-right">

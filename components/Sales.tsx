@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2 } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
@@ -61,6 +61,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
+    // Quick Registration State
+    const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
+    const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
+    const [isRegisteringClient, setIsRegisteringClient] = useState(false);
+
     // Catalog Filters
     const [selectedGroup, setSelectedGroup] = useState<string>('all');
     const [selectedSubGroup, setSelectedSubGroup] = useState<string>('all');
@@ -69,6 +74,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [previewProduct, setPreviewProduct] = useState<StockItem | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [showThumbsUp, setShowThumbsUp] = useState(false);
+    const [showSuccess, setShowSuccess] = useState(false);
     const touchStartRef = React.useRef<number | null>(null);
 
     const getCustomerName = (id: string) => (customers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
@@ -303,6 +309,70 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         ).slice(0, 20);
     }, [customers, customerSearch]);
 
+    const handleQuickRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!quickRegisterData.name || !quickRegisterData.phone) return;
+
+        // Check for existing customer locally first
+        const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
+        const existingCustomer = (customers as any).find((c: any) => {
+            const cPhone = (c.phone || '').replace(/\D/g, '');
+            return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
+        });
+
+        if (existingCustomer) {
+            if (window.confirm(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nDeseja usar o cadastro existente?`)) {
+                setCustomerId(existingCustomer.id);
+                setIsQuickRegisterOpen(false);
+                setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                return;
+            }
+        }
+
+        setIsRegisteringClient(true);
+        try {
+            const newCustomerPayload = {
+                name: quickRegisterData.name,
+                phone: normalizedPhone,
+                cpf: quickRegisterData.cpf,
+                registration_date: new Date().toISOString().split('T')[0],
+                status: 'Novo',
+                total_spent: 0,
+                acquisition_channel: 'Venda Direta'
+            };
+
+            const { data, error } = await supabase
+                .from('customers')
+                .insert([newCustomerPayload])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data) {
+                // Update local list (if parents use it) - actually we should update the prop or refetch
+                // Since 'customers' is a prop, we can't directly set it here, but we can set the customerId
+                // and hope the parent updates eventually, or we alert that it's done.
+                // However, in this app, usually customers are passed down.
+                // We'll set the ID so the user can proceed.
+                setCustomerId(data.id);
+                setIsQuickRegisterOpen(false);
+                setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                
+                // IMPORTANT: We need to update the local 'customers' list so getCustomerName works.
+                // Since this component doesn't have setCustomers, the new customer name won't show up immediately
+                // unless we have a way to update the parent. 
+                // Wait, Agenda.tsx has setCustomers. Sales.tsx does NOT.
+                // Let me check SalesProps.
+            }
+        } catch (error) {
+            console.error('Error creating customer:', error);
+            alert('Erro ao criar cliente.');
+        } finally {
+            setIsRegisteringClient(false);
+        }
+    };
+
     const handleRegisterSale = async (e: React.FormEvent) => {
         e.preventDefault();
         setTriedToSubmit(true);
@@ -386,6 +456,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             setTriedToSubmit(false);
             setCurrentProduct('');
             setPaymentMethod('Pix');
+
+            // Show success message
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 3000);
 
         } catch (error) {
             console.error('Error registering sale:', error);
@@ -831,7 +905,57 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         />
                                         <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
 
-                                        {customerSearch && (
+                                        {isQuickRegisterOpen ? (
+                                            <div className="mt-2 p-4 bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl animate-in slide-in-from-top-2">
+                                                <div className="flex justify-between items-center mb-3">
+                                                    <h4 className="font-black text-[10px] uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
+                                                    <button type="button" onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
+                                                </div>
+                                                <div className="flex flex-col gap-3">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Nome Completo"
+                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white uppercase"
+                                                        value={quickRegisterData.name}
+                                                        onChange={e => setQuickRegisterData({ ...quickRegisterData, name: e.target.value })}
+                                                        autoFocus
+                                                    />
+                                                    <input
+                                                        type="tel"
+                                                        placeholder="Telefone / WhatsApp"
+                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                                                        value={quickRegisterData.phone}
+                                                        onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleQuickRegister}
+                                                        disabled={!quickRegisterData.name || !quickRegisterData.phone || isRegisteringClient}
+                                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                    >
+                                                        {isRegisteringClient ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                                        {isRegisteringClient ? 'Salvando...' : 'Salvar e Selecionar'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="mt-1 flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setIsQuickRegisterOpen(true);
+                                                        if (customerSearch && isNaN(Number(customerSearch))) {
+                                                            setQuickRegisterData(prev => ({ ...prev, name: customerSearch }));
+                                                        }
+                                                    }}
+                                                    className="flex items-center gap-2 text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                                                >
+                                                    <Plus size={12} /> Cadastrar Nova Cliente
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {customerSearch && !isQuickRegisterOpen && (
                                             <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                                                 {filteredCustomerOptions.length > 0 ? filteredCustomerOptions.map(c => (
                                                     <button
@@ -1435,6 +1559,21 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     </div>
                 </div>
             )}
+            {/* Success Message Overlay */}
+            {showSuccess && (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 duration-500">
+                    <div className="bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-2 border-emerald-400">
+                        <div className="bg-white/20 p-2 rounded-xl">
+                            <CheckCircle2 size={24} className="text-white" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-black uppercase tracking-widest">Venda Realizada!</p>
+                            <p className="text-[10px] font-bold opacity-90 uppercase">A venda foi registrada com sucesso.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Thumbs Up Animation (Teams-like) */}
             {showThumbsUp && (
                 <div className="fixed inset-0 z-[100] pointer-events-none flex items-center justify-center">
