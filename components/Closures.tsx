@@ -115,12 +115,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             : (mainService?.name || 'Serviço'),
           clientName: customer?.name || 'Cliente Avulso',
           price: payout, // Commission displayed as "Valor"
-          originalValue: serviceRevenue, // Collected Revenue displayed as "Faturamento"
+          faturamento: serviceRevenue, // Collected Revenue displayed as "Faturamento"
           rate: rate,
           appliedCoupon: app.appliedCoupon,
           isDebt,
           isCourtesy,
-          isRemake
+          isRemake,
+          isSemCupom: !hasCoupon
         });
       }
 
@@ -153,12 +154,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             serviceName: extra.serviceName,
             clientName: extra.clientName || customer?.name || 'Cliente Avulso',
             price: payout,
-            originalValue: serviceRevenue,
+            faturamento: serviceRevenue,
             rate: rate,
             appliedCoupon: app.appliedCoupon,
             isDebt,
             isCourtesy: extraIsCourtesy,
-            isRemake
+            isRemake,
+            isSemCupom: !hasCoupon
           });
         }
       });
@@ -173,14 +175,15 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           serviceName: 'Caixinha / Gorjeta',
           clientName: customer?.name || 'Cliente Avulso',
           price: tipAmount,
-          originalValue: tipAmount,
-          rate: 1
+          faturamento: tipAmount,
+          rate: 1,
+          isSemCupom: true
         });
       }
     });
 
     const effectiveRate = revenue > 0 ? (serviceCommission / revenue) : defaultRate;
-    const semCupomTotal = detailedServices.reduce((acc, s) => acc + (s.isSemCupom ? s.originalValue : 0), 0);
+    const semCupomTotal = detailedServices.reduce((acc, s) => acc + (s.isSemCupom ? s.faturamento : 0), 0);
 
     return { provider, revenue, commissionRate: effectiveRate, commissionVal, serviceCommission, totalTips, count, details: detailedServices, semCupomTotal };
   };
