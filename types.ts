@@ -253,7 +253,7 @@ export interface Partner {
   address?: string;
   city?: string;
   partnershipType: 'PERMUTA' | 'PAGO';
-  partnerType?: 'Produto' | 'Serviço' | 'Evento';
+  partnerType?: 'Produto' | 'Serviço' | 'Evento' | 'Influenciador';
   contactPerson?: string;
   pixKey?: string;
   notes?: string;

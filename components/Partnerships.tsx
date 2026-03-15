@@ -101,6 +101,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       contract_scope: (form.elements.namedItem('contractScope') as HTMLTextAreaElement).value,
       contract_url: (form.elements.namedItem('contractUrl') as HTMLInputElement).value,
       notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value,
+      partner_type: 'Influenciador',
       active: editingPartner ? editingPartner.active : true
     };
 
@@ -125,6 +126,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
           contractScope: partnerData.contract_scope,
           contractUrl: partnerData.contract_url,
           notes: partnerData.notes,
+          partnerType: 'Influenciador',
           active: partnerData.active
         } : p));
       } else {
@@ -338,8 +340,37 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                               <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
                                 <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border whitespace-nowrap ${p.partnershipType === 'PERMUTA' ? 'bg-purple-50 text-purple-800 border-purple-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>{p.partnershipType}</span>
                                 <span className="text-[8px] text-slate-600 font-black uppercase tracking-tighter border border-slate-200 px-2 py-0.5 rounded-full whitespace-nowrap bg-slate-50">{p.category}</span>
+                                {p.thermometer && (
+                                  <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border whitespace-nowrap ${
+                                    p.thermometer === 'QUENTE' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                                    p.thermometer === 'MORNO' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                    'bg-blue-50 text-blue-600 border-blue-200'
+                                  }`}>
+                                    {p.thermometer}
+                                  </span>
+                                )}
                               </div>
                             </div>
+                            {(p.contractScope || p.contractUrl) && (
+                              <div className="mt-2 flex flex-col gap-1 px-1">
+                                {p.contractScope && (
+                                  <div className="flex items-start gap-2">
+                                    <FileText size={12} className="text-slate-400 mt-0.5" />
+                                    <p className="text-[10px] text-slate-500 font-bold leading-tight line-clamp-2">{p.contractScope}</p>
+                                  </div>
+                                )}
+                                {p.contractUrl && (
+                                  <a 
+                                    href={p.contractUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-[10px] text-indigo-600 font-black hover:underline w-fit"
+                                  >
+                                    <ArrowUpRight size={12} /> Ver Contrato (Drive)
+                                  </a>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
@@ -430,12 +461,39 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   </select>
                 </div>
                 <div className="col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Status da Parceria (Termômetro)</label>
+                  <div className="flex gap-2">
+                    {(['QUENTE', 'MORNO', 'FRIO'] as const).map(value => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setThermometerValue(value)}
+                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+                          thermometerValue === value 
+                            ? (value === 'QUENTE' ? 'bg-orange-50 border-orange-600 text-orange-600' : value === 'MORNO' ? 'bg-amber-50 border-amber-600 text-amber-600' : 'bg-blue-50 border-blue-600 text-blue-600')
+                            : 'bg-slate-50 border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        {value}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Categoria (Influenciadora, Atleta, etc)</label>
                   <input name="category" defaultValue={editingPartner?.category || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Notas / Acordos</label>
-                  <textarea name="notes" rows={3} defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 resize-none" />
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Escopo do Contrato</label>
+                  <textarea name="contractScope" rows={2} defaultValue={editingPartner?.contractScope || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 resize-none" placeholder="O que foi acordado? (Ex: 2 Stories/semana)" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Link do Contrato (Drive)</label>
+                  <input name="contractUrl" defaultValue={editingPartner?.contractUrl || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="https://drive.google.com/..." />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Observações Gerais</label>
+                  <textarea name="notes" rows={2} defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 resize-none" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
