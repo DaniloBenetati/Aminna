@@ -948,6 +948,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         return results;
     }, [transactions, startDate, endDate]);
 
+    const combinedSuppliers = useMemo(() => {
+        const supList = (suppliers || []).map(s => ({ ...s, isProvider: false }));
+        const provList = (providers || []).map(p => ({
+            id: `prov_${p.id}`,
+            name: p.name,
+            category: p.specialty,
+            document: p.pixKey ? `PIX: ${p.pixKey}` : '-',
+            phone: p.phone,
+            email: '',
+            isProvider: true,
+            originalProvider: p
+        }));
+        return [...supList, ...provList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [suppliers, providers]);
+
     const summary = useMemo(() => calculateDailySummary(filteredTransactions), [filteredTransactions]);
     const { totalServices, totalProducts, totalAjustes, totalTips, totalAnticipationFees, totalRevenue, servicesWithTips } = summary;
 
@@ -3068,43 +3083,30 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             );
                         })()}
                         {/* ===== FORNECEDORES ===== */}
-                        {accountsSubTab === 'SUPPLIERS' && (
-                            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
-                                <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-                                    <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><Users size={16} /> Cadastro de Fornecedores</h3>
-                                </div>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-left text-sm">
-                                        <thead>
-                                            <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
-                                                <th className="px-6 py-4">Nome</th>
-                                                <th className="px-6 py-4">Categoria</th>
-                                                <th className="px-6 py-4">Documento</th>
-                                                <th className="px-6 py-4">Contato</th>
-                                                <th className="px-6 py-4 text-center">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                            {useMemo(() => {
-                                                const combined = [
-                                                    ...suppliers.map(s => ({ ...s, isProvider: false })),
-                                                    ...providers.map(p => ({ 
-                                                        id: `prov_${p.id}`, 
-                                                        name: p.name, 
-                                                        category: p.specialty, 
-                                                        document: p.pixKey ? `PIX: ${p.pixKey}` : '-', 
-                                                        phone: p.phone, 
-                                                        email: '', 
-                                                        isProvider: true,
-                                                        originalProvider: p
-                                                    }))
-                                                ].sort((a, b) => a.name.localeCompare(b.name));
-
-                                                return combined.map(sup => (
+                        {accountsSubTab === 'SUPPLIERS' && (() => {
+                            const list = combinedSuppliers || [];
+                            return (
+                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                                    <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><Users size={16} /> Cadastro de Fornecedores</h3>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left text-sm">
+                                            <thead>
+                                                <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
+                                                    <th className="px-6 py-4">Nome</th>
+                                                    <th className="px-6 py-4">Categoria</th>
+                                                    <th className="px-6 py-4">Documento</th>
+                                                    <th className="px-6 py-4">Contato</th>
+                                                    <th className="px-6 py-4 text-center">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                {list.map(sup => (
                                                     <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
                                                         <td className="px-6 py-4">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-black text-xs uppercase">{sup.name}</span>
+                                                                <span className="font-black text-xs uppercase">{sup.name || 'Sem Nome'}</span>
                                                                 {sup.isProvider ? (
                                                                     <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100 dark:border-indigo-800">Profissional</span>
                                                                 ) : (
@@ -3131,16 +3133,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             )}
                                                         </td>
                                                     </tr>
-                                                ));
-                                            }, [suppliers, providers])}
-                                            {suppliers.length === 0 && (
-                                                <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                                                ))}
+                                                {list.length === 0 && (
+                                                    <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 )}
                 {activeTab === 'CHARTS' && (

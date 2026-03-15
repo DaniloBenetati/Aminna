@@ -251,10 +251,26 @@ export interface Partner {
   email?: string;
   document?: string; // CPF or CNPJ
   address?: string;
+  city?: string;
   partnershipType: 'PERMUTA' | 'PAGO';
+  partnerType?: 'Produto' | 'Serviço' | 'Evento';
+  contactPerson?: string;
   pixKey?: string;
   notes?: string;
   active: boolean;
+}
+
+export interface PartnerExchange {
+  id: string;
+  partnerId: string;
+  receivedItem: string;
+  offeredItem: string;
+  estimatedValue: number;
+  exchangeDate: string;
+  campaignId?: string;
+  eventName?: string;
+  status: 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Negociação';
+  notes?: string;
 }
 
 export interface Campaign {

@@ -18,7 +18,7 @@ import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { Login } from './components/Login';
 
-import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig } from './types';
+import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, PartnerExchange, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const [pantryLogs, setPantryLogs] = useState<PantryLog[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [partners, setPartners] = useState<Partner[]>([]);
+  const [partnerExchanges, setPartnerExchanges] = useState<PartnerExchange[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>([]);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSetting[]>([]);
   const [commissionSettings, setCommissionSettings] = useState<CommissionSetting[]>([]);
@@ -195,6 +196,7 @@ const App: React.FC = () => {
         { data: pantryLogsData },
         { data: leadsData },
         { data: partnersData },
+        { data: partnerExchangesData },
         { data: expenseCategoriesData },
         { data: paymentSettingsData },
         { data: commissionSettingsData },
@@ -215,6 +217,7 @@ const App: React.FC = () => {
         supabase.from('pantry_logs').select('*').gte('date', minDate),
         supabase.from('leads').select('*'),
         supabase.from('partners').select('*'),
+        supabase.from('partner_exchanges').select('*'),
         supabase.from('expense_categories').select('*'),
         supabase.from('payment_settings').select('*'),
         supabase.from('commission_settings').select('*'),
@@ -353,7 +356,24 @@ const App: React.FC = () => {
           ...p,
           socialMedia: p.social_media,
           partnershipType: p.partnership_type,
+          partnerType: p.partner_type,
+          contactPerson: p.contact_person,
+          city: p.city,
           pixKey: p.pix_key
+        })));
+      }
+      if (partnerExchangesData) {
+        setPartnerExchanges(partnerExchangesData.map((e: any) => ({
+          id: e.id,
+          partnerId: e.partner_id,
+          receivedItem: e.received_item,
+          offeredItem: e.offered_item,
+          estimatedValue: e.estimated_value,
+          exchangeDate: e.exchange_date,
+          campaignId: e.campaign_id,
+          eventName: e.event_name,
+          status: e.status,
+          notes: e.notes
         })));
       }
       if (expenseCategoriesData) {
@@ -383,7 +403,17 @@ const App: React.FC = () => {
           paymentDay: c.payment_day
         })));
       }
-      if (suppliersData) setSuppliers(suppliersData);
+      if (suppliersData) {
+        setSuppliers(suppliersData.map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          category: s.category,
+          document: s.document,
+          phone: s.phone,
+          email: s.email,
+          active: s.active
+        })));
+      }
       if (nfseRecordsData) {
         setNfseRecords(nfseRecordsData.map((r: any) => ({
           id: r.id,
@@ -665,7 +695,7 @@ const App: React.FC = () => {
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
-        return <Partnerships partners={partners} setPartners={setPartners} campaigns={campaigns} setCampaigns={setCampaigns} />;
+        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} />;
       case ViewState.COPA:
         return (
           <Copa
