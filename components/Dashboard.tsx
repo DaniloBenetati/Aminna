@@ -496,6 +496,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             .map(day => ({ name: day, value: counts[day] || 0 })); // sort logically by week day
     }, [filteredAppointments]);
 
+    // 10.5 Média de Agendamentos por Dia da Semana (Normalizado)
+    const avgAppointmentsPerDayResult = useMemo(() => {
+        const counts: Record<string, number> = {};
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        
+        // 1. Calcular Totais por Dia da Semana
+        filteredAppointments.forEach(a => {
+            if (a.date) {
+                const dateObj = new Date(a.date + 'T12:00:00');
+                const dayStr = daysMap[dateObj.getDay()];
+                counts[dayStr] = (counts[dayStr] || 0) + 1;
+            }
+        });
+
+        // 2. Calcular Frequência de cada dia da semana no período
+        let startD, endD;
+        if (timeView === 'day') {
+            startD = new Date(dateRef);
+            endD = new Date(dateRef);
+        } else if (timeView === 'month') {
+            startD = new Date(dateRef.getFullYear(), dateRef.getMonth(), 1);
+            endD = new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0);
+        } else if (timeView === 'year') {
+            startD = new Date(dateRef.getFullYear(), 0, 1);
+            endD = new Date(dateRef.getFullYear(), 11, 31);
+        } else {
+            startD = new Date(customRange.start + 'T12:00:00');
+            endD = new Date(customRange.end + 'T12:00:00');
+        }
+
+        const weekdayFrequency: Record<string, number> = {};
+        for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+            const dayStr = daysMap[d.getDay()];
+            weekdayFrequency[dayStr] = (weekdayFrequency[dayStr] || 0) + 1;
+        }
+
+        // 3. Normalizar
+        return daysMap
+            .map(day => {
+                const total = counts[day] || 0;
+                const freq = weekdayFrequency[day] || 1;
+                return {
+                    name: day,
+                    value: total / freq
+                };
+            })
+            .filter(item => item.value > 0);
+    }, [filteredAppointments, timeView, dateRef, customRange]);
+
     // 11. Profissionais Mais Requisitados (Volume)
     const topProvidersVolume = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -1260,11 +1309,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                                 {/* Top Dias da Semana */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
+                                        <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico (Total)
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -1281,10 +1330,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                 </div>
 
+                                {/* Média de Agendamentos por Dia */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Média de Agendamentos / Dia
+                                    </h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={avgAppointmentsPerDayResult} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <Tooltip 
+                                                    cursor={{ fill: 'transparent' }} 
+                                                    content={({ active, payload, label }: any) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                                                                    <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
+                                                                    <p className="text-indigo-700 dark:text-indigo-400 font-bold text-sm">
+                                                                        {payload[0].value.toFixed(1)} Agendamentos / Dia
+                                                                    </p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }} 
+                                                />
+                                                <Bar dataKey="value" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={32}>
+                                                    <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => v.toFixed(1)} />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
                                 {/* Tempo Médio no Salão */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
+                                        <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio no Salão (Minutos)
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
