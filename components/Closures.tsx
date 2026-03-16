@@ -370,7 +370,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
   const ReceiptSheet: React.FC<{ data: any; type: 'summary' | 'details'; hideFaturamento: boolean; printMode?: 'auditoria' | 'receipt'; idx: number; receiptNumber: number }> = ({ data, type, hideFaturamento, printMode, idx, receiptNumber }) => {
     const Copy = ({ copyNum }: { copyNum: number }) => (
-      <div className={`flex flex-col ${type === 'summary' ? 'h-[50%]' : 'min-h-[148mm]'} p-12 relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
+      <div className={`flex flex-col ${type === 'summary' ? 'h-[50%]' : ''} ${printMode === 'auditoria' ? 'p-6' : 'p-12'} relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
         <div className="flex justify-between items-start mb-10">
           <div className="flex items-center gap-8">
             <img src="/logo.png" alt="Aminna" className="w-20 h-20 object-contain dark:invert" />
@@ -426,41 +426,41 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
               <table className="w-full text-[10px] border-collapse overflow-visible">
                 <thead>
                   <tr className="text-left font-black uppercase text-slate-300 tracking-widest border-b border-slate-100">
-                    <th className="py-3 px-2">Data/Hora</th>
-                    <th className="py-3">Serviço</th>
-                    <th className="py-3">Cliente</th>
-                    {!hideFaturamento && <th className="py-3 text-right">Faturamento</th>}
-                    <th className="py-3 text-right pr-2">Comissão</th>
+                    <th className="py-2 px-2">Data/Hora</th>
+                    <th className="py-2">Serviço</th>
+                    <th className="py-2">Cliente</th>
+                    {!hideFaturamento && <th className="py-2 text-right">Faturamento</th>}
+                    <th className="py-2 text-right pr-2">Comissão</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {data.details.map((item: any, idx: number) => (
-                    <tr key={idx}>
-                      <td className="py-4 px-2">
+                    <tr key={idx} className="border-b border-slate-50 last:border-0">
+                      <td className="py-1 px-2">
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-900 uppercase leading-none">{new Date((item.date ? item.date.substring(0, 10) : new Date().toISOString().split('T')[0]) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
-                          <span className="text-[8px] font-medium text-slate-400 mt-1">{item.time}</span>
+                          <span className="text-[7px] font-medium text-slate-400 mt-0.5">{item.time}</span>
                         </div>
                       </td>
-                      <td className="py-4">
-                        <p className="font-black text-slate-900 uppercase tracking-tight">{item.serviceName}</p>
+                      <td className="py-1">
+                        <p className="font-black text-slate-900 uppercase tracking-tight text-[9px]">{item.serviceName}</p>
                       </td>
-                      <td className="py-4">
-                        <p className="text-slate-500 font-bold uppercase tracking-tight">{item.clientName}</p>
+                      <td className="py-1">
+                        <p className="text-slate-500 font-bold uppercase tracking-tight text-[9px]">{item.clientName}</p>
                       </td>
                       {!hideFaturamento && (
-                        <td className="py-4 text-right">
+                        <td className="py-1 text-right">
                           <div className="flex flex-col items-end">
                             <span className="font-bold text-slate-900">R$ {item.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                             {item.faturamento === 0 && (
-                              <span className="text-[7px] font-black text-rose-500 uppercase">
+                              <span className="text-[6px] font-black text-rose-500 uppercase leading-none">
                                 {item.appliedCoupon ? `CUPOM: ${item.appliedCoupon}` : item.isRemake ? 'REFAZER' : item.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
                               </span>
                             )}
                           </div>
                         </td>
                       )}
-                      <td className="py-4 text-right pr-2 font-black text-slate-900">
+                      <td className="py-1 text-right pr-2 font-black text-slate-900">
                         R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -469,14 +469,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 {/* Total Row for Conference */}
                 <tfoot className="border-t-2 border-slate-900">
                   <tr className="bg-slate-50/50">
-                    <td colSpan={2} className="py-4 px-2 font-black text-slate-900 uppercase">Total</td>
+                    <td colSpan={2} className="py-2 px-2 font-black text-slate-900 uppercase">Total</td>
                     <td></td>
                     {!hideFaturamento && (
-                      <td className="py-4 text-right font-black text-slate-900">
+                      <td className="py-2 text-right font-black text-slate-900">
                         R$ {data.details.reduce((acc: number, item: any) => acc + (item.faturamento || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     )}
-                    <td className="py-4 text-right pr-2 font-black text-indigo-600">
+                    <td className="py-2 text-right pr-2 font-black text-indigo-600">
                       R$ {data.details.reduce((acc: number, item: any) => acc + (item.price || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
