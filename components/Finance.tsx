@@ -437,6 +437,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [isManualLinkModalOpen, setIsManualLinkModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
 
+    // Yearly Billing Comparison State
+    const [yearlyBillingData, setYearlyBillingData] = useState<{
+        currentYear: { month: number; total: number }[];
+        previousYear: { month: number; total: number }[];
+    }>({ currentYear: [], previousYear: [] });
+
     // Monthly Closing State
     const [monthlyClosings, setMonthlyClosings] = useState<Record<string, boolean>>(() => {
         const saved = localStorage.getItem('aminna_monthly_closings');
@@ -516,6 +522,46 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             fetchBankTransactions();
         }
     }, [startDate, endDate, accountsSubTab, financialConfigs]);
+
+    useEffect(() => {
+        const fetchYearlyBilling = async () => {
+            const year = new Date().getFullYear();
+            const startCurr = `${year}-01-01`;
+            const endCurr = `${year}-12-31`;
+            const startPrev = `${year - 1}-01-01`;
+            const endPrev = `${year - 1}-12-31`;
+
+            const fetchYearData = async (start: string, end: string) => {
+                const { data: appData } = await supabase.from('appointments').select('date, booked_price, price_paid').gte('date', start).lte('date', end);
+                const { data: saleData } = await supabase.from('sales').select('date, total_amount').gte('date', start).lte('date', end);
+
+                const monthly = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, total: 0 }));
+
+                (appData || []).forEach(a => {
+                    const m = new Date(a.date).getMonth();
+                    monthly[m].total += (a.price_paid ?? a.booked_price ?? 0);
+                });
+
+                (saleData || []).forEach(s => {
+                    const m = new Date(s.date).getMonth();
+                    monthly[m].total += (s.total_amount || 0);
+                });
+
+                return monthly;
+            };
+
+            const [current, previous] = await Promise.all([
+                fetchYearData(startCurr, endCurr),
+                fetchYearData(startPrev, endPrev)
+            ]);
+
+            setYearlyBillingData({ currentYear: current, previousYear: previous });
+        };
+
+        if (activeTab === 'CHARTS') {
+            fetchYearlyBilling();
+        }
+    }, [activeTab]);
 
     const handleOpenReconciledEditModal = (t: FinancialTransaction) => {
         setEditingReconciled(t);
@@ -1144,13 +1190,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 .reduce((acc, e) => acc + e.amount, 0);
 
             // Fontes de receita:
-            // Se o mês estiver fechado, somamos as receitas conciliadas (sistema + banco).
-            // Se NÃO estiver fechado, usamos os dados do sistema (vendas + serviços).
-            const grossRevenue = isClosed 
-                ? (apps.filter(a => a.isReconciled && (a.date ? a.date.substring(0, 10) : '') >= start && (a.date ? a.date.substring(0, 10) : '') <= end).reduce((acc, a) => acc + (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0), 0) +
-                   sls.filter(s => s.isReconciled && (s.date ? s.date.substring(0, 10) : '') >= start && (s.date ? s.date.substring(0, 10) : '') <= end).reduce((acc, s) => acc + (s.totalAmount || 0), 0) +
-                   reconciledBankRevenues)
-                : (revenueServices + revenueProducts);
+            // AGORA: Receita bruta é baseada APENAS na agenda e vendas, independente de fechamento ou banco.
+            const grossRevenue = (revenueServices + revenueProducts);
 
             // Automated Deductions (Fees)
             const automatedDeductions = apps.reduce((acc, a) => {
@@ -1205,15 +1246,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + mainComm + extraComm;
             }, 0);
 
-            // Substitution logic: if month is closed, follow the reconciled expenses.
-            // If NOT closed, show the higher between real launches (forecasts/reconciled) and calculated theoretical commissions.
-            let commissions = 0;
-            if (isClosed) {
-                commissions = realRepasses;
-            } else {
-                // Strictly follow the billing-based forecast (theoretical) when not closed
-                commissions = theoreticalCommissions;
-            }
+            // Substitution logic: AGORA sempre segue o teórico (forecast) baseado na agenda, independente de fechamento.
+            const commissions = theoreticalCommissions;
 
             const deductions = otherDeductions + commissions;
             const netRevenue = grossRevenue - deductions;
@@ -1298,16 +1332,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }, {} as Record<string, { total: number, count: number }>);
 
             const breakdownCommissions: Record<string, { total: number, count: number }> = {};
-            if (isClosed) {
-                Object.entries(manualRepassesByCat).forEach(([cat, info]) => {
-                    breakdownCommissions[cat] = { total: info.total, count: info.items.length };
-                });
-            } else {
-                // Strictly theoretical by professional for the billing forecast
-                Object.entries(theoreticalByProf).forEach(([name, info]) => {
-                    breakdownCommissions[name] = { total: info.total, count: info.count };
-                });
-            }
+            // Sempre mostra o teórico por profissional, independente de fechamento, para alinhar com a receita.
+            Object.entries(theoreticalByProf).forEach(([name, info]) => {
+                breakdownCommissions[name] = { total: info.total, count: info.count };
+            });
 
             const totalOutflows = deductions + totalCOGS + totalOpExpenses + irpjCsll;
 
@@ -3165,7 +3193,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         </div>
 
                         {chartsSubTab === 'GENERAL' ? (
-                            <FinanceCharts transactions={transactions} expenses={expenses} startDate={startDate} endDate={endDate} timeView={timeView} />
+                            <FinanceCharts 
+                                transactions={transactions} 
+                                expenses={expenses} 
+                                startDate={startDate} 
+                                endDate={endDate} 
+                                timeView={timeView} 
+                                yearlyBillingData={Array.from({ length: 12 }, (_, i) => ({
+                                    month: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][i],
+                                    currentYear: yearlyBillingData.currentYear[i]?.total || 0,
+                                    previousYear: yearlyBillingData.previousYear[i]?.total || 0
+                                }))} 
+                            />
                         ) : (
                             <div className="animate-in fade-in duration-500 pb-20">
                                 {(() => {
