@@ -187,7 +187,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
             appointmentId: appointment.id,
             quantity: appointment.quantity || 1,
-            tipAmount: appointment.tipAmount || 0,
+            tipAmount: (appointment.tipAmount || 0) - (appointment.additionalServices?.reduce((acc, s) => acc + (s.tipAmount || 0), 0) || 0),
             status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado')
                 ? appointment.status
                 : (appointment.startTimeActual ? 'Em Andamento' :
@@ -736,7 +736,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             customer_id: customer.id,
             payments: payments,
             end_time: updatedLines[0].endTime,
-            tip_amount: updatedLines[0].tipAmount,
+            tip_amount: updatedLines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             quantity: updatedLines[0].quantity || 1,
             start_time_actual: updatedLines[0].startTimeActual
         };
@@ -833,7 +833,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             clientPhone: l.clientPhone,
             quantity: l.quantity || 1,
             status: 'Concluído',
-            startTimeActual: l.startTimeActual
+            startTimeActual: l.startTimeActual,
+            tipAmount: l.tipAmount
         }));
 
         // Deduplicate extras by service and provider to be absolutely safe
@@ -1149,7 +1150,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             clientPhone: l.clientPhone,
             quantity: l.quantity || 1,
             status: l.status || 'Pendente',
-            startTimeActual: l.startTimeActual
+            startTimeActual: l.startTimeActual,
+            tipAmount: l.tipAmount
         }));
 
         // Deduplicate extras by service and provider to be absolutely safe
@@ -1407,7 +1409,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 applied_coupon: appliedCampaign?.couponCode,
                 discount_amount: couponDiscountAmount,
                 payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }],
-                tip_amount: lines[0].tipAmount
+                tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
             };
 
             // 1. Update Appointment
