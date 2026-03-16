@@ -270,20 +270,85 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       newWin.document.write(`
         <html>
           <head>
-            <title>Recibos Aminna ${data ? '- ' + (data.provider?.name || '') : ''}</title>
+            <title>Recibo Aminna ${data ? '- ' + (data.provider?.name || '') : ''}</title>
             <script src="https://cdn.tailwindcss.com"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
             <style>
               @media print {
-                @page { margin: 0; }
-                body { margin: 0; }
+                @page { 
+                  margin: 10mm; 
+                  size: A4;
+                }
+                body { 
+                  margin: 0; 
+                  -webkit-print-color-adjust: exact; 
+                  print-color-adjust: exact;
+                  background-color: white !important;
+                }
+                .no-print { display: none !important; }
               }
-              body { font-family: sans-serif; }
+              body { 
+                font-family: 'Inter', sans-serif; 
+                background-color: #f1f5f9;
+                margin: 0;
+                padding-top: 80px;
+              }
+              .toolbar {
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: white;
+                padding: 12px 24px;
+                border-radius: 20px;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                display: flex;
+                gap: 12px;
+                z-index: 1000;
+              }
+              .btn {
+                padding: 8px 20px;
+                border-radius: 12px;
+                font-weight: 800;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                cursor: pointer;
+                border: none;
+                transition: all 0.2s;
+              }
+              .btn-print { background: #0f172a; color: white; }
+              .btn-download { background: #4f46e5; color: white; }
+              .btn:hover { opacity: 0.9; transform: translateY(-1px); }
             </style>
           </head>
-          <body class="bg-slate-100">
-            <div class="p-4 flex flex-col items-center">
+          <body>
+            <div class="toolbar no-print">
+              <button class="btn btn-print" onclick="window.print()">Imprimir Tudo</button>
+              <button class="btn btn-download" onclick="downloadPDF()">Baixar PDF</button>
+            </div>
+            <div id="content-to-export" class="max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none min-h-[297mm]">
               ${printContents}
             </div>
+            <script>
+              function downloadPDF() {
+                const element = document.getElementById('content-to-export');
+                const opt = {
+                  margin: 0,
+                  filename: 'Recibo_Aminna_${data?.provider?.name || 'Geral'}.pdf',
+                  image: { type: 'jpeg', quality: 0.98 },
+                  html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+                html2pdf().set(opt).from(element).save();
+              }
+              
+              window.onload = () => {
+                setTimeout(() => {
+                  // Optional: auto-trigger something? The user might prefer clicking the download button now.
+                }, 500);
+              };
+            </script>
           </body>
         </html>
       `);
@@ -508,17 +573,16 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     );
   };
 
-  const generateWhatsappMessage = (data: any) => {
+  const generateWhatsappMessage = (data: any, includeDetails: boolean = false) => {
     const phone = data.provider?.phone?.replace(/\D/g, '') || '';
     let message = `* RECIBO DE REPASSE - AMINNA *\n`;
     message += `* Profissional:* ${data.provider.name}\n`;
     message += `* Período:* ${new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR')}\n\n`;
 
-    if (data.details && data.details.length > 0) {
+    if (includeDetails && data.details && data.details.length > 0) {
       message += `* DETALHAMENTO DE SERVIÇOS:*\n`;
       data.details.forEach((item: any) => {
         const itemVal = item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-        // Format date from ISO (YYYY-MM-DD...) to DD/MM/YYYY
         let dateLabel = item.date || '';
         if (dateLabel.includes('T')) dateLabel = dateLabel.split('T')[0];
         if (dateLabel.includes('-')) {
@@ -642,7 +706,19 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     />
                   </td>
                   <td className="px-6 py-4 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4"><div className="flex items-center justify-center gap-2"><button onClick={() => setSelectedReceipt(data)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><FileText size={18} /></button><button onClick={() => setWhatsappModalData(data)} className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors"><MessageCircle size={18} /></button></div></td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                       <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                        <FileText size={18} />
+                      </button>
+                      <button onClick={() => setSelectedReceipt(data)} title="Visualizar Detalhes" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
+                        <Printer size={18} />
+                      </button>
+                      <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
+                        <MessageCircle size={18} />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -657,26 +733,38 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Enviar Comprovante</h3>
             <p className="text-xs text-slate-500 text-center mb-6">Compartilhar com {whatsappModalData.provider?.name}.</p>
             <div className="w-full space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  onClick={() => {
+                    const { message, phone } = generateWhatsappMessage(whatsappModalData, false);
+                    window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
+                    setWhatsappModalData(null);
+                  }} 
+                  className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
+                >
+                  <Send size={14} className="mb-1" /> Enviar Resumo
+                </button>
+                <button 
+                  onClick={() => {
+                    const { message, phone } = generateWhatsappMessage(whatsappModalData, true);
+                    window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
+                    setWhatsappModalData(null);
+                  }} 
+                  className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
+                >
+                  <FileText size={14} className="mb-1" /> Detalhado
+                </button>
+              </div>
               <button 
                 onClick={() => {
-                  const { message, phone } = generateWhatsappMessage(whatsappModalData);
-                  window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
-                  setWhatsappModalData(null);
-                }} 
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
-              >
-                <Send size={16} /> Abrir WhatsApp
-              </button>
-              <button 
-                onClick={() => {
-                  const { message } = generateWhatsappMessage(whatsappModalData);
+                  const { message } = generateWhatsappMessage(whatsappModalData, true);
                   navigator.clipboard.writeText(message);
                   setWhatsappModalData(null);
-                  alert('Copiado!');
+                  alert('Texto Detalhado Copiado!');
                 }} 
                 className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
               >
-                <Copy size={16} /> Copiar Texto
+                <Copy size={16} /> Copiar Texto (Completo)
               </button>
               <button onClick={() => setWhatsappModalData(null)} className="w-full py-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest">Cancelar</button>
             </div>
