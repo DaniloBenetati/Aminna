@@ -38,6 +38,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
   const [isPrintingProvision, setIsPrintingProvision] = useState(false);
+  const [hideFaturamento, setHideFaturamento] = useState(false);
+  const [printMode, setPrintMode] = useState<'auditoria' | 'receipt'>('receipt');
 
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -78,19 +80,30 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       });
 
       const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
+      const isRemake = app.isRemake || app.paymentMethod === 'Refazer';
       const tipAmount = Number(app.tipAmount || 0);
       const pricePaid = app.pricePaid !== undefined && app.pricePaid !== null ? Number(app.pricePaid) : totalBooked;
       const actualCollectedRevenue = app.status === 'Concluído' ? (pricePaid - tipAmount) : totalBooked;
 
-      const isRemake = app.isRemake || app.paymentMethod === 'Refazer';
+      const isCourtesy = app.isCourtesy || app.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && app.status === 'Concluído');
+      
+      // Calculate denominator for revenue pro-rating (paying services only)
+      const totalBookedNonCourtesy = (isCourtesy ? 0 : mainBooked) + 
+        extrasList.reduce((acc, e) => acc + (e.isCourtesy || app.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && app.status === 'Concluído') ? 0 : e.bookedPrice), 0);
+
       const isDebt = app.paymentMethod === 'Dívida' || (app.payments || []).some((p: any) => p.method === 'Dívida');
-      const isCourtesy = app.isCourtesy || app.paymentMethod === 'Cortesia';
 
       // 1. Process Main Service for this provider
       if (app.providerId === providerId) {
         // Revenue: For Production, we count the full booked price if it's a Debt or Courtesy
         // otherwise we use what was actually collected.
-        let serviceRevenue = totalBooked > 0 ? (mainBooked / totalBooked) * actualCollectedRevenue : 0;
+        let serviceRevenue = 0;
+        if (isCourtesy) {
+          serviceRevenue = 0;
+        } else if (totalBookedNonCourtesy > 0) {
+          serviceRevenue = (mainBooked / totalBookedNonCourtesy) * actualCollectedRevenue;
+        }
+
         if (isDebt || isCourtesy) serviceRevenue = mainBooked;
         if (isRemake) serviceRevenue = 0;
 
@@ -128,10 +141,16 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       // 2. Process Additional Services for this provider
       extrasList.forEach(extra => {
         if (extra.providerId === providerId) {
-          const extraIsCourtesy = extra.isCourtesy || app.paymentMethod === 'Cortesia';
+          const extraIsCourtesy = extra.isCourtesy || app.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && app.status === 'Concluído');
           
           // Revenue (Proportional)
-          let serviceRevenue = totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualCollectedRevenue : 0;
+          let serviceRevenue = 0;
+          if (extraIsCourtesy) {
+            serviceRevenue = 0;
+          } else if (totalBookedNonCourtesy > 0) {
+            serviceRevenue = (extra.bookedPrice / totalBookedNonCourtesy) * actualCollectedRevenue;
+          }
+
           if (isDebt || extraIsCourtesy) serviceRevenue = extra.bookedPrice;
           if (isRemake) serviceRevenue = 0;
 
@@ -236,7 +255,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     };
   }, [reportData]);
 
-  const handleGenerateReceipts = (data: any | null = null) => {
+  const handleGenerateReceipts = (data: any | null = null, hideFat: boolean = false, mode: 'auditoria' | 'receipt' = 'receipt') => {
+    setHideFaturamento(hideFat);
+    setPrintMode(mode);
     setIsPrinting(true);
     setTimeout(() => {
       const wrapperId = data ? 'single-print-wrapper' : 'print-wrapper';
@@ -347,7 +368,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     );
   };
 
-  const ReceiptSheet = ({ data, type, idx, receiptNumber }: { data: any; type: 'summary' | 'details'; idx: number; receiptNumber: number }) => {
+  const ReceiptSheet: React.FC<{ data: any; type: 'summary' | 'details'; hideFaturamento: boolean; printMode?: 'auditoria' | 'receipt'; idx: number; receiptNumber: number }> = ({ data, type, hideFaturamento, printMode, idx, receiptNumber }) => {
     const Copy = ({ copyNum }: { copyNum: number }) => (
       <div className={`flex flex-col ${type === 'summary' ? 'h-[50%]' : 'min-h-[148mm]'} p-12 relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
         <div className="flex justify-between items-start mb-10">
@@ -408,7 +429,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     <th className="py-3 px-2">Data/Hora</th>
                     <th className="py-3">Serviço</th>
                     <th className="py-3">Cliente</th>
-                    <th className="py-3 text-right">Faturamento</th>
+                    {!hideFaturamento && <th className="py-3 text-right">Faturamento</th>}
                     <th className="py-3 text-right pr-2">Comissão</th>
                   </tr>
                 </thead>
@@ -427,22 +448,39 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       <td className="py-4">
                         <p className="text-slate-500 font-bold uppercase tracking-tight">{item.clientName}</p>
                       </td>
-                      <td className="py-4 text-right">
-                        <div className="flex flex-col items-end">
-                          <span className="font-bold text-slate-900">R$ {item.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                          {item.faturamento === 0 && (
-                            <span className="text-[7px] font-black text-rose-500 uppercase">
-                              {item.appliedCoupon ? `CUPOM: ${item.appliedCoupon}` : item.isRemake ? 'REFAZER' : item.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
-                            </span>
-                          )}
-                        </div>
-                      </td>
+                      {!hideFaturamento && (
+                        <td className="py-4 text-right">
+                          <div className="flex flex-col items-end">
+                            <span className="font-bold text-slate-900">R$ {item.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                            {item.faturamento === 0 && (
+                              <span className="text-[7px] font-black text-rose-500 uppercase">
+                                {item.appliedCoupon ? `CUPOM: ${item.appliedCoupon}` : item.isRemake ? 'REFAZER' : item.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                       <td className="py-4 text-right pr-2 font-black text-slate-900">
                         R$ {item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
                 </tbody>
+                {/* Total Row for Conference */}
+                <tfoot className="border-t-2 border-slate-900">
+                  <tr className="bg-slate-50/50">
+                    <td colSpan={2} className="py-4 px-2 font-black text-slate-900 uppercase">Total</td>
+                    <td></td>
+                    {!hideFaturamento && (
+                      <td className="py-4 text-right font-black text-slate-900">
+                        R$ {data.details.reduce((acc: number, item: any) => acc + (item.faturamento || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </td>
+                    )}
+                    <td className="py-4 text-right pr-2 font-black text-indigo-600">
+                      R$ {data.details.reduce((acc: number, item: any) => acc + (item.price || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </div>
@@ -465,7 +503,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     return (
       <div className="w-[210mm] min-h-[297mm] bg-white text-black print:break-after-page shadow-2xl mx-auto my-8 print:my-0 flex flex-col relative shrink-0" style={{ pageBreakAfter: 'always' }}>
         <Copy copyNum={1} />
-        <Copy copyNum={2} />
+        {printMode !== 'auditoria' && <Copy copyNum={2} />}
       </div>
     );
   };
@@ -554,7 +592,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       <div className="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-slate-200 shadow-sm gap-4">
         <div className="relative flex-1 md:min-w-[250px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="Buscar profissional..." className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-xs font-black outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
         <div className="flex gap-2 w-full lg:w-auto">
-          <button onClick={() => handleGenerateReceipts()} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all active:scale-95">
+          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all active:scale-95">
+            <Printer size={16} /> Auditoria
+          </button>
+          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
             <Printer size={16} /> Recibos Profissionais
           </button>
           <button onClick={() => setIsProvisionModalOpen(true)} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border-2 border-slate-200 dark:border-zinc-700 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all active:scale-95">
@@ -572,10 +613,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <th className="px-6 py-4 text-center">Serviços</th>
                 <th className="px-6 py-4 text-right">Faturamento</th>
                 <th className="px-6 py-4 text-center">Comissão</th>
-                <th className="px-6 py-4 text-right underline decoration-indigo-200">Valor p/ Nota</th>
-                <th className="px-6 py-4 text-right underline decoration-rose-200">Caixinhas</th>
-                <th className="px-6 py-4 text-right text-rose-500">DAS</th>
-                <th className="px-6 py-4 text-right underline decoration-emerald-200">Total à Repassar</th>
+                <th className="px-6 py-4 text-center">Comissão</th>
+                <th className="px-6 py-4 text-right underline decoration-indigo-200 whitespace-nowrap">Valor p/ Nota</th>
+                <th className="px-6 py-4 text-right underline decoration-rose-200 whitespace-nowrap">Caixinhas</th>
+                <th className="px-6 py-4 text-right text-rose-500 whitespace-nowrap">DAS</th>
+                <th className="px-6 py-4 text-right underline decoration-emerald-200 whitespace-nowrap">Total à Repassar</th>
                 <th className="px-6 py-4 text-center">Ações</th>
               </tr>
             </thead>
@@ -586,8 +628,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   <td className="px-6 py-4 text-center font-bold">{data.count}</td>
                   <td className="px-6 py-4 text-right text-slate-500 font-bold">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-center font-black">{((data.provider?.commissionRate || 0) * 100).toFixed(0)}%</td>
-                  <td className="px-6 py-4 text-right font-black text-indigo-600">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4 text-right font-black text-rose-600">R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-6 py-4 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-6 py-4 text-right font-black text-rose-600 whitespace-nowrap">R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-right">
                     <input 
                       type="number" 
@@ -600,7 +642,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       className="w-20 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-xs font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
                     />
                   </td>
-                  <td className="px-6 py-4 text-right font-black text-emerald-700">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-6 py-4 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4"><div className="flex items-center justify-center gap-2"><button onClick={() => setSelectedReceipt(data)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors"><FileText size={18} /></button><button onClick={() => setWhatsappModalData(data)} className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors"><MessageCircle size={18} /></button></div></td>
                 </tr>
               ))}
@@ -645,17 +687,19 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {selectedReceipt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
               <div><h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Detalhamento</h3><p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{selectedReceipt.provider?.name}</p></div>
               <button onClick={() => setSelectedReceipt(null)} className="p-3 hover:bg-white rounded-2xl text-slate-400"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
-                  <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Faturamento</p>
-                  <p className="text-sm font-black text-slate-900 dark:text-white">R$ {selectedReceipt.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {!hideFaturamento && (
+                  <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
+                    <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Faturamento</p>
+                    <p className="text-sm font-black text-slate-900 dark:text-white">R$ {selectedReceipt.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                )}
                 <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
                   <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Comissões</p>
                   <p className="text-sm font-black text-indigo-600">R$ {selectedReceipt.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -687,17 +731,19 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         <div><p className="text-xs font-black uppercase text-slate-900 dark:text-white">{service.serviceName}</p><p className="text-[10px] font-bold text-slate-500 uppercase">{service.clientName}</p></div>
                       </div>
                       <div className="flex items-center gap-6">
-                        <div className="text-right">
-                          <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Faturamento</p>
-                          <div className="flex flex-col items-end">
-                             <p className="text-[10px] font-bold text-slate-900 dark:text-white">R$ {service.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                             {service.faturamento === 0 && (
-                               <span className="text-[7px] font-black text-rose-500 uppercase leading-none">
-                                 {service.appliedCoupon ? `CUPOM: ${service.appliedCoupon}` : service.isRemake ? 'REFAZER' : service.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
-                               </span>
-                             )}
+                        {!hideFaturamento && (
+                          <div className="text-right">
+                            <p className="text-[8px] font-black text-slate-400 uppercase leading-none">Faturamento</p>
+                            <div className="flex flex-col items-end">
+                               <p className="text-[10px] font-bold text-slate-900 dark:text-white">R$ {service.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                               {service.faturamento === 0 && (
+                                 <span className="text-[7px] font-black text-rose-500 uppercase leading-none">
+                                   {service.appliedCoupon ? `CUPOM: ${service.appliedCoupon}` : service.isRemake ? 'REFAZER' : service.isCourtesy ? 'CORTESIA' : 'SEM FATURAMENTO'}
+                                 </span>
+                               )}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         <div className="text-right">
                           <p className="text-[8px] font-black text-indigo-600 uppercase leading-none">Comissão</p>
                           <p className="text-xs font-black text-slate-900 dark:text-white">R$ {service.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
@@ -710,10 +756,16 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             </div>
             <div className="p-6 border-t border-slate-100 flex gap-4 bg-slate-50/50">
               <button 
-                onClick={() => handleGenerateReceipts(selectedReceipt)}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+                onClick={() => handleGenerateReceipts(selectedReceipt, false, 'auditoria')}
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest"
               >
-                <Printer size={18} /> Imprimir Recibo
+                <Printer size={18} /> Detalhado (Auditoria)
+              </button>
+              <button 
+                onClick={() => handleGenerateReceipts(selectedReceipt, true, 'receipt')}
+                className="flex-[2] flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+              >
+                <Printer size={18} /> Imprimir Recibo Profissional
               </button>
             </div>
           </div>
@@ -731,8 +783,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   const rNum = Math.floor(100000 + Math.random() * 900000);
                   return (
                     <React.Fragment>
-                      <ReceiptSheet data={selectedReceipt} type="summary" idx={0} receiptNumber={rNum} />
-                      <ReceiptSheet data={selectedReceipt} type="details" idx={0} receiptNumber={rNum} />
+                      {printMode === 'receipt' && (
+                        <ReceiptSheet data={selectedReceipt} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
+                      )}
+                      <ReceiptSheet data={selectedReceipt} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
                     </React.Fragment>
                   );
                 })()}
@@ -741,8 +795,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 const rNum = Math.floor(100000 + Math.random() * 900000);
                 return (
                   <React.Fragment key={idx}>
-                    <ReceiptSheet data={data} type="summary" idx={idx} receiptNumber={rNum} />
-                    <ReceiptSheet data={data} type="details" idx={idx} receiptNumber={rNum} />
+                    {printMode === 'receipt' && (
+                      <ReceiptSheet data={data} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
+                    )}
+                    <ReceiptSheet data={data} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
                   </React.Fragment>
                 );
               })}

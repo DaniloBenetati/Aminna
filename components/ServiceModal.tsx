@@ -862,6 +862,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             service_id: lines[0].serviceId, // CRITICAL: Update service to the one selected in checkout
             booked_price: lines[0].unitPrice,
             provider_id: lines[0].providerId, // CRITICAL: Update provider to the one selected in checkout
+            is_courtesy: lines[0].isCourtesy,
             main_service_products: lines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
@@ -1404,6 +1405,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 service_id: lines[0].serviceId,
                 booked_price: lines[0].unitPrice,
                 provider_id: lines[0].providerId,
+                is_courtesy: lines[0].isCourtesy,
                 main_service_products: lines[0].products,
                 additional_services: extras,
                 applied_coupon: appliedCampaign?.couponCode,
@@ -1442,6 +1444,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     productsUsed: allProductsUsed,
                     combinedServiceNames: combinedNames,
                     bookedPrice: lines[0].unitPrice,
+                    isCourtesy: lines[0].isCourtesy,
                     mainServiceProducts: lines[0].products,
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
