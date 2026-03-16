@@ -81,7 +81,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       });
 
       const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
-      const isRemake = app.isRemake || app.paymentMethod === 'Refazer';
+      const isRemake = app.isRemake || app.paymentMethod === 'Refazer' || app.paymentMethod?.startsWith('Justificativa');
       const tipAmount = Number(app.tipAmount || 0);
       const pricePaid = app.pricePaid !== undefined && app.pricePaid !== null ? Number(app.pricePaid) : totalBooked;
       const actualCollectedRevenue = app.status === 'Concluído' ? (pricePaid - tipAmount) : totalBooked;
@@ -111,7 +111,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         // Commission (Based on proportional revenue unless it's a remake)
         // If a coupon, debt or courtesy is applied, the commission base is the FULL booked price
         const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-        const isActuallyRemake = isRemake || app.paymentMethod === 'Justificativa';
+        const isActuallyRemake = isRemake || app.paymentMethod === 'Refazer' || app.paymentMethod?.startsWith('Justificativa');
 
         let commissionBase = 0;
         if (!isActuallyRemake) {
@@ -163,7 +163,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           // Commission (Based on proportional revenue)
           const extraBookedPrice = extra.bookedPrice;
           const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-          const isActuallyRemake = isRemake || app.paymentMethod === 'Justificativa';
+          const isActuallyRemake = isRemake || app.paymentMethod === 'Refazer' || app.paymentMethod?.startsWith('Justificativa');
 
           let commissionBase = 0;
           if (!isActuallyRemake) {
