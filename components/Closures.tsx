@@ -97,7 +97,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         // Commission (Based on proportional revenue unless it's a remake)
         // If a coupon, debt or courtesy is applied, the commission base is the FULL booked price
         const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-        const commissionBase = (hasCoupon || isDebt || isCourtesy) && mainBooked > 0 && !isRemake ? mainBooked : serviceRevenue;
+        const commissionBase = (hasCoupon || isDebt || isCourtesy || customer?.isVip) && mainBooked > 0 && !isRemake ? mainBooked : serviceRevenue;
         
         const rate = app.commissionRateSnapshot ?? defaultRate;
         const payout = commissionBase * rate;
@@ -138,7 +138,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           // Commission (Based on proportional revenue)
           const extraBookedPrice = extra.bookedPrice;
           const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-          const commissionBase = (hasCoupon || isDebt || extraIsCourtesy) && extraBookedPrice > 0 && !isRemake ? extraBookedPrice : serviceRevenue;
+          const commissionBase = (hasCoupon || isDebt || extraIsCourtesy || customer?.isVip) && extraBookedPrice > 0 && !isRemake ? extraBookedPrice : serviceRevenue;
           
           const rate = extra.commissionRateSnapshot ?? defaultRate;
           const payout = commissionBase * rate;
