@@ -165,21 +165,43 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         }
       });
 
-      // 3. Tip (Caixinha) - 100% to professional
-      if (tipAmount > 0 && app.providerId === providerId) {
-        commissionVal += tipAmount;
-        totalTips += tipAmount;
+      // 3. Tip (Caixinha) - Properly split between professionals
+      const extrasTipsSum = (app.additionalServices || []).reduce((acc, s) => acc + (s.tipAmount || 0), 0);
+      const mainProviderTip = tipAmount - extrasTipsSum;
+
+      // main provider receives their part of the tip
+      if (mainProviderTip > 0 && app.providerId === providerId) {
+        commissionVal += mainProviderTip;
+        totalTips += mainProviderTip;
         detailedServices.push({
           date: displayDate,
           time: app.time,
           serviceName: 'Caixinha / Gorjeta',
           clientName: customer?.name || 'Cliente Avulso',
-          price: tipAmount,
-          faturamento: tipAmount,
+          price: mainProviderTip,
+          faturamento: mainProviderTip,
           rate: 1,
           isSemCupom: true
         });
       }
+
+      // extra providers receive their specific tips
+      extrasList.forEach(extra => {
+        if (extra.tipAmount && extra.tipAmount > 0 && extra.providerId === providerId) {
+          commissionVal += extra.tipAmount;
+          totalTips += extra.tipAmount;
+          detailedServices.push({
+            date: displayDate,
+            time: extra.startTime || app.time,
+            serviceName: `Caixinha (${extra.serviceName})`,
+            clientName: extra.clientName || customer?.name || 'Cliente Avulso',
+            price: extra.tipAmount,
+            faturamento: extra.tipAmount,
+            rate: 1,
+            isSemCupom: true
+          });
+        }
+      });
     });
 
     const effectiveRate = revenue > 0 ? (serviceCommission / revenue) : defaultRate;
