@@ -633,11 +633,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             if (!isSameCustomer) return false;
 
-            // Normalize time
-            const apptTime = a.time.slice(0, 5);
-            const currentTime = appointmentTime.slice(0, 5);
+            // WIDEN WINDOW: Normalize time to minutes to check for +/- 15 min overlap
+            const toMinutes = (t: string) => {
+                const [h, m] = t.split(':').map(Number);
+                return h * 60 + m;
+            };
 
-            if (a.date !== appointmentDate || apptTime !== currentTime) return false;
+            const apptTimeMinutes = toMinutes(a.time.slice(0, 5));
+            const currentTimeMinutes = toMinutes(appointmentTime.slice(0, 5));
+            const diff = Math.abs(apptTimeMinutes - currentTimeMinutes);
+
+            if (a.date !== appointmentDate || diff > 15) return false;
             if (a.status === 'Cancelado') return false;
             // If it's already finished, we should probably warn or allow merging to fix duplication
 
@@ -647,7 +653,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         if (concurrentAppt) {
             const providerName = providers.find(p => p.id === concurrentAppt.providerId)?.name || 'Profissional';
             const statusLabel = concurrentAppt.status === 'Concluído' ? 'já CONCLUÍDO' : `agendado (${concurrentAppt.status})`;
-            const confirmMerge = window.confirm(`A cliente ${customer.name} já tem um atendimento ${statusLabel} às ${appointmentTime} com ${providerName}.\n\nDeseja JUNTAR este serviço ao registro existente para evitar duplicidade?`);
+            const confirmMerge = window.confirm(`⚠️ POSSÍVEL DUPLICIDADE\n\nA cliente ${customer.name} já tem um atendimento ${statusLabel} às ${concurrentAppt.time} com ${providerName}.\n\nPara manter a agenda organizada, deseja UNIR este novo serviço ao registro que já existe?`);
 
             if (confirmMerge) {
                 return await performMerge(concurrentAppt);

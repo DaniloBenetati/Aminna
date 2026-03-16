@@ -46,6 +46,18 @@ async function main() {
     // Indices based on inspection:
     // [0] date, [1] time, [2] Cliente, [3] Celular, [4] Data Cadastro (Ignored), [5] Profissional, [6] Serviço, [7] Status
 
+    // 3. Fetch Existing Appointments to prevent duplicates
+    const { data: existingAppts, error: fetchError } = await supabase
+        .from('appointments')
+        .select('customer_id, provider_id, date, time')
+        .gte('date', '2026-03-15');
+    
+    if (fetchError) throw fetchError;
+
+    const existingKeys = new Set(existingAppts.map(a => 
+        `${a.customer_id}-${a.provider_id}-${a.date}-${a.time}`
+    ));
+
     for (let i = 0; i < dataRows.length; i++) {
         const row = dataRows[i];
         if (!row || row.length < 8) continue;
@@ -113,6 +125,13 @@ async function main() {
             }
             customerId = newCust.id;
             customers.push(newCust);
+        }
+
+        // DEDUPLICATION CHECK
+        const key = `${customerId}-${provider.id}-${isoDate}-${isoTime}`;
+        if (existingKeys.has(key)) {
+            console.log(`Skipping existing appointment: ${clientName} at ${isoTime} on ${isoDate}`);
+            continue;
         }
 
         if (status === 'Agendado') status = 'Pendente';

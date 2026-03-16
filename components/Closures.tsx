@@ -613,7 +613,6 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <th className="px-6 py-4 text-center">Serviços</th>
                 <th className="px-6 py-4 text-right">Faturamento</th>
                 <th className="px-6 py-4 text-center">Comissão</th>
-                <th className="px-6 py-4 text-center">Comissão</th>
                 <th className="px-6 py-4 text-right underline decoration-indigo-200 whitespace-nowrap">Valor p/ Nota</th>
                 <th className="px-6 py-4 text-right underline decoration-rose-200 whitespace-nowrap">Caixinhas</th>
                 <th className="px-6 py-4 text-right text-rose-500 whitespace-nowrap">DAS</th>
