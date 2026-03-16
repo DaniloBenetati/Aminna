@@ -135,14 +135,15 @@ export const generateFinancialTransactions = (
             status = 'Atrasado';
         }
 
-        const mainBooked = (bookedPrice || service?.price || 0) * quantity;
+        const mainBooked = (bookedPrice !== undefined && bookedPrice !== null ? bookedPrice : (service?.price || 0)) * quantity;
         const extrasList = (app.additionalServices || []).map(extra => {
             const extraRaw = extra as any;
             const extraS = services.find(s => s.id === extra.serviceId);
             const extraQty = Number(extra.quantity ?? extraRaw.quantity ?? 1);
+            const eBooked = extra.bookedPrice ?? extraRaw.booked_price;
             return {
                 ...extra,
-                bookedPrice: (extra.bookedPrice ?? extraRaw.booked_price ?? extraS?.price ?? 0) * extraQty,
+                bookedPrice: (eBooked !== undefined && eBooked !== null ? eBooked : (extraS?.price ?? 0)) * extraQty,
                 serviceName: extraS?.name || 'Serviço Extra'
             };
         });
@@ -272,8 +273,15 @@ export const generateFinancialTransactions = (
             
             // Calculate proportional revenue for this line
             const mainRevenueAmount = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            const isRemake = app.isRemake || rawApp.is_remake || paymentMethodName === 'Refazer' || paymentMethodName?.startsWith('Justificativa');
+
             // Base commission on FULL price if coupon is applied (company absorbs the discount)
-            const commissionBase = (app.appliedCoupon && mainBooked > 0) ? mainBooked : mainRevenueAmount;
+            // UNLESS it's a remake/justification where commission must be zero
+            let commissionBase = 0;
+            if (!isRemake) {
+                commissionBase = (app.appliedCoupon && mainBooked > 0) ? mainBooked : mainRevenueAmount;
+            }
+            
             const commissionLiquidBase = commissionBase * (1 - (fee / 100));
             const commissionAmount = commissionLiquidBase * rate;
             const commissionDate = getCommissionDate(baseDate);
@@ -309,8 +317,15 @@ export const generateFinancialTransactions = (
                     // Calculate proportional revenue for this extra line
                     const extraBookedPrice = extra.bookedPrice; // Already multiplied by quantity in extrasList mapping
                     const extraRevenueAmount = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                    const isRemake = app.isRemake || rawApp.is_remake || paymentMethodName === 'Refazer' || paymentMethodName?.startsWith('Justificativa');
+
                     // Base commission on FULL price if coupon is applied
-                    const extraCommBase = (app.appliedCoupon && extraBookedPrice > 0) ? extraBookedPrice : extraRevenueAmount;
+                    // UNLESS it's a remake/justification where commission must be zero
+                    let extraCommBase = 0;
+                    if (!isRemake) {
+                        extraCommBase = (app.appliedCoupon && extraBookedPrice > 0) ? extraBookedPrice : extraRevenueAmount;
+                    }
+
                     const commissionLiquidBase = extraCommBase * (1 - (fee / 100));
                     const commissionAmount = commissionLiquidBase * rate;
                     const commissionDate = getCommissionDate(baseDate);

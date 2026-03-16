@@ -1708,6 +1708,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 end_time: updatedLines[0].endTime,
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
+                is_remake: true,
                 observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`
             };
 
@@ -1759,6 +1760,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         endTime: updatedLines[0].endTime,
                         tipAmount: 0,
                         startTimeActual: updatedLines[0].startTimeActual,
+                        isRemake: true,
                         observation: updatedData.observation
                     } as Appointment;
                 }

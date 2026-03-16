@@ -68,13 +68,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       // Unify logic with DailyCloseView: Calculate total booked and actual collected revenue
       const mainService = services.find(s => s.id === app.serviceId);
-      const mainBooked = (app.bookedPrice || mainService?.price || 0) * (app.quantity || 1);
+      const mainBooked = (app.bookedPrice !== undefined && app.bookedPrice !== null ? app.bookedPrice : (mainService?.price || 0)) * (app.quantity || 1);
       
       const extrasList = (app.additionalServices || []).map(extra => {
         const extraS = services.find(s => s.id === extra.serviceId);
+        const eBooked = extra.bookedPrice;
         return {
           ...extra,
-          bookedPrice: (extra.bookedPrice || extraS?.price || 0) * (extra.quantity || 1),
+          bookedPrice: (eBooked !== undefined && eBooked !== null ? eBooked : (extraS?.price || 0)) * (extra.quantity || 1),
           serviceName: extraS?.name || 'Serviço Extra'
         };
       });
@@ -110,7 +111,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         // Commission (Based on proportional revenue unless it's a remake)
         // If a coupon, debt or courtesy is applied, the commission base is the FULL booked price
         const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-        const commissionBase = (hasCoupon || isDebt || isCourtesy || customer?.isVip) && mainBooked > 0 && !isRemake ? mainBooked : serviceRevenue;
+        const isActuallyRemake = isRemake || app.paymentMethod === 'Justificativa';
+
+        let commissionBase = 0;
+        if (!isActuallyRemake) {
+          commissionBase = (hasCoupon || isDebt || isCourtesy || customer?.isVip) && mainBooked > 0 ? mainBooked : serviceRevenue;
+        }
         
         const rate = app.commissionRateSnapshot ?? defaultRate;
         const payout = commissionBase * rate;
@@ -157,7 +163,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           // Commission (Based on proportional revenue)
           const extraBookedPrice = extra.bookedPrice;
           const hasCoupon = app.appliedCoupon && app.appliedCoupon.length > 0;
-          const commissionBase = (hasCoupon || isDebt || extraIsCourtesy || customer?.isVip) && extraBookedPrice > 0 && !isRemake ? extraBookedPrice : serviceRevenue;
+          const isActuallyRemake = isRemake || app.paymentMethod === 'Justificativa';
+
+          let commissionBase = 0;
+          if (!isActuallyRemake) {
+            commissionBase = (hasCoupon || isDebt || extraIsCourtesy || customer?.isVip) && extraBookedPrice > 0 ? extraBookedPrice : serviceRevenue;
+          }
           
           const rate = extra.commissionRateSnapshot ?? defaultRate;
           const payout = commissionBase * rate;
