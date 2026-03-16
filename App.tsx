@@ -514,6 +514,7 @@ const App: React.FC = () => {
           date: a.date,
           paymentDate: a.payment_date, // Added paymentDate
           time: a.time,
+          endTime: a.end_time,
           status: a.status,
           paymentMethod: a.payment_method,
           payments: a.payments || [],

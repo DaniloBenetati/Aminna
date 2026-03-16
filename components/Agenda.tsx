@@ -747,7 +747,8 @@ export const Agenda: React.FC<AgendaProps> = ({
     );
 
     const handleBlockProfessional = async (providerId: string) => {
-        const name = providers.find(p => p.id === providerId)?.name || 'Profissional';
+        const provider = providers.find(p => p.id === providerId);
+        const name = provider?.name || 'Profissional';
         const dateLabel = getDateLabel();
 
         // Check if already blocked (locally or in DB)
@@ -776,7 +777,37 @@ export const Agenda: React.FC<AgendaProps> = ({
             return;
         }
 
-        if (window.confirm(`Deseja BLOQUEAR a agenda de ${name} para o dia ${dateLabel}?\n\nIsso marcará o profissional como ausente/indisponível.`)) {
+        // --- AUSENCIAS LOGIC: Reason and Financial Impact ---
+        const reasons = ["Doença", "Falta sem aviso", "Férias", "Motivo pessoal", "Treinamento", "Outros"];
+        const reason = window.prompt(`Informe o motivo do bloqueio para ${name}:\n\n${reasons.map((r, i) => `${i + 1}. ${r}`).join('\n')}`, "Motivo pessoal");
+        
+        if (reason === null) return; // Cancelled
+
+        const selectedReason = reasons[parseInt(reason) - 1] || reason || "Motivo pessoal";
+
+        // Calculate Estimated Financial Impact (based on last 30 days)
+        const last30Days = new Date();
+        last30Days.setDate(last30Days.getDate() - 30);
+        const last30DaysStr = last30Days.toISOString().split('T')[0];
+
+        const providerApps = appointments.filter(a => 
+            a.providerId === providerId && 
+            a.date >= last30DaysStr && 
+            a.status === 'Concluído'
+        );
+
+        const totalRevenue = providerApps.reduce((acc, a) => acc + (a.pricePaid || a.bookedPrice || 0), 0);
+        // Assuming 8h work day for simplicity in estimation if we don't have exact hours
+        const activeDays = new Set(providerApps.map(a => a.date)).size || 1;
+        const avgDailyRevenue = totalRevenue / activeDays;
+        
+        // Final Confirmation with Impact
+        const confirmMsg = `Deseja BLOQUEAR a agenda de ${name} para o dia ${dateLabel}?\n\n` +
+                          `Motivo: ${selectedReason}\n` +
+                          `Impacto financeiro estimado: R$ ${avgDailyRevenue.toFixed(2)}\n\n` +
+                          `Isso marcará o profissional como ausente/indisponível.`;
+
+        if (window.confirm(confirmMsg)) {
             const tempId = `BLOCK-${providerId}-${gridDateStr}`;
 
             // Local draft for immediate feedback
@@ -790,6 +821,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 endTime: '23:59',
                 status: 'Cancelado',
                 combinedServiceNames: 'BLOQUEIO_INTERNO',
+                observation: selectedReason,
                 amount: 0
             };
             setAppointments(prev => [...prev, blockAppt]);
@@ -803,7 +835,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                     time: '00:00',
                     end_time: '23:59',
                     status: 'Cancelado',
-                    combined_service_names: 'BLOQUEIO_INTERNO'
+                    combined_service_names: 'BLOQUEIO_INTERNO',
+                    observation: selectedReason
                 }]).select().single();
 
                 if (error) throw error;

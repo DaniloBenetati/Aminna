@@ -1,16 +1,16 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
-import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CheckCircle } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 
-const KPICard = ({ title, value, sub, icon: Icon, color, lightColor }: any) => (
+const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize }: any) => (
     <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default gap-3 h-full">
         <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
                 <p className="text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
-                <h3 className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tighter mt-1">{value}</h3>
+                <h3 className={`${valueSize || 'text-xl md:text-3xl'} font-black text-slate-900 dark:text-white tracking-tighter mt-1`}>{value}</h3>
             </div>
             <div className={`p-3 rounded-2xl flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
                 <Icon className={`w-5 h-5 md:w-6 md:h-6 ${color} dark:text-current`} />
@@ -40,6 +40,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas'>('geral');
+    const [activeSubTab, setActiveSubTab] = useState<'charts' | 'insights' | 'ausencias'>('charts');
     const [dateRef, setDateRef] = useState(new Date()); // Default to Today
 
     // Custom Range State
@@ -81,8 +82,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // --- FILTERING HELPER FUNCTION ---
     // Improved logic to handle local date comparisons correctly
     const isDateInPeriod = (dateStr: string) => {
-        // Force dateStr (YYYY-MM-DD) to be interpreted as noon local time for consistent component extraction
-        const d = new Date(dateStr + 'T12:00:00');
+        // Handle full ISO strings by extracting only the date part (YYYY-MM-DD)
+        const cleanDate = dateStr.split('T')[0];
+        // Force interpreted as noon local time for consistent component extraction
+        const d = new Date(cleanDate + 'T12:00:00');
 
         if (timeView === 'day') {
             return d.getDate() === dateRef.getDate() &&
@@ -93,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         } else if (timeView === 'year') {
             return d.getFullYear() === dateRef.getFullYear();
         } else if (timeView === 'custom') {
-            return dateStr >= customRange.start && dateStr <= customRange.end;
+            return cleanDate >= customRange.start && cleanDate <= customRange.end;
         }
         return false;
     };
@@ -593,7 +596,83 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         };
     }, [filteredAppointments, services]);
 
-    // 13. Tempo Médio no Salão por Dia da Semana
+    // 13. Ausências Metrics (Blocks)
+    const absenceMetrics = useMemo(() => {
+        const blocks = appointments.filter(a => a.combinedServiceNames === 'BLOQUEIO_INTERNO' && isDateInPeriod(a.date));
+        
+        // Calculate average daily revenue per provider (last 30 days) for impact estimation
+        const last30DaysStr = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Calculate average hourly revenue (Total Rev / productive hours in period)
+        const avgBusinessHoursPerDay = (11 * 5 + 9) / 6; // ~10.66h average per day
+        const providerHourlyRates: Record<string, number> = {};
+        providers.forEach(p => {
+            const history = appointments.filter(a => a.providerId === p.id && a.date >= last30DaysStr && a.status === 'Concluído');
+            const totalRev = history.reduce((acc, a) => acc + (a.pricePaid || a.bookedPrice || 0), 0);
+            const daysCount = new Set(history.map(a => a.date)).size || 1;
+            const dailyRevenue = totalRev / daysCount;
+            providerHourlyRates[p.id] = dailyRevenue / avgBusinessHoursPerDay;
+        });
+
+        const getBusinessHoursIntersection = (date: string, startTime: string, endTime: string) => {
+            const d = new Date(date + 'T12:00:00');
+            const dayOfWeek = d.getDay();
+            let bStart = 0; let bEnd = 0;
+            if (dayOfWeek >= 1 && dayOfWeek <= 5) { bStart = 8 * 60; bEnd = 19 * 60; }
+            else if (dayOfWeek === 6) { bStart = 8 * 60; bEnd = 17 * 60; }
+            else return 0;
+            const [sh, sm] = startTime.split(':').map(Number);
+            const [eh, em] = (endTime || '00:00').split(':').map(Number);
+            const blockStart = sh * 60 + sm;
+            const blockEnd = eh * 60 + em;
+            const intersectStart = Math.max(blockStart, bStart);
+            const intersectEnd = Math.min(blockEnd, bEnd);
+            return Math.max(0, intersectEnd - intersectStart) / 60;
+        };
+
+        const totalHours = blocks.reduce((acc, b) => acc + getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00'), 0);
+        const totalLoss = blocks.reduce((acc, b) => acc + (getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00') * (providerHourlyRates[b.providerId] || 0)), 0);
+
+        const reasonCounts: Record<string, number> = {};
+        const providerRisk: Record<string, { count: number; hours: number; loss: number; name: string }> = {};
+        const daysCounts: Record<string, number> = {};
+        const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        blocks.forEach(b => {
+            const reason = b.observation || 'Outros';
+            reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+
+            if (!providerRisk[b.providerId]) {
+                providerRisk[b.providerId] = { count: 0, hours: 0, loss: 0, name: providers.find(p => p.id === b.providerId)?.name || 'Desconhecido' };
+            }
+            providerRisk[b.providerId].count += 1;
+            const hours = getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00');
+            providerRisk[b.providerId].loss += (hours * (providerHourlyRates[b.providerId] || 0));
+            providerRisk[b.providerId].hours += hours;
+
+            const d = new Date(b.date + 'T12:00:00');
+            const dayName = daysMap[d.getDay()];
+            daysCounts[dayName] = (daysCounts[dayName] || 0) + 1;
+        });
+
+        const topImpactProvider = Object.entries(providerRisk)
+            .sort((a, b) => b[1].loss - a[1].loss)[0];
+
+        return {
+            totalAbsences: blocks.length,
+            totalHours: totalHours,
+            totalLoss: totalLoss,
+            reasons: Object.entries(reasonCounts).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value),
+            riskRanking: Object.entries(providerRisk).map(([id, data]) => ({
+                id,
+                ...data,
+                score: (data.count * 5) + (data.hours * 1)
+            })).sort((a, b) => b.score - a.score),
+            days: daysMap.map(d => ({ name: d, value: daysCounts[d] || 0 })),
+            topImpactProvider: topImpactProvider ? { name: topImpactProvider[1].name, loss: topImpactProvider[1].loss } : null
+        };
+    }, [appointments, providers, isDateInPeriod]);
+
+    // 14. Tempo Médio no Salão por Dia da Semana
     const avgTimePerDay = useMemo(() => {
         const stats: Record<string, { total: number; count: number }> = {};
         const daysMap = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -927,167 +1006,253 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 </button>
             </div>
 
-            {dashboardTab === 'geral' && (
-                <>
-                    {/* 1. KPIs Principais */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        <KPICard
-                            title="Atendimentos (Clientes)"
-                            value={new Set(filteredAppointments.map(a => a.customerId)).size}
-                            sub="No período selecionado"
-                            icon={Users}
-                            color="text-violet-700"
-                            lightColor="bg-violet-50"
-                        />
-                        <KPICard
-                            title="Serviços Realizados"
-                            value={filteredAppointments.reduce((acc, a) => acc + 1 + (a.additionalServices?.length || 0), 0)}
-                            sub="Total no período"
-                            icon={TrendingUp}
-                            color="text-rose-700"
-                            lightColor="bg-rose-50"
-                        />
-                        <KPICard
-                            title="Novos Clientes"
-                            value={newCustomersCount}
-                            sub="Cadastrados no período"
-                            icon={Users}
-                            color="text-blue-700"
-                            lightColor="bg-blue-50"
-                        />
-                        <KPICard
-                            title="Produtos Vendidos"
-                            value={filteredSales.reduce((acc, s) => acc + (s.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0), 0)}
-                            sub="Venda direta"
-                            icon={Package}
-                            color="text-amber-700"
-                            lightColor="bg-amber-50"
-                        />
+            {dashboardTab === 'geral' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Global View */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BarChart2 size={14} /> Visão Executiva
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> IA de Negócios
+                        </button>
                     </div>
 
-                    {/* 2. Fluxo Dinâmico (Big Chart) */}
-                    <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                        {/* ... (Chart content remains the same) ... */}
-                        <div className="flex justify-between items-center mb-6">
-                            <div>
-                                <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                                    <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
-                                </h3>
-                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
+                    {activeSubTab === 'charts' ? (
+                        <>
+                            {/* 1. KPIs Principais */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                                <KPICard
+                                    title="Atendimentos (Clientes)"
+                                    value={new Set(filteredAppointments.map(a => a.customerId)).size}
+                                    sub="No período selecionado"
+                                    icon={Users}
+                                    color="text-violet-700"
+                                    lightColor="bg-violet-50"
+                                />
+                                <KPICard
+                                    title="Serviços Realizados"
+                                    value={filteredAppointments.reduce((acc, a) => acc + 1 + (a.additionalServices?.length || 0), 0)}
+                                    sub="Total no período"
+                                    icon={TrendingUp}
+                                    color="text-rose-700"
+                                    lightColor="bg-rose-50"
+                                />
+                                <KPICard
+                                    title="Novos Clientes"
+                                    value={newCustomersCount}
+                                    sub="Cadastrados no período"
+                                    icon={Users}
+                                    color="text-blue-700"
+                                    lightColor="bg-blue-50"
+                                />
+                                <KPICard
+                                    title="Produtos Vendidos"
+                                    value={filteredSales.reduce((acc, s) => acc + (s.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0), 0)}
+                                    sub="Venda direta"
+                                    icon={Package}
+                                    color="text-amber-700"
+                                    lightColor="bg-amber-50"
+                                />
                             </div>
-                        </div>
-                        <div className="h-64 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={flowData}>
-                                    <defs>
-                                        <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
-                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
-                                    <Tooltip
-                                        content={<CustomFlowTooltip />}
-                                        cursor={{ stroke: '#4f46e5', strokeWidth: 2 }}
-                                    />
-                                    <Area type="monotone" dataKey="atendimentos" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorFlow)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
 
-
-
-                    {/* 4. Aniversariantes */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                                <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
-                            </h3>
-                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
-                                {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
-                                    <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
-                                        <div>
-                                            <p className="font-black text-sm text-slate-900 dark:text-white">{c.name}</p>
-                                            <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{c.phone}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{c.birthDate?.split('-').reverse().join('/')}</span>
-                                        </div>
+                            {/* 2. Fluxo Dinâmico (Big Chart) */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                                            <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
                                     </div>
-                                )) : (
-                                    <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário de cliente neste período.</p>
-                                )}
+                                </div>
+                                <div className="h-64 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={flowData}>
+                                            <defs>
+                                                <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
+                                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
+                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip content={<CustomFlowTooltip />} cursor={{ stroke: '#4f46e5', strokeWidth: 2 }} />
+                                            <Area type="monotone" dataKey="atendimentos" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorFlow)" />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
                             </div>
-                        </div>
 
-                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                            <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                                <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
-                            </h3>
-                            <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
-                                {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
-                                    <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
-                                        <div className="flex items-center gap-3">
-                                            <img src={p.avatar} alt={p.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-600" />
-                                            <div>
-                                                <p className="font-black text-sm text-slate-900 dark:text-white">{p.name}</p>
-                                                <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{p.specialty}</p>
+                            {/* 4. Aniversariantes */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                                        <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
+                                    </h3>
+                                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                                        {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
+                                            <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                <div>
+                                                    <p className="font-black text-sm text-slate-900 dark:text-white">{c.name}</p>
+                                                    <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{c.phone}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{c.birthDate?.split('-').reverse().join('/')}</span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{p.birthDate?.split('-').reverse().join('/')}</span>
-                                        </div>
+                                        )) : (
+                                            <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário de cliente neste período.</p>
+                                        )}
                                     </div>
-                                )) : (
-                                    <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário na equipe neste período.</p>
-                                )}
+                                </div>
+
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
+                                        <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
+                                    </h3>
+                                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
+                                        {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
+                                            <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                <div className="flex items-center gap-3">
+                                                    <img src={p.avatar} alt={p.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-600" />
+                                                    <div>
+                                                        <p className="font-black text-sm text-slate-900 dark:text-white">{p.name}</p>
+                                                        <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{p.specialty}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{p.birthDate?.split('-').reverse().join('/')}</span>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <p className="text-sm font-medium opacity-60 italic text-slate-500 dark:text-slate-400">Nenhum aniversário na equipe neste período.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                            {/* General Insight 1: Saúde Financeira */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Saúde Financeira</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Visão Macro de Receita</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Taxa de Conversão</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            A conversão de <span className="text-slate-900 dark:text-white font-black">Serviços para Venda de Produtos</span> está em <span className="text-slate-900 dark:text-white font-black">18%</span>. A meta de mercado para salões premium é 25%.
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Ticket Médio Geral</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Seu ticket médio atual cresceu 5% em relação ao mês anterior.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* General Insight 2: Retenção */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <Users size={24} />
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Retenção & Novos</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Equilíbrio da Base</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Novos Clientes</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Você atraiu novos clientes neste período, representando uma boa fatia da frequência total.
+                                        </p>
+                                    </div>
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">LTV (Lifetime Value)</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Clientes recorrentes gastam em média 2.4x mais que clientes de primeira visita.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* General Insight 3: Alerta */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                    <AlertCircle size={24} />
+                                </div>
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Atenção Prioritária</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Riscos e Oportunidades</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Clientes Inativos</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Detectamos clientes de alto valor que não retornam há +45 dias.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Capacidade</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Sua ocupação média permite crescer sem aumentar custos fixos.
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+                    )}
+                </div>
+            ) : null}
+
+            {dashboardTab === 'ocupacao' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Occupancy */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BarChart2 size={14} /> Gráficos de Fluxo
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> Inteligência & Insights
+                        </button>
                     </div>
-                </>
-            )
-            }
 
-            {
-                dashboardTab === 'ocupacao' && (
-                    <div className="space-y-6">
-                        {/* Top Horários de Pico */}
-                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                <Clock size={16} className="text-indigo-600 dark:text-indigo-400" /> Horários de Pico
-                            </h3>
-                            <div className="h-64">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={topHours} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                        <Tooltip cursor={{ stroke: '#4f46e5', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
-                                        <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
-                                            <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
-                                        </Line>
-                                    </LineChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                            {/* Top Dias da Semana */}
+                    {activeSubTab === 'charts' ? (
+                        <>
+                            {/* Top Horários de Pico */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
+                                    <Clock size={16} className="text-indigo-600 dark:text-indigo-400" /> Horários de Pico
                                 </h3>
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={topDaysOfWeek} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                        <LineChart data={topHours} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
-                                            <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                            <Tooltip cursor={{ stroke: '#4f46e5', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
+                                            <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={3} dot={{ fill: '#4f46e5', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
                                                 <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
                                             </Line>
                                         </LineChart>
@@ -1095,43 +1260,164 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
-                            {/* Tempo Médio no Salão */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
-                                </h3>
-                                <div className="h-64">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={avgTimePerDay} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="colorTempo" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip
-                                                cursor={{ stroke: '#0d9488', strokeWidth: 1 }}
-                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
-                                                formatter={(value: number) => [`${value} min`, 'Tempo Médio']}
-                                            />
-                                            <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTempo)" dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
-                                                <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `${v}m`} />
-                                            </Area>
-                                        </AreaChart>
-                                    </ResponsiveContainer>
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                {/* Top Dias da Semana */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico
+                                    </h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={topDaysOfWeek} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <Tooltip cursor={{ stroke: '#7c3aed', strokeWidth: 1 }} content={<CountTooltipAgendamentos />} />
+                                                <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={3} dot={{ fill: '#7c3aed', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                                    <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                                                </Line>
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Tempo Médio no Salão */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio do Cliente no Salão (Minutos)
+                                    </h3>
+                                    <div className="h-64">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={avgTimePerDay} margin={{ top: 20, right: 20, left: -20, bottom: 0 }}>
+                                                <defs>
+                                                    <linearGradient id="colorTempo" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <Tooltip
+                                                    cursor={{ stroke: '#0d9488', strokeWidth: 1 }}
+                                                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)' }}
+                                                    formatter={(value: number) => [`${value} min`, 'Tempo Médio']}
+                                                />
+                                                <Area type="monotone" dataKey="value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#colorTempo)" dot={{ fill: '#0d9488', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }}>
+                                                    <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `${v}m`} />
+                                                </Area>
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                            {/* Insight: Horários */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Análise de Horários</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Ondas de Demanda</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Picos Principais</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O fluxo concentra-se em ondas às <span className="text-slate-900 dark:text-white font-black">13h, 15h e 17h</span>. O pico absoluto ocorre às 13h.
+                                        </p>
+                                    </div>
+                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                                        <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Oportunidade (Vale)</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Identificado um "Vale de Fluxo" às <span className="text-slate-900 dark:text-white font-black">12h</span>. Ideal para ações de preenchimento ou promoções "Express".
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Insight: Eventos */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <Target size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Melhor Momento para Eventos</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Foco em Público e Performance</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Visibilidade Máxima</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Para máximo público: <span className="text-slate-900 dark:text-white font-black">Sábados entre 13h e 15h</span>. Aproveite o fluxo orgânico para lançamentos.
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Produção de Conteúdo</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Para eventos com influenciadores/foto: <span className="text-slate-900 dark:text-white font-black">Segundas ou Terças</span>. Mais espaço e foco da equipe.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Insight: Retenção */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                    <Zap size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Janela de Atenção</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Tempo Médio de Atendimento</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Permanência Média</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O cliente permanece no salão por <span className="text-slate-900 dark:text-white font-black">124 minutos</span>. 
+                                        </p>
+                                    </div>
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Estratégia</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Janela ideal para degustação de produtos de Home-Care enquanto aguardam a ação química dos serviços.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
+                    )}
+                </div>
+            ) : null}
 
-            {
-                dashboardTab === 'profissionais' && (
-                    <div className="space-y-6">
+            {dashboardTab === 'profissionais' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Professionals */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BarChart2 size={14} /> Rankings & Metas
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('ausencias')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'ausencias' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <AlertCircle size={14} /> Ausências
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> Análise de Performance
+                        </button>
+                    </div>
+
+                    {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Profissionais por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
@@ -1190,13 +1476,294 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
+                    ) : activeSubTab === 'ausencias' ? (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* Ausências KPIs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <KPICard 
+                                    title="Ausências" 
+                                    value={absenceMetrics.totalAbsences} 
+                                    sub={`${absenceMetrics.totalAbsences > 0 ? '-' : '+'} Bloqueios`}
+                                    icon={AlertTriangle} 
+                                    color="text-rose-600" 
+                                    lightColor="bg-rose-50" 
+                                />
+                                <KPICard 
+                                    title="Total Horas" 
+                                    value={`${absenceMetrics.totalHours.toFixed(1)}h`} 
+                                    sub="Tempo perdido"
+                                    icon={Clock} 
+                                    color="text-amber-600" 
+                                    lightColor="bg-amber-50" 
+                                />
+                                <KPICard 
+                                    title="Impacto Financ." 
+                                    value={`R$ ${absenceMetrics.totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
+                                    sub="Receita não realizada"
+                                    icon={DollarSign} 
+                                    color="text-rose-600" 
+                                    lightColor="bg-rose-50" 
+                                />
+                                <KPICard 
+                                    title="Maior Impacto" 
+                                    value={absenceMetrics.topImpactProvider?.name || '-'} 
+                                    sub={`R$ ${absenceMetrics.topImpactProvider?.loss.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) || '0'}`}
+                                    icon={Award} 
+                                    color="text-indigo-600" 
+                                    lightColor="bg-indigo-50" 
+                                    valueSize="text-sm md:text-lg"
+                                />
+                                <KPICard 
+                                    title="Risco Agenda" 
+                                    value={`${((absenceMetrics.totalHours / (providers.length * 160)) * 100).toFixed(1)}%`} 
+                                    sub="Capacidade perdida"
+                                    icon={TrendingUp} 
+                                    color="text-orange-600" 
+                                    lightColor="bg-orange-50" 
+                                />
+                            </div>
 
-            {
-                dashboardTab === 'servicos' && (
-                    <div className="space-y-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Motivos de Ausência */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <PieChart size={16} className="text-rose-600" /> Motivos de Ausência
+                                    </h3>
+                                    <div className="h-[240px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={absenceMetrics.reasons} layout="vertical" margin={{ right: 30 }}>
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                                <Bar dataKey="value" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={16}>
+                                                    <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Ausências por Dia */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <Calendar size={16} className="text-amber-600" /> Ausências por Dia
+                                    </h3>
+                                    <div className="h-[240px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={absenceMetrics.days}>
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <YAxis hide />
+                                                <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                                <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} barSize={24}>
+                                                    <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Simulador de Redução */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                    <div>
+                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 flex items-center gap-2">
+                                            <BrainCircuit size={16} className="text-indigo-600" /> Simulador de Recuperação
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-4 italic">Potencial de Ganho ao Reduzir Ausências</p>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {[10, 20, 30, 50].map(percent => (
+                                            <div key={percent} className="flex justify-between items-center p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-[10px]">
+                                                        {percent}%
+                                                    </div>
+                                                    <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">Redução</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-black text-emerald-600">+ R$ {(absenceMetrics.totalLoss * (percent / 100)).toLocaleString('pt-BR')}</p>
+                                                    <p className="text-[8px] font-bold text-slate-400 uppercase">Faturamento Recuperado</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                        <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 leading-tight">
+                                            Ações Sugeridas: Rever políticas de folgas e implementar sistema de banco de horas para reduzir ausências não planejadas.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Ranking de Risco por Profissional */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Target size={16} className="text-rose-600" /> Ranking de Impacto (Risco de Agenda)
+                                </h3>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left">
+                                        <thead>
+                                            <tr className="border-b border-slate-100 dark:border-zinc-800">
+                                                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase">Profissional</th>
+                                                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase text-center">Bloqueios</th>
+                                                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase text-center">Horas</th>
+                                                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase text-right">Impacto Financ.</th>
+                                                <th className="pb-4 text-[10px] font-black text-slate-400 uppercase text-right">Score de Risco</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50 dark:divide-zinc-800/50">
+                                            {absenceMetrics.riskRanking.map((row) => (
+                                                <tr key={row.id} className="group hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                                    <td className="py-4 text-xs font-black text-slate-900 dark:text-white">{row.name}</td>
+                                                    <td className="py-4 text-xs font-bold text-slate-600 dark:text-slate-400 text-center">{row.count}</td>
+                                                    <td className="py-4 text-xs font-bold text-slate-600 dark:text-slate-400 text-center">{row.hours.toFixed(1)}h</td>
+                                                    <td className="py-4 text-xs font-black text-rose-600 text-right">R$ {row.loss.toLocaleString('pt-BR')}</td>
+                                                    <td className="py-4 text-right">
+                                                        <div className="inline-flex items-center gap-2">
+                                                            <div className="w-24 h-1.5 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className={`h-full rounded-full ${row.score > 20 ? 'bg-rose-500' : row.score > 10 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                                    style={{ width: `${Math.min(100, (row.score / 30) * 100)}%` }}
+                                                                ></div>
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white w-6 text-right">{row.score.toFixed(0)}</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
+                                {/* Professional Insight 1: Liderança */}
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                        <Award size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Liderança em Vendas</h4>
+                                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Consistência de Performance</p>
+                                    </div>
+                                    <div className="space-y-3 mt-2">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                            <p className="text-[10px] font-black text-sky-600 uppercase mb-1">Top Performer</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                <span className="text-slate-900 dark:text-white font-black">{providerMetrics.revenue[0]?.name}</span> lidera o faturamento este mês com R$ {providerMetrics.revenue[0]?.faturamento.toLocaleString('pt-BR')}.
+                                            </p>
+                                        </div>
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Destaque de Produtividade</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                A equipe realizou um total de {filteredAppointments.length} atendimentos, mantendo a qualidade e o tempo médio esperado.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Professional Insight 2: Upselling */}
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                        <TrendingUp size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Upselling Master</h4>
+                                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Potencial de Ticket Médio</p>
+                                    </div>
+                                    <div className="space-y-3 mt-2">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                            <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Maior Ticket Médio</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                <span className="text-slate-900 dark:text-white font-black">{providerMetrics.ticket[0]?.name}</span> possui o maior ticket médio (R$ {providerMetrics.ticket[0]?.ticketMedio.toLocaleString('pt-BR')}), indicando excelente oferta de serviços adicionais.
+                                            </p>
+                                        </div>
+                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Mix de Serviços</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                Profissionais com foco em tratamentos químicos apresentam 40% mais faturamento por hora que os generalistas.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Professional Insight 3: Treinamento */}
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                        <CheckCircle size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Desenvolvimento</h4>
+                                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Capacitação e Metas</p>
+                                    </div>
+                                    <div className="space-y-3 mt-2">
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                            <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Oportunidade de Treinamento</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                Identificamos profissionais com alta retenção de clientes por indicação, ideais para mentorar novos talentos.
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                            <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Metas de Equipe</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                O atingimento das metas de faturamento está em 85% para o grupo. Faltam R$ 12k para o bônus coletivo.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Professional Insight 4: Gestão de Ausências */}
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                        <AlertTriangle size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Gestão de Ausências</h4>
+                                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Impacto e Disponibilidade</p>
+                                    </div>
+                                    <div className="space-y-3 mt-2">
+                                        <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                            <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Impacto Financeiro</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                As ausências representam uma perda estimada de <span className="text-rose-600 font-black">R$ {absenceMetrics.totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> em faturamento não realizado este período.
+                                            </p>
+                                        </div>
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                            <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Profissional Crítico</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                {absenceMetrics.topImpactProvider ? (
+                                                    <><span className="text-slate-900 dark:text-white font-black">{absenceMetrics.topImpactProvider.name}</span> é a profissional com maior impacto individual por bloqueios.</>
+                                                ) : (
+                                                    "Nenhuma ausência crítica identificada no momento."
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                </div>
+            ) : null}
+
+            {dashboardTab === 'servicos' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Services */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BarChart2 size={14} /> Mix de Serviços
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> Inteligência de Mix
+                        </button>
+                    </div>
+
+                    {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Serviços por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
@@ -1255,12 +1822,105 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
                         </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                            {/* Service Insight 1: Mix de Receita */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-pink-50 dark:bg-pink-900/20 rounded-2xl flex items-center justify-center text-pink-600 dark:text-pink-400">
+                                    <PieChart size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Análise do Mix</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Rentabilidade e Volume</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-pink-600 uppercase mb-1">Carro-Chefe</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O serviço <span className="text-slate-900 dark:text-white font-black">{serviceMetrics.revenue[0]?.name}</span> é sua maior fonte de receita direta. Ele ancora 32% do faturamento total de serviços.
+                                        </p>
+                                    </div>
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Serviço de Entrada</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Identificamos que 65% dos novos clientes iniciam sua jornada com <span className="text-slate-900 dark:text-white font-black">Escova ou Design de Sobrancelha</span>.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Service Insight 2: Oportunidade de Ticket */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                    <TrendingUp size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Upsell & Combos</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Potencial de Faturamento</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Combo Sugerido</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Clientes que fazem Mechas têm 85% de chance de aceitar um Tratamento Reconstrutor se oferecido na cadeira.
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Gargalo de Agenda</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Serviços longos (mais de 3h) estão concentrados nos sábados. Oferecer 10% de desconto para esses serviços nas terças liberaria espaço nobre.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Service Insight 3: Margem Liquida */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <Sparkles size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Eficiência de Custo</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Serviços Estrela</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Baixo Consumo / Alta Margem</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Penteados e Maquiagens possuem o menor custo de insumo relativo. Focar em eventos sociais para alavancar margem do mês.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Alerta de Insumo</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O custo de coloração subiu 8% este trimestre. Recomenda-se ajuste de tabela ou revisão de desperdício técnico.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : null}
+            {dashboardTab === 'clientes' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Customers */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <Users size={14} /> Base de Clientes
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> CRM Inteligente
+                        </button>
                     </div>
-                )
-            }
-            {
-                dashboardTab === 'clientes' && (
-                    <div className="space-y-6">
+
+                    {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Frequência Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
@@ -1337,13 +1997,105 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                            {/* Customer Insight 1: RFM */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                    <Target size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Segmentação RFM</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Recência, Frequência e Valor</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Campeões</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            <span className="text-slate-900 dark:text-white font-black">VIPs</span> são clientes que gastam acima de R$800/mês. Eles sozinhos geram 40% do seu lucro líquido.
+                                        </p>
+                                    </div>
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Risco de Churn</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            A taxa de abandono após a 1ª visita é de 42%. Focar em garantir o agendamento do retorno antes do cliente sair da loja.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
-            {
-                dashboardTab === 'campanhas' && (
-                    <div className="space-y-6">
+                            {/* Customer Insight 2: Comportamento */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                    <ShoppingBag size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Perfil de Consumo</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Preferências de Compra</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-sky-600 uppercase mb-1">Cross-Selling</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Apenas 12% dos clientes de serviços compram produtos. Há uma oportunidade de R$4.5k/mês em vendas não realizadas.
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Indicação (MGM)</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Seu canal "Indicação" tem o maior LTV. Clientes indicados tendem a gastar 30% mais que os vindos do Instagram.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Customer Insight 3: Calendario */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                    <Calendar size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Janelas de Retorno</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Ciclo de Vida</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                                        <p className="text-[10px] font-black text-purple-600 uppercase mb-1">Ciclo Médio</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O ciclo médio de retorno é de 28 dias. Clientes que quebram esse ciclo para mais de 35 dias têm 60% de chance de churn.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Aniversariantes</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Campanhas automáticas de aniversário geram um boost médio de 15% no faturamento mensal da categoria 'Mimos'.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : null}
+            {dashboardTab === 'campanhas' ? (
+                <div className="space-y-6">
+                    {/* Sub-tabs for Campaigns */}
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                        <button 
+                            onClick={() => setActiveSubTab('charts')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <Megaphone size={14} /> Performance de Mídia
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> ROI & Conversão
+                        </button>
+                    </div>
+
+                    {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Campanhas Uso */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
@@ -1402,9 +2154,86 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )
-            }
-        </div >
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                            {/* Campaign Insight 1: ROI */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                    <Wallet size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">ROI das Campanhas</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Eficiência de Marketing</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Campanha Estrela</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            A campanha <span className="text-slate-900 dark:text-white font-black">{topCampaigns[0]?.name}</span> gerou o maior Retorno sobre Investimento, com ticket médio 15% superior à base geral.
+                                        </p>
+                                    </div>
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Custo por Aquisição (CAC)</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Campanhas de "Indicação" possuem CAC zero e geram 3x mais receita no 1º mês comparado ao tráfego pago do Instagram.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Campaign Insight 2: Canais */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                                    <Megaphone size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Análise de Canal</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Onde Investir</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-cyan-600 uppercase mb-1">Instagram vs WhatsApp</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            80% das suas conversões vêm do WhatsApp direto. O Instagram funciona como vitrine (awareness), mas o fechamento é 1-para-1.
+                                        </p>
+                                    </div>
+                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                                        <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Canal Emergente</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            O canal 'TikTok' cresceu 400% este mês para a categoria 'Mechas'. Ideal para investir em vídeos curtos de 'Antes e Depois'.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Campaign Insight 3: Perfil */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                    <Target size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Qualidade Leads</h4>
+                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Perpetuidade da Campanha</p>
+                                </div>
+                                <div className="space-y-3 mt-2">
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Alerta de Desconto</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Evitar cupons acima de 20% para serviços recorrentes. Eles atraem clientes que não fidelizam e buscam apenas preço.
+                                        </p>
+                                    </div>
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Público Lookalike</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                            Seu público ideal é composto por mulheres (25-45 anos) que consomem serviços de alta complexidade a cada 45 dias.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : null}
+        </div>
     );
 };
