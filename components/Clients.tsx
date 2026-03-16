@@ -964,7 +964,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                           <div className="bg-white dark:bg-zinc-800 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm">
                             <div className="flex justify-between items-start mb-1">
                               <h5 className="text-xs font-black text-slate-950 dark:text-white uppercase">{h.description}</h5>
-                              <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(h.date).toLocaleDateString()}</span>
+                              <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(h.date + 'T12:00:00').toLocaleDateString()}</span>
                             </div>
 
                             {/* Provider Info */}

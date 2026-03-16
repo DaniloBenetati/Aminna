@@ -2216,10 +2216,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 )}
                                 {mode === 'HISTORY' && (
                                     <div className="text-right border-l border-slate-200 dark:border-zinc-700 pl-4 ml-4 flex-shrink-0">
-                                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Baixa</span>
+                                        <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-0.5">Data Atendimento</span>
                                         <span className="text-sm font-black text-slate-950 dark:text-white">
                                             {(() => {
-                                                const dateStr = appointment.paymentDate || appointment.date;
+                                                const dateStr = appointment.date || appointment.paymentDate;
                                                 if (!dateStr) return '-';
                                                 const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
                                                 return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
