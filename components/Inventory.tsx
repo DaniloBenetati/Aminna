@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2 } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2, CheckCircle } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import Tesseract from 'tesseract.js';
 import { supabase } from '../services/supabase';
@@ -539,6 +539,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     <table className="w-full text-sm text-left">
                         <thead className="text-xs text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
                             <tr>
+                                <th className="px-6 py-3 w-16">Foto</th>
                                 <th className="px-6 py-3">Código</th>
                                 <th className="px-6 py-3">Produto</th>
                                 <th className="px-6 py-3">Categoria</th>
@@ -553,7 +554,16 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             {filteredStock.map(item => {
                                 const isLow = item.quantity <= item.minQuantity;
                                 return (
-                                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
+                                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 group/row">
+                                        <td className="px-6 py-3">
+                                            <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
+                                                {item.imageUrl ? (
+                                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300" />
+                                                ) : (
+                                                    <Package className="w-5 h-5 text-slate-400" />
+                                                )}
+                                            </div>
+                                        </td>
                                         <td className="px-6 py-4 text-xs font-black text-slate-950 dark:text-white">{item.code || '-'}</td>
                                         <td className="px-6 py-4 font-black text-slate-950 dark:text-white">
                                             {item.name}
@@ -601,7 +611,14 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     const isLow = item.quantity <= item.minQuantity;
                     return (
                         <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
-                            <div className="flex justify-between items-start">
+                            <div className="flex gap-4">
+                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center">
+                                    {item.imageUrl ? (
+                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <Package className="w-6 h-6 text-slate-400" />
+                                    )}
+                                </div>
                                 <div className="min-w-0 flex-1">
                                     <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase mb-0.5">{item.code || 'S/ COD'}</p>
                                     <h4 className="text-sm font-black text-slate-950 dark:text-white leading-tight truncate">{item.name}</h4>
@@ -709,7 +726,6 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <div className="relative">
                                         <input
                                             type="url"
-                                            required
                                             className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
                                             placeholder="URL da foto principal..."
                                             value={productFormData.imageUrl}
@@ -750,15 +766,36 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 {(productFormData.imageUrl || productFormData.imageUrls.some(u => u)) && (
                                     <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                                         {[productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u).map((url, i) => (
-                                            <div key={i} className="relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800">
+                                            <button 
+                                                key={i} 
+                                                type="button"
+                                                onClick={() => {
+                                                    if (i === 0) return; // Already primary
+                                                    const allUrls = [productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u);
+                                                    const selectedUrl = allUrls[i];
+                                                    const otherUrls = allUrls.filter((_, idx) => idx !== i);
+                                                    setProductFormData({
+                                                        ...productFormData,
+                                                        imageUrl: selectedUrl,
+                                                        imageUrls: otherUrls
+                                                    });
+                                                }}
+                                                className={`relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
+                                            >
                                                 <img 
                                                     src={url} 
                                                     alt="Preview" 
                                                     className="w-full h-full object-cover" 
                                                     referrerPolicy="no-referrer"
                                                 />
-                                                {i === 0 && <div className="absolute inset-0 border-2 border-indigo-600 rounded-xl pointer-events-none" />}
-                                            </div>
+                                                {i === 0 ? (
+                                                    <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow-sm"><CheckCircle size={10} /></div>
+                                                ) : (
+                                                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                        <span className="text-[7px] font-black text-white uppercase leading-none text-center">Definir<br/>Capa</span>
+                                                    </div>
+                                                )}
+                                            </button>
                                         ))}
                                     </div>
                                 )}

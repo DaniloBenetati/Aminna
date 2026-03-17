@@ -538,13 +538,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 const monthly = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, total: 0 }));
 
                 (appData || []).forEach(a => {
-                    const m = new Date(a.date).getMonth();
-                    monthly[m].total += (a.price_paid ?? a.booked_price ?? 0);
+                    const parts = a.date.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1], 10) - 1;
+                        if (m >= 0 && m < 12) {
+                            monthly[m].total += (a.price_paid ?? a.booked_price ?? 0);
+                        }
+                    }
                 });
 
                 (saleData || []).forEach(s => {
-                    const m = new Date(s.date).getMonth();
-                    monthly[m].total += (s.total_amount || 0);
+                    const parts = s.date.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1], 10) - 1;
+                        if (m >= 0 && m < 12) {
+                            monthly[m].total += (s.total_amount || 0);
+                        }
+                    }
                 });
 
                 return monthly;
