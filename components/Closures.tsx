@@ -25,6 +25,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [whatsappModalData, setWhatsappModalData] = useState<any | null>(null);
+  const [fiscalDetailingData, setFiscalDetailingData] = useState<any | null>(null);
   const [dasAmounts, setDasAmounts] = useState<Record<string, number>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('aminna_das_amounts');
@@ -40,6 +41,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     }
     return {};
   });
+
+  const [fiscalConfigs, setFiscalConfigs] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from('professional_fiscal_config').select('*').then(({ data }) => {
+      if (data) setFiscalConfigs(data);
+    });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('aminna_das_amounts', JSON.stringify(dasAmounts));
@@ -347,16 +356,34 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             <style>
               @media print {
                 @page { 
-                  margin: 10mm; 
-                  size: A4;
+                  margin: 0; 
+                  size: A4 portrait;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  height: 100%;
                 }
                 body { 
-                  margin: 0; 
                   -webkit-print-color-adjust: exact; 
                   print-color-adjust: exact;
                   background-color: white !important;
                 }
                 .no-print { display: none !important; }
+                .receipt-card {
+                  margin: 0 !important;
+                  box-shadow: none !important;
+                  border-radius: 0 !important;
+                  border: none !important;
+                  display: block !important;
+                  page-break-after: always !important;
+                  overflow: visible !important;
+                }
+                thead { display: table-header-group !important; }
+                tfoot { display: table-row-group !important; }
+                tr { break-inside: avoid !important; }
+                .avoid-break { break-inside: avoid !important; page-break-inside: avoid !important; }
+                .detailed-report table { margin-bottom: 3rem !important; }
               }
               body { 
                 font-family: 'Inter', sans-serif; 
@@ -389,34 +416,20 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 transition: all 0.2s;
               }
               .btn-print { background: #0f172a; color: white; }
-              .btn-download { background: #4f46e5; color: white; }
               .btn:hover { opacity: 0.9; transform: translateY(-1px); }
             </style>
           </head>
           <body>
             <div class="toolbar no-print">
               <button class="btn btn-print" onclick="window.print()">Imprimir Tudo</button>
-              <button class="btn btn-download" onclick="downloadPDF()">Baixar PDF</button>
             </div>
-            <div id="content-to-export" class="max-w-[210mm] mx-auto bg-white shadow-xl print:shadow-none min-h-[297mm]">
+            <div id="content-to-export" class="max-w-[210mm] mx-auto">
               ${printContents}
             </div>
             <script>
-              function downloadPDF() {
-                const element = document.getElementById('content-to-export');
-                const opt = {
-                  margin: 0,
-                  filename: 'Recibo_Aminna_${data?.provider?.name || 'Geral'}.pdf',
-                  image: { type: 'jpeg', quality: 0.98 },
-                  html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-                  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                };
-                html2pdf().set(opt).from(element).save();
-              }
-              
               window.onload = () => {
                 setTimeout(() => {
-                  // Optional: auto-trigger something? The user might prefer clicking the download button now.
+                  // Optional: auto-trigger something?
                 }, 500);
               };
             </script>
@@ -508,7 +521,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
   const ReceiptSheet: React.FC<{ data: any; type: 'summary' | 'details'; hideFaturamento: boolean; printMode?: 'auditoria' | 'receipt'; idx: number; receiptNumber: number }> = ({ data, type, hideFaturamento, printMode, idx, receiptNumber }) => {
     const Copy = ({ copyNum }: { copyNum: number }) => (
-      <div className={`flex flex-col ${type === 'summary' ? 'h-[50%]' : ''} ${printMode === 'auditoria' ? 'p-6' : 'p-12'} relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
+      <div className={`${type === 'summary' ? 'flex flex-col h-[147mm] overflow-hidden' : 'block min-h-[297mm] h-auto'} ${printMode === 'auditoria' ? 'p-6' : 'p-12'} relative bg-white border-b border-dashed border-slate-200 last:border-b-0 print:border-slate-300`}>
         <div className="flex justify-between items-start mb-10">
           <div className="flex items-center gap-8">
             <img src="/logo.png" alt="Aminna" className="w-20 h-20 object-contain dark:invert" />
@@ -556,11 +569,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col pt-4 overflow-visible">
+          <div className="block pt-4 overflow-visible">
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <Scissors size={10} className="opacity-40" /> Relatório de Atendimentos
             </p>
-            <div className="flex-1 pr-2">
+            <div className="block pr-2">
               <table className="w-full text-[10px] border-collapse overflow-visible">
                 <thead>
                   <tr className="text-left font-black uppercase text-slate-300 tracking-widest border-b border-slate-100">
@@ -624,7 +637,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           </div>
         )}
 
-        <div className="mt-auto pt-10 flex justify-between items-end">
+        <div className={`${type === 'summary' ? 'mt-auto' : 'mt-16'} pt-6 flex justify-between items-end avoid-break`}>
           <div className="flex-1 max-w-[280px]">
             <div className="w-full border-b border-slate-900 mb-2"></div>
             <p className="text-[9px] font-black text-slate-900 uppercase tracking-widest">{data.provider?.name}</p>
@@ -639,10 +652,17 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     );
 
     return (
-      <div className="w-[210mm] min-h-[297mm] bg-white text-black print:break-after-page shadow-2xl mx-auto my-8 print:my-0 flex flex-col relative shrink-0" style={{ pageBreakAfter: 'always' }}>
-        <Copy copyNum={1} />
-        {printMode !== 'auditoria' && <Copy copyNum={2} />}
-      </div>
+      <React.Fragment>
+        <div className={`receipt-card w-[210mm] ${type === 'summary' ? 'flex flex-col h-[297mm] overflow-hidden' : 'block min-h-[297mm] h-auto detailed-report'} bg-white text-black print:break-after-page shadow-2xl mx-auto my-8 print:my-0 relative shrink-0`}>
+          <Copy copyNum={1} />
+          {type === 'summary' && printMode !== 'auditoria' && <Copy copyNum={2} />}
+        </div>
+        {type === 'details' && printMode !== 'auditoria' && (
+          <div className="receipt-card w-[210mm] block min-h-[297mm] h-auto detailed-report bg-white text-black print:break-after-page shadow-2xl mx-auto my-8 print:my-0 relative shrink-0">
+            <Copy copyNum={2} />
+          </div>
+        )}
+      </React.Fragment>
     );
   };
 
@@ -704,6 +724,54 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     message += `\n*TOTAL GERAL A PAGAR: R$ ${totalProvision.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
     message += `_Gerado automaticamente pelo Sistema Aminna._`;
     return message;
+  };
+
+  const generateFiscalDetailingText = (data: any) => {
+    if (!data || !data.details) return '';
+
+    // Group services by name
+    const grouped = data.details.reduce((acc: any, item: any) => {
+      // Skip tips if they shouldn't be in the fiscal service description
+      if (item.serviceName.includes('Caixinha') || item.serviceName.includes('Gorjeta')) return acc;
+      
+      const key = item.serviceName;
+      if (!acc[key]) {
+        acc[key] = { count: 0, total: 0 };
+      }
+      acc[key].count += 1;
+      acc[key].total += item.price;
+      return acc;
+    }, {});
+
+    const providerName = data.provider?.name?.toUpperCase() || '';
+    const rate = ((data.provider?.commissionRate || 0) * 100).toFixed(0);
+    const fiscal = fiscalConfigs.find((f: any) => f.provider_id === data.provider?.id);
+    
+    const competenceDate = new Date(startDate + 'T00:00:00');
+    const month = String(competenceDate.getMonth() + 1).padStart(2, '0');
+    const year = competenceDate.getFullYear();
+    const competence = `${month}/${year}`;
+
+    let text = `SERVIÇOS REALIZADOS\n\n`;
+    text += `COMPETÊNCIA: ${competence}\n`;
+    text += `PROFISSIONAL: ${providerName}\n`;
+    text += `PERCENTUAL CONTRATO: ${rate}% CONFORME LEI 13.352/2016 (ART. 1º-A):\n`;
+    
+    if (fiscal) {
+      if (fiscal.social_name) text += `RAZÃO SOCIAL: ${fiscal.social_name.toUpperCase()}\n`;
+      if (fiscal.cnpj) text += `CNPJ: ${fiscal.cnpj}\n`;
+    }
+    
+    text += `\nVALORES REFERENTES À COTA-PARTE DO PROFISSIONAL PARCEIRO, SEGREGADOS NOS TERMOS DA LEI Nº 13.352/2016.\n\n`;
+    
+    Object.entries(grouped).forEach(([name, info]: [string, any]) => {
+      text += `• ${name.toUpperCase()}: R$ ${info.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (QTD: ${info.count})\n`;
+    });
+
+    const totalService = Object.values(grouped).reduce((acc: number, info: any) => acc + info.total, 0);
+    text += `\nTOTAL DAS COTAS-PARTE: R$ ${totalService.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+    return text;
   };
 
   return (
@@ -817,6 +885,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
                         <MessageCircle size={18} />
                       </button>
+                      <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                        <FileCode size={18} />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -867,6 +938,53 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <Copy size={16} /> Copiar Texto (Completo)
               </button>
               <button onClick={() => setWhatsappModalData(null)} className="w-full py-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fiscalDetailingData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 flex flex-col">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                  <FileCode size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Detalhamento p/ Nota</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{fiscalDetailingData.provider?.name}</p>
+                </div>
+              </div>
+              <button onClick={() => setFiscalDetailingData(null)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <textarea
+              readOnly
+              className="w-full h-64 p-6 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-3xl font-mono text-[11px] text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-500 transition-all resize-none shadow-inner"
+              value={generateFiscalDetailingText(fiscalDetailingData)}
+            />
+
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <button
+                onClick={() => setFiscalDetailingData(null)}
+                className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  const text = generateFiscalDetailingText(fiscalDetailingData);
+                  navigator.clipboard.writeText(text);
+                  alert('Copiado com sucesso! Agora você pode colar na descrição da sua nota fiscal.');
+                  setFiscalDetailingData(null);
+                }}
+                className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all"
+              >
+                <Copy size={18} /> Copiar Detalhamento
+              </button>
             </div>
           </div>
         </div>
@@ -971,30 +1089,33 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             <ProvisionPrintSheet />
           ) : (
             <>
-              <div id="single-print-wrapper">
-                {selectedReceipt && (() => {
+              {selectedReceipt ? (
+                <div id="single-print-wrapper">
+                  {(() => {
+                    const rNum = Math.floor(100000 + Math.random() * 900000);
+                    return (
+                      <React.Fragment>
+                        {printMode === 'receipt' && (
+                          <ReceiptSheet data={selectedReceipt} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
+                        )}
+                        <ReceiptSheet data={selectedReceipt} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
+                      </React.Fragment>
+                    );
+                  })()}
+                </div>
+              ) : (
+                reportData.map((data, idx) => {
                   const rNum = Math.floor(100000 + Math.random() * 900000);
                   return (
-                    <React.Fragment>
+                    <React.Fragment key={idx}>
                       {printMode === 'receipt' && (
-                        <ReceiptSheet data={selectedReceipt} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
+                        <ReceiptSheet data={data} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
                       )}
-                      <ReceiptSheet data={selectedReceipt} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={0} receiptNumber={rNum} />
+                      <ReceiptSheet data={data} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
                     </React.Fragment>
                   );
-                })()}
-              </div>
-              {!selectedReceipt && reportData.map((data, idx) => {
-                const rNum = Math.floor(100000 + Math.random() * 900000);
-                return (
-                  <React.Fragment key={idx}>
-                    {printMode === 'receipt' && (
-                      <ReceiptSheet data={data} type="summary" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
-                    )}
-                    <ReceiptSheet data={data} type="details" hideFaturamento={hideFaturamento} printMode={printMode} idx={idx} receiptNumber={rNum} />
-                  </React.Fragment>
-                );
-              })}
+                })
+              )}
             </>
           )}
         </div>

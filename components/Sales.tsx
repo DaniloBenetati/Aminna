@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
@@ -75,6 +75,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const [showThumbsUp, setShowThumbsUp] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [lastSaleForInvoice, setLastSaleForInvoice] = useState<Sale | null>(null);
     const touchStartRef = React.useRef<number | null>(null);
 
     const getCustomerName = (id: string) => (customers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
@@ -154,7 +155,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         return { totalRevenue, totalItems, avgTicket, topProduct };
     }, [filteredSales, stock]);
 
-    const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda'), [stock]);
+    const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda' && item.quantity > 0), [stock]);
 
     const uniqueGroups = useMemo(() => {
         const groups = new Set(saleProducts.map(item => item.group).filter(Boolean));
@@ -263,8 +264,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 .replace(/\s+/g, ' ')
                 .trim();
 
-            const matchedItem = stock.find(item => {
-                if (item.category !== 'Venda') return false;
+            const matchedItem = saleProducts.find(item => {
                 const name = item.name.toLowerCase();
                 const code = item.code?.toLowerCase();
 
@@ -373,80 +373,199 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         }
     };
 
+    const handleDownloadInvoice = (sale: Sale) => {
+        const customer = customers.find(c => c.id === sale.customerId);
+        const fileName = `Fatura_Garantia_AminnaStore_${customer?.name?.replace(/\s+/g, '_') || 'Cliente'}.pdf`;
+        
+        const invoiceHtml = `
+            <div style="font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; position: relative; width: 210mm; margin: 0 auto; box-sizing: border-box;">
+                <!-- Decorative Border -->
+                <div style="position: absolute; top: 20px; right: 20px; bottom: 20px; left: 20px; border: 1px solid #f1f5f9; pointer-events: none; border-radius: 4px;"></div>
+
+                <!-- Header -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 60px; position: relative;">
+                    <div style="display: flex; align-items: center; gap: 24px;">
+                        <img src="/logo.png" style="height: 50px; width: auto; filter: grayscale(1) contrast(1.2);" alt="Aminna" />
+                        <div style="border-left: 1px solid #e2e8f0; padding-left: 24px;">
+                            <h1 style="margin: 0; font-size: 20px; font-weight: 300; text-transform: uppercase; letter-spacing: 0.3em; color: #0f172a;">Fatura</h1>
+                            <p style="margin: 4px 0 0; font-size: 8px; font-weight: 600; color: #947c4c; text-transform: uppercase; letter-spacing: 0.4em;">Aminna Store</p>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0; font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em;">Data de Emissão</p>
+                        <p style="margin: 4px 0 0; font-size: 13px; font-weight: 500; color: #0f172a; font-family: 'Times New Roman', serif; italic;">${formatDateBR(sale.date)}</p>
+                    </div>
+                </div>
+
+                <!-- Client Info -->
+                <div style="margin-bottom: 50px; position: relative;">
+                    <p style="margin: 0 0 12px; font-size: 8px; font-weight: 800; color: #947c4c; text-transform: uppercase; letter-spacing: 0.2em;">Destinatário</p>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 300; color: #475569; text-transform: uppercase; letter-spacing: 0.15em; font-family: 'Inter', sans-serif;">${customer?.name || 'Cliente Particular'}</h2>
+                </div>
+
+                <!-- Items Table -->
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #0f172a;">
+                            <th style="padding: 12px 0; text-align: left; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.2em; width: 80px;">Imagem</th>
+                            <th style="padding: 12px 15px; text-align: left; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.2em;">Descrição do Item</th>
+                            <th style="padding: 12px 10px; text-align: center; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.2em; width: 60px;">Qtd</th>
+                            <th style="padding: 12px 10px; text-align: right; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.2em; width: 100px;">Unitário</th>
+                            <th style="padding: 12px 0; text-align: right; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.2em; width: 100px;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${(sale.items || []).map((item: any) => {
+                            const product = stock.find(s => s.id === item.productId);
+                            const productImg = product?.imageUrl || product?.imageUrls?.[0] || 'https://via.placeholder.com/150';
+                            const productCode = product?.code || '---';
+
+                            return `
+                                <tr style="border-bottom: 1px solid #f8fafc;">
+                                    <td style="padding: 20px 0;">
+                                        <div style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid #f1f5f9; background: #fff;">
+                                            <img src="${productImg}" style="width: 100%; height: 100%; object-cover;" />
+                                        </div>
+                                    </td>
+                                    <td style="padding: 20px 15px;">
+                                        <div style="font-size: 13px; font-weight: 600; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">${item.name || product?.name || 'Produto'}</div>
+                                        <div style="font-size: 9px; font-weight: 500; color: #94a3b8; margin-top: 4px; letter-spacing: 0.1em;">REF: ${productCode}</div>
+                                    </td>
+                                    <td style="padding: 20px 10px; text-align: center; font-size: 11px; font-weight: 400; color: #64748b;">${item.quantity}</td>
+                                    <td style="padding: 20px 10px; text-align: right; font-size: 10px; font-weight: 400; color: #94a3b8; letter-spacing: 0.05em;">R$ ${item.unitPrice.toFixed(2)}</td>
+                                    <td style="padding: 20px 0; text-align: right; font-size: 13px; font-weight: 600; color: #0f172a; letter-spacing: 0.02em;">R$ ${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+
+                <!-- Summary -->
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 80px;">
+                    <div style="width: 280px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
+                            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em;">Subtotal</span>
+                            <span style="font-size: 13px; font-weight: 400; color: #64748b;">R$ ${sale.totalAmount.toFixed(2)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.15em;">Total Final</span>
+                            <span style="font-size: 22px; font-weight: 300; color: #947c4c; letter-spacing: -0.02em;">R$ ${sale.totalAmount.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guarantee Section -->
+                <div style="background: #fdfdfd; padding: 40px; border-radius: 2px; color: #0f172a; display: flex; gap: 40px; align-items: center; position: relative; overflow: hidden; border: 1px solid #f1f5f9;">
+                    <!-- Decorative Element -->
+                    <div style="position: absolute; right: -20px; top: -20px; width: 120px; height: 120px; border: 1px solid rgba(148, 124, 76, 0.1); border-radius: 50%;"></div>
+                    
+                    <div style="width: 100px; height: 100px; border: 1px solid #947c4c; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: rgba(148, 124, 76, 0.03); flex-shrink: 0;">
+                        <span style="font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: #947c4c; margin-bottom: 4px;">Garantia</span>
+                        <span style="font-size: 32px; font-weight: 200; line-height: 1; color: #0f172a;">90</span>
+                        <span style="font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: #947c4c; margin-top: 4px;">DIAS</span>
+                    </div>
+
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 300; text-transform: uppercase; letter-spacing: 0.2em; color: #947c4c;">Certificado de Autenticidade</h3>
+                        <p style="margin: 0; font-size: 10px; font-weight: 300; color: #64748b; line-height: 1.8; letter-spacing: 0.04em;">
+                            Este documento atesta a excelência e procedência da peça adquirida. Garantimos assistência total contra defeitos latentes de fabricação por um período de 90 dias a contar de <b>${formatDateBR(sale.date)}</b>. 
+                            Nossa garantia preserva a integridade original da joia, eximindo-se de danos oriundos de desgaste natural, acondicionamento impróprio ou agentes químicos.
+                        </p>
+                        <div style="margin-top: 20px; height: 1px; width: 40px; background: #947c4c;"></div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 60px; text-align: center;">
+                    <p style="font-size: 8px; font-weight: 600; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5em;">Thank you for choosing Aminna Store Experience</p>
+                </div>
+            </div>
+        `;
+
+        const element = document.createElement('div');
+        element.innerHTML = invoiceHtml;
+        document.body.appendChild(element);
+
+        const opt = {
+            margin: 0,
+            filename: fileName,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        // @ts-ignore
+        html2pdf().set(opt).from(element).save().then(() => {
+            document.body.removeChild(element);
+        });
+    };
+
     const handleRegisterSale = async (e: React.FormEvent) => {
         e.preventDefault();
         setTriedToSubmit(true);
 
-        if (!customerId) {
-            alert("Por favor, selecione uma cliente.");
-            return;
-        }
-
-        if (cart.length === 0) {
-            alert("Adicione pelo menos um produto ao carrinho.");
+        if (!customerId || cart.length === 0 || payments.length === 0) {
+            alert('Por favor, selecione a cliente, adicione produtos e defina o pagamento.');
             return;
         }
 
         if (Math.abs(totalPaid - cartTotal) > 0.01) {
-            alert("O valor total pago deve ser igual ao total do carrinho.");
+            alert('A soma dos pagamentos deve ser igual ao total do carrinho.');
             return;
         }
 
-        const now = new Date();
-        const localDate = toLocalDateStr(new Date());
-
         try {
-            // 1. Prepare single sale data for insertion
             const saleToInsert = {
                 customer_id: customerId,
+                date: new Date().toISOString().split('T')[0],
                 total_amount: cartTotal,
-                total_price: cartTotal, // Added to satisfy NOT NULL constraint
-                date: localDate,
-                payment_method: payments.length > 0 ? (payments.length === 1 ? payments[0].method : 'Múltiplos') : 'Pix',
-                items: cart.map(item => ({
-                    productId: item.productId,
-                    quantity: item.quantity,
-                    unitPrice: item.unitPrice,
-                    name: item.productName
+                total_price: cartTotal,
+                payment_method: payments.map(p => p.method).join(' + '),
+                items: cart.map(i => ({
+                    productId: i.productId,
+                    name: i.productName,
+                    quantity: i.quantity,
+                    unitPrice: i.unitPrice
                 })),
-                payments: payments
+                payments: payments.map(p => ({
+                    id: p.id,
+                    method: p.method,
+                    amount: p.amount
+                }))
             };
 
-            // 2. Insert into Supabase
-            const { data: insertedRecords, error: saleError } = await supabase.from('sales').insert([saleToInsert]).select();
-            if (saleError) throw saleError;
+            const { data, error } = await supabase.from('sales').insert([saleToInsert]).select();
+            if (error) throw error;
 
-            // 3. Update local state and Stock in Supabase
-            let updatedStock = [...stock];
+            if (data && data[0]) {
+                const newSale: Sale = {
+                    id: data[0].id,
+                    customerId: data[0].customer_id,
+                    date: data[0].date,
+                    totalAmount: data[0].total_amount,
+                    paymentMethod: data[0].payment_method,
+                    items: data[0].items || [],
+                    payments: data[0].payments || []
+                };
+                setSales([newSale, ...sales]);
+                setLastSaleForInvoice(newSale);
+            }
+
+            // 2. Update stock levels
             for (const item of cart) {
-                const stockItem = updatedStock.find(s => s.id === item.productId);
+                const stockItem = stock.find(s => s.id === item.productId);
                 if (stockItem) {
-                    const newQty = stockItem.quantity - item.quantity;
+                    const newQuantity = stockItem.quantity - item.quantity;
                     const { error: stockError } = await supabase
                         .from('stock_items')
-                        .update({ quantity: newQty })
+                        .update({ quantity: newQuantity })
                         .eq('id', item.productId);
+                    
                     if (stockError) throw stockError;
-
-                    updatedStock = updatedStock.map(s => s.id === item.productId ? { ...s, quantity: newQty } : s);
+                    
+                    setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
                 }
             }
 
-            if (insertedRecords && insertedRecords.length > 0) {
-                const newLocalSales: Sale[] = insertedRecords.map((s: any) => ({
-                    id: s.id,
-                    customerId: s.customer_id,
-                    totalAmount: s.total_amount,
-                    totalPrice: s.total_price,
-                    date: s.date,
-                    paymentMethod: s.payment_method,
-                    items: s.items || [],
-                    payments: s.payments || []
-                }));
-                setSales(prev => [...newLocalSales, ...prev]);
-            }
-
-            setStock(updatedStock);
             // 3. Update local state and close modal
             setIsModalOpen(false);
             setCustomerId('');
@@ -459,7 +578,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
             // Show success message
             setShowSuccess(true);
-            setTimeout(() => setShowSuccess(false), 3000);
+            setTimeout(() => {
+                setShowSuccess(false);
+                setLastSaleForInvoice(null);
+            }, 6000); 
 
         } catch (error) {
             console.error('Error registering sale:', error);
@@ -468,13 +590,64 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     };
 
     const handleDeleteSale = async (id: string) => {
-        if (confirm('Deseja estornar esta venda? O estoque não será devolvido automaticamente nesta versão.')) {
+        if (confirm('Deseja estornar esta venda? O estoque será devolvido automaticamente.')) {
             try {
+                // 1. Encontrar a venda para obter os itens e devolver ao estoque
+                const saleToDelete = sales.find(s => s.id === id);
+                if (!saleToDelete) {
+                    console.error('Sale not found in local state:', id);
+                    return;
+                }
+
+                console.log('🔄 Iniciando estorno da venda:', id, 'Itens:', saleToDelete.items);
+
+                // 2. Devolver itens ao estoque
+                if (saleToDelete.items && Array.isArray(saleToDelete.items)) {
+                    for (const item of saleToDelete.items) {
+                        // Buscar item no estado local atualizado
+                        const stockItem = stock.find(s => s.id === item.productId);
+                        
+                        if (stockItem) {
+                            const currentQty = Number(stockItem.quantity) || 0;
+                            const itemQty = Number(item.quantity) || 0;
+                            const newQuantity = currentQty + itemQty;
+                            
+                            console.log(`📦 Restaurando produto ${item.productId}: ${currentQty} + ${itemQty} = ${newQuantity}`);
+
+                            const { error: stockError } = await supabase
+                                .from('stock_items')
+                                .update({ quantity: newQuantity })
+                                .eq('id', item.productId);
+                            
+                            if (stockError) {
+                                console.error('Erro ao atualizar banco de dados para item:', item.productId, stockError);
+                                throw stockError;
+                            }
+                            
+                            // Atualizar estado local do estoque imediatamente
+                            setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
+                        } else {
+                            console.warn('⚠️ Produto não encontrado no estoque local:', item.productId);
+                            // TENTATIVA DE RECUPERAÇÃO: Buscar diretamente no Supabase caso não esteja no estado local
+                            const { data: remoteItem } = await supabase.from('stock_items').select('quantity').eq('id', item.productId).single();
+                            if (remoteItem) {
+                                const newQuantity = (Number(remoteItem.quantity) || 0) + (Number(item.quantity) || 0);
+                                await supabase.from('stock_items').update({ quantity: newQuantity }).eq('id', item.productId);
+                                console.log(`✅ Restaurado via Supabase (não estava no local): ${item.productId} -> ${newQuantity}`);
+                            }
+                        }
+                    }
+                }
+
+                // 3. Excluir a venda
                 const { error } = await supabase.from('sales').delete().eq('id', id);
                 if (error) throw error;
+                
                 setSales(prev => prev.filter(s => s.id !== id));
+                console.log('✅ Venda excluída com sucesso:', id);
             } catch (error) {
-                console.error('Error deleting sale:', error);
+                console.error('🚨 Erro crítico ao estornar venda:', error);
+                alert('Erro ao estornar venda e devolver estoque. Verifique o console para detatlhes.');
             }
         }
     };
@@ -659,10 +832,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => setSelectedSaleDetail(sale)} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors">
+                                            <button onClick={() => setSelectedSaleDetail(sale)} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="Detalhes">
                                                 <Search size={16} />
                                             </button>
-                                            <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100">
+                                            <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Baixar Fatura e Garantia">
+                                                <FileText size={16} />
+                                            </button>
+                                            <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100" title="Estornar">
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>
@@ -698,8 +874,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
                         <div className="pt-3 border-t border-slate-50 dark:border-zinc-800 flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-full font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1">
+                                <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1.5">
                                     <Search size={10} /> DETALHES
+                                </button>
+                                <button onClick={() => handleDownloadInvoice(sale)} className="text-[9px] px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-black uppercase border border-emerald-100 dark:border-emerald-800 flex items-center gap-1.5">
+                                    <FileText size={10} /> FATURA
                                 </button>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase">
                                     {sale.items?.length === 1 ? `Unit: R$${(sale.items[0].unitPrice || 0).toFixed(2)}` : `${sale.items?.length || 0} itens`}
@@ -1335,15 +1514,32 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <div className="space-y-3">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Itens Vendidos</h4>
                                 <div className="space-y-2">
-                                    {(selectedSaleDetail.items || []).map((item: any, idx: number) => (
-                                        <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 flex justify-between items-center">
-                                            <div className="min-w-0">
-                                                <p className="text-[11px] font-black text-slate-950 dark:text-white uppercase truncate">{item.name || getProductName(item.productId)}</p>
-                                                <p className="text-[9px] font-bold text-slate-500">{item.quantity}un x R$ {item.unitPrice?.toFixed(2)}</p>
+                                    {(selectedSaleDetail.items || []).map((item: any, idx: number) => {
+                                        const product = stock.find(s => s.id === item.productId);
+                                        const productImg = product?.imageUrl || product?.imageUrls?.[0] || 'https://via.placeholder.com/150';
+                                        const productCode = product?.code || '---';
+
+                                        return (
+                                            <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 flex justify-between items-center gap-4">
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-sm">
+                                                        <img src={productImg} className="w-full h-full object-cover" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-[11px] font-black text-slate-950 dark:text-white uppercase truncate tracking-tight">{item.name || product?.name || 'Produto'}</p>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">REF: {productCode}</span>
+                                                            <span className="w-1 h-1 bg-slate-300 dark:bg-zinc-600 rounded-full"></span>
+                                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{item.quantity}un x R$ {item.unitPrice?.toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0">
+                                                    <p className="text-xs font-black text-slate-900 dark:text-white">R$ {(item.quantity * item.unitPrice).toFixed(2)}</p>
+                                                </div>
                                             </div>
-                                            <span className="text-xs font-black text-slate-900 dark:text-white ml-2">R$ {(item.quantity * item.unitPrice).toFixed(2)}</span>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
 
@@ -1369,12 +1565,20 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </div>
                             </div>
 
-                            <button
-                                onClick={() => setSelectedSaleDetail(null)}
-                                className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all mt-2"
-                            >
-                                Fechar Detalhes
-                            </button>
+                            <div className="grid grid-cols-2 gap-3 mt-2">
+                                <button
+                                    onClick={() => handleDownloadInvoice(selectedSaleDetail)}
+                                    className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <FileText size={16} /> Fatura e Garantia
+                                </button>
+                                <button
+                                    onClick={() => setSelectedSaleDetail(null)}
+                                    className="flex-1 py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
+                                >
+                                    Fechar Detalhes
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1567,8 +1771,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <CheckCircle2 size={24} className="text-white" />
                         </div>
                         <div>
-                            <p className="text-sm font-black uppercase tracking-widest">Venda Realizada!</p>
-                            <p className="text-[10px] font-bold opacity-90 uppercase">A venda foi registrada com sucesso.</p>
+                            <p className="text-sm font-black uppercase tracking-widest leading-none">Venda Realizada!</p>
+                            <p className="text-[10px] font-bold opacity-90 uppercase mt-0.5">A venda foi registrada com sucesso.</p>
+                            {lastSaleForInvoice && (
+                                <button 
+                                    onClick={() => handleDownloadInvoice(lastSaleForInvoice)}
+                                    className="mt-2.5 bg-white text-emerald-600 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-50 transition-colors shadow-lg animate-pulse"
+                                >
+                                    <FileText size={12} /> Gerar Fatura e Garantia
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

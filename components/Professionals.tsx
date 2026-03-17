@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
+import { Search, Plus, Link, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
 
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -1054,6 +1054,24 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     >
                                         <Sparkles size={16} />
                                     </button>
+                                </div>
+                                
+                                {/* Manual Photo URL Input */}
+                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-700">
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                                        <Link size={14} className="text-indigo-600 dark:text-indigo-400" /> Link da Foto Customizada
+                                    </label>
+                                    <input
+                                        type="url"
+                                        id="avatar-url-input"
+                                        value={(formData.avatar && !formData.avatar.includes('dicebear.com')) ? formData.avatar : ''}
+                                        onChange={e => setFormData({ ...formData, avatar: e.target.value })}
+                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400"
+                                        placeholder="Cole aqui o link da foto (ex: instagram, google drive, etc)"
+                                    />
+                                    <p className="text-[9px] font-bold text-slate-400 mt-1.5 ml-1 italic">
+                                        Se preenchido, este link substituirá o avatar selecionado acima.
+                                    </p>
                                 </div>
                             </div>
 

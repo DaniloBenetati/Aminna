@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2, CheckCircle } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2, CheckCircle, Trash2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import Tesseract from 'tesseract.js';
 import { supabase } from '../services/supabase';
@@ -34,6 +34,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [ocrError, setOcrError] = useState<string | null>(null);
     const [productSearch, setProductSearch] = useState('');
     const [providerSearch, setProviderSearch] = useState('');
+    const [hoveredImage, setHoveredImage] = useState<string | null>(null);
+    const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
     const [productFormData, setProductFormData] = useState({
         code: '',
@@ -376,6 +378,25 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         }
     };
 
+    const handleDeleteProduct = async (id: string) => {
+        if (!window.confirm("Deseja realmente excluir este produto?")) return;
+        
+        try {
+            const { error } = await supabase
+                .from('stock_items')
+                .update({ active: false })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            // Update local state by removing the item (since it's now "deleted")
+            setStock(prev => prev.filter(item => item.id !== id));
+        } catch (error) {
+            console.error("Erro ao excluir produto:", error);
+            alert("Erro ao excluir produto do banco de dados.");
+        }
+    };
+
     const handleCreateOrUpdateProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -425,7 +446,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
     const closeModal = () => {
         setModalType(null); setSelectedItemId(''); setQuantity(''); setPhysicalCount(''); setInventoryJustification(''); setNewPrice(''); setPriceNote(''); setEntryCost(''); setExitProviderId(''); setShowReportExportMenu(false);
-        setIsAddingNewGroup(false); setIsAddingNewSubGroup(false); setProductSearch(''); setProviderSearch('');
+        setIsAddingNewGroup(false); setIsAddingNewSubGroup(false); setProductSearch(''); setProviderSearch(''); setHoveredImage(null);
     };
 
     const openHistory = (id: string) => { setSelectedItemId(id); setModalType('HISTORY'); setHistoryTab('USAGE'); };
@@ -556,9 +577,22 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 return (
                                     <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 group/row">
                                         <td className="px-6 py-3">
-                                            <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center">
+                                            <div 
+                                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
+                                                onMouseEnter={(e) => {
+                                                    if (!item.imageUrl) return;
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    setHoverPosition({ x: rect.right + 20, y: rect.top - 50 });
+                                                    setHoveredImage(item.imageUrl);
+                                                }}
+                                                onMouseLeave={() => setHoveredImage(null)}
+                                            >
                                                 {item.imageUrl ? (
-                                                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300" />
+                                                    <img 
+                                                        src={item.imageUrl} 
+                                                        alt={item.name} 
+                                                        className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300"
+                                                    />
                                                 ) : (
                                                     <Package className="w-5 h-5 text-slate-400" />
                                                 )}
@@ -595,6 +629,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 <button onClick={() => openEditProduct(item)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Editar Informações"><Settings2 size={16} /></button>
                                                 <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Alterar Preço"><Edit2 size={16} /></button>
                                                 <button onClick={() => openHistory(item.id)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Ver Histórico"><History size={16} /></button>
+                                                <button onClick={() => handleDeleteProduct(item.id)} className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors" title="Excluir Produto"><Trash2 size={16} /></button>
                                             </div>
                                         </td>
                                     </tr>
@@ -612,9 +647,22 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     return (
                         <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
                             <div className="flex gap-4">
-                                <div className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center">
+                                <div 
+                                    className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center relative"
+                                    onMouseEnter={(e) => {
+                                        if (!item.imageUrl) return;
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoverPosition({ x: rect.left, y: rect.bottom + 10 });
+                                        setHoveredImage(item.imageUrl);
+                                    }}
+                                    onMouseLeave={() => setHoveredImage(null)}
+                                >
                                     {item.imageUrl ? (
-                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                        <img 
+                                            src={item.imageUrl} 
+                                            alt={item.name} 
+                                            className="w-full h-full object-cover"
+                                        />
                                     ) : (
                                         <Package className="w-6 h-6 text-slate-400" />
                                     )}
@@ -650,6 +698,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <button onClick={() => openEditProduct(item)} className="p-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-200 dark:active:bg-zinc-700"><Settings2 size={16} /><span className="text-[9px] font-black uppercase">Editar</span></button>
                                         <button onClick={() => openHistory(item.id)} className="p-2.5 bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-100 dark:active:bg-zinc-700"><History size={16} /><span className="text-[9px] font-black uppercase">Histórico</span></button>
                                         <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-slate-900 dark:text-white rounded-2xl border border-indigo-200 dark:border-indigo-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-indigo-100 dark:active:bg-indigo-900/30"><Edit2 size={16} /><span className="text-[9px] font-black uppercase">Preço</span></button>
+                                        <button onClick={() => handleDeleteProduct(item.id)} className="p-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-rose-100 dark:active:bg-rose-900/30"><Trash2 size={16} /><span className="text-[9px] font-black uppercase">Excluir</span></button>
                                     </div>
                                     <div className="flex gap-1 justify-end items-end pt-2">
                                         <button onClick={() => { setSelectedItemId(item.id); setModalType('ENTRY'); setEntryCost(item.costPrice.toString()); }} className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Plus size={18} /></button>
@@ -1298,6 +1347,20 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 </div>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Hover Image Preview Overlay */}
+            {hoveredImage && (
+                <div 
+                    className="fixed z-[999] pointer-events-none animate-in fade-in zoom-in duration-200"
+                    style={{ 
+                        left: Math.min(hoverPosition.x, window.innerWidth - 300), 
+                        top: Math.min(hoverPosition.y, window.innerHeight - 300) 
+                    }}
+                >
+                    <div className="w-64 h-64 rounded-3xl overflow-hidden border-4 border-white dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.4)] bg-white dark:bg-zinc-900 ring-1 ring-black/10">
+                        <img src={hoveredImage} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                 </div>
             )}

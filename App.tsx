@@ -211,7 +211,7 @@ const App: React.FC = () => {
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
-        supabase.from('stock_items').select('*'),
+        supabase.from('stock_items').select('*').eq('active', true),
         supabase.from('usage_logs').select('*').gte('date', minDate),
         supabase.from('campaigns').select('*'),
         supabase.from('pantry_items').select('*'),
