@@ -620,7 +620,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 {/* Total Row for Conference */}
                 <tfoot className="border-t-2 border-slate-900">
                   <tr className="bg-slate-50/50">
-                    <td colSpan={2} className="py-2 px-2 font-black text-slate-900 uppercase">Total</td>
+                    <td colSpan={2} className="py-2 px-2 font-black text-slate-900 uppercase">Subtotal Comissões</td>
                     <td></td>
                     {!hideFaturamento && (
                       <td className="py-2 text-right font-black text-slate-900">
@@ -631,6 +631,26 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       R$ {data.details.reduce((acc: number, item: any) => acc + (item.price || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </td>
                   </tr>
+                  {(data.das > 0 || data.discount > 0) && (
+                    <React.Fragment>
+                      {data.das > 0 && (
+                        <tr className="bg-white">
+                          <td colSpan={type === 'details' && !hideFaturamento ? 4 : 3} className="py-1 px-2 text-right text-[10px] font-bold text-slate-400 uppercase">(-) DAS</td>
+                          <td className="py-1 text-right pr-2 font-black text-rose-500">R$ {data.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      )}
+                      {data.discount > 0 && (
+                        <tr className="bg-white">
+                          <td colSpan={type === 'details' && !hideFaturamento ? 4 : 3} className="py-1 px-2 text-right text-[10px] font-bold text-slate-400 uppercase">(-) Outros Descontos</td>
+                          <td className="py-1 text-right pr-2 font-black text-rose-500">R$ {data.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      )}
+                      <tr className="bg-indigo-50/30 border-t border-slate-100">
+                        <td colSpan={type === 'details' && !hideFaturamento ? 4 : 3} className="py-2 px-2 text-right text-[11px] font-black text-slate-900 uppercase">Total Líquido a Repassar</td>
+                        <td className="py-2 text-right pr-2 font-black text-emerald-700 text-sm">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    </React.Fragment>
+                  )}
                 </tfoot>
               </table>
             </div>
