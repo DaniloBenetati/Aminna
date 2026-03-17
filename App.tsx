@@ -206,7 +206,8 @@ const App: React.FC = () => {
         fetchedAppointments,
         { data: salesData },
         { data: expensesData },
-        { data: financialConfigData }
+        { data: financialConfigData },
+        { data: fiscalConfigsData }
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
@@ -227,7 +228,8 @@ const App: React.FC = () => {
         fetchAppointments(),
         supabase.from('sales').select('*').gte('date', minDate),
         supabase.from('expenses').select('*').gte('date', minDate).order('date', { ascending: false }),
-        supabase.from('financial_config').select('*').order('valid_from', { ascending: false })
+        supabase.from('financial_config').select('*').order('valid_from', { ascending: false }),
+        supabase.from('professional_fiscal_config').select('*')
       ]);
 
       console.log('📊 [DATA FETCH] Results:', {
@@ -241,25 +243,30 @@ const App: React.FC = () => {
 
       // Map and Set Providers
       if (providersData) {
-        const mappedProviders = providersData.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          specialty: p.specialty,
-          specialties: p.specialties || [],
-          commissionRate: p.commission_rate,
-          avatar: p.avatar,
-          nickname: p.nickname,
-          phone: p.phone,
-          birthDate: p.birth_date,
-          pixKey: p.pix_key,
-          active: p.active,
-          workDays: p.work_days || [],
-          order: p.order,
-          commissionHistory: p.commission_history || [],
-          vacationStart: p.vacation_start,
-          vacationEnd: p.vacation_end,
-          daysOff: p.days_off || []
-        }));
+        const mappedProviders = providersData.map((p: any) => {
+          const fiscal = (fiscalConfigsData || []).find((f: any) => f.provider_id === p.id);
+          return {
+            id: p.id,
+            name: p.name,
+            specialty: p.specialty,
+            specialties: p.specialties || [],
+            commissionRate: p.commission_rate,
+            avatar: p.avatar,
+            nickname: p.nickname,
+            phone: p.phone,
+            birthDate: p.birth_date,
+            pixKey: p.pix_key,
+            active: p.active,
+            workDays: p.work_days || [],
+            order: p.order,
+            commissionHistory: p.commission_history || [],
+            vacationStart: p.vacation_start,
+            vacationEnd: p.vacation_end,
+            daysOff: p.days_off || [],
+            dasAmount: fiscal?.das_amount || p.das_amount || 0,
+            otherDiscounts: fiscal?.other_discounts || 0
+          };
+        });
         const deduplicatedProviders = mappedProviders.reduce((acc: any[], current: any) => {
           const existingIndex = acc.findIndex(p => p.phone && p.phone === current.phone);
           if (existingIndex >= 0) acc[existingIndex] = current;

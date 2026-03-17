@@ -46,6 +46,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         fiscalSocialName?: string;
         fiscalFantasyName?: string;
         fiscalVerified?: boolean;
+        fiscalDasAmount?: number;
+        fiscalOtherDiscounts?: number;
         customDurations?: Record<string, number>;
     }>({
         name: '',
@@ -402,7 +404,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                     fiscalMunicipalRegistration: data.municipal_registration || '',
                     fiscalSocialName: data.social_name || '',
                     fiscalFantasyName: data.fantasy_name || '',
-                    fiscalVerified: !!data.verified
+                    fiscalVerified: !!data.verified,
+                    fiscalDasAmount: data.das_amount || 0,
+                    fiscalOtherDiscounts: data.other_discounts || 0
                 }));
             }
         } catch (error) {
@@ -450,6 +454,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 service_percentage: servicePercentage,
                 active: true,
                 verified: formData.fiscalVerified || false, // User can now verify
+                das_amount: formData.fiscalDasAmount || 0,
+                other_discounts: formData.fiscalOtherDiscounts || 0
             };
 
             // Check if fiscal config already exists for this provider
@@ -1425,6 +1431,40 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         <p className="text-[8px] font-bold text-emerald-600 dark:text-emerald-500 mt-1">
                                             💡 O percentual da profissional será o mesmo do campo "% Comissão" acima ({((formData.commissionRate || 0.4) * 100).toFixed(0)}%)
                                         </p>
+                                    </div>
+                                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-emerald-100 dark:border-emerald-900/40">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                                DAS Padrão (Mensal)
+                                            </label>
+                                            <div className="relative group">
+                                                <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={formData.fiscalDasAmount || ''}
+                                                    onChange={e => setFormData({ ...formData, fiscalDasAmount: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5">
+                                                Outros Descontos Padrão
+                                            </label>
+                                            <div className="relative group">
+                                                <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={formData.fiscalOtherDiscounts || ''}
+                                                    onChange={e => setFormData({ ...formData, fiscalOtherDiscounts: parseFloat(e.target.value) || 0 })}
+                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                    placeholder="0,00"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="md:col-span-2 pt-2 border-t border-emerald-100 dark:border-emerald-900/40">
                                         <label className="flex items-center gap-3 cursor-pointer group">

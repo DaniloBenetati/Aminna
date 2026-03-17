@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../services/supabase';
 import { Filter, Files, Calendar, MessageCircle, FileText, Download, ChevronDown, CheckCircle2, AlertCircle, Search, Copy, Send, X, Printer, Scissors, FileSpreadsheet, FileCode, Heart } from 'lucide-react';
 import { Service, Appointment, Provider, Customer } from '../types';
 
@@ -32,11 +33,68 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     return {};
   });
 
+  const [otherDiscounts, setOtherDiscounts] = useState<Record<string, number>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('aminna_other_discounts');
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
+
   useEffect(() => {
     localStorage.setItem('aminna_das_amounts', JSON.stringify(dasAmounts));
   }, [dasAmounts]);
 
+  useEffect(() => {
+    localStorage.setItem('aminna_other_discounts', JSON.stringify(otherDiscounts));
+  }, [otherDiscounts]);
+
+  // Pre-fill from provider defaults if not in localStorage
+  useEffect(() => {
+    if (providers.length > 0) {
+      setDasAmounts(prev => {
+        const next = { ...prev };
+        let changed = false;
+        providers.forEach(p => {
+          if (p.dasAmount !== undefined && next[p.id] === undefined) {
+            next[p.id] = p.dasAmount;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+
+      setOtherDiscounts(prev => {
+        const next = { ...prev };
+        let changed = false;
+        providers.forEach(p => {
+          if (p.otherDiscounts !== undefined && next[p.id] === undefined) {
+            next[p.id] = p.otherDiscounts;
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [providers]);
+
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+
+  const persistDiscount = async (providerId: string, type: 'das' | 'discount', value: number) => {
+    try {
+      if (type === 'das') {
+        // Update both tables for consistency
+        await Promise.all([
+          supabase.from('providers').update({ das_amount: value }).eq('id', providerId),
+          supabase.from('professional_fiscal_config').update({ das_amount: value }).eq('provider_id', providerId)
+        ]);
+      } else {
+        await supabase.from('professional_fiscal_config').update({ other_discounts: value }).eq('provider_id', providerId);
+      }
+    } catch (err) {
+      console.error('Error persisting discount:', err);
+    }
+  };
   const [isPrintingProvision, setIsPrintingProvision] = useState(false);
   const [hideFaturamento, setHideFaturamento] = useState(false);
   const [printMode, setPrintMode] = useState<'auditoria' | 'receipt'>('receipt');
@@ -246,14 +304,16 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       .map(p => {
         const financials = getFinancials(p.id);
         const das = dasAmounts[p.id] || 0;
+        const discount = otherDiscounts[p.id] || 0;
         return { 
           ...financials, 
-          das, 
-          finalToPay: financials.commissionVal - das 
+          das,
+          discount,
+          finalToPay: financials.commissionVal - das - discount
         };
       })
       .filter(data => data.revenue > 0 || data.commissionVal > 0);
-  }, [providers, selectedProvider, searchTerm, startDate, endDate, services, appointments, dasAmounts]);
+  }, [providers, selectedProvider, searchTerm, startDate, endDate, services, appointments, dasAmounts, otherDiscounts]);
 
   const totals = useMemo(() => {
     return {
@@ -412,7 +472,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <th className="px-4 py-4 font-black uppercase text-slate-400">Profissional</th>
                 <th className="px-4 py-4 text-right font-black uppercase text-slate-400">Nota</th>
                 <th className="px-4 py-4 text-right font-black uppercase text-slate-400">Caixinhas</th>
-                <th className="px-4 py-4 text-right font-black uppercase text-slate-400">DAS</th>
+                <th className="px-4 py-4 text-right font-black uppercase text-slate-400">DAS/Desc.</th>
                 <th className="px-4 py-4 text-right font-black uppercase text-slate-400">Total Líquido</th>
               </tr>
             </thead>
@@ -422,7 +482,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   <td className="px-4 py-4 font-black uppercase text-slate-900">{data.provider?.name}</td>
                   <td className="px-4 py-4 text-right font-bold text-slate-500">{formatCurrency(data.serviceCommission)}</td>
                   <td className="px-4 py-4 text-right font-bold text-slate-500">{formatCurrency(data.totalTips)}</td>
-                  <td className="px-4 py-4 text-right font-bold text-rose-500">{data.das > 0 ? `- ${formatCurrency(data.das)}` : '—'}</td>
+                  <td className="px-4 py-4 text-right font-bold text-rose-500">
+                    {(data.das + data.discount) > 0 ? `- ${formatCurrency(data.das + data.discount)}` : '—'}
+                  </td>
                   <td className="px-4 py-4 text-right font-black text-emerald-700 text-sm">{formatCurrency(data.finalToPay)}</td>
                 </tr>
               ))}
@@ -482,7 +544,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 Recebi de <span className="font-bold text-slate-900">AMINNA GESTÃO DE ATENDIMENTOS</span> a importância de <span className="font-black text-slate-900 border-b-2 border-indigo-500/30 pb-0.5">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span> referente a <span className="font-bold">{data.count} serviços prestados</span> e ao repasse de comissão sobre atendimentos executados no período acima mencionado.
               </p>
               <p className="text-[10px] text-slate-500 mt-4">
-                Composição: Comissões (R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) + Caixinhas (R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}){data.das > 0 ? ` - DAS (R$ ${data.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : ''}
+                Composição: Comissões (R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) + Caixinhas (R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}){data.das > 0 ? ` - DAS (R$ ${data.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : ''}{data.discount > 0 ? ` - Descontos (R$ ${data.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})` : ''}
               </p>
             </div>
 
@@ -611,6 +673,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     if (data.das > 0) {
       message += `* DESCONTO DAS:* -R$ ${data.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     }
+    if (data.discount > 0) {
+      message += `* OUTROS DESCONTOS:* -R$ ${data.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+    }
     message += `* TOTAL LÍQUIDO: R$ ${data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n\n`;
     message += `_Gerado automaticamente pelo Sistema Aminna._`;
     return { message, phone };
@@ -627,6 +692,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       message += `• Caixinhas: R$ ${data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       if (data.das > 0) {
         message += `• DAS (Desconto): -R$ ${data.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+      }
+      if (data.discount > 0) {
+        message += `• Outros Descontos: -R$ ${data.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
       }
       message += `*LÍQUIDO: R$ ${data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}*\n`;
       message += `----------------------------\n`;
@@ -691,6 +759,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <th className="px-6 py-4 text-right underline decoration-indigo-200 whitespace-nowrap">Valor p/ Nota</th>
                 <th className="px-6 py-4 text-right underline decoration-rose-200 whitespace-nowrap">Caixinhas</th>
                 <th className="px-6 py-4 text-right text-rose-500 whitespace-nowrap">DAS</th>
+                <th className="px-6 py-4 text-right text-rose-600 whitespace-nowrap">Descontos</th>
                 <th className="px-6 py-4 text-right underline decoration-emerald-200 whitespace-nowrap">Total à Repassar</th>
                 <th className="px-6 py-4 text-center">Ações</th>
               </tr>
@@ -704,7 +773,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   <td className="px-6 py-4 text-center font-black">{((data.provider?.commissionRate || 0) * 100).toFixed(0)}%</td>
                   <td className="px-6 py-4 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-right font-black text-rose-600 whitespace-nowrap">R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4 text-right">
+                   <td className="px-6 py-4 text-right">
                     <input 
                       type="number" 
                       value={dasAmounts[data.provider?.id || ''] || ''} 
@@ -712,8 +781,28 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         const val = parseFloat(e.target.value) || 0;
                         setDasAmounts(prev => ({ ...prev, [data.provider?.id || '']: val }));
                       }}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        persistDiscount(data.provider?.id || '', 'das', val);
+                      }}
                       placeholder="0,00"
                       className="w-20 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-xs font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
+                    />
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <input 
+                      type="number" 
+                      value={otherDiscounts[data.provider?.id || ''] || ''} 
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        setOtherDiscounts(prev => ({ ...prev, [data.provider?.id || '']: val }));
+                      }}
+                      onBlur={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        persistDiscount(data.provider?.id || '', 'discount', val);
+                      }}
+                      placeholder="0,00"
+                      className="w-20 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-xs font-black text-rose-600 focus:ring-1 focus:ring-rose-600 outline-none"
                     />
                   </td>
                   <td className="px-6 py-4 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
@@ -810,6 +899,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-3xl border border-rose-100">
                     <p className="text-[8px] font-black text-rose-500 uppercase mb-1">DAS (MEI)</p>
                     <p className="text-sm font-black text-rose-600">R$ {selectedReceipt.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                )}
+                {selectedReceipt.discount > 0 && (
+                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-3xl border border-rose-100">
+                    <p className="text-[8px] font-black text-rose-500 uppercase mb-1">Descontos</p>
+                    <p className="text-sm font-black text-rose-600">R$ {selectedReceipt.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   </div>
                 )}
                 <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100">

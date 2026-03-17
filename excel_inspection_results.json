@@ -1,0 +1,64 @@
+{
+  "headers": [
+    "Código de Barras / Ref",
+    "Nome do Produto",
+    "Quantidade",
+    "Custo Pago (R$)",
+    "Custo Pago Un.",
+    "Categoria (Visibilidade no PDV)",
+    "Preço Venda (R$)",
+    "Grupo (Categoria)"
+  ],
+  "sample": [
+    {
+      "Código de Barras / Ref": "AN02050148DO10",
+      "Nome do Produto": "ALIANCA GLOW FULL CHAMPAGNE DOUR./10",
+      "Quantidade": 1,
+      "Custo Pago (R$)": 69,
+      "Custo Pago Un.": 69,
+      "Categoria (Visibilidade no PDV)": "Venda",
+      "Preço Venda (R$)": 138,
+      "Grupo (Categoria)": "Semi Joia"
+    },
+    {
+      "Código de Barras / Ref": "AN02050148DO17",
+      "Nome do Produto": "ALIANCA GLOW FULL CHAMPAGNE",
+      "Quantidade": 1,
+      "Custo Pago (R$)": 69,
+      "Custo Pago Un.": 69,
+      "Categoria (Visibilidade no PDV)": "Venda",
+      "Preço Venda (R$)": 138,
+      "Grupo (Categoria)": "Semi Joia"
+    },
+    {
+      "Código de Barras / Ref": "AN02050178RH21",
+      "Nome do Produto": "ANEL BOLD",
+      "Quantidade": 1,
+      "Custo Pago (R$)": 45,
+      "Custo Pago Un.": 45,
+      "Categoria (Visibilidade no PDV)": "Venda",
+      "Preço Venda (R$)": 90,
+      "Grupo (Categoria)": "Semi Joia"
+    },
+    {
+      "Código de Barras / Ref": "AN02050179RH18",
+      "Nome do Produto": "ANEL SLIM SPARK RODIO/18",
+      "Quantidade": 1,
+      "Custo Pago (R$)": 39,
+      "Custo Pago Un.": 39,
+      "Categoria (Visibilidade no PDV)": "Venda",
+      "Preço Venda (R$)": 78,
+      "Grupo (Categoria)": "Semi Joia"
+    },
+    {
+      "Código de Barras / Ref": "AN03050252DO15",
+      "Nome do Produto": "ANEL FLAT",
+      "Quantidade": 1,
+      "Custo Pago (R$)": 69,
+      "Custo Pago Un.": 69,
+      "Categoria (Visibilidade no PDV)": "Venda",
+      "Preço Venda (R$)": 138,
+      "Grupo (Categoria)": "Semi Joia"
+    }
+  ]
+}

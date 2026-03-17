@@ -60,6 +60,8 @@ export interface Provider {
   order?: number; // Para ordenação personalizada
   workDays?: number[]; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
   customDurations?: Record<string, number>; // serviceId or serviceName -> duration in minutes
+  dasAmount?: number;
+  otherDiscounts?: number;
 }
 
 export interface PriceHistoryItem {
@@ -484,6 +486,8 @@ export interface ProfessionalFiscalConfig {
   // Status
   active: boolean;
   verified: boolean; // Admin verified this data
+  dasAmount?: number;
+  otherDiscounts?: number;
   // Metadata
   createdAt: string;
   updatedAt: string;

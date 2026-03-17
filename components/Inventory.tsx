@@ -471,8 +471,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     };
 
     return (
-        <div className="space-y-4 md:space-y-6 relative pb-24 md:pb-0 text-slate-900 dark:text-white">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+        <div className="h-full flex flex-col space-y-4 md:space-y-6 relative text-slate-900 dark:text-white min-h-0">
+            <div className="flex-shrink-0 space-y-4 md:space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div>
                     <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Estoque</h2>
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de materiais e revenda</p>
@@ -520,8 +521,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     onChange={e => setSearchTerm(e.target.value)}
                 />
             </div>
+            </div>
 
-            {/* Desktop Table View */}
+            {/* Scrollable Content Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 scrollbar-hide space-y-4 md:space-y-6 pb-24 md:pb-8">
+                {/* Desktop Table View */}
             <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
                 <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center">
                     <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
@@ -533,7 +537,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700">
+                        <thead className="text-xs text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
                             <tr>
                                 <th className="px-6 py-3">Código</th>
                                 <th className="px-6 py-3">Produto</th>
@@ -639,6 +643,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         </div>
                     );
                 })}
+            </div>
             </div>
 
             {/* MODALS SECTION */}
