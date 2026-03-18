@@ -420,6 +420,13 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 if (error) throw error;
                 setStock(prev => prev.map(item => item.id === selectedItemId ? { ...item, ...productFormData } : item));
             } else {
+                // Check if code already exists
+                const { data: existing } = await supabase.from('stock_items').select('id, name').eq('code', productData.code).maybeSingle();
+                if (existing) {
+                    alert(`O código "${productData.code}" já está em uso pelo produto "${existing.name}". Por favor, utilize um código único.`);
+                    return;
+                }
+
                 const { data, error } = await supabase.from('stock_items').insert([{
                     ...productData,
                     quantity: 0
@@ -438,9 +445,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 }
             }
             closeModal();
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao salvar produto:", error);
-            alert("Erro ao salvar produto no banco de dados.");
+            alert("Erro ao salvar produto: " + (error.message || "Erro desconhecido"));
         }
     };
 
