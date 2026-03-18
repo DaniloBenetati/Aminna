@@ -899,9 +899,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                        <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
                         <FileText size={18} />
                       </button>
-                      <button onClick={() => setSelectedReceipt(data)} title="Visualizar Detalhes" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-600 dark:text-slate-400 transition-colors">
-                        <Printer size={18} />
-                      </button>
+
                       <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
                         <MessageCircle size={18} />
                       </button>
