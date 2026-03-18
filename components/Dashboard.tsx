@@ -40,7 +40,7 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas'>('geral');
-    const [activeSubTab, setActiveSubTab] = useState<'charts' | 'insights' | 'ausencias'>('charts');
+    const [activeSubTab, setActiveSubTab] = useState<'charts' | 'insights' | 'ausencias' | 'high_performance'>('charts');
     const [dateRef, setDateRef] = useState(new Date()); // Default to Today
 
     // Custom Range State
@@ -720,6 +720,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             topImpactProvider: topImpactProvider ? { name: topImpactProvider[1].name, loss: topImpactProvider[1].loss } : null
         };
     }, [appointments, providers, isDateInPeriod]);
+
+    // 16. High Performance Metrics (Potential Revenue)
+    const highPerformanceMetrics = useMemo(() => {
+        // Calculate current total revenue per professional in period
+        const revenuePerProvider: Record<string, number> = {};
+        
+        filteredAppointments.filter(a => a.status !== 'Cancelado').forEach(a => {
+            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+            revenuePerProvider[a.providerId] = (revenuePerProvider[a.providerId] || 0) + price;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                revenuePerProvider[extra.providerId] = (revenuePerProvider[extra.providerId] || 0) + extraPrice;
+            });
+        });
+
+        const activeProviderIds = Object.keys(revenuePerProvider);
+        if (activeProviderIds.length === 0) return null;
+
+        const revenues = Object.entries(revenuePerProvider).map(([id, amount]) => ({
+            id,
+            amount,
+            name: providers.find(p => p.id === id)?.name || 'Desconhecido'
+        })).sort((a,b) => b.amount - a.amount);
+
+        const topPerformer = revenues[0];
+        const maxRevenue = topPerformer.amount;
+        const actualTotal = revenues.reduce((sum, r) => sum + r.amount, 0);
+        const potentialTotal = maxRevenue * revenues.length;
+        const impact = potentialTotal - actualTotal;
+
+        // Gap per provider
+        const performanceGaps = revenues.map(r => ({
+            name: r.name,
+            current: r.amount,
+            gap: maxRevenue - r.amount,
+            potential: maxRevenue
+        })).filter(r => r.gap > 0).sort((a,b) => b.gap - a.gap);
+
+        return {
+            topPerformer,
+            maxRevenue,
+            actualTotal,
+            potentialTotal,
+            impact,
+            performanceGaps,
+            providerCount: revenues.length
+        };
+    }, [filteredAppointments, services, providers]);
 
     // 14. Tempo Médio no Salão por Dia da Semana
     const avgTimePerDay = useMemo(() => {
@@ -1499,6 +1548,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         >
                             <BrainCircuit size={14} /> Análise de Performance
                         </button>
+                        <button 
+                            onClick={() => setActiveSubTab('high_performance')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'high_performance' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <Zap size={14} /> High Performance
+                        </button>
                     </div>
 
                     {activeSubTab === 'charts' ? (
@@ -1599,7 +1654,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 />
                                 <KPICard 
                                     title="Risco Agenda" 
-                                    value={`${((absenceMetrics.totalHours / (providers.length * 160)) * 100).toFixed(1)}%`} 
+                                    value={`${((absenceMetrics.totalHours / (absenceMetrics.totalHours + (filteredAppointments.length * 1))) * 100).toFixed(1)}%`} 
                                     sub="Capacidade perdida"
                                     icon={TrendingUp} 
                                     color="text-orange-600" 
@@ -1613,9 +1668,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <PieChart size={16} className="text-rose-600" /> Motivos de Ausência
                                     </h3>
-                                    <div className="h-[240px]">
+                                    <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={absenceMetrics.reasons} layout="vertical" margin={{ right: 30 }}>
+                                            <BarChart data={absenceMetrics.reasons} layout="vertical" margin={{ left: 0, right: 30 }}>
                                                 <XAxis type="number" hide />
                                                 <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                                                 <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
@@ -1630,15 +1685,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Ausências por Dia */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Calendar size={16} className="text-amber-600" /> Ausências por Dia
+                                        <Calendar size={16} className="text-amber-600 dark:text-amber-400" /> Ausências por Dia
                                     </h3>
-                                    <div className="h-[240px]">
+                                    <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={absenceMetrics.days}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
                                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                                <YAxis hide />
+                                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                                                 <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
-                                                <Bar dataKey="value" fill="#fbbf24" radius={[4, 4, 0, 0]} barSize={24}>
+                                                <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={32}>
                                                     <LabelList dataKey="value" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
                                                 </Bar>
                                             </BarChart>
@@ -1646,27 +1702,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                 </div>
 
-                                {/* Simulador de Redução */}
+                                {/* Simulador de Recuperação */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                     <div>
-                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2 flex items-center gap-2">
-                                            <BrainCircuit size={16} className="text-indigo-600" /> Simulador de Recuperação
+                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
+                                            <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Recuperação
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase mb-4 italic">Potencial de Ganho ao Reduzir Ausências</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Potencial de ganho ao reduzir ausências</p>
                                     </div>
-                                    <div className="space-y-4">
-                                        {[10, 20, 30, 50].map(percent => (
-                                            <div key={percent} className="flex justify-between items-center p-3 rounded-2xl bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 font-black text-[10px]">
-                                                        {percent}%
-                                                    </div>
-                                                    <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">Redução</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs font-black text-emerald-600">+ R$ {(absenceMetrics.totalLoss * (percent / 100)).toLocaleString('pt-BR')}</p>
-                                                    <p className="text-[8px] font-bold text-slate-400 uppercase">Faturamento Recuperado</p>
-                                                </div>
+                                    <div className="space-y-4 mt-6">
+                                        {[10, 20, 30].map(pct => (
+                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">{pct}% Redução</span>
+                                                <span className="text-xs font-black text-slate-900 dark:text-white">+ R$ {(absenceMetrics.totalLoss * (pct / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -1716,6 +1764,98 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             ))}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        </div>
+                    ) : activeSubTab === 'high_performance' ? (
+                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            {/* High Performance KPIs */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                                <KPICard 
+                                    title="Padrão Unitário" 
+                                    value={`R$ ${(highPerformanceMetrics?.maxRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
+                                    sub={`Meta p/ profissional`}
+                                    icon={Target} 
+                                    color="text-indigo-600" 
+                                    lightColor="bg-indigo-50" 
+                                />
+                                <KPICard 
+                                    title="Impacto Potencial" 
+                                    value={`+ R$ ${(highPerformanceMetrics?.impact || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`} 
+                                    sub="Custo de oportunidade"
+                                    icon={TrendingUp} 
+                                    color="text-emerald-600" 
+                                    lightColor="bg-emerald-50" 
+                                />
+                                <KPICard 
+                                    title="Gap de Performance" 
+                                    value={`${(((highPerformanceMetrics?.impact || 0) / (highPerformanceMetrics?.potentialTotal || 1)) * 100).toFixed(1)}%`} 
+                                    sub="Diferença da meta"
+                                    icon={Zap} 
+                                    color="text-amber-600" 
+                                    lightColor="bg-amber-50" 
+                                />
+                                <KPICard 
+                                    title="Top Performer" 
+                                    value={highPerformanceMetrics?.topPerformer?.name || '-'} 
+                                    sub="Líder de faturamento"
+                                    icon={Award} 
+                                    color="text-indigo-600" 
+                                    lightColor="bg-indigo-50" 
+                                    valueSize="text-sm md:text-lg"
+                                />
+                                <KPICard 
+                                    title="Nível de Excelência" 
+                                    value={`${(100 - (((highPerformanceMetrics?.impact || 0) / (highPerformanceMetrics?.potentialTotal || 1)) * 100)).toFixed(1)}%`} 
+                                    sub="Eficiência atual"
+                                    icon={Sparkles} 
+                                    color="text-blue-600" 
+                                    lightColor="bg-blue-50" 
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                {/* Diferença p/ Profissional */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-2">
+                                    <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                        <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" /> Gap p/ Meta de Excelência (R$)
+                                    </h3>
+                                    <div className="min-h-[300px]" style={{ height: `${Math.max(300, (highPerformanceMetrics?.performanceGaps.length || 0) * 40)}px` }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={highPerformanceMetrics?.performanceGaps} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                                <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                                <Bar dataKey="gap" fill="#059669" radius={[0, 4, 4, 0]} barSize={20}>
+                                                    <LabelList dataKey="gap" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `+ R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`} />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+
+                                {/* Simulador de Performance */}
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between h-full">
+                                    <div>
+                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
+                                            <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Performance
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Impacto ao reduzir o gap profissional</p>
+                                    </div>
+                                    <div className="space-y-4 mt-6">
+                                        {[25, 50, 75, 100].map(pct => (
+                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 transition-all hover:border-emerald-200 dark:hover:border-emerald-800">
+                                                <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">{pct}% Do Gap</span>
+                                                <span className="text-xs font-black text-slate-900 dark:text-white">+ R$ {((highPerformanceMetrics?.impact || 0) * (pct / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                                        <p className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase flex items-center gap-1"><Sparkles size={12} /> Insight High Performance</p>
+                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-2 leading-tight">
+                                            Se 100% da equipe atingir o patamar de <span className="text-slate-900 dark:text-white font-black">{highPerformanceMetrics?.topPerformer?.name}</span>, o faturamento total saltará para <span className="text-slate-900 dark:text-white font-black">R$ {(highPerformanceMetrics?.potentialTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1822,6 +1962,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                 )}
                                             </p>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Professional Insight 5: High Performance */}
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                        <Zap size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Potencial High Performance</h4>
+                                        <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Excelência Operacional</p>
+                                    </div>
+                                    <div className="space-y-3 mt-2">
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                            <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Oportunidade de Ganho</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                Se todos atingissem o nível de <span className="text-emerald-600 font-black">{highPerformanceMetrics?.topPerformer?.name}</span>, teríamos um aumento de <span className="text-emerald-600 font-black">R$ {highPerformanceMetrics?.impact.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>.
+                                            </p>
+                                        </div>
+                                        <button 
+                                            onClick={() => setActiveSubTab('high_performance')}
+                                            className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-colors flex items-center justify-center gap-2 mt-4"
+                                        >
+                                            Ver Detalhes da Meta <ChevronRight size={14} />
+                                        </button>
                                     </div>
                                 </div>
                             </div>

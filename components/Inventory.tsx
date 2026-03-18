@@ -1,7 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2, CheckCircle, Trash2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
+import { sanitizeImageUrl } from '../services/utils';
 import Tesseract from 'tesseract.js';
 import { supabase } from '../services/supabase';
 
@@ -589,7 +589,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             >
                                                 {item.imageUrl ? (
                                                     <img 
-                                                        src={item.imageUrl} 
+                                                        src={sanitizeImageUrl(item.imageUrl)} 
                                                         alt={item.name} 
                                                         className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300"
                                                     />
@@ -659,7 +659,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 >
                                     {item.imageUrl ? (
                                         <img 
-                                            src={item.imageUrl} 
+                                            src={sanitizeImageUrl(item.imageUrl)} 
                                             alt={item.name} 
                                             className="w-full h-full object-cover"
                                         />
@@ -832,7 +832,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 className={`relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
                                             >
                                                 <img 
-                                                    src={url} 
+                                                    src={sanitizeImageUrl(url)} 
                                                     alt="Preview" 
                                                     className="w-full h-full object-cover" 
                                                     referrerPolicy="no-referrer"
@@ -1359,8 +1359,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         top: Math.min(hoverPosition.y, window.innerHeight - 300) 
                     }}
                 >
-                    <div className="w-64 h-64 rounded-3xl overflow-hidden border-4 border-white dark:border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.4)] bg-white dark:bg-zinc-900 ring-1 ring-black/10">
-                        <img src={hoveredImage} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="aspect-square bg-slate-50 dark:bg-zinc-900 rounded-2xl overflow-hidden mb-4 border border-slate-200 dark:border-zinc-800">
+                        <img src={sanitizeImageUrl(hoveredImage)} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                 </div>
             )}

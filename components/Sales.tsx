@@ -7,6 +7,7 @@ import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
 import { formatDateBR, parseDateSafe, toLocalDateStr } from '../services/financialService';
+import { sanitizeImageUrl } from '../services/utils';
 
 interface SalesProps {
     sales: Sale[];
@@ -417,7 +418,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     <tbody>
                         ${(sale.items || []).map((item: any) => {
                             const product = stock.find(s => s.id === item.productId);
-                            const productImg = product?.imageUrl || product?.imageUrls?.[0] || 'https://via.placeholder.com/150';
+                            const productImg = sanitizeImageUrl(product?.imageUrl || product?.imageUrls?.[0] || 'https://via.placeholder.com/150');
                             const productCode = product?.code || '---';
 
                             return `
@@ -1005,7 +1006,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <div className="aspect-square rounded-[1.5rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                             {product.imageUrl ? (
                                                 <img 
-                                                    src={product.imageUrl} 
+                                                    src={sanitizeImageUrl(product.imageUrl)} 
                                                     alt={product.name} 
                                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                                                     referrerPolicy="no-referrer"
@@ -1295,7 +1296,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                         >
                                                             <div className="aspect-square rounded-xl bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800">
                                                                 {product.imageUrl ? (
-                                                                    <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                                                    <img src={sanitizeImageUrl(product.imageUrl)} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                                                 ) : (
                                                                     <Package size={24} className="text-slate-200 dark:text-zinc-700" />
                                                                 )}
@@ -1316,13 +1317,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         ) : (
                                             <div className="p-4 bg-white dark:bg-zinc-800 rounded-2xl border-2 border-black dark:border-zinc-700 flex items-center justify-between animate-in zoom-in-95 duration-200 shadow-xl">
                                                 <div className="flex items-center gap-4 min-w-0">
-                                                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-inner">
-                                                        {selectedStockItem?.imageUrl ? (
-                                                            <img src={selectedStockItem.imageUrl} className="w-full h-full object-cover" />
-                                                        ) : (
-                                                            <div className="w-full h-full flex items-center justify-center text-slate-200/50"><Package size={24} /></div>
-                                                        )}
-                                                    </div>
+                                                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-inner">
+                                                            {selectedStockItem?.imageUrl ? (
+                                                                <img src={sanitizeImageUrl(selectedStockItem.imageUrl)} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <div className="w-full h-full flex items-center justify-center text-slate-200/50"><Package size={24} /></div>
+                                                            )}
+                                                        </div>
                                                     <div className="min-w-0">
                                                         <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Selecionado</p>
                                                         <p className="text-sm font-black truncate uppercase" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
@@ -1523,7 +1524,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 flex justify-between items-center gap-4">
                                                 <div className="flex items-center gap-4 min-w-0 flex-1">
                                                     <div className="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-sm">
-                                                        <img src={productImg} className="w-full h-full object-cover" />
+                                                        <img src={sanitizeImageUrl(productImg)} className="w-full h-full object-cover" />
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-[11px] font-black text-slate-950 dark:text-white uppercase truncate tracking-tight">{item.name || product?.name || 'Produto'}</p>
@@ -1623,7 +1624,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         >
                             {/* Main Image - Fully Expanded */}
                             <img 
-                                src={[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean)[activeImageIndex] as string || ''} 
+                                src={sanitizeImageUrl([previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean)[activeImageIndex] as string || '')} 
                                 alt={previewProduct.name}
                                 className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-700 select-none pointer-events-none"
                                 referrerPolicy="no-referrer"
@@ -1694,7 +1695,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                     onClick={() => setActiveImageIndex(i)}
                                                     className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
                                                 >
-                                                    <img src={url as string} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                                    <img src={sanitizeImageUrl(url as string)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                 </button>
                                             ))}
                                         </div>
