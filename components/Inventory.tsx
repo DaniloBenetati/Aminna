@@ -353,20 +353,33 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         if (isNaN(priceNum)) return;
 
         try {
-            const { error } = await supabase.from('stock_items').update({ sale_price: priceNum }).eq('id', selectedItemId);
+            // Get current history to properly append
+            const itemToUpdate = stock.find(i => i.id === selectedItemId);
+            if (!itemToUpdate) return;
+
+            const newHistoryEntry: PriceHistoryItem = {
+                date: new Date().toISOString().split('T')[0],
+                price: itemToUpdate.price || 0,
+                note: priceNote || 'Alteração manual de preço'
+            };
+
+            const updatedHistory = [...(itemToUpdate.priceHistory || []), newHistoryEntry];
+
+            const { error } = await supabase.from('stock_items')
+                .update({ 
+                    sale_price: priceNum,
+                    price_history: updatedHistory 
+                })
+                .eq('id', selectedItemId);
+
             if (error) throw error;
 
             setStock(prev => prev.map(item => {
                 if (item.id === selectedItemId) {
-                    const hist: PriceHistoryItem = {
-                        date: new Date().toISOString().split('T')[0],
-                        price: item.price || 0,
-                        note: priceNote || 'Alteração manual de preço'
-                    };
                     return {
                         ...item,
                         price: priceNum,
-                        priceHistory: [...(item.priceHistory || []), hist]
+                        priceHistory: updatedHistory
                     };
                 }
                 return item;
@@ -985,12 +998,42 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         </div>
                         <form onSubmit={handleTransaction} className="p-5 space-y-4 bg-white dark:bg-zinc-900">
                             {!selectedItemId ? (
-                                <div>
+                                <div className="relative">
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Produto para conferir</label>
-                                    <select required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none text-slate-950 dark:text-white" value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)}>
-                                        <option value="">Selecione o produto...</option>
-                                        {stock.map(item => <option key={item.id} value={item.id} className="text-slate-950 dark:text-white font-bold">{item.name} (Sistema: {item.quantity})</option>)}
-                                    </select>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="Digite nome ou código..."
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            value={productSearch}
+                                            onChange={e => setProductSearch(e.target.value)}
+                                        />
+                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                    </div>
+
+                                    {productSearch && (
+                                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                            {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
+                                                    onClick={() => {
+                                                        setSelectedItemId(item.id);
+                                                        setProductSearch('');
+                                                    }}
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
+                                                        <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code} • Est: {item.quantity}</p>
+                                                    </div>
+                                                    <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600 transition-colors" />
+                                                </button>
+                                            )) : (
+                                                <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Nenhum produto encontrado</div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">

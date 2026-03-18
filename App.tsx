@@ -285,7 +285,8 @@ const App: React.FC = () => {
           durationMinutes: s.duration_minutes,
           requiredSpecialty: s.required_specialty,
           active: s.active,
-          category: s.category
+          category: s.category,
+          priceHistory: s.price_history || []
         })));
       }
 
@@ -305,6 +306,7 @@ const App: React.FC = () => {
           price: s.sale_price,
           imageUrl: s.image_url,
           imageUrls: s.image_urls || [],
+          priceHistory: s.price_history || [],
           usageHistory: (usageLogsData || [])
             .filter((l: any) => l.stock_item_id === s.id)
             .map((l: any) => ({
