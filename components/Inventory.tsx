@@ -1362,12 +1362,18 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 <div 
                     className="fixed z-[999] pointer-events-none animate-in fade-in zoom-in duration-200"
                     style={{ 
-                        left: Math.min(hoverPosition.x, window.innerWidth - 300), 
-                        top: Math.min(hoverPosition.y, window.innerHeight - 300) 
+                        left: Math.min(Math.max(20, hoverPosition.x), window.innerWidth - 340), 
+                        top: Math.min(Math.max(20, hoverPosition.y), window.innerHeight - 340),
+                        width: '320px',
+                        height: '320px'
                     }}
                 >
-                    <div className="aspect-square bg-slate-50 dark:bg-zinc-900 rounded-2xl overflow-hidden mb-4 border border-slate-200 dark:border-zinc-800">
-                        <img src={sanitizeImageUrl(hoveredImage)} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-zinc-800 ring-1 ring-black/10">
+                        <img 
+                            src={sanitizeImageUrl(hoveredImage)} 
+                            alt="Preview" 
+                            className="w-full h-full object-contain bg-slate-50 dark:bg-zinc-950" 
+                        />
                     </div>
                 </div>
             )}
