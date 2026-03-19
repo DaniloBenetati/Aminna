@@ -57,67 +57,79 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
         return providers.find(p => p.id === id)?.name || 'Não atribuído';
     };
 
-    const handleManagementAction = (e: React.FormEvent) => {
+    const handleManagementAction = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedCustomer || !switchReason) return;
 
-        setCustomers(prev => prev.map(c => {
-            if (c.id === selectedCustomer.id) {
-                const historyEntries: CustomerHistoryItem[] = [];
-                const today = new Date().toISOString().split('T')[0];
-                let updatedAssignedProvider = c.assignedProviderId;
-                let updatedRestricted = c.restrictedProviderIds || [];
+        let updatedCustomer = { ...selectedCustomer };
+        const historyEntries: CustomerHistoryItem[] = [];
+        const today = new Date().toISOString().split('T')[0];
+        let updatedAssignedProvider = updatedCustomer.assignedProviderId;
+        let updatedRestricted = updatedCustomer.restrictedProviderIds || [];
 
-                if (providerToRestrictId) {
-                    const restrictedName = getProviderName(providerToRestrictId);
-                    if (!updatedRestricted.includes(providerToRestrictId)) {
-                        updatedRestricted = [...updatedRestricted, providerToRestrictId];
-                    }
-
-                    historyEntries.push({
-                        id: `restr-${Date.now()}`,
-                        date: today,
-                        type: 'RESTRICTION',
-                        description: `RESTRIÇÃO: ${restrictedName.toUpperCase()}`,
-                        providerId: providerToRestrictId,
-                        details: `MOTIVO: ${switchReason}`
-                    });
-
-                    if (c.assignedProviderId === providerToRestrictId && !shouldAssignNew) {
-                        updatedAssignedProvider = undefined;
-                    }
-                }
-
-                if (shouldAssignNew && newProviderId) {
-                    const newProviderName = getProviderName(newProviderId);
-                    historyEntries.push({
-                        id: `switch-${Date.now()}`,
-                        date: today,
-                        type: 'PROVIDER_SWITCH',
-                        description: `TROCA DE RESPONSÁVEL: ${newProviderName}`,
-                        providerId: newProviderId,
-                        details: `Motivo: ${switchReason}`
-                    });
-                    updatedAssignedProvider = newProviderId;
-                }
-
-                const updatedCustomer: Customer = {
-                    ...c,
-                    assignedProviderId: updatedAssignedProvider,
-                    restrictedProviderIds: updatedRestricted,
-                    history: [...historyEntries, ...c.history]
-                };
-                setSelectedCustomer(updatedCustomer);
-                return updatedCustomer;
+        if (providerToRestrictId) {
+            const restrictedName = getProviderName(providerToRestrictId);
+            if (!updatedRestricted.includes(providerToRestrictId)) {
+                updatedRestricted = [...updatedRestricted, providerToRestrictId];
             }
-            return c;
-        }));
 
-        setShowSwitchModal(false);
-        setSwitchReason('');
-        setNewProviderId('');
-        setProviderToRestrictId('');
-        setShouldAssignNew(false);
+            historyEntries.push({
+                id: `restr-${Date.now()}`,
+                date: today,
+                type: 'RESTRICTION',
+                description: `RESTRIÇÃO: ${restrictedName.toUpperCase()}`,
+                providerId: providerToRestrictId,
+                details: `MOTIVO: ${switchReason}`
+            });
+
+            if (updatedCustomer.assignedProviderId === providerToRestrictId && !shouldAssignNew) {
+                updatedAssignedProvider = undefined;
+            }
+        }
+
+        if (shouldAssignNew && newProviderId) {
+            const newProviderName = getProviderName(newProviderId);
+            historyEntries.push({
+                id: `switch-${Date.now()}`,
+                date: today,
+                type: 'PROVIDER_SWITCH',
+                description: `TROCA DE RESPONSÁVEL: ${newProviderName}`,
+                providerId: newProviderId,
+                details: `Motivo: ${switchReason}`
+            });
+            updatedAssignedProvider = newProviderId;
+        }
+
+        updatedCustomer = {
+            ...updatedCustomer,
+            assignedProviderId: updatedAssignedProvider,
+            restrictedProviderIds: updatedRestricted,
+            history: [...historyEntries, ...updatedCustomer.history]
+        };
+
+        try {
+            const { error } = await supabase
+                .from('customers')
+                .update({
+                    assigned_provider_id: updatedCustomer.assignedProviderId,
+                    restricted_provider_ids: updatedCustomer.restrictedProviderIds,
+                    history: updatedCustomer.history
+                })
+                .eq('id', updatedCustomer.id);
+
+            if (error) throw error;
+
+            setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+            setSelectedCustomer(updatedCustomer);
+            setShowSwitchModal(false);
+            setSwitchReason('');
+            setNewProviderId('');
+            setProviderToRestrictId('');
+            setShouldAssignNew(false);
+        } catch (error) {
+            console.error('Error updating customer management:', error);
+            alert('Erro ao salvar no banco de dados.');
+        }
     };
 
     // --- JOURNEY LOGIC ---
@@ -181,7 +193,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
         }
     }, [newLeadForm.phone, leads, customers]);
 
-    const handleAddLead = (e: React.FormEvent) => {
+    const handleAddLead = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!newLeadForm.name || !newLeadForm.phone || !newLeadForm.source) return;
 
@@ -189,22 +201,38 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
             setChannels(prev => [...prev, newLeadForm.source!]);
         }
 
-        const newLead: Lead = {
+        const newLeadData = {
             id: `lead-${Date.now()}`,
             name: newLeadForm.name!,
             phone: newLeadForm.phone!,
             source: newLeadForm.source!,
             status: 'NOVO',
-            createdAt: new Date().toISOString().split('T')[0],
-            updatedAt: new Date().toISOString().split('T')[0],
-            serviceInterest: newLeadForm.serviceInterest,
-            temperature: undefined, // Default
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            service_interest: newLeadForm.serviceInterest,
+            temperature: undefined,
             tags: []
         };
-        setLeads(prev => [newLead, ...prev]);
-        setIsAddLeadModalOpen(false);
-        setIsCustomChannel(false);
-        setNewLeadForm({ name: '', phone: '', source: 'WhatsApp', serviceInterest: '' });
+
+        try {
+            const { data, error } = await supabase.from('leads').insert([newLeadData]).select().single();
+            if (error) throw error;
+            
+            const mappedLead: Lead = {
+                ...newLeadData,
+                createdAt: newLeadData.created_at,
+                updatedAt: newLeadData.updated_at,
+                serviceInterest: newLeadData.service_interest
+            } as Lead;
+
+            setLeads(prev => [mappedLead, ...prev]);
+            setIsAddLeadModalOpen(false);
+            setIsCustomChannel(false);
+            setNewLeadForm({ name: '', phone: '', source: 'WhatsApp', serviceInterest: '' });
+        } catch (error) {
+            console.error('Error adding lead:', error);
+            alert('Erro ao cadastrar lead no banco.');
+        }
     };
 
     // ... (keeping existing functions: handleMoveDuplicate, moveLead, etc.)
@@ -219,7 +247,7 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
         setDuplicateLead(null);
     };
 
-    const moveLead = (leadId: string, direction: 'next' | 'prev') => {
+    const moveLead = async (leadId: string, direction: 'next' | 'prev') => {
         const lead = leads.find(l => l.id === leadId);
         if (!lead) return;
         const currentIndex = kanbanColumns.findIndex(c => c.id === lead.status);
@@ -236,14 +264,40 @@ export const CRM: React.FC<CRMProps> = ({ customers, setCustomers, leads, setLea
             handleConvertLead(lead);
             return;
         }
-        setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: nextStatus, updatedAt: new Date().toISOString() } : l));
+
+        try {
+            const { error } = await supabase
+                .from('leads')
+                .update({ status: nextStatus, updated_at: new Date().toISOString() })
+                .eq('id', leadId);
+            
+            if (error) throw error;
+            setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: nextStatus, updatedAt: new Date().toISOString() } : l));
+        } catch (error) {
+            console.error('Error moving lead:', error);
+        }
     };
 
-    const handleConfirmLost = () => {
+    const handleConfirmLost = async () => {
         if (lostReasonModal.leadId && lostReasonText) {
-            setLeads(prev => prev.map(l => l.id === lostReasonModal.leadId ? { ...l, status: 'PERDIDO', lostReason: lostReasonText, updatedAt: new Date().toISOString() } : l));
-            setLostReasonModal({ isOpen: false, leadId: null });
-            setLostReasonText('');
+            try {
+                const { error } = await supabase
+                    .from('leads')
+                    .update({ 
+                        status: 'PERDIDO', 
+                        lost_reason: lostReasonText, 
+                        updated_at: new Date().toISOString() 
+                    })
+                    .eq('id', lostReasonModal.leadId);
+                
+                if (error) throw error;
+
+                setLeads(prev => prev.map(l => l.id === lostReasonModal.leadId ? { ...l, status: 'PERDIDO', lostReason: lostReasonText, updatedAt: new Date().toISOString() } : l));
+                setLostReasonModal({ isOpen: false, leadId: null });
+                setLostReasonText('');
+            } catch (error) {
+                console.error('Error marking lead as lost:', error);
+            }
         }
     };
 

@@ -697,9 +697,25 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         setModalType('EDIT_PRODUCT');
     };
 
+    const getNextSequentialCode = () => {
+        const prefix = "AMINNA";
+        const codes = stock
+            .map(item => item.code)
+            .filter(code => code?.toUpperCase().startsWith(prefix))
+            .map(code => {
+                const numPart = code.substring(prefix.length);
+                return parseInt(numPart);
+            })
+            .filter(num => !isNaN(num));
+        
+        const maxNum = codes.length > 0 ? Math.max(...codes) : 0;
+        const nextNum = maxNum + 1;
+        return `${prefix}${nextNum.toString().padStart(2, '0')}`;
+    };
+
     const openNewProduct = () => {
         setProductFormData({
-            code: '',
+            code: getNextSequentialCode(),
             name: '',
             category: 'Uso Interno',
             group: '',
