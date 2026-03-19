@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Loader2, CheckCircle, Trash2 } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Sparkles, Eraser, Loader2, CheckCircle, Trash2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
 import Tesseract from 'tesseract.js';
@@ -539,7 +539,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             if (!ctx) return;
 
             // Apply filters for "AI Magic" look
-            ctx.filter = 'contrast(1.15) brightness(1.05) saturate(1.1)';
+            ctx.filter = 'contrast(1.2) brightness(1.05) saturate(1.15) sharpness(1.1)';
             ctx.drawImage(img, 0, 0);
             
             canvas.toBlob(async (blob) => {
@@ -551,6 +551,72 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
                     if (error) {
                         console.error("Magic Enhance Upload Error:", error);
+                        setIsUploading(false);
+                        return;
+                    }
+
+                    if (data) {
+                        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+                        setProductFormData(prev => ({ ...prev, imageUrl: publicUrl }));
+                    }
+                }
+                setIsUploading(false);
+            }, 'image/webp', 0.85);
+        };
+        img.onerror = () => setIsUploading(false);
+    };
+
+    const cleanBackground = (imageUrl: string) => {
+        setIsUploading(true);
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = sanitizeImageUrl(imageUrl);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            // Sample corner for background color
+            const rRef = data[0];
+            const gRef = data[1];
+            const bRef = data[2];
+            const threshold = 45; // Sensitivity
+
+            for (let i = 0; i < data.length; i += 4) {
+                const r = data[i];
+                const g = data[i + 1];
+                const b = data[i + 2];
+
+                const diff = Math.sqrt(
+                    Math.pow(r - rRef, 2) + 
+                    Math.pow(g - gRef, 2) + 
+                    Math.pow(b - bRef, 2)
+                );
+
+                if (diff < threshold) {
+                    data[i] = 255;
+                    data[i + 1] = 255;
+                    data[i + 2] = 255;
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+            
+            canvas.toBlob(async (blob) => {
+                if (blob) {
+                    const fileName = `clean_${Date.now()}.webp`;
+                    const { data, error } = await supabase.storage
+                        .from('product-images')
+                        .upload(fileName, blob, { contentType: 'image/webp' });
+
+                    if (error) {
+                        console.error("Clean Background Upload Error:", error);
                         setIsUploading(false);
                         return;
                     }
@@ -923,14 +989,23 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Foto do Arquivo</label>
                                     <div className="flex gap-2">
                                         {productFormData.imageUrl && (
-                                            <button
-                                                type="button"
-                                                onClick={() => applyMagicEnhance(productFormData.imageUrl)}
-                                                className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1 hover:underline disabled:opacity-50"
-                                                disabled={isUploading}
-                                            >
-                                                <TrendingUp size={12} /> Ajuste IA
-                                            </button>
+                                            <div className="flex flex-wrap gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => applyMagicEnhance(productFormData.imageUrl)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-xl text-[10px] font-black uppercase hover:bg-amber-100 transition-colors border border-amber-200"
+                                                >
+                                                    <Sparkles size={12} /> Ajuste IA
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => cleanBackground(productFormData.imageUrl)}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors border border-indigo-200"
+                                                    title="Remove tons cinzas e deixa o fundo branco profissional"
+                                                >
+                                                    <Eraser size={12} /> Limpeza IA
+                                                </button>
+                                            </div>
                                         )}
                                         <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline">
                                             <Camera size={12} /> {isUploading ? `${uploadProgress}%` : 'Subir Foto'}
