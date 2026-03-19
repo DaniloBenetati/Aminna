@@ -1952,15 +1952,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const defaultServiceId = services[0].id;
         const defaultProviderId = customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id;
 
-        // Check if this specific service+provider is already in lines
-        const alreadyExists = lines.some(l => l.serviceId === defaultServiceId && l.providerId === defaultProviderId && !l.isCompanion);
-        if (alreadyExists) {
-            const srvName = services.find(s => s.id === defaultServiceId)?.name || 'Este serviço';
-            const prvName = providers.find(p => p.id === defaultProviderId)?.name || 'este profissional';
-            alert(`⚠️ Atenção: ${srvName} com ${prvName} já está na lista.\n\nPara adicionar novamente, selecione a linha e ajuste a quantidade, ou escolha outro serviço/profissional.`);
-            return;
-        }
-
         setLines([...lines, {
             id: Date.now().toString(),
             serviceId: defaultServiceId,
@@ -2527,97 +2518,92 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         ))}
                                     </div>
 
-                                    {/* RECURENCE OPTIONS */}
+                                    {/* RECURENCE & COUPON OPTIONS */}
                                     {mode === 'VIEW' && (
-                                        <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                                    <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsRecurring(!isRecurring)}
-                                                    className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
-                                                >
-                                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
-                                                </button>
-                                            </div>
-
-                                            {isRecurring && (
-                                                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
-                                                    <div className="space-y-1">
-                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Frequência</label>
-                                                        <select
-                                                            className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                            value={recurrenceFrequency}
-                                                            onChange={e => setRecurrenceFrequency(e.target.value as any)}
-                                                        >
-                                                            <option value="WEEKLY">Semanal (7 dias)</option>
-                                                            <option value="BIWEEKLY">Quinzenal (15 dias)</option>
-                                                            <option value="MONTHLY">Mensal (Mesmo dia)</option>
-                                                        </select>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                                        <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
                                                     </div>
-                                                    <div className="space-y-1">
-                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições Adicionais</label>
-                                                        <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsRecurring(!isRecurring)}
+                                                        className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+
+                                                {isRecurring ? (
+                                                    <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-200">
+                                                        <div className="space-y-1">
+                                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Freq.</label>
+                                                            <select
+                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                                value={recurrenceFrequency}
+                                                                onChange={e => setRecurrenceFrequency(e.target.value as any)}
+                                                            >
+                                                                <option value="WEEKLY">Semanal</option>
+                                                                <option value="BIWEEKLY">Quinzenal</option>
+                                                                <option value="MONTHLY">Mensal</option>
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições</label>
                                                             <input
                                                                 type="number"
                                                                 min="1"
                                                                 max="24"
-                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2.5 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
                                                                 value={recurrenceCount}
                                                                 onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
                                                             />
-                                                            <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Cupom / Parceria */}
-                                    {mode === 'VIEW' && (
-                                        <div className="mt-4 px-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <Tag size={14} className="text-slate-400" />
-                                                <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
-                                            </div>
-                                            {appliedCampaign ? (
-                                                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
-                                                    <div className="flex items-center gap-2">
-                                                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-                                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
-                                                        <span className="text-[9px] font-bold text-slate-400">
-                                                            {appliedCampaign.discountType === 'PERCENTAGE'
-                                                                ? `-${appliedCampaign.discountValue}% OFF`
-                                                                : ` R$ ${couponDiscountAmount.toFixed(2)} OFF`}
-                                                        </span>
+                                                ) : (
+                                                    <div className="h-[44px] flex items-center justify-center border border-dashed border-indigo-100 dark:border-indigo-800/20 rounded-xl">
+                                                        <span className="text-[9px] font-bold text-indigo-300 dark:text-indigo-800 uppercase">Não recorrente</span>
                                                     </div>
-                                                    <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
-                                                        <X size={16} />
-                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-2xl border border-slate-100 dark:border-zinc-800 flex flex-col justify-between">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Tag size={14} className="text-slate-400" />
+                                                    <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
                                                 </div>
-                                            ) : (
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Digite o cupom..."
-                                                        value={couponCode}
-                                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                                                        className="flex-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleApplyCoupon}
-                                                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
-                                                    >
-                                                        APLICAR
-                                                    </button>
-                                                </div>
-                                            )}
+                                                {appliedCampaign ? (
+                                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                                                        </div>
+                                                        <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
+                                                            <X size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            type="text"
+                                                            placeholder="Código..."
+                                                            value={couponCode}
+                                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                            onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                                                            className="flex-1 min-w-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleApplyCoupon}
+                                                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
+                                                        >
+                                                            APLICAR
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     )}
 
