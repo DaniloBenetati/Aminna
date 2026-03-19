@@ -248,6 +248,36 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setCurrentQuantity(1);
     };
 
+    const fastAddToCart = (product: StockItem) => {
+        if (product.quantity < 1) {
+            alert(`Estoque esgotado para "${product.name}".`);
+            return;
+        }
+
+        const existingInCart = cart.find(item => item.productId === product.id);
+        const totalRequested = (existingInCart ? existingInCart.quantity : 0) + 1;
+
+        if (product.quantity < totalRequested) {
+            alert(`Estoque insuficiente para adicionar mais uma unidade de "${product.name}". Total disponível: ${product.quantity}`);
+            return;
+        }
+
+        const newItem: CartItem = {
+            id: Date.now().toString(),
+            productId: product.id,
+            productName: product.name,
+            quantity: 1,
+            unitPrice: product.price || 0,
+            total: product.price || 0
+        };
+
+        setCart([...cart, newItem]);
+        
+        // FeedBack visual
+        setShowThumbsUp(true);
+        setTimeout(() => setShowThumbsUp(false), 1500);
+    };
+
     const handleRemoveFromCart = (itemId: string) => {
         setCart(cart.filter(item => item.id !== itemId));
     };
@@ -1018,9 +1048,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 <Package size={32} className="text-slate-200 dark:text-zinc-700" />
                                             )}
                                             <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <div className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-2 rounded-xl shadow-lg">
+                                                <button 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        fastAddToCart(product);
+                                                    }}
+                                                    className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-2 rounded-xl shadow-lg hover:scale-110 active:scale-90 transition-all pointer-events-auto"
+                                                    title="Adicionar 1 ao Carrinho"
+                                                >
                                                     <Plus size={16} />
-                                                </div>
+                                                </button>
                                             </div>
                                         </div>
                                         <div className="px-1">
