@@ -754,7 +754,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            <div className="hidden lg:grid lg:grid-cols-4 gap-6">
                 <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
                     <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 rounded-xl"><Package size={20} className="md:w-6 md:h-6" /></div>
                     <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Itens</p><p className="text-sm md:text-2xl font-black text-slate-950 dark:text-white">{stock.length}</p></div>
