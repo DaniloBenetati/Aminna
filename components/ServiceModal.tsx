@@ -725,20 +725,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTimeActual: l.startTimeActual
         }));
 
-        // Deduplicate extras by service and provider to be absolutely safe
-        const extras: typeof extrasUnprocessed = [];
-        const seen = new Set<string>();
-        
-        // Add main service to seen to avoid adding it as extra
-        seen.add(`${updatedLines[0].serviceId}-${updatedLines[0].providerId}`);
-
-        extrasUnprocessed.forEach(e => {
-            const key = `${e.serviceId}-${e.providerId}`;
-            if (!seen.has(key)) {
-                extras.push(e);
-                seen.add(key);
-            }
-        });
+        const extras = extrasUnprocessed;
 
         const dataToSave = {
             status: 'Aguardando',
@@ -761,6 +748,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         };
 
         try {
+            // 0. Identify secondary appointments to "cancel/merge"
+            const secondaryAppointmentIds = Array.from(new Set(
+                updatedLines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+            ));
+
             const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
             let result;
 
@@ -768,6 +762,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 result = await supabase.from('appointments').insert([dataToSave]).select().single();
             } else {
                 result = await supabase.from('appointments').update(dataToSave).eq('id', appointment.id).select().single();
+            }
+
+            // 1.1 Handle Secondary Appointments (Auto-Merge)
+            if (secondaryAppointmentIds.length > 0) {
+                const { error: secondaryError } = await supabase
+                    .from('appointments')
+                    .update({
+                        status: 'Cancelado',
+                        combined_service_names: '[MESCLADO ATENDIMENTO PRINCIPAL]'
+                    })
+                    .in('id', secondaryAppointmentIds);
+                if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
             }
 
             if (result.error) throw result.error;
@@ -796,16 +802,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 let updated = prev;
 
                 if (!isNew) {
-                    updated = prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                    updated = prev.map(a => {
+                        if (a.id === appointment.id) return updatedAppt;
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
+                        return a;
+                    });
                 } else {
-                    // Remove temp ID if it exists and add new, or just add new
-                    // If isNew, the previous ID was local. We should remove the local draft if it was in the list?
-                    // Usually 'Novo' appointments aren't in the list yet?
-                    // Actually handleNewAppointment sets draft, doesn't add to list.
-                    // But if checking conflict added it? No.
-                    // safely add to list.
-                    // Check if we need to replace a temp one:
-                    const filtered = prev.filter(a => a.id !== appointment.id);
+                    const filtered = prev.map(a => {
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
+                        return a;
+                    }).filter(a => a.id !== appointment.id);
                     updated = [...filtered, updatedAppt];
                 }
 
@@ -856,18 +862,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             tipAmount: l.tipAmount
         }));
 
-        // Deduplicate extras by service and provider to be absolutely safe
-        const extras: typeof extrasUnprocessed = [];
-        const seen = new Set<string>();
-        seen.add(`${lines[0].serviceId}-${lines[0].providerId}`);
-
-        extrasUnprocessed.forEach(e => {
-            const key = `${e.serviceId}-${e.providerId}`;
-            if (!seen.has(key)) {
-                extras.push(e);
-                seen.add(key);
-            }
-        });
+        const extras = extrasUnprocessed;
 
         const dischargeDate = appointment.date || formatLocalDate(new Date());
 
@@ -1174,18 +1169,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             tipAmount: l.tipAmount
         }));
 
-        // Deduplicate extras by service and provider to be absolutely safe
-        const extras: typeof extrasUnprocessed = [];
-        const seen = new Set<string>();
-        seen.add(`${linesToUse[0].serviceId}-${linesToUse[0].providerId}`);
-
-        extrasUnprocessed.forEach(e => {
-            const key = `${e.serviceId}-${e.providerId}`;
-            if (!seen.has(key)) {
-                extras.push(e);
-                seen.add(key);
-            }
-        });
+        const extras = extrasUnprocessed;
 
         const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
 
@@ -1315,9 +1299,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         return a;
                     }).concat(others);
                 } else {
-                    // CRITICAL: If we are replacing a local draft ID with a persistence ID, 
-                    // ensure we remove the draft ID from the state.
-                    const filtered = prev.filter(a => a.id !== appointment.id);
+                    const filtered = prev.map(a => {
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
+                        return a;
+                    }).filter(a => a.id !== appointment.id);
                     return [...filtered, ...newLocalAppts];
                 }
             });
@@ -1399,18 +1384,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 tipAmount: l.tipAmount
             }));
 
-            // Deduplicate extras by service and provider to be absolutely safe
-            const extras: typeof extrasUnprocessed = [];
-            const seen = new Set<string>();
-            seen.add(`${lines[0].serviceId}-${lines[0].providerId}`);
-
-            extrasUnprocessed.forEach(e => {
-                const key = `${e.serviceId}-${e.providerId}`;
-                if (!seen.has(key)) {
-                    extras.push(e);
-                    seen.add(key);
-                }
-            });
+            const extras = extrasUnprocessed;
 
             const dischargeDate = appointment.date || formatLocalDate(new Date());
 
@@ -1433,9 +1407,28 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
             };
 
+            // 0. Identify secondary appointments to "cancel/merge"
+            const secondaryAppointmentIds = Array.from(new Set(
+                lines
+                    .map(l => l.appointmentId)
+                    .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+            ));
+
             // 1. Update Appointment
             const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
             if (apptError) throw apptError;
+
+            // 1.1 Handle Secondary Appointments (Auto-Merge)
+            if (secondaryAppointmentIds.length > 0) {
+                const { error: secondaryError } = await supabase
+                    .from('appointments')
+                    .update({
+                        status: 'Cancelado',
+                        combined_service_names: '[MESCLADO ATENDIMENTO PRINCIPAL]'
+                    })
+                    .in('id', secondaryAppointmentIds);
+                if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
+            }
 
             // 2. Create Sale Record REMOVED
 
@@ -1472,9 +1465,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 } as Appointment;
 
                 if (exists) {
-                    return prev.map(a => a.id === appointment.id ? updatedAppt : a);
+                    return prev.map(a => {
+                        if (a.id === appointment.id) return updatedAppt;
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
+                        return a;
+                    });
                 } else {
-                    return [...prev, updatedAppt];
+                    const filtered = prev.map(a => {
+                        if (secondaryAppointmentIds.includes(a.id)) return { ...a, status: 'Cancelado' as Appointment['status'] };
+                        return a;
+                    }).filter(a => a.id !== appointment.id);
+                    return [...filtered, updatedAppt];
                 }
             });
 
