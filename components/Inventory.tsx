@@ -36,6 +36,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [providerSearch, setProviderSearch] = useState('');
     const [hoveredImage, setHoveredImage] = useState<string | null>(null);
     const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
     const [productFormData, setProductFormData] = useState({
         code: '',
@@ -413,6 +415,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const handleCreateOrUpdateProduct = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const isNew = modalType === 'NEW_PRODUCT';
+            let createdId = '';
             const productData = {
                 code: productFormData.code,
                 name: productFormData.name,
@@ -455,9 +459,21 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         priceHistory: [],
                     };
                     setStock([...stock, newItem]);
+                    createdId = data[0].id;
                 }
             }
+            
+            const costAtCreation = productFormData.costPrice;
             closeModal();
+
+            if (isNew && createdId) {
+                // Pequeno delay para garantir que o closeModal limpou os estados antes de abrirmos a entrada
+                setTimeout(() => {
+                    setSelectedItemId(createdId);
+                    setModalType('ENTRY');
+                    setEntryCost(costAtCreation.toString());
+                }, 100);
+            }
         } catch (error: any) {
             console.error("Erro ao salvar produto:", error);
             alert("Erro ao salvar produto: " + (error.message || "Erro desconhecido"));
@@ -467,6 +483,129 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const closeModal = () => {
         setModalType(null); setSelectedItemId(''); setQuantity(''); setPhysicalCount(''); setInventoryJustification(''); setNewPrice(''); setPriceNote(''); setEntryCost(''); setExitProviderId(''); setShowReportExportMenu(false);
         setIsAddingNewGroup(false); setIsAddingNewSubGroup(false); setProductSearch(''); setProviderSearch(''); setHoveredImage(null);
+    };
+
+    const compressImage = (file: File): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200;
+                    const MAX_HEIGHT = 1200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+                    
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(blob);
+                        else reject(new Error('Canvas to Blob failed'));
+                    }, 'image/webp', 0.82); // High quality WebP
+                };
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+    const applyMagicEnhance = (imageUrl: string) => {
+        setIsUploading(true);
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = sanitizeImageUrl(imageUrl);
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+
+            // Apply filters for "AI Magic" look
+            ctx.filter = 'contrast(1.15) brightness(1.05) saturate(1.1)';
+            ctx.drawImage(img, 0, 0);
+            
+            canvas.toBlob(async (blob) => {
+                if (blob) {
+                    const fileName = `magic_${Date.now()}.webp`;
+                    const { data, error } = await supabase.storage
+                        .from('product-images')
+                        .upload(fileName, blob, { contentType: 'image/webp' });
+
+                    if (error) {
+                        console.error("Magic Enhance Upload Error:", error);
+                        setIsUploading(false);
+                        return;
+                    }
+
+                    if (data) {
+                        const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+                        setProductFormData(prev => ({ ...prev, imageUrl: publicUrl }));
+                    }
+                }
+                setIsUploading(false);
+            }, 'image/webp', 0.85);
+        };
+        img.onerror = () => setIsUploading(false);
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setUploadProgress(10);
+
+        try {
+            const compressedBlob = await compressImage(file);
+            setUploadProgress(40);
+            
+            const fileName = `${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.webp`;
+            const { data, error } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, compressedBlob, {
+                    contentType: 'image/webp',
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) throw error;
+            setUploadProgress(80);
+
+            if (data) {
+                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+                setProductFormData(prev => ({
+                    ...prev,
+                    imageUrl: publicUrl
+                }));
+            }
+            setUploadProgress(100);
+        } catch (error) {
+            console.error("Erro no upload:", error);
+            alert("Erro ao fazer upload da imagem.");
+        } finally {
+            setTimeout(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+            }, 500);
+        }
     };
 
     const openHistory = (id: string) => { setSelectedItemId(id); setModalType('HISTORY'); setHistoryTab('USAGE'); };
@@ -780,36 +919,71 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
                             </div>
                             <div>
+                                <div className="flex justify-between items-center mb-1.5 mt-4">
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Foto do Arquivo</label>
+                                    <div className="flex gap-2">
+                                        {productFormData.imageUrl && (
+                                            <button
+                                                type="button"
+                                                onClick={() => applyMagicEnhance(productFormData.imageUrl)}
+                                                className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1 hover:underline disabled:opacity-50"
+                                                disabled={isUploading}
+                                            >
+                                                <TrendingUp size={12} /> Ajuste IA
+                                            </button>
+                                        )}
+                                        <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline">
+                                            <Camera size={12} /> {isUploading ? `${uploadProgress}%` : 'Subir Foto'}
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                {isUploading && (
+                                    <div className="w-full h-1 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
+                                        <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
+                                    </div>
+                                )}
+
+                                {productFormData.imageUrl && (
+                                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
+                                        <img src={sanitizeImageUrl(productFormData.imageUrl)} className="max-w-full max-h-full object-contain" alt="Preview" />
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setProductFormData({...productFormData, imageUrl: ''})}
+                                            className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                )}
+
                                 <div className="flex justify-between items-center mb-1.5">
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Fotos do Produto (URLs)</label>
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Outras Fotos (URLs)</label>
                                     <button
                                         type="button"
                                         onClick={() => setProductFormData({ ...productFormData, imageUrls: [...productFormData.imageUrls, ''] })}
                                         className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline"
                                     >
-                                        <Plus size={12} /> Adicionar Foto
+                                        <Plus size={12} /> Adicionar URL
                                     </button>
                                 </div>
                                 <div className="space-y-2">
-                                    {/* Primary Image URL */}
                                     <div className="relative">
                                         <input
                                             type="url"
                                             className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
-                                            placeholder="URL da foto principal..."
+                                            placeholder="Ou cole a URL da foto principal..."
                                             value={productFormData.imageUrl}
                                             onChange={e => setProductFormData({ ...productFormData, imageUrl: e.target.value })}
                                         />
-                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-indigo-600 uppercase bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded">Principal</span>
                                     </div>
-
-                                    {/* Additional Image URLs */}
                                     {productFormData.imageUrls.map((url, index) => (
-                                        <div key={index} className="flex gap-2 animate-in fade-in slide-in-from-top-1">
+                                        <div key={index} className="relative flex gap-2">
                                             <input
                                                 type="url"
-                                                className="flex-1 bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
-                                                placeholder={`URL da foto ${index + 2}...`}
+                                                className="flex-1 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-900 dark:text-white placeholder:text-slate-400"
+                                                placeholder="URL da foto adicional..."
                                                 value={url}
                                                 onChange={e => {
                                                     const newUrls = [...productFormData.imageUrls];
@@ -819,17 +993,15 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             />
                                             <button
                                                 type="button"
-                                                onClick={() => {
-                                                    const newUrls = productFormData.imageUrls.filter((_, i) => i !== index);
-                                                    setProductFormData({ ...productFormData, imageUrls: newUrls });
-                                                }}
-                                                className="p-3 bg-rose-50 dark:bg-rose-900/30 text-rose-600 border-2 border-rose-200 dark:border-rose-800 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                                                onClick={() => setProductFormData({ ...productFormData, imageUrls: productFormData.imageUrls.filter((_, i) => i !== index) })}
+                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl"
                                             >
-                                                <X size={16} />
+                                                <X size={20} />
                                             </button>
                                         </div>
                                     ))}
                                 </div>
+                            </div>
 
                                 {/* Previews */}
                                 {(productFormData.imageUrl || productFormData.imageUrls.some(u => u)) && (
@@ -868,7 +1040,6 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         ))}
                                     </div>
                                 )}
-                            </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Categoria (Visibilidade no PDV)</label>
                                 <div className="grid grid-cols-2 gap-2">

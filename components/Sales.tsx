@@ -58,6 +58,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
     const [saleTab, setSaleTab] = useState<'SEARCH' | 'CATALOG'>('CATALOG');
+    const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
     const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG'>('CATALOG');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
@@ -517,7 +518,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         try {
             const saleToInsert = {
                 customer_id: customerId,
-                date: new Date().toISOString().split('T')[0],
+                date: saleDate,
                 total_amount: cartTotal,
                 total_price: cartTotal,
                 payment_method: payments.map(p => p.method).join(' + '),
@@ -576,6 +577,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             setTriedToSubmit(false);
             setCurrentProduct('');
             setPaymentMethod('Pix');
+            setSaleDate(new Date().toISOString().split('T')[0]);
 
             // Show success message
             setShowSuccess(true);
@@ -1066,12 +1068,28 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
 
                         <form onSubmit={handleRegisterSale} className="flex flex-col flex-1 overflow-hidden">
-                            {/* 1. Sticky Customer Selection */}
-                            <div className="p-6 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-950/20 flex-shrink-0">
-                                <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5 flex justify-between items-center">
-                                    <span>Selecionar Cliente</span>
-                                    {customerId && <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-black uppercase">Selecionada</span>}
-                                </label>
+                            {/* 1. Date and Customer Selection */}
+                            <div className="p-6 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-950/20 flex-shrink-0 space-y-4">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5 flex justify-between items-center">
+                                        <span>Data da Venda</span>
+                                    </label>
+                                    <div className="relative">
+                                        <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
+                                        <input
+                                            type="date"
+                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all shadow-sm"
+                                            value={saleDate}
+                                            onChange={e => setSaleDate(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest mb-1.5 flex justify-between items-center">
+                                        <span>Selecionar Cliente</span>
+                                        {customerId && <span className="text-[8px] text-indigo-600 dark:text-indigo-400 font-black uppercase">Selecionada</span>}
+                                    </label>
 
                                 {!customerId ? (
                                     <div className="relative">
@@ -1174,8 +1192,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     </div>
                                 )}
                             </div>
+                        </div>
 
-                            <div className="p-6 space-y-5 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 flex-1">
+                        <div className="p-6 space-y-5 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 flex-1">
                                 {/* Tab Switcher remains inside scrollable area */}
                                 <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 mb-2">
                                     {(['CATALOG', 'SEARCH'] as const).map(tab => (
@@ -1291,22 +1310,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             key={product.id}
                                                             type="button"
                                                             onClick={() => setCurrentProduct(product.id)}
-                                                            className="group bg-white dark:bg-zinc-800 rounded-2xl border-2 p-2 text-left hover:border-black dark:hover:border-white transition-all shadow-sm active:scale-95 flex flex-col gap-2 relative overflow-hidden"
+                                                            className="group bg-white dark:bg-zinc-800 rounded-2xl border-2 p-3 text-left hover:border-black dark:hover:border-white transition-all shadow-sm active:scale-95 flex flex-col gap-1 relative overflow-hidden"
                                                             style={{ borderColor: '#D9D9D6' }}
                                                         >
-                                                            <div className="aspect-square rounded-xl bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800">
-                                                                {product.imageUrl ? (
-                                                                    <img src={sanitizeImageUrl(product.imageUrl)} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                                                ) : (
-                                                                    <Package size={24} className="text-slate-200 dark:text-zinc-700" />
-                                                                )}
-                                                            </div>
                                                             <div className="min-w-0">
                                                                 <p className="text-[10px] font-black truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors" style={{ color: '#75787B' }}>{product.name}</p>
                                                                 <div className="flex justify-between items-end mt-1">
                                                                     <p className="text-[11px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
                                                                     <p className={`text-[8px] font-bold uppercase ${product.quantity > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                        {product.quantity > 0 ? 'Em Estoque' : 'Sem Estoque'}
+                                                                        {product.quantity > 0 ? `${product.quantity} unid.` : 'Off'}
                                                                     </p>
                                                                 </div>
                                                             </div>
@@ -1316,14 +1328,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             </div>
                                         ) : (
                                             <div className="p-4 bg-white dark:bg-zinc-800 rounded-2xl border-2 border-black dark:border-zinc-700 flex items-center justify-between animate-in zoom-in-95 duration-200 shadow-xl">
-                                                <div className="flex items-center gap-4 min-w-0">
-                                                        <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-inner">
-                                                            {selectedStockItem?.imageUrl ? (
-                                                                <img src={sanitizeImageUrl(selectedStockItem.imageUrl)} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-slate-200/50"><Package size={24} /></div>
-                                                            )}
-                                                        </div>
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
                                                     <div className="min-w-0">
                                                         <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Selecionado</p>
                                                         <p className="text-sm font-black truncate uppercase" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
@@ -1331,7 +1336,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             <span className="text-xs font-black" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</span>
                                                             <span className="w-1 h-1 bg-slate-300 dark:bg-zinc-600 rounded-full"></span>
                                                             <span className={`text-[9px] font-bold uppercase ${(selectedStockItem?.quantity || 0) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                {(selectedStockItem?.quantity || 0) > 0 ? 'Em Estoque' : 'Sem Estoque'}
+                                                                {(selectedStockItem?.quantity || 0)} disponiveis
                                                             </span>
                                                         </div>
                                                     </div>
