@@ -1007,10 +1007,29 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 </button>
                                             </div>
                                         )}
-                                        <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline">
-                                            <Camera size={12} /> {isUploading ? `${uploadProgress}%` : 'Subir Foto'}
-                                            <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
-                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            {/* Mobile/Tablet Only: Take Photo */}
+                                            <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline md:hidden">
+                                                <Camera size={12} /> {isUploading ? `${uploadProgress}%` : 'Tirar Foto'}
+                                                <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleImageUpload} disabled={isUploading} />
+                                            </label>
+
+                                            {/* Separation pipe - only on mobile */}
+                                            <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
+                                            
+                                            {/* Upload from Gallery (Standard) */}
+                                            <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline">
+                                                <Plus size={12} className="md:hidden" />
+                                                <Camera size={12} className="hidden md:block" />
+                                                {isUploading ? `${uploadProgress}%` : (
+                                                    <span className="flex items-center gap-1">
+                                                        <span className="md:hidden">Galeria</span>
+                                                        <span className="hidden md:inline">Subir Foto</span>
+                                                    </span>
+                                                )}
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleImageUpload} disabled={isUploading} />
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -1413,22 +1432,27 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 <>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Selecionar Produto</label>
-                                        <div className="relative">
-                                            <input
-                                                type="file"
-                                                id="ocr-scanner"
-                                                className="hidden"
-                                                accept="image/*"
-                                                capture="environment"
-                                                onChange={handleOCRField}
-                                                disabled={isScanning}
-                                            />
-                                            <label
-                                                htmlFor="ocr-scanner"
-                                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}
-                                            >
+                                        <div className="flex items-center gap-2">
+                                            {/* Mobile/Tablet Only: Take Photo */}
+                                            <label className="md:hidden cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950 text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
                                                 {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-                                                {isScanning ? 'Lendo...' : 'Escanear'}
+                                                {isScanning ? 'Lendo...' : 'Tirar Foto'}
+                                                <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
+                                            </label>
+
+                                            <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
+
+                                            {/* Upload from Gallery (Standard) */}
+                                            <label className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
+                                                {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} className="md:hidden" />}
+                                                <Camera size={12} className="hidden md:block" />
+                                                {isScanning ? 'Lendo...' : (
+                                                    <>
+                                                        <span className="md:hidden">Galeria</span>
+                                                        <span className="hidden md:inline">Escanear</span>
+                                                    </>
+                                                )}
+                                                <input type="file" className="hidden" accept="image/*" onChange={handleOCRField} disabled={isScanning} />
                                             </label>
                                         </div>
                                     </div>

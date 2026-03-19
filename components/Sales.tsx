@@ -1251,22 +1251,27 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     <>
                                         <div className="flex justify-between items-center mb-1.5 px-1">
                                             <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adicionar Produto</label>
-                                            <div className="relative">
-                                                <input
-                                                    type="file"
-                                                    id="ocr-scanner-sales"
-                                                    className="hidden"
-                                                    accept="image/*"
-                                                    capture="environment"
-                                                    onChange={handleOCRField}
-                                                    disabled={isScanning}
-                                                />
-                                                <label
-                                                    htmlFor="ocr-scanner-sales"
-                                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}
-                                                >
+                                            <div className="flex items-center gap-2">
+                                                {/* Mobile/Tablet Only: Take Photo */}
+                                                <label className="md:hidden cursor-pointer flex items-center gap-1 px-2 py-1 bg-zinc-950 text-white rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
                                                     {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
-                                                    {isScanning ? 'Lendo...' : 'Escanear'}
+                                                    {isScanning ? 'Lendo...' : 'Tirar Foto'}
+                                                    <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
+                                                </label>
+
+                                                <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
+
+                                                {/* Upload from Gallery (Standard) */}
+                                                <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
+                                                    {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} className="md:hidden" />}
+                                                    <Camera size={10} className="hidden md:block" />
+                                                    {isScanning ? 'Lendo...' : (
+                                                        <>
+                                                            <span className="md:hidden">Galeria</span>
+                                                            <span className="hidden md:inline">Escanear</span>
+                                                        </>
+                                                    )}
+                                                    <input type="file" className="hidden" accept="image/*" onChange={handleOCRField} disabled={isScanning} />
                                                 </label>
                                             </div>
                                         </div>
