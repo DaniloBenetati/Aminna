@@ -260,6 +260,7 @@ export interface Partner {
   pixKey?: string;
   notes?: string;
   active: boolean;
+  linkedCustomerId?: string | null;
 }
 
 export interface PartnerExchange {
@@ -287,6 +288,7 @@ export interface Campaign {
   useCount: number;
   maxUses: number;
   totalRevenueGenerated: number;
+  investmentValue?: number;
 }
 
 export interface Expense {

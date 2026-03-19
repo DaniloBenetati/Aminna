@@ -333,7 +333,8 @@ const App: React.FC = () => {
           endDate: c.end_date,
           useCount: c.use_count || 0,
           maxUses: c.max_uses || 0,
-          totalRevenueGenerated: c.total_revenue_generated || 0
+          totalRevenueGenerated: c.total_revenue_generated || 0,
+          investmentValue: c.investment_value || 0
         })));
       }
 
@@ -364,11 +365,17 @@ const App: React.FC = () => {
         setPartners(partnersData.map((p: any) => ({
           ...p,
           socialMedia: p.social_media,
+          socialMediaSecondary: p.social_media_secondary,
+          socialMediaList: p.social_media_list || [],
+          thermometer: p.thermometer,
+          contractScope: p.contract_scope,
+          contractUrl: p.contract_url,
           partnershipType: p.partnership_type,
           partnerType: p.partner_type,
           contactPerson: p.contact_person,
           city: p.city,
-          pixKey: p.pix_key
+          pixKey: p.pix_key,
+          linkedCustomerId: p.linked_customer_id
         })));
       }
       if (partnerExchangesData) {
@@ -705,7 +712,7 @@ const App: React.FC = () => {
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
-        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} />;
+        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} appointments={appointments} customers={customers} />;
       case ViewState.COPA:
         return (
           <Copa

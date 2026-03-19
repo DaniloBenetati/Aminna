@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown, Gift, Package } from 'lucide-react';
-import { Partner, Campaign, PartnerExchange } from '../types';
+import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown, Gift, Package, DollarSign } from 'lucide-react';
+import { Partner, Campaign, PartnerExchange, Appointment, Customer } from '../types';
 import { PartnerProducts } from './PartnerProducts';
 
 interface PartnershipsProps {
@@ -13,6 +13,8 @@ interface PartnershipsProps {
   setCampaigns: React.Dispatch<React.SetStateAction<Campaign[]>>;
   partnerExchanges: PartnerExchange[];
   setPartnerExchanges: React.Dispatch<React.SetStateAction<PartnerExchange[]>>;
+  appointments: Appointment[];
+  customers: Customer[];
 }
 
 export const Partnerships: React.FC<PartnershipsProps> = ({ 
@@ -21,10 +23,17 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   campaigns, 
   setCampaigns,
   partnerExchanges,
-  setPartnerExchanges
+  setPartnerExchanges,
+  appointments,
+  customers
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS'>('INFLUENCERS');
+  const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS'>('INFLUENCERS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [analysisDateRange, setAnalysisDateRange] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   // Drill Down State for Mobile
   const [expandedCampaignId, setExpandedCampaignId] = useState<string | null>(null);
@@ -34,18 +43,62 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   const [isCampaignModalOpen, setIsCampaignModalOpen] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Partial<Campaign> | null>(null);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // Dynamic social media tags
   const [socialMediaInputs, setSocialMediaInputs] = useState<string[]>(['']);
   const [thermometerValue, setThermometerValue] = useState<'QUENTE' | 'FRIO' | 'MORNO'>('MORNO');
 
+  // Calculate dynamic stats per campaign
+  const campaignsWithStats = campaigns.map(c => {
+    const matchingAppts = appointments.filter(a => 
+      a.appliedCoupon === c.couponCode && 
+      a.status === 'Concluído' &&
+      a.date >= analysisDateRange.start &&
+      a.date <= analysisDateRange.end
+    );
+    const dynamicUseCount = matchingAppts.length;
+    const dynamicRevenue = matchingAppts.reduce((acc, a) => acc + (a.pricePaid || 0), 0);
+    
+    // Calculate Investment from Linked Customer (Permuta)
+    const partner = partners.find(p => p.id === c.partnerId);
+    let linkedInvestment = 0;
+    if (partner?.linkedCustomerId) {
+      linkedInvestment = appointments
+        .filter(a => a.customerId === partner.linkedCustomerId && a.status === 'Concluído')
+        .reduce((acc, a) => acc + (a.bookedPrice || a.amount || 0), 0);
+    }
+    
+    return {
+      ...c,
+      useCount: dynamicUseCount,
+      totalRevenueGenerated: dynamicRevenue,
+      investmentValue: (c.investmentValue || 0) + linkedInvestment
+    };
+  });
+
   // Stats
-  const totalPartnerRevenue = campaigns.reduce((acc, c) => acc + c.totalRevenueGenerated, 0);
-  const totalPartnerAppointments = campaigns.reduce((acc, c) => acc + c.useCount, 0);
-  const topCampaign = [...campaigns].sort((a, b) => b.totalRevenueGenerated - a.totalRevenueGenerated)[0];
+  const totalPartnerRevenue = campaignsWithStats.reduce((acc, c) => acc + c.totalRevenueGenerated, 0);
+  const totalPartnerAppointments = campaignsWithStats.reduce((acc, c) => acc + c.useCount, 0);
+  const totalInvestment = campaignsWithStats.reduce((acc, c) => acc + (c.investmentValue || 0), 0);
+  const topCampaign = [...campaignsWithStats].sort((a, b) => b.totalRevenueGenerated - a.totalRevenueGenerated)[0];
+  const uniqueCouponCustomers = new Set(
+    appointments
+      .filter(a => a.appliedCoupon && a.status === 'Concluído' && a.date >= analysisDateRange.start && a.date <= analysisDateRange.end)
+      .map(a => a.customerId)
+  ).size;
+
+  const currentMonthStr = new Date().toISOString().substring(0, 7);
+  const monthlyImpact = appointments
+    .filter(a => a.appliedCoupon && a.status === 'Concluído' && a.date.startsWith(currentMonthStr))
+    .reduce((acc, a) => acc + (a.pricePaid || 0), 0);
 
   const handleOpenPartnerModal = (partner: Partner | null = null) => {
     setEditingPartner(partner);
+    setCustomerSearch('');
+    setIsCustomerDropdownOpen(false);
+    setSelectedCustomerId(partner?.linkedCustomerId || null);
     if (partner) {
       if (partner.socialMediaList && partner.socialMediaList.length > 0) {
         setSocialMediaInputs(partner.socialMediaList);
@@ -85,24 +138,27 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
     const form = e.target as HTMLFormElement;
     const finalSocialMediaList = socialMediaInputs.filter(s => s.trim() !== '');
     
+    const getVal = (name: string) => (form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)?.value || '';
+    
     const partnerData = {
-      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      name: getVal('name'),
       social_media: finalSocialMediaList[0] || '',
       social_media_secondary: finalSocialMediaList[1] || '',
       social_media_list: finalSocialMediaList,
       thermometer: thermometerValue,
-      category: (form.elements.namedItem('category') as HTMLSelectElement).value,
-      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
-      email: (form.elements.namedItem('email') as HTMLInputElement).value,
-      document: (form.elements.namedItem('document') as HTMLInputElement).value,
-      address: (form.elements.namedItem('address') as HTMLInputElement).value,
-      partnership_type: (form.elements.namedItem('partnershipType') as HTMLSelectElement).value,
-      pix_key: (form.elements.namedItem('pixKey') as HTMLInputElement).value,
-      contract_scope: (form.elements.namedItem('contractScope') as HTMLTextAreaElement).value,
-      contract_url: (form.elements.namedItem('contractUrl') as HTMLInputElement).value,
-      notes: (form.elements.namedItem('notes') as HTMLTextAreaElement).value,
+      category: getVal('category'),
+      phone: getVal('phone'),
+      email: getVal('email'),
+      document: getVal('document'),
+      address: getVal('address'),
+      partnership_type: getVal('partnershipType'),
+      pix_key: getVal('pixKey'),
+      contract_scope: getVal('contractScope'),
+      contract_url: getVal('contractUrl'),
+      notes: getVal('notes'),
       partner_type: 'Influenciador',
-      active: editingPartner ? editingPartner.active : true
+      active: editingPartner ? editingPartner.active : true,
+      linked_customer_id: selectedCustomerId // Use state directly
     };
 
     try {
@@ -127,7 +183,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
           contractUrl: partnerData.contract_url,
           notes: partnerData.notes,
           partnerType: 'Influenciador',
-          active: partnerData.active
+          active: partnerData.active,
+          linkedCustomerId: partnerData.linked_customer_id
         } : p));
       } else {
         const { data, error } = await supabase.from('partners').insert([partnerData]).select();
@@ -150,7 +207,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
             contractScope: partnerData.contract_scope,
             contractUrl: partnerData.contract_url,
             notes: partnerData.notes,
-            active: partnerData.active
+            active: partnerData.active,
+            linkedCustomerId: partnerData.linked_customer_id
           } as Partner]);
         }
       }
@@ -171,6 +229,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       discount_type: (form.elements.namedItem('discountType') as HTMLSelectElement).value as 'PERCENTAGE' | 'FIXED',
       discount_value: parseFloat((form.elements.namedItem('discountValue') as HTMLInputElement).value),
       max_uses: parseInt((form.elements.namedItem('maxUses') as HTMLInputElement).value) || 100,
+      investment_value: parseFloat((form.elements.namedItem('investmentValue') as HTMLInputElement).value) || 0,
     };
 
     try {
@@ -184,7 +243,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
           couponCode: campaignData.coupon_code,
           discountType: campaignData.discount_type,
           discountValue: campaignData.discount_value,
-          maxUses: campaignData.max_uses
+          maxUses: campaignData.max_uses,
+          investmentValue: campaignData.investment_value
         } : c));
       } else {
         const newCampaignInsert = {
@@ -202,6 +262,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
             discountType: campaignData.discount_type,
             discountValue: campaignData.discount_value,
             maxUses: campaignData.max_uses,
+            investmentValue: campaignData.investment_value,
             startDate: data[0].start_date,
             useCount: 0,
             totalRevenueGenerated: 0
@@ -264,6 +325,12 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
           >
             <Gift size={16} /> Parceiros Produtos
           </button>
+          <button 
+            onClick={() => setActiveSubTab('ANALYSIS')}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+          >
+            <BarChart2 size={16} /> Análises
+          </button>
         </div>
       </div>
 
@@ -317,7 +384,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               </div>
               <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800 p-2">
                 {filteredPartners.filter(p => !p.partnerType || p.partnerType === 'Influenciador').map(p => {
-                  const partnerCampaigns = campaigns.filter(c => c.partnerId === p.id);
+                  const partnerCampaigns = campaignsWithStats.filter(c => c.partnerId === p.id);
                   return (
                     <div key={p.id} className={`p-2 rounded-[2rem] transition-all flex flex-col ${!p.active ? 'opacity-40 grayscale' : ''}`}>
                       <div className="p-4 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group bg-slate-50/30 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50">
@@ -395,9 +462,10 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                   <button onClick={() => handleDeleteCampaign(c.id)} className="p-1 text-slate-400 hover:text-rose-600"><Trash2 size={12} /></button>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
-                                <div className="px-2 py-1 bg-slate-50 rounded-lg text-[8px] font-black uppercase text-slate-500">Usos: {c.useCount}/{c.maxUses}</div>
-                                <div className="px-2 py-1 bg-emerald-50 rounded-lg text-[8px] font-black uppercase text-emerald-700">R$ {c.totalRevenueGenerated.toFixed(0)}</div>
+                              <div className="flex flex-wrap gap-2">
+                                <div className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 rounded-lg text-[8px] font-black uppercase text-slate-500 whitespace-nowrap">Usos: {c.useCount}/{c.maxUses}</div>
+                                <div className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-[8px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap" title="Faturamento Gerado">Fat: R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+                                <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-[8px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {(c.investmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
                               </div>
                             </div>
                           ))}
@@ -416,6 +484,176 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
             </div>
           </div>
         </>
+      ) : activeSubTab === 'ANALYSIS' ? (
+        <div className="space-y-6 animate-in fade-in duration-500">
+          {/* Filters Row */}
+          <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+             <div className="flex items-center gap-2 px-2">
+               <Calendar size={18} className="text-indigo-600" />
+               <input 
+                 type="date" 
+                 value={analysisDateRange.start} 
+                 onChange={(e) => setAnalysisDateRange(prev => ({ ...prev, start: e.target.value }))}
+                 className="bg-transparent text-[10px] font-black uppercase outline-none focus:text-indigo-600 dark:text-white cursor-pointer"
+               />
+               <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">até</span>
+               <input 
+                 type="date" 
+                 value={analysisDateRange.end} 
+                 onChange={(e) => setAnalysisDateRange(prev => ({ ...prev, end: e.target.value }))}
+                 className="bg-transparent text-[10px] font-black uppercase outline-none focus:text-indigo-600 dark:text-white cursor-pointer"
+               />
+             </div>
+             <div className="h-6 w-px bg-slate-200 dark:bg-zinc-800 mx-2 hidden sm:block"></div>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+               Filtrando <span className="text-indigo-600">{campaignsWithStats.reduce((acc, c) => acc + c.useCount, 0)}</span> atendimentos no período
+             </p>
+          </div>
+
+          {/* Analysis KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-3">
+                <TrendingUp size={20} />
+              </div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Faturamento Campanha</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">R$ {totalPartnerRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Impacto Total</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 mb-3">
+                <Users size={20} />
+              </div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Clientes Únicos</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">{uniqueCouponCustomers}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-[8px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">Novos & Recorrentes</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 mb-3">
+                <Calendar size={20} />
+              </div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Impacto Mensal</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">R$ {monthlyImpact.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-[8px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">Mês Atual</span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 mb-3">
+                <ArrowUpRight size={20} />
+              </div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">ROI Real</p>
+              <p className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                {totalInvestment > 0 ? ((totalPartnerRevenue - totalInvestment) / totalInvestment).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'x' : '0.0x'}
+              </p>
+              <div className="mt-2 flex items-center gap-1">
+                <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">Lucro / Invest.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* New row for more metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-xl"><Smartphone size={20} /></div>
+              <div>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">CPA (Custo Aquisição)</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalPartnerAppointments > 0 ? (totalInvestment / totalPartnerAppointments).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-600 rounded-xl"><DollarSign size={20} /></div>
+              <div>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">Investimento Total</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalInvestment.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl"><BarChart2 size={20} /></div>
+              <div>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">Ticket Médio Geral</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalPartnerAppointments > 0 ? (totalPartnerRevenue / totalPartnerAppointments).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Detailed Performance List */}
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50">
+              <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                <BarChart2 size={16} className="text-indigo-600" /> Desempenho por Campanha
+              </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-zinc-800/50">
+                    <th className="px-6 py-4 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest">Campanha / Parceiro</th>
+                    <th className="px-6 py-4 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest">Atendimentos</th>
+                     <th className="px-6 py-4 text-right text-[9px] font-black text-slate-500 uppercase tracking-widest">Faturamento</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black text-slate-500 uppercase tracking-widest">Investimento</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black text-slate-500 uppercase tracking-widest">Ticket Médio</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black text-slate-500 uppercase tracking-widest">ROI</th>
+                    <th className="px-6 py-4 text-right text-[9px] font-black text-slate-500 uppercase tracking-widest">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                  {campaignsWithStats.sort((a,b) => b.totalRevenueGenerated - a.totalRevenueGenerated).map(c => {
+                    const partner = partners.find(p => p.id === c.partnerId);
+                    const avgTicket = c.useCount > 0 ? c.totalRevenueGenerated / c.useCount : 0;
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase">{c.name}</p>
+                            <p className="text-[10px] text-slate-500 font-bold">{partner?.name || '---'}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="text-xs font-black text-slate-700 dark:text-slate-300">{c.useCount}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-xs font-bold text-rose-600 dark:text-rose-400">R$ {(c.investmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-400">R$ {avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end">
+                            <span className={`text-[10px] font-black tracking-tighter px-2 py-0.5 rounded-full ${
+                              (c.investmentValue || 0) > 0 && c.totalRevenueGenerated > (c.investmentValue || 0)
+                                ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30'
+                                : 'bg-slate-50 text-slate-500 dark:bg-zinc-800'
+                            }`}>
+                              {(c.investmentValue || 0) > 0 
+                                ? ((c.totalRevenueGenerated - (c.investmentValue || 0)) / (c.investmentValue || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'x'
+                                : '0.0x'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${c.useCount >= c.maxUses ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                            {c.useCount >= c.maxUses ? 'Esgotado' : 'Ativo'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : (
         <PartnerProducts 
           partners={partners} 
@@ -480,6 +718,92 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   </div>
                 </div>
                 <div className="col-span-2">
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Vincular Cliente (Para cálculo de Permuta/Custo)</label>
+                  <div className="relative group/searchable">
+                    <div className="relative">
+                      <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Digite o nome ou celular para buscar..." 
+                        value={customerSearch}
+                        onFocus={() => setIsCustomerDropdownOpen(true)}
+                        onChange={(e) => {
+                          setCustomerSearch(e.target.value);
+                          setIsCustomerDropdownOpen(true);
+                        }}
+                        className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 transition-all shadow-sm"
+                      />
+                    </div>
+                    
+                    {isCustomerDropdownOpen && customerSearch.length > 0 && (
+                      <div className="absolute z-[110] left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border-2 border-black rounded-2xl shadow-2xl max-h-60 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+                        <div className="sticky top-0 bg-slate-50 dark:bg-zinc-800 p-2 border-b border-slate-100 dark:border-zinc-700 text-[8px] font-black uppercase text-slate-400 tracking-widest flex justify-between items-center">
+                          <span>Resultados da busca</span>
+                          <button type="button" onClick={() => setIsCustomerDropdownOpen(false)} className="text-rose-500 hover:text-rose-600"><X size={12} /></button>
+                        </div>
+                        {customers
+                          .filter(c => 
+                            c.name.toLowerCase().includes(customerSearch.toLowerCase()) || 
+                            (c.phone && c.phone.includes(customerSearch))
+                          )
+                          .sort((a,b) => a.name.localeCompare(b.name))
+                          .slice(0, 50)
+                          .map(c => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onClick={() => {
+                                setCustomerSearch(c.name);
+                                setSelectedCustomerId(c.id);
+                                setIsCustomerDropdownOpen(false);
+                              }}
+                              className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center justify-between border-b border-slate-50 dark:border-zinc-800 last:border-0 group/item"
+                            >
+                              <div>
+                                <p className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 group-hover/item:text-indigo-600 transition-colors">{c.name}</p>
+                                <p className="text-[9px] font-bold text-slate-400 font-mono">{c.phone || 'Sem celular'}</p>
+                              </div>
+                              <CheckCircle size={14} className="text-emerald-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                            </button>
+                          ))
+                        }
+                        {customers.filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()) || (c.phone && c.phone.includes(customerSearch))).length === 0 && (
+                          <div className="p-8 text-center">
+                            <Users size={24} className="mx-auto text-slate-200 mb-2" />
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum cliente encontrado</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <input type="hidden" name="linkedCustomerId" value={selectedCustomerId || ''} />
+                    
+                    {(!isCustomerDropdownOpen || !customerSearch) && (
+                      <div className="mt-2 flex flex-col gap-2">
+                        {selectedCustomerId ? (
+                          <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                            <CheckCircle size={14} className="text-indigo-600" />
+                            <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">
+                              Vinculado: {customers.find(c => c.id === selectedCustomerId)?.name || 'Cliente Selecionado'}
+                            </span>
+                            <button 
+                              type="button" 
+                              onClick={() => {
+                                setCustomerSearch('');
+                                setSelectedCustomerId(null);
+                              }}
+                              className="ml-auto text-rose-500 hover:text-rose-600"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest italic px-2">Nenhum cliente vinculado</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Categoria (Influenciadora, Atleta, etc)</label>
                   <input name="category" defaultValue={editingPartner?.category || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
@@ -535,9 +859,15 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   <input type="hidden" name="discountType" value="PERCENTAGE" />
                 </div>
               </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Limite de Usos</label>
-                <input name="maxUses" type="number" required defaultValue={editingCampaign?.maxUses || 100} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Limite de Usos</label>
+                  <input name="maxUses" type="number" required defaultValue={editingCampaign?.maxUses || 100} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Investimento (R$)</label>
+                  <input name="investmentValue" type="number" step="0.01" required defaultValue={editingCampaign?.investmentValue || 0} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="0.00" />
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Descartar</button>

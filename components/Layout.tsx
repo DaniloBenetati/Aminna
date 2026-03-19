@@ -93,7 +93,9 @@ export const Layout: React.FC<LayoutProps> = ({
     ViewState.FINANCEIRO,
     ViewState.FECHAMENTOS,
     ViewState.ESTOQUE,
-    ViewState.DAILY_APPOINTMENTS
+    ViewState.DAILY_APPOINTMENTS,
+    ViewState.DASHBOARD,
+    ViewState.PARTNERSHIPS
   ].includes(currentView);
 
   return (
@@ -268,7 +270,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${isFluidView ? 'overflow-hidden' : 'overflow-auto'} pt-20 md:pt-0 ${isFluidView && currentView === ViewState.AGENDA ? 'p-0' : 'md:pt-10 md:px-8 md:pb-8 p-4'}`}>
+      <main className={`flex-1 ${currentView === ViewState.AGENDA ? 'overflow-hidden p-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">

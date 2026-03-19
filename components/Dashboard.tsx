@@ -751,6 +751,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         const potentialTotal = maxRevenue * revenues.length;
         const impact = potentialTotal - actualTotal;
 
+        // Top 3 performers for insights
+        const top3 = revenues.slice(0, 3).map(r => ({
+            name: r.name,
+            amount: r.amount,
+            potentialTotal: r.amount * revenues.length
+        }));
+
         // Gap per provider
         const performanceGaps = revenues.map(r => ({
             name: r.name,
@@ -761,6 +768,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return {
             topPerformer,
+            top3,
             maxRevenue,
             actualTotal,
             potentialTotal,
@@ -1543,16 +1551,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             <AlertCircle size={14} /> Ausências
                         </button>
                         <button 
-                            onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            <BrainCircuit size={14} /> Análise de Performance
-                        </button>
-                        <button 
                             onClick={() => setActiveSubTab('high_performance')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'high_performance' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <Zap size={14} /> High Performance
+                        </button>
+                        <button 
+                            onClick={() => setActiveSubTab('insights')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                        >
+                            <BrainCircuit size={14} /> Análise de Performance
                         </button>
                     </div>
 
@@ -1850,11 +1858,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="mt-6 p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-800">
-                                        <p className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase flex items-center gap-1"><Sparkles size={12} /> Insight High Performance</p>
-                                        <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-2 leading-tight">
-                                            Se 100% da equipe atingir o patamar de <span className="text-slate-900 dark:text-white font-black">{highPerformanceMetrics?.topPerformer?.name}</span>, o faturamento total saltará para <span className="text-slate-900 dark:text-white font-black">R$ {(highPerformanceMetrics?.potentialTotal || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>.
-                                        </p>
+                                     <div className="space-y-3 mt-6">
+                                        {(highPerformanceMetrics?.top3 || []).map((p, idx) => (
+                                            <div key={idx} className={`p-4 rounded-2xl border ${idx === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}>
+                                                <p className={`text-[10px] font-black uppercase flex items-center gap-1 ${idx === 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                                    {idx === 0 ? <Sparkles size={12} /> : idx === 1 ? <Target size={12} /> : <Award size={12} />} 
+                                                    Benchmark #{idx + 1}: {p.name}
+                                                </p>
+                                                <p className="text-xs font-bold text-slate-600 dark:text-slate-400 mt-2 leading-tight">
+                                                    Se 100% da equipe atingir este patamar, o faturamento saltará para <span className="text-slate-900 dark:text-white font-black">R$ {p.potentialTotal.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>.
+                                                </p>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>

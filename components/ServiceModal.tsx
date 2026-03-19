@@ -95,7 +95,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
     const [payments, setPayments] = useState<PaymentInfo[]>(appointment.payments || []);
     const [lines, setLines] = useState<ServiceLine[]>([]);
-    const [appliedCoupon, setAppliedCoupon] = useState<string>(appointment.appliedCoupon || '');
     const [isRecurring, setIsRecurring] = useState(false);
     const [recurrenceFrequency, setRecurrenceFrequency] = useState<'WEEKLY' | 'BIWEEKLY' | 'MONTHLY'>('WEEKLY');
     const [recurrenceCount, setRecurrenceCount] = useState(4);
@@ -157,7 +156,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setStatus(appointment.status);
         setAppointmentTime(appointment.time);
         setAppointmentDate(appointment.date);
-        setAppliedCoupon(appointment.appliedCoupon || '');
         setCouponCode(appointment.appliedCoupon || '');
         setAppliedCampaign(campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null);
         setIsCancelling(false);
@@ -669,6 +667,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 alert('Este cupom atingiu o limite máximo de usos.');
                 return;
             }
+
+            // CHECK FOR ONE USE PER CUSTOMER
+            // Rule applies moving forward: check if this customer already used the coupon in OTHER completed/pending appointments
+            const alreadyUsed = allAppointments.some(a => 
+                a.customerId === customer.id && 
+                a.appliedCoupon === campaign.couponCode && 
+                a.id !== appointment.id && // Don't block current appointment being edited
+                a.status !== 'Cancelado'
+            );
+
+            if (alreadyUsed) {
+                alert('Este cupom já foi utilizado por esta cliente.');
+                return;
+            }
+
             setAppliedCampaign(campaign);
         } else {
             alert('Cupom inválido ou expirado.');
@@ -1193,7 +1206,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             booked_price: linesToUse[0].unitPrice,
             main_service_products: linesToUse[0].products,
             additional_services: extras,
-            applied_coupon: appliedCoupon,
+            applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
             customer_id: customer.id,
             payments: payments,
@@ -2559,6 +2572,50 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <span className="text-[9px] font-bold text-indigo-700 dark:text-indigo-400 uppercase">vezes</span>
                                                         </div>
                                                     </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Cupom / Parceria */}
+                                    {mode === 'VIEW' && (
+                                        <div className="mt-4 px-1">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Tag size={14} className="text-slate-400" />
+                                                <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
+                                            </div>
+                                            {appliedCampaign ? (
+                                                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
+                                                    <div className="flex items-center gap-2">
+                                                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                                                        <span className="text-[9px] font-bold text-slate-400">
+                                                            {appliedCampaign.discountType === 'PERCENTAGE'
+                                                                ? `-${appliedCampaign.discountValue}% OFF`
+                                                                : ` R$ ${couponDiscountAmount.toFixed(2)} OFF`}
+                                                        </span>
+                                                    </div>
+                                                    <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Digite o cupom..."
+                                                        value={couponCode}
+                                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                                                        className="flex-1 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApplyCoupon}
+                                                        className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
+                                                    >
+                                                        APLICAR
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
