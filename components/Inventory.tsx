@@ -701,15 +701,16 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         const prefix = "AMINNA";
         const codes = stock
             .map(item => item.code)
-            .filter(code => code?.toUpperCase().startsWith(prefix))
+            .filter(code => typeof code === 'string' && code.toUpperCase().startsWith(prefix))
             .map(code => {
-                const numPart = code.substring(prefix.length);
+                const numPart = (code as string).substring(prefix.length);
                 return parseInt(numPart);
             })
             .filter(num => !isNaN(num));
         
         const maxNum = codes.length > 0 ? Math.max(...codes) : 0;
         const nextNum = maxNum + 1;
+        // Padrão amigável: AMINNA + número com pelo menos 2 dígitos
         return `${prefix}${nextNum.toString().padStart(2, '0')}`;
     };
 
