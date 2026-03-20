@@ -57,7 +57,6 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [productSearch, setProductSearch] = useState('');
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
-    const [saleTab, setSaleTab] = useState<'SEARCH' | 'CATALOG'>('CATALOG');
     const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
     const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG'>('CATALOG');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
@@ -1232,162 +1231,82 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
 
                         <div className="p-6 space-y-5 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 flex-1">
-                                {/* Tab Switcher remains inside scrollable area */}
-                                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 mb-2">
-                                    {(['CATALOG', 'SEARCH'] as const).map(tab => (
-                                        <button
-                                            key={tab}
-                                            type="button"
-                                            onClick={() => setSaleTab(tab)}
-                                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${saleTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'}`}
-                                        >
-                                            {tab === 'CATALOG' ? 'Catálogo Visual' : 'Busca por Código'}
-                                        </button>
-                                    ))}
+                                <div className="flex justify-between items-center mb-1.5 px-1">
+                                    <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adicionar Produto</label>
+                                    <div className="flex items-center gap-2">
+                                        <label className="md:hidden cursor-pointer flex items-center gap-1 px-2 py-1 bg-zinc-950 text-white rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
+                                            {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
+                                            {isScanning ? 'Lendo...' : 'Tirar Foto'}
+                                            <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
+                                        </label>
+                                        <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
+                                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
+                                            {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} className="md:hidden" />}
+                                            <Camera size={10} className="hidden md:block" />
+                                            {isScanning ? 'Lendo...' : (
+                                                <>
+                                                    <span className="md:hidden">Galeria</span>
+                                                    <span className="hidden md:inline">Escanear</span>
+                                                </>
+                                            )}
+                                            <input type="file" className="hidden" accept="image/*" onChange={handleOCRField} disabled={isScanning} />
+                                        </label>
+                                    </div>
                                 </div>
 
-                                {/* Items Area */}
-                                {saleTab === 'SEARCH' ? (
-                                    <>
-                                        <div className="flex justify-between items-center mb-1.5 px-1">
-                                            <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adicionar Produto</label>
-                                            <div className="flex items-center gap-2">
-                                                {/* Mobile/Tablet Only: Take Photo */}
-                                                <label className="md:hidden cursor-pointer flex items-center gap-1 px-2 py-1 bg-zinc-950 text-white rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
-                                                    {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
-                                                    {isScanning ? 'Lendo...' : 'Tirar Foto'}
-                                                    <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
-                                                </label>
-
-                                                <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
-
-                                                {/* Upload from Gallery (Standard) */}
-                                                <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
-                                                    {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} className="md:hidden" />}
-                                                    <Camera size={10} className="hidden md:block" />
-                                                    {isScanning ? 'Lendo...' : (
-                                                        <>
-                                                            <span className="md:hidden">Galeria</span>
-                                                            <span className="hidden md:inline">Escanear</span>
-                                                        </>
-                                                    )}
-                                                    <input type="file" className="hidden" accept="image/*" onChange={handleOCRField} disabled={isScanning} />
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        {!currentProduct ? (
-                                            <div className="relative">
-                                                <Package size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Busque por nome ou bipe o código..."
-                                                    className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-2xl text-sm font-black outline-none text-slate-900 dark:text-white transition-all"
-                                                    value={productSearch}
-                                                    onChange={e => {
-                                                        const val = e.target.value;
-                                                        setProductSearch(val);
-                                                        const exactMatch = stock.find(i => i.category === 'Venda' && i.code?.toUpperCase() === val.toUpperCase());
-                                                        if (exactMatch) {
-                                                            setCurrentProduct(exactMatch.id);
-                                                            setProductSearch('');
-                                                        }
-                                                    }}
-                                                />
-                                                <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-
-                                                {productSearch && (
-                                                    <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
-                                                        {filteredProductOptions.map(item => (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
-                                                                onClick={() => {
-                                                                    setCurrentProduct(item.id);
-                                                                    setProductSearch('');
-                                                                }}
-                                                            >
-                                                                <div className="min-w-0">
-                                                                    <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
-                                                                    <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code || 'S/ REF'} - R$ {item.price?.toFixed(2)}</p>
-                                                                </div>
-                                                                <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600" />
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Produto Selecionado</p>
-                                                    <p className="text-xs font-black truncate" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
-                                                    <p className="text-[10px] font-bold" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</p>
-                                                </div>
-                                                <button type="button" onClick={() => setCurrentProduct('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-white dark:bg-zinc-700 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-600 shadow-sm">Remover</button>
-                                            </div>
-                                        )}
-                                        {ocrError && <p className="text-[9px] font-bold text-rose-600 px-1">{ocrError}</p>}
-                                    </>
-                                ) : (
-                                    <div className="space-y-3">
-                                        <div className="relative">
-                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="Filtrar catálogo..."
-                                                className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black outline-none text-slate-950 dark:text-white focus:border-black dark:focus:border-white transition-all shadow-inner"
-                                                value={productSearch}
-                                                onChange={e => setProductSearch(e.target.value)}
-                                            />
-                                        </div>
-                                        
-                                        {!currentProduct ? (
-                                            <div className="grid grid-cols-2 xs:grid-cols-3 gap-3 overflow-y-auto max-h-[350px] p-1 scrollbar-hide">
-                                                {stock
-                                                    .filter(item => item.category === 'Venda' && (!productSearch || item.name.toLowerCase().includes(productSearch.toLowerCase())))
-                                                    .map(product => (
-                                                        <button
-                                                            key={product.id}
-                                                            type="button"
-                                                            onClick={() => setCurrentProduct(product.id)}
-                                                            className="group bg-white dark:bg-zinc-800 rounded-2xl border-2 p-3 text-left hover:border-black dark:hover:border-white transition-all shadow-sm active:scale-95 flex flex-col gap-1 relative overflow-hidden"
-                                                            style={{ borderColor: '#D9D9D6' }}
-                                                        >
-                                                            <div className="min-w-0">
-                                                                <p className="text-[10px] font-black truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors" style={{ color: '#75787B' }}>{product.name}</p>
-                                                                <div className="flex justify-between items-end mt-1">
-                                                                    <p className="text-[11px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                                                    <p className={`text-[8px] font-bold uppercase ${product.quantity > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                        {product.quantity > 0 ? `${product.quantity} unid.` : 'Off'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </button>
-                                                    ))
+                                {!currentProduct ? (
+                                    <div className="relative">
+                                        <Package size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
+                                        <input
+                                            type="text"
+                                            placeholder="Busque por nome ou bipe o código..."
+                                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-2xl text-sm font-black outline-none text-slate-900 dark:text-white transition-all shadow-sm"
+                                            value={productSearch}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setProductSearch(val);
+                                                const exactMatch = stock.find(i => i.category === 'Venda' && i.code?.toUpperCase() === val.toUpperCase());
+                                                if (exactMatch) {
+                                                    setCurrentProduct(exactMatch.id);
+                                                    setProductSearch('');
                                                 }
-                                            </div>
-                                        ) : (
-                                            <div className="p-4 bg-white dark:bg-zinc-800 rounded-2xl border-2 border-black dark:border-zinc-700 flex items-center justify-between animate-in zoom-in-95 duration-200 shadow-xl">
-                                                <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                    <div className="min-w-0">
-                                                        <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5">Selecionado</p>
-                                                        <p className="text-sm font-black truncate uppercase" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-xs font-black" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</span>
-                                                            <span className="w-1 h-1 bg-slate-300 dark:bg-zinc-600 rounded-full"></span>
-                                                            <span className={`text-[9px] font-bold uppercase ${(selectedStockItem?.quantity || 0) > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                                {(selectedStockItem?.quantity || 0)} disponiveis
-                                                            </span>
+                                            }}
+                                        />
+                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+
+                                        {productSearch && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                                                {filteredProductOptions.map(item => (
+                                                    <button
+                                                        key={item.id}
+                                                        type="button"
+                                                        className="w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
+                                                        onClick={() => {
+                                                            setCurrentProduct(item.id);
+                                                            setProductSearch('');
+                                                        }}
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
+                                                            <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code || 'S/ REF'} - R$ {item.price?.toFixed(2)}</p>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                                <button type="button" onClick={() => setCurrentProduct('')} className="text-[10px] font-black text-slate-900 dark:text-white uppercase bg-slate-50 dark:bg-zinc-700 px-4 py-2 rounded-xl ml-4 border border-slate-200 dark:border-zinc-600 shadow-sm hover:bg-rose-50 dark:hover:bg-rose-900/20 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-200 transition-all">Remover</button>
+                                                        <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600" />
+                                                    </button>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
+                                ) : (
+                                    <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-0.5">Produto Selecionado</p>
+                                            <p className="text-xs font-black truncate uppercase" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
+                                            <p className="text-[10px] font-bold" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</p>
+                                        </div>
+                                        <button type="button" onClick={() => setCurrentProduct('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-white dark:bg-zinc-700 px-3 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-600 shadow-sm active:scale-95 transition-all">Remover</button>
+                                    </div>
                                 )}
+                                {ocrError && <p className="text-[9px] font-bold text-rose-600 px-1">{ocrError}</p>}
 
                                 <div className="flex gap-4">
                                     <div className="flex-1 relative">
