@@ -971,23 +971,65 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                 >
                                     <Plus size={20} />
                                 </button>
-                            </h2>
-                            
-                            <div className="space-y-4">
-                                {loans.length === 0 ? (
-                                    <div className="py-20 text-center opacity-30">
-                                        <Wallet size={48} className="mx-auto mb-4" />
-                                        <p className="text-sm font-black uppercase tracking-widest">Nenhum empréstimo ativo</p>
-                                    </div>
-                                ) : (
-                                    loans.map(loan => (
+                                              <div className="space-y-6">
+                                {(() => {
+                                    const targetMonth = dateRef.getMonth() + 1;
+                                    const targetYear = dateRef.getFullYear();
+                                    
+                                    const filteredLoans = loans.filter(loan => {
+                                        let schedule = [];
+                                        try {
+                                            if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
+                                                schedule = JSON.parse(loan.reason);
+                                            } else {
+                                                // Fallback
+                                                const startDate = new Date(loan.date + "T12:00:00");
+                                                const loanM = startDate.getMonth() + 1;
+                                                const loanY = startDate.getFullYear();
+                                                const monthsDiff = (targetYear - loanY) * 12 + (targetMonth - loanM);
+                                                return monthsDiff >= 0 && monthsDiff < (loan.installments || 1);
+                                            }
+                                        } catch(e) {}
+                                        return schedule.some((inst: any) => inst.month === targetMonth && inst.year === targetYear);
+                                    });
+
+                                    if (filteredLoans.length === 0) {
+                                        return (
+                                            <div className="py-20 text-center opacity-30">
+                                                <Wallet size={48} className="mx-auto mb-4" />
+                                                <p className="text-sm font-black uppercase tracking-widest">Nenhum empréstimo ativo para {getDateLabel()}</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return filteredLoans.map(loan => {
+                                        const targetMonth = dateRef.getMonth() + 1;
+                                        const targetYear = dateRef.getFullYear();
+                                        let schedule: any[] = [];
+                                        try {
+                                            if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
+                                                schedule = JSON.parse(loan.reason);
+                                            }
+                                        } catch(e) {}
+                                        
+                                        const currentInst = schedule.find(i => i.month === targetMonth && i.year === targetYear);
+                                        const instIdx = schedule.findIndex(i => i.month === targetMonth && i.year === targetYear);
+
+                                        return (
                                         <div key={loan.id} className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl border border-slate-100 dark:border-zinc-800">
                                             <div className="flex justify-between items-start mb-4">
                                                 <div>
-                                                    <h4 className="font-black text-slate-950 dark:text-white uppercase">{employees.find(e => e.id === loan.employeeId)?.name || 'N/A'}</h4>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data: {loan.date ? new Date(loan.date).toLocaleDateString() : 'N/A'}</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <h4 className="font-black text-slate-950 dark:text-white uppercase">{employees.find(e => e.id === loan.employeeId)?.name || 'N/A'}</h4>
+                                                        {instIdx !== -1 && (
+                                                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                                                                Parcela {instIdx + 1} de {schedule.length}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Início: {loan.date ? new Date(loan.date).toLocaleDateString() : 'N/A'}</p>
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3">     <div className="flex items-center gap-3">
                                                     <button 
                                                         onClick={() => {
                                                             setEditingLoan(loan);
