@@ -66,6 +66,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         installments: 1,
         installmentAmount: 0,
         date: new Date().toISOString().split('T')[0],
+        startMonth: new Date().getMonth() + 1,
+        startYear: new Date().getFullYear(),
         reason: ''
     });
 
@@ -453,15 +455,13 @@ export const HRManagement: React.FC<HRManagementProps> = ({
     const handleSaveLoan = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            // Generate initial schedule
+            // Generate initial schedule starting from chosen month/year
             const insts = loanForm.installments || 1;
             const installmentValue = Number((loanForm.totalAmount / insts).toFixed(2));
-            const startDate = new Date(loanForm.date + "T12:00:00");
             
             const initialSchedule = [];
             for (let i = 0; i < insts; i++) {
-                const targetDate = new Date(startDate);
-                targetDate.setMonth(targetDate.getMonth() + i);
+                const targetDate = new Date(loanForm.startYear, (loanForm.startMonth - 1) + i, 1);
                 initialSchedule.push({
                     id: i + 1,
                     month: targetDate.getMonth() + 1,
@@ -546,6 +546,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                 installments: 1,
                 installmentAmount: 0,
                 date: new Date().toISOString().split('T')[0],
+                startMonth: new Date().getMonth() + 1,
+                startYear: new Date().getFullYear(),
                 reason: ''
             });
             alert("Empréstimo e Cronograma salvos com sucesso!");
@@ -571,34 +573,35 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             if (loanError) throw loanError;
 
             // 2. Identify and update all affected payroll records
-            const startDate = new Date(loanToDelete.date);
-            const insts = loanToDelete.installments || 1;
+            const startDate = new Date(loanToDelete.date + "T12:00:00");
+            const insts = Number(loanToDelete.installments || 1);
+            const instValue = Number(loanToDelete.installmentAmount || 0);
             
             for (let i = 0; i < insts; i++) {
-                const targetDate = new Date(startDate);
-                targetDate.setMonth(targetDate.getMonth() + i);
+                const targetDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
                 const m = targetDate.getMonth() + 1;
                 const y = targetDate.getFullYear();
 
-                const payRec = payroll.find(p => p.employeeId === loanToDelete.employeeId && p.month === m && p.year === y);
+                const payRec = payroll.find(p => String(p.employeeId) === String(loanToDelete.employeeId) && Number(p.month) === m && Number(p.year) === y);
                 if (payRec) {
-                    const deduction = loanToDelete.installmentAmount || 0;
-                    const newVal = Math.max(0, (payRec.loanDeduction || 0) - deduction);
-                    const newNet = (payRec.netSalary || 0) + deduction;
+                    const newVal = Math.max(0, Number(payRec.loanDeduction || 0) - instValue);
+                    const newNetRec = Number(payRec.netSalary || 0) + instValue;
                     
-                    await supabase.from('payroll')
-                        .update({ loan_deduction: newVal, net_salary: newNet })
+                    const { error: updErr } = await supabase.from('payroll')
+                        .update({ loan_deduction: newVal, net_salary: newNetRec })
                         .eq('id', payRec.id);
                         
-                    onUpdatePayroll(prev => prev.map(p => p.id === payRec.id ? {
-                        ...p,
-                        loanDeduction: newVal,
-                        netSalary: newNet
-                    } : p));
+                    if (!updErr) {
+                        onUpdatePayroll(prev => prev.map(p => p.id === payRec.id ? {
+                            ...p,
+                            loanDeduction: newVal,
+                            netSalary: newNetRec
+                        } : p));
+                    }
                 }
             }
-
             onUpdateLoans(prev => prev.filter(l => l.id !== loanId));
+            alert("Empréstimo excluído e deduções removidas das folhas de pagamento.");
         } catch (err) {
             console.error("Erro ao excluir empréstimo:", err);
             alert("Erro ao excluir empréstimo.");
@@ -625,7 +628,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
 
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
+        <div id="hr-management-root" className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -966,31 +969,32 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                             <h2 className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter uppercase mb-6 flex items-center justify-between">
                                 Empréstimos Ativos
                                 <button 
-                                    onClick={() => setIsLoanModalOpen(true)}
+                                    onClick={() => { setEditingLoan(null); setIsLoanModalOpen(true); }}
                                     className="p-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl hover:scale-110 transition-all shadow-xl"
                                 >
                                     <Plus size={20} />
                                 </button>
-                                              <div className="space-y-6">
+                            </h2>
+                            
+                            <div className="space-y-6">
                                 {(() => {
                                     const targetMonth = dateRef.getMonth() + 1;
                                     const targetYear = dateRef.getFullYear();
                                     
                                     const filteredLoans = loans.filter(loan => {
-                                        let schedule = [];
+                                        let s = [];
                                         try {
                                             if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                                                schedule = JSON.parse(loan.reason);
+                                                s = JSON.parse(loan.reason);
                                             } else {
-                                                // Fallback
-                                                const startDate = new Date(loan.date + "T12:00:00");
-                                                const loanM = startDate.getMonth() + 1;
-                                                const loanY = startDate.getFullYear();
-                                                const monthsDiff = (targetYear - loanY) * 12 + (targetMonth - loanM);
-                                                return monthsDiff >= 0 && monthsDiff < (loan.installments || 1);
+                                                const d = new Date(loan.date + "T12:00:00");
+                                                const lm = d.getMonth() + 1;
+                                                const ly = d.getFullYear();
+                                                const diff = (targetYear - ly) * 12 + (targetMonth - lm);
+                                                return diff >= 0 && diff < (loan.installments || 1);
                                             }
                                         } catch(e) {}
-                                        return schedule.some((inst: any) => inst.month === targetMonth && inst.year === targetYear);
+                                        return s.some((i: any) => i.month === targetMonth && i.year === targetYear);
                                     });
 
                                     if (filteredLoans.length === 0) {
@@ -1003,143 +1007,110 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                     }
 
                                     return filteredLoans.map(loan => {
-                                        const targetMonth = dateRef.getMonth() + 1;
-                                        const targetYear = dateRef.getFullYear();
-                                        let schedule: any[] = [];
+                                        let loanS: any[] = [];
                                         try {
                                             if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                                                schedule = JSON.parse(loan.reason);
+                                                loanS = JSON.parse(loan.reason);
                                             }
                                         } catch(e) {}
                                         
-                                        const currentInst = schedule.find(i => i.month === targetMonth && i.year === targetYear);
-                                        const instIdx = schedule.findIndex(i => i.month === targetMonth && i.year === targetYear);
+                                        const instIdx = loanS.findIndex(i => i.month === targetMonth && i.year === targetYear);
+                                        const total = loan.totalAmount || 0;
+                                        const remaining = loan.remainingAmount || 0;
 
                                         return (
-                                        <div key={loan.id} className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl border border-slate-100 dark:border-zinc-800">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div>
+                                            <div key={loan.id} className="p-6 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl border border-slate-100 dark:border-zinc-800 mb-4 last:mb-0">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <div className="flex items-center gap-3">
+                                                            <h4 className="font-black text-slate-950 dark:text-white uppercase">{employees.find(e => e.id === loan.employeeId)?.name || 'N/A'}</h4>
+                                                            {instIdx !== -1 && (
+                                                                <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                                                                    Parcela {instIdx + 1} de {loanS.length}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Início: {loan.date ? new Date(loan.date).toLocaleDateString() : 'N/A'}</p>
+                                                    </div>
                                                     <div className="flex items-center gap-3">
-                                                        <h4 className="font-black text-slate-950 dark:text-white uppercase">{employees.find(e => e.id === loan.employeeId)?.name || 'N/A'}</h4>
-                                                        {instIdx !== -1 && (
-                                                            <span className="bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                                                                Parcela {instIdx + 1} de {schedule.length}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Início: {loan.date ? new Date(loan.date).toLocaleDateString() : 'N/A'}</p>
-                                                </div>
-                                                <div className="flex items-center gap-3">     <div className="flex items-center gap-3">
-                                                    <button 
-                                                        onClick={() => {
-                                                            setEditingLoan(loan);
-                                                            setLoanForm({
-                                                                employeeId: loan.employeeId,
-                                                                totalAmount: loan.totalAmount,
-                                                                installments: loan.installments || 1,
-                                                                installmentAmount: loan.installmentAmount,
-                                                                date: loan.date,
-                                                                reason: loan.reason || ''
-                                                            });
-                                                            setIsLoanModalOpen(true);
-                                                        }}
-                                                        className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-slate-400 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
-                                                        title="Editar Empréstimo"
-                                                    >
-                                                        <Edit3 size={16} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => setShowDebtDocument({ open: true, loan })}
-                                                        className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-slate-400 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
-                                                        title="Imprimir Confissão de Dívida"
-                                                    >
-                                                        <Printer size={16} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleDeleteLoan(loan.id)}
-                                                        className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-rose-400 hover:text-rose-600 transition-all shadow-sm"
-                                                        title="Apagar Empréstimo"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
-                                                    <div className="text-right">
-                                                        <p className="text-lg font-black text-slate-950 dark:text-white">R$ {(loan.remainingAmount || 0).toLocaleString('pt-BR')}</p>
-                                                        <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Saldo Devedor</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="w-full bg-slate-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden mb-4">
-                                                <div 
-                                                    className="bg-zinc-950 dark:bg-white h-full transition-all duration-500" 
-                                                    style={{ width: `${loan.totalAmount > 0 ? (1 - (loan.remainingAmount || 0) / loan.totalAmount) * 100 : 0}%` }}
-                                                />
-                                            </div>
-                                            
-                                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mt-6">
-                                                <span className="text-slate-500">Parcelas: {loan.installments || 0} lançamento(s) ativo(s)</span>
-                                                <span className="text-slate-950 dark:text-white">Total: R$ {(loan.totalAmount || 0).toLocaleString('pt-BR')}</span>
-                                            </div>
+                                                        <button 
+                                                            onClick={() => { 
+                                                                setEditingLoan(loan); 
+                                                                let firstMonth = new Date().getMonth() + 1;
+                                                                let firstYear = new Date().getFullYear();
+                                                                try {
+                                                                    const s = JSON.parse(loan.reason || '[]');
+                                                                    if (s.length > 0) {
+                                                                        firstMonth = s[0].month;
+                                                                        firstYear = s[0].year;
+                                                                    }
+                                                                } catch(e) {}
 
-                                            {/* Virtual Installment Schedule */}
-                                            <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800">
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cronograma de Lançamentos</p>
-                                                <div className="space-y-2">
-                                                    {(() => {
-                                                        let schedule = [];
-                                                        try {
-                                                            if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                                                                schedule = JSON.parse(loan.reason);
-                                                            } else {
-                                                                // Display auto-calculated preview if no schedule saved yet
-                                                                const startDate = new Date(loan.date + "T12:00:00");
-                                                                for(let i=0; i<(loan.installments || 1); i++) {
-                                                                    const d = new Date(startDate);
-                                                                    d.setMonth(d.getMonth() + i);
-                                                                    schedule.push({ month: d.getMonth()+1, year: d.getFullYear(), amount: loan.installmentAmount });
-                                                                }
-                                                            }
-                                                        } catch(e) { schedule = []; }
+                                                                setLoanForm({
+                                                                    employeeId: loan.employeeId,
+                                                                    totalAmount: loan.totalAmount,
+                                                                    installments: loan.installments,
+                                                                    installmentAmount: loan.installmentAmount,
+                                                                    date: loan.date,
+                                                                    startMonth: firstMonth,
+                                                                    startYear: firstYear,
+                                                                    reason: loan.reason || ''
+                                                                }); 
+                                                                setIsLoanModalOpen(true); 
+                                                            }}
+                                                            className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-slate-400 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            <Pencil size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setShowDebtDocument({ open: true, loan })}
+                                                            className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-slate-400 hover:text-zinc-950 dark:hover:text-white transition-all shadow-sm"
+                                                        >
+                                                            <Printer size={16} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteLoan(loan.id)}
+                                                            className="p-2.5 bg-white dark:bg-zinc-800 rounded-xl text-rose-400 hover:text-rose-600 transition-all shadow-sm"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                        <div className="text-right">
+                                                            <p className="text-lg font-black tracking-tighter text-slate-950 dark:text-white">R$ {remaining.toLocaleString('pt-BR')}</p>
+                                                            <p className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Saldo Devedor</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="w-full bg-slate-200 dark:bg-zinc-700 h-2 rounded-full overflow-hidden mb-4">
+                                                    <div 
+                                                        className="bg-zinc-950 dark:bg-white h-full transition-all" 
+                                                        style={{ width: `${total > 0 ? (1 - remaining / total) * 100 : 0}%` }}
+                                                    />
+                                                </div>
+                                                
+                                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mt-6">
+                                                    <span className="text-slate-500">Parcelas: {loan.installments || 0} lançamento(s) ativo(s)</span>
+                                                    <span className="text-slate-950 dark:text-white">Total: R$ {total.toLocaleString('pt-BR')}</span>
+                                                </div>
 
-                                                        return schedule.map((inst: any, idx: number) => (
-                                                            <div key={idx} className="flex justify-between items-center p-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-500">
-                                                                        {idx + 1}º
-                                                                    </div>
-                                                                    <span className="text-xs font-bold text-slate-900 dark:text-zinc-100 uppercase">
-                                                                        {["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][inst.month]}/{inst.year}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="flex items-center gap-4">
-                                                                    <span className="text-xs font-black text-rose-500">R$ {inst.amount.toLocaleString('pt-BR')}</span>
-                                                                    <button 
-                                                                        onClick={() => {
-                                                                            const newMonth = prompt("Novo mês (1-12):", inst.month.toString());
-                                                                            const newYear = prompt("Novo ano:", inst.year.toString());
-                                                                            if (newMonth && newYear) {
-                                                                                const updatedSchedule = [...schedule];
-                                                                                updatedSchedule[idx] = { ...inst, month: Number(newMonth), year: Number(newYear) };
-                                                                                supabase.from('employee_loans').update({ reason: JSON.stringify(updatedSchedule) }).eq('id', loan.id)
-                                                                                    .then(() => {
-                                                                                        onUpdateLoans(prev => prev.map(l => l.id === loan.id ? { ...l, reason: JSON.stringify(updatedSchedule) } : l));
-                                                                                        alert("Parcela atualizada! Clique em 'Processar Mês' na folha para refletir a mudança.");
-                                                                                    });
-                                                                            }
-                                                                        }}
-                                                                        className="p-1.5 text-slate-400 hover:text-indigo-500 transition-all"
-                                                                    >
-                                                                        <Calendar size={14} />
-                                                                    </button>
-                                                                </div>
+                                                <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 space-y-2">
+                                                    {loanS.map((inst: any, idx: number) => (
+                                                        <div key={idx} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${inst.month === targetMonth && inst.year === targetYear ? 'bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-200 shadow-sm' : 'bg-white dark:bg-zinc-900 border-slate-100 dark:border-zinc-800'}`}>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-500">{idx + 1}º</div>
+                                                                <span className="text-xs font-bold uppercase text-slate-900 dark:text-zinc-100">{["", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"][inst.month]}/{inst.year}</span>
                                                             </div>
-                                                        ));
-                                                    })()}
+                                                            <div className="flex items-center gap-4">
+                                                                <span className="text-xs font-black text-rose-500">R$ {inst.amount.toLocaleString('pt-BR')}</span>
+                                                                <button type="button" onClick={() => { const nm = prompt("Novo mês (1-12):", inst.month.toString()); const ny = prompt("Novo ano:", inst.year.toString()); if(nm && ny){ const us = [...loanS]; us[idx] = {...inst, month: Number(nm), year: Number(ny)}; supabase.from('employee_loans').update({reason: JSON.stringify(us)}).eq('id', loan.id).then(() => { onUpdateLoans(p => p.map(l => l.id === loan.id ? {...l, reason: JSON.stringify(us)} : l)); alert("Parcela atualizada!"); }); } }} className="p-1.5 text-slate-400 hover:text-indigo-500 transition-all"><Calendar size={14}/></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
-                                )}
+                                        );
+                                    });
+                                })()}
                             </div>
                         </div>
                     </div>
@@ -1530,6 +1501,33 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                         />
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Mês de Início</label>
+                                        <select 
+                                            value={loanForm.startMonth}
+                                            onChange={e => setLoanForm({...loanForm, startMonth: Number(e.target.value)})}
+                                            className="w-full bg-slate-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 font-bold text-sm"
+                                        >
+                                            {["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"].map((m, i) => (
+                                                <option key={i+1} value={i+1}>{m}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Ano de Início</label>
+                                        <select 
+                                            value={loanForm.startYear}
+                                            onChange={e => setLoanForm({...loanForm, startYear: Number(e.target.value)})}
+                                            className="w-full bg-slate-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 font-bold text-sm"
+                                        >
+                                            {[2024, 2025, 2026, 2027, 2028].map(y => (
+                                                <option key={y} value={y}>{y}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Motivo / Descrição</label>
                                     <input 
@@ -1632,7 +1630,16 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                         <p>
                                             O(A) DEVEDOR(A) autoriza, neste ato, com fulcro no <strong>Artigo 462, § 1º, da CLT</strong>, 
                                             o desconto mensal em sua folha de pagamento no valor de <strong>R$ {showDebtDocument.loan.installmentAmount.toLocaleString('pt-BR')}</strong>, 
-                                            a iniciar-se na folha do mês de {new Date(showDebtDocument.loan.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}, 
+                                            a iniciar-se na folha do mês de {(() => {
+                                                try {
+                                                    const s = JSON.parse(showDebtDocument.loan.reason || '[]');
+                                                    if (s.length > 0) {
+                                                        const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+                                                        return `${months[s[0].month - 1]} de ${s[0].year}`;
+                                                    }
+                                                } catch(e) {}
+                                                return new Date(showDebtDocument.loan.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                                            })()}, 
                                             até a total quitação do saldo devedor.
                                         </p>
 

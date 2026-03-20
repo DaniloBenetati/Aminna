@@ -1,0 +1,9 @@
+
+--- Checking appointments for 2026-03-20 ---
+Found 0 active appointments.
+
+--- Checking appointments for 2026-03-19 ---
+Found 0 active appointments.
+
+--- Checking appointments for 2026-03-21 ---
+Found 0 active appointments.

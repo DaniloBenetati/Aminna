@@ -1188,20 +1188,32 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
 
         // --- HARD BLOCK DUPLICATED SLOTS ---
-        const exactDuplicate = allAppointments.find(a => 
+        // Check for any non-cancelled appointment for the SAME CUSTOMER at the SAME TIME on the SAME DATE
+        // regardless of provider, because usually one client shouldn't have two overlapping records.
+        // If they do, they should be merged.
+        const existingRecord = allAppointments.find(a => 
             a.id !== appointment.id && 
             normalizeString(a.customerId) === normalizeString(customer.id) && 
             a.date === appointmentDate && 
             a.time.slice(0, 5) === appointmentTime.slice(0, 5) && 
-            String(a.providerId) === String(lines[0].providerId) &&
             a.status !== 'Cancelado'
         );
 
-        if (exactDuplicate && isNew) {
-            alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.');
-            if (onSelectAppointment) onSelectAppointment(exactDuplicate);
-            setIsSaving(false);
-            return;
+        if (existingRecord && isNew) {
+            // If it's the SAME provider, it's a hard duplicate
+            if (String(existingRecord.providerId) === String(lines[0].providerId)) {
+                alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.');
+                if (onSelectAppointment) onSelectAppointment(existingRecord);
+                setIsSaving(false);
+                return;
+            } else {
+                // If it's a DIFFERENT provider but SAME time, offer to merge instead of allowing a duplicate record
+                const confirmMerge = window.confirm(`⚠️ CONFLITO DE HORÁRIO\n\n${customer.name} já possui um agendamento às ${existingRecord.time} com outro(a) profissional nesta data.\n\nDeseja MESCLAR este novo serviço no agendamento existente? (Recomendado)`);
+                if (confirmMerge) {
+                    performMerge(existingRecord);
+                    return;
+                }
+            }
         }
 
         const linesToUse = manualLines || lines;
