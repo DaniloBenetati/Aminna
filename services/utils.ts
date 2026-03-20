@@ -21,3 +21,16 @@ export const sanitizeImageUrl = (url: string | null | undefined): string => {
   
   return url;
 };
+
+/**
+ * Normaliza textos para busca, removendo acentos, convertendo para minúsculas
+ * e removendo espaços desnecessários. Essencial para buscas "case-insensitive" 
+ * e "accent-insensitive".
+ */
+export const normalizeSearch = (text: string | null | undefined): string => {
+  return (text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+};

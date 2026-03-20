@@ -550,7 +550,9 @@ const App: React.FC = () => {
           startTimeActual: a.start_time_actual,
           createdAt: a.created_at,
           updatedAt: a.updated_at,
-          isReconciled: a.is_reconciled
+          isReconciled: a.is_reconciled,
+          adjustmentAmount: a.adjustment_amount,
+          adjustmentReason: a.adjustment_reason
         }));
 
         // Frontend Deduplication
@@ -571,7 +573,9 @@ const App: React.FC = () => {
           payments: s.payments || [],
           status: s.status,
           createdAt: s.created_at,
-          isReconciled: s.is_reconciled
+          isReconciled: s.is_reconciled,
+          adjustmentAmount: s.adjustment_amount,
+          adjustmentReason: s.adjustment_reason
         })));
 
       }
@@ -641,7 +645,7 @@ const App: React.FC = () => {
       case ViewState.ESTOQUE:
         return <Inventory stock={stock} setStock={setStock} providers={providers} />;
       case ViewState.VENDAS:
-        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} customers={customers} />;
+        return <Sales sales={sales} setSales={setSales} stock={stock} setStock={setStock} paymentSettings={paymentSettings} customers={customers} providers={providers} />;
       case ViewState.AGENDA:
         return (
           <Agenda
@@ -649,6 +653,7 @@ const App: React.FC = () => {
             setCustomers={setCustomers}
             appointments={appointments}
             setAppointments={setAppointments}
+            sales={sales}
             services={services}
             campaigns={campaigns}
             leads={leads}
@@ -659,7 +664,6 @@ const App: React.FC = () => {
             setFinancialConfigs={setFinancialConfigs}
             providers={providers}
             stock={stock}
-            sales={sales}
             expenses={expenses}
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}

@@ -1,13 +1,15 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
-import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo } from '../types';
+import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
 import { formatDateBR, parseDateSafe, toLocalDateStr } from '../services/financialService';
-import { sanitizeImageUrl } from '../services/utils';
+import { sanitizeImageUrl, normalizeSearch } from '../services/utils';
+
+const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
 interface SalesProps {
     sales: Sale[];
@@ -16,6 +18,7 @@ interface SalesProps {
     setStock: React.Dispatch<React.SetStateAction<StockItem[]>>;
     paymentSettings: PaymentSetting[];
     customers: Customer[];
+    providers: Provider[];
 }
 
 interface CartItem {
@@ -27,7 +30,7 @@ interface CartItem {
     total: number;
 }
 
-export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, paymentSettings, customers }) => {
+export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, paymentSettings, customers, providers }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -62,6 +65,50 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
+    const [adjustmentAmount, setAdjustmentAmount] = useState(0);
+    const [adjustmentReason, setAdjustmentReason] = useState('');
+    const [showAdjustmentField, setShowAdjustmentField] = useState(false);
+
+    const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+
+    // PERSISTENCE EFFECT: Load from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem('AMINNA_PENDING_SALE');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                if (data.cart) setCart(data.cart);
+                if (data.customerId) setCustomerId(data.customerId);
+                if (data.payments) setPayments(data.payments);
+                if (data.adjustmentAmount) setAdjustmentAmount(data.adjustmentAmount);
+                if (data.adjustmentReason) setAdjustmentReason(data.adjustmentReason);
+                if (data.showAdjustmentField !== undefined) setShowAdjustmentField(data.showAdjustmentField);
+                if (data.saleDate) setSaleDate(data.saleDate);
+                if (data.editingSaleId) setEditingSaleId(data.editingSaleId);
+                
+                // If there's an active cart, open the modal
+                if (data.cart && data.cart.length > 0) setIsModalOpen(true);
+            } catch (e) {
+                console.error("Error loading pending sale from localStorage", e);
+            }
+        }
+    }, []);
+
+    // PERSISTENCE EFFECT: Save to localStorage whenever critical state changes
+    useEffect(() => {
+        const data = {
+            cart,
+            customerId,
+            payments,
+            adjustmentAmount,
+            adjustmentReason,
+            showAdjustmentField,
+            saleDate,
+            editingSaleId
+        };
+        localStorage.setItem('AMINNA_PENDING_SALE', JSON.stringify(data));
+    }, [cart, customerId, payments, adjustmentAmount, adjustmentReason, showAdjustmentField, saleDate]);
+
     // Quick Registration State
     const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
     const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
@@ -79,8 +126,32 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [lastSaleForInvoice, setLastSaleForInvoice] = useState<Sale | null>(null);
     const touchStartRef = React.useRef<number | null>(null);
 
-    const getCustomerName = (id: string) => (customers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
+    const allSelectableCustomers = useMemo(() => {
+        const mappedProviders = (providers || []).map(p => ({
+            ...p,
+            name: `${p.name} (Profissional)`,
+            isProvider: true
+        }));
+        return [...customers, ...mappedProviders];
+    }, [customers, providers]);
+
+    const getCustomerName = (id: string) => (allSelectableCustomers.find(c => c.id === id)?.name || 'Cliente Desconhecido').toUpperCase();
     const getProductName = (id: string) => stock.find(s => s.id === id)?.name || 'Produto Removido';
+
+    const resetSaleForm = () => {
+        setCart([]);
+        setCustomerId('');
+        setCustomerSearch('');
+        setPayments([]);
+        setAdjustmentAmount(0);
+        setAdjustmentReason('');
+        setShowAdjustmentField(false);
+        setSaleDate(new Date().toISOString().split('T')[0]);
+        setEditingSaleId(null);
+        setTriedToSubmit(false);
+        localStorage.removeItem('AMINNA_PENDING_SALE');
+        setIsModalOpen(false);
+    };
 
     // --- DATE HELPERS ---
     const navigateDate = (direction: 'prev' | 'next') => {
@@ -156,7 +227,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         return { totalRevenue, totalItems, avgTicket, topProduct };
     }, [filteredSales, stock]);
 
-    const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda' && item.quantity > 0), [stock]);
+    const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda' && (item.quantity ?? 0) > 0), [stock]);
 
     const uniqueGroups = useMemo(() => {
         const groups = new Set(saleProducts.map(item => item.group).filter(Boolean));
@@ -189,18 +260,45 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const currentItemTotal = selectedStockItem ? (selectedStockItem.price || 0) * currentQuantity : 0;
 
     // Cart Totals
-    const cartTotal = cart.reduce((acc, item) => acc + item.total, 0);
+    const originalCartTotal = useMemo(() => cart.reduce((acc, item) => acc + item.total, 0), [cart]);
+    const cartTotal = useMemo(() => originalCartTotal + adjustmentAmount, [originalCartTotal, adjustmentAmount]);
+
+    // Auto-update first payment if it is zero and cart has items
+    useEffect(() => {
+        if (payments.length === 1 && payments[0].amount === 0 && cartTotal > 0) {
+            setPayments([{ ...payments[0], amount: cartTotal }]);
+        }
+    }, [cartTotal, payments.length]);
+
+    const cartInsight = useMemo(() => {
+        if (cart.length === 0) return null;
+        return cart.map(item => {
+            const stockItem = stock.find(s => s.id === item.productId);
+            const pastSales = sales.filter(s => 
+                s.items && Array.isArray(s.items) && s.items.some((si: any) => si.productId === item.productId)
+            ).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3);
+
+            return {
+                id: item.productId,
+                name: item.productName,
+                priceHistory: stockItem?.priceHistory || [],
+                usageHistory: stockItem?.usageHistory || [],
+                pastSales
+            };
+        });
+    }, [cart, stock, sales]);
 
     const totalPaid = useMemo(() => {
         return payments.reduce((acc, p) => acc + p.amount, 0);
     }, [payments]);
 
     const addPayment = () => {
-        const remaining = cartTotal - totalPaid;
+        const remaining = Math.max(0, cartTotal - totalPaid);
         setPayments([...payments, {
             id: Date.now().toString(),
             method: paymentSettings[0]?.method || 'Pix',
-            amount: Math.max(0, remaining)
+            amount: remaining,
+            installments: 1
         }]);
     };
 
@@ -210,7 +308,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     };
 
     const updatePayment = (id: string, field: keyof PaymentInfo, value: any) => {
-        setPayments(payments.map(p => p.id === id ? { ...p, [field]: value } : p));
+        setPayments(payments.map(p => {
+            if (p.id === id) {
+                const updated = { ...p, [field]: value };
+                if (field === 'method' && value === 'CRÉDITO 6X') {
+                    updated.installments = 6;
+                }
+                return updated;
+            }
+            return p;
+        }));
     };
 
     const handleAddItemToCart = () => {
@@ -272,6 +379,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
         setCart([...cart, newItem]);
         
+        // Preencher pagamento se houver apenas um de R$ 0
+        if (payments.length === 1 && payments[0].amount === 0) {
+            setPayments([{ ...payments[0], amount: (existingInCart ? existingInCart.quantity + 1 : 1) * (product.price || 0) }]);
+        }
+
         // FeedBack visual
         setShowThumbsUp(true);
         setTimeout(() => setShowThumbsUp(false), 1500);
@@ -331,14 +443,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         );
     }, [saleProducts, productSearch]);
 
+
+
     const filteredCustomerOptions = useMemo(() => {
-        if (!customerSearch) return customers.slice(0, 20);
-        const search = customerSearch.toLowerCase();
-        return customers.filter(c =>
-            c.name.toLowerCase().includes(search) ||
-            c.phone.includes(search)
+        if (!customerSearch) return allSelectableCustomers.slice(0, 20);
+        const search = normalizeSearch(customerSearch);
+        return allSelectableCustomers.filter(c =>
+            normalizeSearch(c.name).includes(search) ||
+            (c.phone && c.phone.includes(search))
         ).slice(0, 20);
-    }, [customers, customerSearch]);
+    }, [allSelectableCustomers, customerSearch]);
 
     const handleQuickRegister = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -346,9 +460,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
         // Check for existing customer locally first
         const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
+        const normalizedName = normalizeSearch(quickRegisterData.name);
         const existingCustomer = (customers as any).find((c: any) => {
             const cPhone = (c.phone || '').replace(/\D/g, '');
-            return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
+            return (normalizedPhone && cPhone === normalizedPhone) || (normalizeSearch(c.name) === normalizedName);
         });
 
         if (existingCustomer) {
@@ -409,9 +524,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         const fileName = `Fatura_Garantia_AminnaStore_${customer?.name?.replace(/\s+/g, '_') || 'Cliente'}.pdf`;
         
         const invoiceHtml = `
-            <div style="font-family: 'Inter', sans-serif; padding: 40px; color: #1e293b; background: white; position: relative; width: 210mm; margin: 0 auto; box-sizing: border-box;">
+            <div style="font-family: 'Inter', sans-serif; padding: 20mm; color: #1e293b; background: white; width: 210mm; margin: 0; box-sizing: border-box; position: relative;">
                 <!-- Decorative Border -->
-                <div style="position: absolute; top: 20px; right: 20px; bottom: 20px; left: 20px; border: 1px solid #f1f5f9; pointer-events: none; border-radius: 4px;"></div>
+                <!-- Decorative Border removed as requested -->
 
                 <!-- Header -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 60px; position: relative;">
@@ -474,11 +589,19 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <!-- Summary -->
                 <div style="display: flex; justify-content: flex-end; margin-bottom: 80px;">
                     <div style="width: 280px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">
-                            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em;">Subtotal</span>
-                            <span style="font-size: 13px; font-weight: 400; color: #64748b;">R$ ${sale.totalAmount.toFixed(2)}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em;">Subtotal Bruto</span>
+                            <span style="font-size: 13px; font-weight: 400; color: #64748b;">R$ ${(sale.totalAmount - (sale.adjustmentAmount || 0)).toFixed(2)}</span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                        
+                        ${(sale.adjustmentAmount !== 0) ? `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
+                            <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #947c4c; letter-spacing: 0.1em;">${(sale.adjustmentAmount || 0) >= 0 ? 'Acréscimo' : 'Desconto'}</span>
+                            <span style="font-size: 13px; font-weight: 600; color: #947c4c;">R$ ${Math.abs(sale.adjustmentAmount || 0).toFixed(2)}</span>
+                        </div>
+                        ` : ''}
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
                             <span style="font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0f172a; letter-spacing: 0.15em;">Total Final</span>
                             <span style="font-size: 22px; font-weight: 300; color: #947c4c; letter-spacing: -0.02em;">R$ ${sale.totalAmount.toFixed(2)}</span>
                         </div>
@@ -520,8 +643,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             margin: 0,
             filename: fileName,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            html2canvas: { scale: 3, useCORS: true, letterRendering: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: 'avoid-all' }
         };
 
         // @ts-ignore
@@ -530,8 +654,27 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         });
     };
 
-    const handleRegisterSale = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleEditSale = (sale: Sale) => {
+        setCart((sale.items || []).map((i: any) => ({
+            id: Math.random().toString(),
+            productId: i.productId,
+            productName: i.name || getProductName(i.productId),
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            total: i.quantity * i.unitPrice
+        })));
+        setCustomerId(sale.customerId);
+        setSaleDate(sale.date ? sale.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+        setPayments(sale.payments || []);
+        setAdjustmentAmount(sale.adjustmentAmount || 0);
+        setAdjustmentReason(sale.adjustmentReason || '');
+        setEditingSaleId(sale.id);
+        setIsModalOpen(true);
+        setSelectedSaleDetail(null);
+    };
+
+    const handleRegisterSale = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
         setTriedToSubmit(true);
 
         if (!customerId || cart.length === 0 || payments.length === 0) {
@@ -545,12 +688,66 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         }
 
         try {
-            const saleToInsert = {
-                customer_id: customerId,
+            let effectiveCustomerId = customerId;
+
+            // Check if professional to satisfy potential Foreign Key constraints in the database
+            const selectedPerson = allSelectableCustomers.find(p => p.id === customerId);
+            if (selectedPerson && (selectedPerson as any).isProvider) {
+                // 1. Check if ID already exists in customers
+                const { data: byId } = await supabase.from('customers').select('id').eq('id', customerId).maybeSingle();
+                if (byId) {
+                    effectiveCustomerId = byId.id;
+                } else {
+                    // 2. Check if a cliente with same name or phone exists to avoid duplicate errors
+                    const cleanName = selectedPerson.name.replace(' (Profissional)', '').trim();
+                    const cleanPhone = (selectedPerson as any).phone || '';
+                    
+                    const { data: existing } = await supabase.from('customers')
+                        .select('id')
+                        .or(`name.eq.${cleanName},phone.eq.${cleanPhone}`)
+                        .maybeSingle();
+                    
+                    if (existing) {
+                        effectiveCustomerId = existing.id;
+                    } else {
+                        // 3. Create NEW client record linked to this provider
+                        // Try providing the ID first
+                        const { data: newC, error: insErr } = await supabase.from('customers').insert({
+                            id: customerId,
+                            name: cleanName,
+                            phone: cleanPhone,
+                            status: 'Novo',
+                            registration_date: new Date().toISOString().split('T')[0],
+                            total_spent: 0
+                        }).select().single();
+
+                        if (insErr) {
+                            // If providing ID failed, try without ID (let DB generate it)
+                            const { data: newC2, error: insErr2 } = await supabase.from('customers').insert({
+                                name: cleanName,
+                                phone: cleanPhone,
+                                status: 'Novo',
+                                registration_date: new Date().toISOString().split('T')[0],
+                                total_spent: 0
+                            }).select().single();
+                            
+                            if (insErr2) throw new Error(`Erro ao auto-cadastrar profissional como cliente: ${insErr2.message}`);
+                            effectiveCustomerId = newC2.id;
+                        } else {
+                            effectiveCustomerId = newC.id;
+                        }
+                    }
+                }
+            }
+
+            const saleToSave = {
+                customer_id: effectiveCustomerId,
                 date: saleDate,
                 total_amount: cartTotal,
                 total_price: cartTotal,
                 payment_method: payments.map(p => p.method).join(' + '),
+                adjustment_amount: adjustmentAmount,
+                adjustment_reason: adjustmentReason,
                 items: cart.map(i => ({
                     productId: i.productId,
                     name: i.productName,
@@ -560,15 +757,29 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 payments: payments.map(p => ({
                     id: p.id,
                     method: p.method,
-                    amount: p.amount
+                    amount: p.amount,
+                    installments: p.installments,
+                    cardBrand: p.cardBrand
                 }))
             };
 
-            const { data, error } = await supabase.from('sales').insert([saleToInsert]).select();
-            if (error) throw error;
+            let finalSale: Sale;
 
-            if (data && data[0]) {
-                const newSale: Sale = {
+            if (editingSaleId) {
+                // UPDATE PATH
+                const oldSale = sales.find(s => s.id === editingSaleId);
+                if (!oldSale) throw new Error("Venda original não encontrada");
+
+                const { data, error } = await supabase
+                    .from('sales')
+                    .update(saleToSave)
+                    .eq('id', editingSaleId)
+                    .select();
+                
+                if (error) throw error;
+                if (!data || !data[0]) throw new Error("Erro ao atualizar venda");
+
+                finalSale = {
                     id: data[0].id,
                     customerId: data[0].customer_id,
                     date: data[0].date,
@@ -577,47 +788,192 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     items: data[0].items || [],
                     payments: data[0].payments || []
                 };
-                setSales([newSale, ...sales]);
-                setLastSaleForInvoice(newSale);
-            }
 
-            // 2. Update stock levels
-            for (const item of cart) {
-                const stockItem = stock.find(s => s.id === item.productId);
-                if (stockItem) {
-                    const newQuantity = stockItem.quantity - item.quantity;
-                    const { error: stockError } = await supabase
-                        .from('stock_items')
-                        .update({ quantity: newQuantity })
-                        .eq('id', item.productId);
-                    
-                    if (stockError) throw stockError;
-                    
-                    setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
+                // Update local state
+                setSales(prev => prev.map(s => s.id === editingSaleId ? finalSale : s));
+
+                // Stock Adjustment Logic for Update
+                // 1. Get old items map
+                const oldItemsMap: Record<string, number> = {};
+                (oldSale.items || []).forEach((item: any) => {
+                    oldItemsMap[item.productId] = (oldItemsMap[item.productId] || 0) + item.quantity;
+                });
+
+                // 2. Get new items map
+                const newItemsMap: Record<string, number> = {};
+                cart.forEach(item => {
+                    newItemsMap[item.productId] = (newItemsMap[item.productId] || 0) + item.quantity;
+                });
+
+                // 3. Process all unique IDs
+                const allProductIds = new Set([...Object.keys(oldItemsMap), ...Object.keys(newItemsMap)]);
+                
+                for (const pid of allProductIds) {
+                    const oldQ = oldItemsMap[pid] || 0;
+                    const newQ = newItemsMap[pid] || 0;
+                    const delta = newQ - oldQ; // positive means we sold MORE (subtract from stock)
+
+                    if (delta !== 0) {
+                        const stockItem = stock.find(s => s.id === pid);
+                        if (stockItem) {
+                            const newStockQ = stockItem.quantity - delta;
+                            await supabase.from('stock_items').update({ quantity: newStockQ }).eq('id', pid);
+                            
+                            // Log movement
+                            const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
+                            await supabase.from('usage_logs').insert({
+                                stock_item_id: pid,
+                                quantity: Math.abs(delta),
+                                type: delta > 0 ? 'VENDA' : 'AJUSTE_ENTRADA',
+                                note: `Edição de Venda #${editingSaleId.slice(0, 8)} para ${customerName} (Ajuste: ${delta > 0 ? '-' : '+'}${Math.abs(delta)})`,
+                                date: new Date().toISOString()
+                            });
+
+                            setStock(prev => prev.map(s => s.id === pid ? { ...s, quantity: newStockQ } : s));
+                        }
+                    }
+                }
+            } else {
+                // INSERT PATH (Original Logic)
+                const { data, error } = await supabase.from('sales').insert([saleToSave]).select();
+                if (error) throw error;
+                if (!data || !data[0]) throw new Error("Erro ao inserir venda");
+
+                finalSale = {
+                    id: data[0].id,
+                    customerId: data[0].customer_id,
+                    date: data[0].date,
+                    totalAmount: data[0].total_amount,
+                    paymentMethod: data[0].payment_method,
+                    items: data[0].items || [],
+                    payments: data[0].payments || []
+                };
+
+                setSales([finalSale, ...sales]);
+
+                // Update stock levels
+                for (const item of cart) {
+                    const stockItem = stock.find(s => s.id === item.productId);
+                    if (stockItem) {
+                        const newQuantity = stockItem.quantity - item.quantity;
+                        await supabase.from('stock_items').update({ quantity: newQuantity }).eq('id', item.productId);
+                        
+                        // Log movement
+                        const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
+                        await supabase.from('usage_logs').insert({
+                            stock_item_id: item.productId,
+                            quantity: item.quantity,
+                            type: 'VENDA',
+                            note: `Venda para ${customerName} (R$ ${item.unitPrice.toFixed(2)}/un)`,
+                            date: new Date().toISOString()
+                        });
+                        
+                        setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
+                    }
                 }
             }
 
-            // 3. Update local state and close modal
-            setIsModalOpen(false);
-            setCustomerId('');
-            setCart([]);
-            setPayments([]);
-            setCustomerSearch('');
-            setTriedToSubmit(false);
-            setCurrentProduct('');
-            setPaymentMethod('Pix');
-            setSaleDate(new Date().toISOString().split('T')[0]);
-
-            // Show success message
+            setLastSaleForInvoice(finalSale);
             setShowSuccess(true);
+            
+            // Clean up using resetSaleForm
+            resetSaleForm();
+
             setTimeout(() => {
                 setShowSuccess(false);
                 setLastSaleForInvoice(null);
             }, 6000); 
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error registering sale:', error);
-            alert('Erro ao registrar venda.');
+            alert(`Erro ao registrar venda: ${error.message || 'Verifique se os dados estão corretos.'}`);
+        }
+    };
+
+    const handleCreateDebt = async () => {
+        if (!customerId || cart.length === 0) {
+            alert('Selecione uma cliente e adicione produtos para registrar a dívida.');
+            return;
+        }
+
+        if (confirm(`Deseja registrar esta venda de R$ ${cartTotal.toFixed(2)} como Dívida (Fiado)?`)) {
+            try {
+                // For debt, we record a single payment of type 'Dívida'
+                const saleToInsert = {
+                    customer_id: customerId,
+                    date: saleDate,
+                    total_amount: cartTotal,
+                    total_price: cartTotal,
+                    payment_method: 'Dívida',
+                    adjustment_amount: adjustmentAmount,
+                    adjustment_reason: adjustmentReason,
+                    items: cart.map(i => ({
+                        productId: i.productId,
+                        name: i.productName,
+                        quantity: i.quantity,
+                        unitPrice: i.unitPrice
+                    })),
+                    payments: [{
+                        id: Date.now().toString(),
+                        method: 'Dívida',
+                        amount: cartTotal
+                    }]
+                };
+
+                const { data, error } = await supabase.from('sales').insert([saleToInsert]).select();
+                if (error) throw error;
+
+                if (data && data[0]) {
+                    const newSale: Sale = {
+                        id: data[0].id,
+                        customerId: data[0].customer_id,
+                        date: data[0].date,
+                        totalAmount: data[0].total_amount,
+                        paymentMethod: data[0].payment_method,
+                        items: data[0].items || [],
+                        payments: data[0].payments || []
+                    };
+                    setSales([newSale, ...sales]);
+                }
+
+                // Update stock levels
+                for (const item of cart) {
+                    const stockItem = stock.find(s => s.id === item.productId);
+                    if (stockItem) {
+                        const newQuantity = stockItem.quantity - item.quantity;
+                        await supabase
+                            .from('stock_items')
+                            .update({ quantity: newQuantity })
+                            .eq('id', item.productId);
+
+                        // Log the movement in usage_logs
+                        const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
+                        await supabase.from('usage_logs').insert({
+                            stock_item_id: item.productId,
+                            quantity: item.quantity,
+                            type: 'VENDA',
+                            note: `Fiado para ${customerName} (R$ ${item.unitPrice.toFixed(2)}/un)`,
+                            date: new Date().toISOString()
+                        });
+                        
+                        setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
+                    }
+                }
+
+                // Close and clean
+                setIsModalOpen(false);
+                setCustomerId('');
+                setCart([]);
+                setPayments([]);
+                setAdjustmentAmount(0);
+                setAdjustmentReason('');
+                setShowAdjustmentField(false);
+                
+                alert('Venda registrada como dívida com sucesso! ✅');
+            } catch (error) {
+                console.error('Error creating sale debt:', error);
+                alert('Erro ao registrar dívida.');
+            }
         }
     };
 
@@ -851,8 +1207,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     <td className="px-6 py-4 text-center font-black text-slate-900 dark:text-white">
                                         {sale.items?.reduce((acc: number, curr: any) => acc + (curr.quantity || 0), 0) || 0}
                                     </td>
-                                    <td className="px-6 py-4 text-right text-slate-500 dark:text-slate-400 font-bold">
-                                        {sale.items?.length === 1 ? `R$ ${(sale.items[0].unitPrice || 0).toFixed(2)}` : '-'}
+                                    <td className="px-6 py-4 text-right text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">
+                                        R$ {(sale.items?.reduce((acc: number, curr: any) => acc + (curr.unitPrice || 0), 0) || 0).toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4 text-right font-black text-emerald-700 dark:text-emerald-400">
                                         R$ {(sale.totalAmount || 0).toFixed(2)}
@@ -913,7 +1269,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     <FileText size={10} /> FATURA
                                 </button>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase">
-                                    {sale.items?.length === 1 ? `Unit: R$${(sale.items[0].unitPrice || 0).toFixed(2)}` : `${sale.items?.length || 0} itens`}
+                                    {sale.items?.length === 1 
+                                        ? `Unit: R$${(sale.items[0].unitPrice || 0).toFixed(2)}` 
+                                        : `Soma Unit: R$${(sale.items?.reduce((acc: number, curr: any) => acc + (curr.unitPrice || 0), 0) || 0).toFixed(2)}`}
                                 </p>
                             </div>
                             <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-rose-200 dark:text-rose-900 active:text-rose-600 dark:active:text-rose-400">
@@ -1050,10 +1408,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 <button 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        fastAddToCart(product);
+                                                        if (product.quantity > 0) fastAddToCart(product);
                                                     }}
-                                                    className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-2 rounded-xl shadow-lg hover:scale-110 active:scale-90 transition-all pointer-events-auto"
-                                                    title="Adicionar 1 ao Carrinho"
+                                                    className={`p-2 rounded-xl shadow-lg transition-all pointer-events-auto ${product.quantity <= 0 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90'}`}
+                                                    title={product.quantity <= 0 ? 'Produto Esgotado' : 'Adicionar 1 ao Carrinho'}
+                                                    disabled={product.quantity <= 0}
                                                 >
                                                     <Plus size={16} />
                                                 </button>
@@ -1070,6 +1429,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             </p>
                                             <div className="flex justify-between items-end mt-2">
                                                 <p className="text-sm font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
+                                                <p className={`text-[9px] font-black uppercase ${product.quantity <= 0 ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-lg' : 'text-slate-400'}`}>
+                                                    {product.quantity <= 0 ? 'Esgotado' : `${product.quantity} un`}
+                                                </p>
                                             </div>
                                         </div>
                                     </button>
@@ -1095,10 +1457,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         {/* Header Updated to be Light by default, Dark in Dark Mode */}
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-black flex justify-between items-center bg-white dark:bg-zinc-950 text-slate-900 dark:text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
-                                <ShoppingCart size={20} className="text-slate-900 dark:text-white" />
-                                Registrar Venda
+                                <ShoppingCart size={20} className={editingSaleId ? "text-indigo-600 dark:text-indigo-400" : "text-slate-900 dark:text-white"} />
+                                {editingSaleId ? 'Editar Venda' : 'Registrar Venda'}
                             </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 transition-colors">
+                            <button onClick={resetSaleForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-1 transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
@@ -1219,7 +1581,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg"><User size={16} /></div>
                                             <div className="min-w-0">
                                                 <p className="text-xs font-black text-slate-950 dark:text-white truncate uppercase">{getCustomerName(customerId)}</p>
-                                                <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">{customers.find(c => c.id === customerId)?.phone}</p>
+                                                <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">{allSelectableCustomers.find(c => c.id === customerId)?.phone}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -1267,7 +1629,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 setProductSearch(val);
                                                 const exactMatch = stock.find(i => i.category === 'Venda' && i.code?.toUpperCase() === val.toUpperCase());
                                                 if (exactMatch) {
-                                                    setCurrentProduct(exactMatch.id);
+                                                    fastAddToCart(exactMatch);
                                                     setProductSearch('');
                                                 }
                                             }}
@@ -1282,7 +1644,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                         type="button"
                                                         className="w-full text-left px-4 py-3 hover:bg-indigo-50 dark:hover:bg-indigo-900/10 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
                                                         onClick={() => {
-                                                            setCurrentProduct(item.id);
+                                                            fastAddToCart(item);
                                                             setProductSearch('');
                                                         }}
                                                     >
@@ -1335,7 +1697,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 {/* 3. Cart List */}
                                 {cart.length > 0 && (
                                     <div className="space-y-2">
-                                        <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest px-1">Itens no Carrinho</label>
+                                        <div className="flex justify-between items-center px-1">
+                                            <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Itens no Carrinho</label>
+                                            <button 
+                                                onClick={() => { if(confirm('Deseja limpar todos os itens da cesta?')) setCart([]); }}
+                                                className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-700 transition-colors"
+                                            >
+                                                Limpar Cesta
+                                            </button>
+                                        </div>
                                         <div className="bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl overflow-hidden divide-y divide-slate-50 dark:divide-zinc-700">
                                             {cart.map(item => (
                                                 <div key={item.id} className="p-3 flex justify-between items-center group">
@@ -1381,49 +1751,189 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                     Definir Pagamento
                                                 </button>
                                             )}
-                                            {payments.map((payment) => (
-                                                <div key={payment.id} className="flex gap-2">
-                                                    <select
-                                                        className="flex-[2] bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
-                                                        value={payment.method}
-                                                        onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
-                                                    >
-                                                        {paymentSettings.map(pay => (
-                                                            <option key={pay.id} value={pay.method}>
-                                                                {pay.method}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <div className="relative flex-1">
-                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
-                                                        <input
-                                                            type="number"
-                                                            className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
-                                                            value={payment.amount || ''}
-                                                            placeholder="0,00"
-                                                            onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                                                        />
-                                                    </div>
-                                                    {payments.length > 1 && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => removePayment(payment.id)}
-                                                            className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                            {payments.map((payment) => {
+                                                const isCredit = payment.method.toLowerCase().includes('crédito');
+                                                const isCard = payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito');
+                                                
+                                                return (
+                                                    <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
+                                                        <select
+                                                            className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
+                                                            value={payment.method}
+                                                            onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                         >
-                                                            <Trash2 size={16} />
-                                                        </button>
+                                                            {[...paymentSettings, { id: 'virtual-credit', method: 'Crédito Aminna' }, { id: 'credit-6x', method: 'CRÉDITO 6X' }].filter((v, i, a) => a.findIndex(t => t.method === v.method) === i).map(pay => (
+                                                                <option key={pay.id} value={pay.method}>
+                                                                    {pay.method}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+
+                                                        {isCredit && payment.method !== 'Crédito Aminna' && (
+                                                            <select
+                                                                className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase border-l-0"
+                                                                value={payment.installments || 1}
+                                                                onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
+                                                            >
+                                                                {[...Array(12)].map((_, i) => (
+                                                                    <option key={i} value={i + 1}>{i + 1}x</option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+
+                                                        {isCard && payment.method !== 'Crédito Aminna' && (
+                                                            <select
+                                                                className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                                value={payment.cardBrand || ''}
+                                                                onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
+                                                            >
+                                                                <option value="">BANDEIRA</option>
+                                                                {CARD_BRANDS.map(brand => (
+                                                                    <option key={brand} value={brand}>{brand}</option>
+                                                                ))}
+                                                            </select>
+                                                        )}
+
+                                                        <div className="relative flex-1">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                            <input
+                                                                type="number"
+                                                                className={`w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border-2 ${Math.abs(payment.amount - cartTotal) > 0.01 && payments.length === 1 ? 'border-amber-400' : 'border-slate-200 dark:border-zinc-700'} rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black`}
+                                                                value={payment.amount || ''}
+                                                                placeholder="0,00"
+                                                                onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                                                            />
+                                                            {payments.length === 1 && Math.abs(payment.amount - cartTotal) > 0.01 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => updatePayment(payment.id, 'amount', cartTotal)}
+                                                                    className="absolute -top-7 right-0 text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-800 animate-bounce"
+                                                                >
+                                                                    <RefreshCw size={8} /> Igualar ao Total
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        {payments.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removePayment(payment.id)}
+                                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Adjustment Tool */}
+                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAdjustmentField(!showAdjustmentField)}
+                                                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
+                                            >
+                                                <DollarSign size={12} />
+                                                Ajustar Valor Final {adjustmentAmount !== 0 && `(R$ ${adjustmentAmount.toFixed(2)})`}
+                                            </button>
+
+                                            {showAdjustmentField && (
+                                                <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-2xl animate-in slide-in-from-top-2">
+                                                    <div className="flex gap-4">
+                                                        <div className="flex-1">
+                                                            <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Valor do Ajuste (+ ou -)</label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
+                                                                    placeholder="+10.00 ou -10.00"
+                                                                    value={adjustmentAmount || ''}
+                                                                    onChange={e => setAdjustmentAmount(parseFloat(e.target.value) || 0)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-[2]">
+                                                            <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Motivo do Ajuste</label>
+                                                            <input
+                                                                type="text"
+                                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                                placeholder="Ex: Desconto fidelidade, taxa extra..."
+                                                                value={adjustmentReason}
+                                                                onChange={e => setAdjustmentReason(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Contextual Insights */}
+                                                    {cartInsight && cartInsight.length > 0 && (
+                                                        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                                            <header className="flex items-center gap-2 mb-3">
+                                                                <Clock size={12} className="text-indigo-500" />
+                                                                <h5 className="text-[9px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Contexto dos Itens no Carrinho</h5>
+                                                            </header>
+                                                            <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                                                                {cartInsight.map(insight => (
+                                                                    <div key={insight.id} className="space-y-2">
+                                                                        <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{insight.name}</p>
+                                                                        
+                                                                        {/* Recent Sales for this item */}
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[8px] font-black text-slate-400 uppercase">Últimas Vendas</p>
+                                                                                {insight.pastSales.length > 0 ? insight.pastSales.map((ps, idx) => {
+                                                                                    const customer = customers.find(c => c.id === (ps as any).customer_id || (ps as any).customerId);
+                                                                                    const itemInfo = (ps.items as any[]).find(i => i.productId === insight.id);
+                                                                                    return (
+                                                                                        <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                            <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{customer?.name || 'Cliente'}</span>
+                                                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {itemInfo?.unitPrice?.toFixed(2) || '0.00'}</span>
+                                                                                        </div>
+                                                                                    );
+                                                                                }) : <p className="text-[8px] text-slate-400 italic">Sem vendas anteriores</p>}
+                                                                            </div>
+
+                                                                            {/* Price History */}
+                                                                            <div className="space-y-1">
+                                                                                <p className="text-[8px] font-black text-slate-400 uppercase">Histórico de Preços</p>
+                                                                                {insight.priceHistory.length > 0 ? (insight.priceHistory as any[]).slice(-2).reverse().map((ph, idx) => (
+                                                                                    <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {ph.price.toFixed(2)}</span>
+                                                                                            <span className="text-[7px] text-slate-400 uppercase font-black">{new Date(ph.date).toLocaleDateString()}</span>
+                                                                                        </div>
+                                                                                        <span className="text-[8px] font-bold text-slate-500 italic truncate max-w-[80px]">{ph.note || 'Alteração'}</span>
+                                                                                    </div>
+                                                                                )) : <p className="text-[8px] text-slate-400 italic">Sem reajustes</p>}
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
-                                        {payments.length > 0 && (
-                                            <div className={`mt-3 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
-                                                <span className="text-[9px] font-black uppercase text-slate-500">Total Pago</span>
+
+                                        <div className="flex gap-2 mt-4">
+                                            <div className={`flex-1 p-3 rounded-xl border-2 flex items-center justify-between ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900' : 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900'}`}>
+                                                <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">Total Pago</span>
                                                 <span className={`text-xs font-black ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     R$ {totalPaid.toFixed(2)} / R$ {cartTotal.toFixed(2)}
                                                 </span>
                                             </div>
-                                        )}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCreateDebt()}
+                                                className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border-2 border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40`}
+                                                title="Registrar como Dívida (Fiado)"
+                                            >
+                                                <Wallet size={14} />
+                                                <span>FIADO</span>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-3xl border-2 border-emerald-100 dark:border-emerald-800/50">
@@ -1535,13 +2045,19 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <div className="grid grid-cols-2 gap-3 mt-2">
                                 <button
                                     onClick={() => handleDownloadInvoice(selectedSaleDetail)}
-                                    className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <FileText size={16} /> Fatura e Garantia
                                 </button>
                                 <button
+                                    onClick={() => handleEditSale(selectedSaleDetail)}
+                                    className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Edit size={16} /> Editar Venda
+                                </button>
+                                <button
                                     onClick={() => setSelectedSaleDetail(null)}
-                                    className="flex-1 py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
+                                    className="col-span-2 py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
                                 >
                                     Fechar Detalhes
                                 </button>
@@ -1732,22 +2248,28 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             )}
             {/* Success Message Overlay */}
             {showSuccess && (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-top-4 duration-500">
-                    <div className="bg-emerald-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-2 border-emerald-400">
-                        <div className="bg-white/20 p-2 rounded-xl">
-                            <CheckCircle2 size={24} className="text-white" />
+                <div className="fixed inset-0 flex items-center justify-center z-[200] bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-emerald-500 text-white p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border-4 border-emerald-400 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-500">
+                        <div className="bg-white/20 p-4 rounded-3xl">
+                            <CheckCircle2 size={48} className="text-white" />
                         </div>
-                        <div>
-                            <p className="text-sm font-black uppercase tracking-widest leading-none">Venda Realizada!</p>
-                            <p className="text-[10px] font-bold opacity-90 uppercase mt-0.5">A venda foi registrada com sucesso.</p>
+                        <div className="text-center">
+                            <h3 className="text-xl font-black uppercase tracking-widest leading-none">Venda Realizada!</h3>
+                            <p className="text-xs font-bold opacity-90 uppercase mt-2">A venda foi registrada com sucesso.</p>
                             {lastSaleForInvoice && (
                                 <button 
                                     onClick={() => handleDownloadInvoice(lastSaleForInvoice)}
-                                    className="mt-2.5 bg-white text-emerald-600 px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-emerald-50 transition-colors shadow-lg animate-pulse"
+                                    className="mt-6 w-full bg-white text-emerald-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-colors shadow-lg active:scale-95"
                                 >
-                                    <FileText size={12} /> Gerar Fatura e Garantia
+                                    <FileText size={14} /> Gerar Fatura e Garantia
                                 </button>
                             )}
+                            <button 
+                                onClick={() => setShowSuccess(false)}
+                                className="mt-4 text-[9px] font-black uppercase tracking-[0.3em] text-emerald-100 hover:text-white transition-colors"
+                            >
+                                Fechar
+                            </button>
                         </div>
                     </div>
                 </div>

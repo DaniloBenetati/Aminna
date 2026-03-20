@@ -44,6 +44,7 @@ import {
     calculateDailySummary
 } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
+import { normalizeSearch } from '../services/utils';
 import { Sale, Expense, CommissionSetting } from '../types';
 
 const DroppableCell = ({ id, isBlocked, zoomLevel, children }: { id: string, isBlocked: boolean, zoomLevel: number, children: React.ReactNode }) => {
@@ -367,7 +368,8 @@ export const Agenda: React.FC<AgendaProps> = ({
             let isSearchMatch = true;
             if (searchTerm) {
                 const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(a.customerId).trim().toLowerCase());
-                isSearchMatch = customer ? customer.name.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+                const search = normalizeSearch(searchTerm);
+                isSearchMatch = customer ? normalizeSearch(customer.name).includes(search) : false;
             }
 
             // Service filter: if visibleServiceIds is empty, show ALL services
@@ -741,10 +743,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsServiceModalOpen(true);
     };
 
-    const filteredCustomersForSelection = customers.filter(c =>
-        c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()) ||
-        c.phone.includes(customerSearchTerm)
-    );
+    const filteredCustomersForSelection = customers.filter(c => {
+        const search = normalizeSearch(customerSearchTerm);
+        return normalizeSearch(c.name).includes(search) ||
+               c.phone.includes(search);
+    });
 
     const handleBlockProfessional = async (providerId: string) => {
         const provider = providers.find(p => p.id === providerId);
@@ -2248,6 +2251,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         stock={stock}
                         customers={customers}
                         onNavigate={onNavigate}
+                        allSales={sales}
                     />
                 )
             }

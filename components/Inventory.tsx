@@ -394,6 +394,16 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     };
 
     const handleDeleteProduct = async (id: string) => {
+        const itemToExclude = stock.find(i => i.id === id);
+        if (!itemToExclude) return;
+
+        // Check for sales in usageHistory
+        const hasSales = itemToExclude.usageHistory?.some(log => log.type === 'VENDA');
+        if (hasSales) {
+            alert("❌ Este produto não pode ser excluído pois possui histórico de vendas. Para manter a integridade dos relatórios, você pode apenas editar suas informações ou zerar o estoque.");
+            return;
+        }
+
         if (!window.confirm("Deseja realmente excluir este produto?")) return;
         
         try {

@@ -174,6 +174,8 @@ export interface Sale {
   payments?: PaymentInfo[];
   items: any[]; // List of { productId, quantity, unitPrice, name } or service details
   isReconciled?: boolean;
+  adjustmentAmount?: number;
+  adjustmentReason?: string;
 }
 
 
@@ -230,6 +232,8 @@ export interface Appointment {
   isRemake?: boolean; // Refazer agendamento (zerado)
   quantity?: number; // Nova propriedade para quantidade do serviço principal
   isReconciled?: boolean;
+  adjustmentAmount?: number;
+  adjustmentReason?: string;
 }
 
 export interface ChatMessage {

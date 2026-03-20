@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins } from 'lucide-react';
-import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState } from '../types';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock } from 'lucide-react';
+import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState, Sale } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
@@ -72,6 +72,7 @@ interface ServiceModalProps {
     stock: StockItem[];
     customers: Customer[];
     onNavigate?: (view: ViewState, payload?: any) => void;
+    allSales: Sale[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -89,7 +90,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     providers,
     stock,
     customers,
-    onNavigate
+    onNavigate,
+    allSales
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -131,6 +133,32 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [editCustomerName, setEditCustomerName] = useState(customer.name);
     const [editCustomerPhone, setEditCustomerPhone] = useState(customer.phone);
     const [previousMode, setPreviousMode] = useState<typeof mode>(mode);
+
+    // Adjustment State
+    const [adjustmentAmount, setAdjustmentAmount] = useState(0);
+    const [adjustmentReason, setAdjustmentReason] = useState('');
+    const [showAdjustmentField, setShowAdjustmentField] = useState(false);
+
+    const linesInsight = useMemo(() => {
+        const productIds = lines.flatMap(l => l.products);
+        if (productIds.length === 0) return null;
+
+        // In the context of ServiceModal, we want to see history of used products
+        return productIds.map(productId => {
+            const stockItem = stock.find(s => s.id === productId);
+            // Search in global sales for this product
+            const pastSales = (allSales || []).filter(s => 
+                s.items && Array.isArray(s.items) && s.items.some((si: any) => si.productId === productId)
+            ).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3);
+
+            return {
+                id: productId,
+                name: stockItem?.name || 'Produto',
+                priceHistory: stockItem?.priceHistory || [],
+                pastSales
+            };
+        });
+    }, [lines, stock, allSales]);
 
     const futureAppointments = useMemo(() => {
         // Use local date for comparison to avoid timezone issues with toISOString()
@@ -398,8 +426,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         // Add tips at the end (not subject to discounts)
         final += totalTips;
 
+        // Apply Manual Adjustment
+        final += adjustmentAmount;
+
         return Math.max(0, final);
-    }, [lines, appliedCampaign, customer.isVip, customer.vipDiscountPercent, includeDebt, customer.outstandingBalance]);
+    }, [lines, appliedCampaign, customer.isVip, customer.vipDiscountPercent, includeDebt, customer.outstandingBalance, adjustmentAmount]);
 
     // Auto-fill payment amount if single payment method
     useEffect(() => {
@@ -1192,6 +1223,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
+            adjustment_amount: adjustmentAmount,
+            adjustment_reason: adjustmentReason,
             customer_id: customer.id,
             payments: payments,
             end_time: linesToUse[0].endTime,
@@ -1399,6 +1432,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 booked_price: lines[0].unitPrice,
                 provider_id: lines[0].providerId,
                 is_courtesy: lines[0].isCourtesy,
+                adjustment_amount: adjustmentAmount,
+                adjustment_reason: adjustmentReason,
                 main_service_products: lines[0].products,
                 additional_services: extras,
                 applied_coupon: appliedCampaign?.couponCode,
@@ -3134,6 +3169,92 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             </div>
                                         );
                                     })}
+                                </div>
+
+                                {/* Adjustment Tool */}
+                                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAdjustmentField(!showAdjustmentField)}
+                                        className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
+                                    >
+                                        <DollarSign size={12} />
+                                        Ajustar Valor Final {adjustmentAmount !== 0 && `(R$ ${adjustmentAmount.toFixed(2)})`}
+                                    </button>
+
+                                    {showAdjustmentField && (
+                                        <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-2xl animate-in slide-in-from-top-2">
+                                            <div className="flex gap-4">
+                                                <div className="flex-1">
+                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Valor do Ajuste (+ ou -)</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
+                                                        <input
+                                                            type="number"
+                                                            className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
+                                                            placeholder="+10.00 ou -10.00"
+                                                            value={adjustmentAmount || ''}
+                                                            onChange={e => setAdjustmentAmount(parseFloat(e.target.value) || 0)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="flex-[2]">
+                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Motivo do Ajuste</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                        placeholder="Ex: Taxa extra, Desconto especial..."
+                                                        value={adjustmentReason}
+                                                        onChange={e => setAdjustmentReason(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Contextual Insights */}
+                                            {linesInsight && linesInsight.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                                    <header className="flex items-center gap-2 mb-3">
+                                                        <Clock size={12} className="text-indigo-500" />
+                                                        <h5 className="text-[9px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Histórico de Produtos Utilizados</h5>
+                                                    </header>
+                                                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 scrollbar-hide">
+                                                        {linesInsight.map((insight, iIdx) => (
+                                                            <div key={`${insight.id}-${iIdx}`} className="space-y-2">
+                                                                <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{insight.name}</p>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[8px] font-black text-slate-400 uppercase">Últimas Vendas</p>
+                                                                        {insight.pastSales.length > 0 ? insight.pastSales.map((ps, idx) => {
+                                                                            const customer = customers.find(c => c.id === ps.customerId);
+                                                                            const itemInfo = (ps.items as any[]).find(i => i.productId === insight.id);
+                                                                            return (
+                                                                                <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                    <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{customer?.name || 'Cliente'}</span>
+                                                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {itemInfo?.unitPrice?.toFixed(2) || '0.00'}</span>
+                                                                                </div>
+                                                                            );
+                                                                        }) : <p className="text-[8px] text-slate-400 italic">Sem vendas anteriores</p>}
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <p className="text-[8px] font-black text-slate-400 uppercase">Histórico de Preços</p>
+                                                                        {insight.priceHistory.length > 0 ? (insight.priceHistory as any[]).slice(-2).reverse().map((ph, idx) => (
+                                                                            <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {ph.price.toFixed(2)}</span>
+                                                                                    <span className="text-[7px] text-slate-400 uppercase font-black">{new Date(ph.date).toLocaleDateString()}</span>
+                                                                                </div>
+                                                                                <span className="text-[8px] font-bold text-slate-500 italic truncate max-w-[80px]">{ph.note || 'Alteração'}</span>
+                                                                            </div>
+                                                                        )) : <p className="text-[8px] text-slate-400 italic">Sem reajustes</p>}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Coupon / Campaign Input */}
