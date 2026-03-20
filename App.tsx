@@ -16,9 +16,10 @@ import { ServicesManagement } from './components/ServicesManagement';
 import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
+import { HRManagement } from './components/HRManagement';
 import { Login } from './components/Login';
 
-import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, PartnerExchange, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig } from './types';
+import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, PartnerExchange, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig, Employee, PayrollRecord, EmployeeLoan } from './types';
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
@@ -58,6 +59,9 @@ const App: React.FC = () => {
   const [nfseRecords, setNfseRecords] = useState<NFSeRecord[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [financialConfigs, setFinancialConfigs] = useState<FinancialConfig[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [payroll, setPayroll] = useState<PayrollRecord[]>([]);
+  const [employeeLoans, setEmployeeLoans] = useState<EmployeeLoan[]>([]);
 
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
@@ -207,7 +211,10 @@ const App: React.FC = () => {
         { data: salesData },
         { data: expensesData },
         { data: financialConfigData },
-        { data: fiscalConfigsData }
+        { data: fiscalConfigsData },
+        { data: employeesDataRaw },
+        { data: payrollDataRaw },
+        { data: employeeLoansDataRaw }
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
@@ -229,7 +236,10 @@ const App: React.FC = () => {
         supabase.from('sales').select('*').gte('date', minDate),
         supabase.from('expenses').select('*').gte('date', minDate).order('date', { ascending: false }),
         supabase.from('financial_config').select('*').order('valid_from', { ascending: false }),
-        supabase.from('professional_fiscal_config').select('*')
+        supabase.from('professional_fiscal_config').select('*'),
+        supabase.from('employees').select('*'),
+        supabase.from('payroll').select('*'),
+        supabase.from('employee_loans').select('*')
       ]);
 
       console.log('📊 [DATA FETCH] Results:', {
@@ -238,8 +248,59 @@ const App: React.FC = () => {
         customers: fetchedCustomers?.length || 0,
         appointments: fetchedAppointments?.length || 0,
         sales: salesData?.length || 0,
-        nfse: nfseRecordsData?.length || 0
+        nfse: nfseRecordsData?.length || 0,
+        employees: employeesDataRaw?.length || 0
       });
+
+      // Set HR data
+      if (employeesDataRaw) {
+        setEmployees(employeesDataRaw.map((e: any) => ({
+          id: e.id,
+          name: e.name,
+          role: e.role,
+          phone: e.phone,
+          email: e.email,
+          pixKey: e.pix_key,
+          baseSalary: e.base_salary,
+          admissionDate: e.admission_date,
+          active: e.active,
+          avatar: e.avatar,
+          bankInfo: e.bank_info
+        })));
+      }
+      if (payrollDataRaw) {
+        setPayroll(payrollDataRaw.map((p: any) => ({
+          id: p.id,
+          employeeId: p.employee_id,
+          month: p.month,
+          year: p.year,
+          baseSalary: p.base_salary,
+          commissions: p.commissions,
+          bonus: p.bonus,
+          deductions: p.deductions,
+          loanDeduction: p.loan_deduction,
+          otherDeductions: p.other_deductions,
+          otherDeductionsReason: p.other_deductions_reason,
+          netSalary: p.net_salary,
+          paymentDate: p.payment_date,
+          status: p.status,
+          notes: p.notes
+        })));
+      }
+      if (employeeLoansDataRaw) {
+        setEmployeeLoans(employeeLoansDataRaw.map((l: any) => ({
+          id: l.id,
+          employeeId: l.employee_id,
+          date: l.date,
+          totalAmount: l.total_amount,
+          installments: l.installments,
+          installmentAmount: l.installment_amount,
+          remainingAmount: l.remaining_amount,
+          status: l.status,
+          reason: l.reason
+        })));
+      }
+
 
       // Map and Set Providers
       if (providersData) {
@@ -727,6 +788,18 @@ const App: React.FC = () => {
             appointments={appointments}
             customers={customers}
             providers={providers}
+          />
+        );
+      case ViewState.RECURSOS_HUMANOS:
+        return (
+          <HRManagement 
+            employees={employees}
+            onUpdateEmployees={setEmployees}
+            payroll={payroll}
+            onUpdatePayroll={setPayroll}
+            loans={employeeLoans}
+            onUpdateLoans={setEmployeeLoans}
+            expenses={expenses}
           />
         );
       case ViewState.SETTINGS:

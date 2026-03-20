@@ -518,7 +518,9 @@ export const Agenda: React.FC<AgendaProps> = ({
     // QUICK REGISTER NEW CUSTOMER
     const handleQuickRegister = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isRegisteringClient) return;
         if (!quickRegisterData.name || !quickRegisterData.phone) return;
+        setIsRegisteringClient(true);
 
         // Check for existing customer locally first
         const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
@@ -566,7 +568,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             }
         }
 
-        setIsRegisteringClient(true);
+
         try {
             // 1. Insert into Supabase
             // Note: Assuming 'customers' table auto-generates IDs or we generate one.
@@ -639,6 +641,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsCustomerSelectionOpen(true);
     };
 
+    const normalizeString = (str: any) => {
+        if (!str) return '';
+        return String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    };
+
     // FINALIZE NEW APPOINTMENT (Stage 2: Create Appointment with Selected Customer)
     const handleSelectCustomerForAppointment = (customer: Customer) => {
         if (!draftAppointment) return;
@@ -649,11 +656,23 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
 
         // --- DUPLICITY WARNING ---
-        const existingToday = appointments.filter(a => 
-            String(a.customerId).trim().toLowerCase() === String(customer.id).trim().toLowerCase() && 
-            a.date === draftAppointment.date && 
-            a.status !== 'Cancelado'
-        );
+        const existingToday = appointments.filter(a => {
+            if (a.date !== draftAppointment.date || a.status === 'Cancelado') return false;
+
+            // Strict ID Check
+            if (String(a.customerId).trim() === String(customer.id).trim()) return true;
+
+            // Deeper Name/Phone Check (to catch duplicate customer records)
+            const otherCust = customers.find(c => String(c.id) === String(a.customerId));
+            if (otherCust) {
+                const sameName = normalizeString(otherCust.name) === normalizeString(customer.name);
+                const p1 = (otherCust.phone || '').replace(/\D/g, '');
+                const p2 = (customer.phone || '').replace(/\D/g, '');
+                const samePhone = (p1 && p2 && p1 === p2);
+                if (sameName || samePhone) return true;
+            }
+            return false;
+        });
 
         if (existingToday.length > 0) {
             const list = existingToday.map(a => `- ${a.time} (${a.status})`).join('\n');

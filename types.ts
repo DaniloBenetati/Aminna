@@ -14,7 +14,8 @@ export enum ViewState {
   SERVICOS = 'SERVICOS',
   PARTNERSHIPS = 'PARTNERSHIPS',
   COPA = 'COPA', // Novo Módulo
-  SETTINGS = 'SETTINGS'
+  SETTINGS = 'SETTINGS',
+  RECURSOS_HUMANOS = 'RECURSOS_HUMANOS'
 }
 
 export type LeadStatus = 'NOVO' | 'ATENDIMENTO' | 'QUALIFICADO' | 'PROPOSTA' | 'CONVERTIDO' | 'PERDIDO';
@@ -546,3 +547,49 @@ export interface AppointmentWithNFSe extends Appointment {
   nfseRecord?: NFSeRecord;
 }
 
+
+// --- HR TYPES ---
+
+export interface Employee {
+  id: string;
+  name: string;
+  role: string;
+  phone?: string;
+  email?: string;
+  pixKey?: string;
+  baseSalary: number;
+  admissionDate: string;
+  active: boolean;
+  avatar?: string;
+  bankInfo?: string;
+}
+
+export interface PayrollRecord {
+  id: string;
+  employeeId: string;
+  month: number;
+  year: number;
+  baseSalary: number;
+  commissions: number;
+  bonus: number;
+  deductions: number;
+  loanDeduction: number;
+  netSalary: number;
+  paymentDate?: string;
+  status: 'PAGO' | 'PENDENTE' | 'PROCESSADO';
+  otherDeductions?: number;
+  otherDeductionsReason?: string;
+  notes?: string;
+}
+
+export interface EmployeeLoan {
+  id: string;
+  employeeId: string;
+  date: string;
+  totalAmount: number;
+  installments: number;
+  installmentAmount: number;
+  remainingAmount: number;
+  status: 'ATIVO' | 'QUITADO' | 'CANCELADO';
+  reason?: string;
+}

@@ -644,20 +644,25 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const normalizeString = (str: any) => {
+        if (!str) return '';
+        return String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    };
+
     const checkForCustomerConflictAndMerge = async () => {
         const concurrentAppt = allAppointments.find(a => {
             if (a.id === appointment.id) return false;
 
             // Check if it's the same customer (by ID, Name, or Phone to catch duplicates)
             const isSameCustomer = a.customerId === customer.id || (() => {
-                const otherCust = customers.find(c => c.id === a.customerId);
+                const otherCust = customers.find(c => String(c.id) === String(a.customerId));
                 if (!otherCust) return false;
 
                 const normOtherPhone = (otherCust.phone || '').replace(/\D/g, '');
                 const normCurrentPhone = (customer.phone || '').replace(/\D/g, '');
 
-                return (normCurrentPhone && normOtherPhone === normCurrentPhone) ||
-                    (otherCust.name.toLowerCase() === customer.name.toLowerCase());
+                return (normCurrentPhone && normOtherPhone && normOtherPhone === normCurrentPhone) ||
+                    (normalizeString(otherCust.name) === normalizeString(customer.name));
             })();
 
             if (!isSameCustomer) return false;
@@ -728,10 +733,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const handleCheckIn = async () => {
         if (isSaving || restrictionData.isRestricted || handleCheckConflict()) return;
 
-        // Check for merge possibility
-        if (await checkForCustomerConflictAndMerge()) return;
-
         setIsSaving(true);
+        // Check for merge possibility
+        if (await checkForCustomerConflictAndMerge()) {
+            setIsSaving(false);
+            return;
+        }
 
         // Update all service lines to 'Aguardando' if they are 'Pendente'
         const updatedLines = lines.map(l => ({
@@ -865,10 +872,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return;
         }
 
+        setIsSaving(true);
+
         // Check merge (though unlikely in finish flow, better safe)
         if (await checkForCustomerConflictAndMerge()) return;
-
-        setIsSaving(true);
         const isReFinalizing = appointment.status === 'Concluído';
         const previousPricePaid = appointment.pricePaid || 0;
         const priceDifference = isReFinalizing ? (totalValue - previousPricePaid) : totalValue;
@@ -1171,13 +1178,31 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return;
         }
 
+        setIsSaving(true);
         // Check for merge
         if (await checkForCustomerConflictAndMerge()) {
             console.log('Merge conflict detected or handled');
             return;
         }
 
-        setIsSaving(true);
+        const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+
+        // --- HARD BLOCK DUPLICATED SLOTS ---
+        const exactDuplicate = allAppointments.find(a => 
+            a.id !== appointment.id && 
+            normalizeString(a.customerId) === normalizeString(customer.id) && 
+            a.date === appointmentDate && 
+            a.time.slice(0, 5) === appointmentTime.slice(0, 5) && 
+            String(a.providerId) === String(lines[0].providerId) &&
+            a.status !== 'Cancelado'
+        );
+
+        if (exactDuplicate && isNew) {
+            alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.');
+            if (onSelectAppointment) onSelectAppointment(exactDuplicate);
+            setIsSaving(false);
+            return;
+        }
 
         const linesToUse = manualLines || lines;
         const serviceNamesArray = linesToUse.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
@@ -1242,7 +1267,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
             ));
 
-            const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+
 
             let result;
             if (isNew) {

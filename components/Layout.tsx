@@ -73,6 +73,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: ViewState.FINANCEIRO, label: 'Financeiro', icon: BarChart3 },
     { id: ViewState.FECHAMENTOS, label: 'Fechamentos', icon: DollarSign },
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
+    { id: ViewState.RECURSOS_HUMANOS, label: 'Recursos Humanos', icon: Users },
   ].filter(item => {
     if (!userProfile) return true;
     if (userProfile.role === 'admin') return true;
@@ -95,7 +96,8 @@ export const Layout: React.FC<LayoutProps> = ({
     ViewState.ESTOQUE,
     ViewState.DAILY_APPOINTMENTS,
     ViewState.DASHBOARD,
-    ViewState.PARTNERSHIPS
+    ViewState.PARTNERSHIPS,
+    ViewState.RECURSOS_HUMANOS
   ].includes(currentView);
 
   return (
