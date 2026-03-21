@@ -157,7 +157,15 @@ const ReconciliationRow = React.memo(({
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             {row.divergenceReason}
                         </p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onManualConfirm?.(row.id); }}
+                                className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-md shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                title="Confirmar que este lançamento sistêmico corresponde a este item bancário"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                Confirmar
+                            </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onAdjustDate?.(row.id); }}
                                 className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-md border border-slate-200 transition-all flex items-center justify-center gap-1.5"
@@ -169,9 +177,9 @@ const ReconciliationRow = React.memo(({
                             <button
                                 onClick={(e) => { e.stopPropagation(); onStartLinking?.(row.id); }}
                                 className="px-2 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-black uppercase rounded-md border border-indigo-200 transition-all flex items-center justify-center gap-1.5"
-                                title="Vincular este lançamento com uma linha do extrato"
+                                title="Vincular este lançamento com uma linha do extrato (Muitos para um)"
                             >
-                                <Upload className="w-3 h-3" />
+                                <Link2 className="w-3 h-3" />
                                 Vincular
                             </button>
                         </div>
@@ -288,17 +296,45 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             updateAll = window.confirm(`Deseja aplicar este favorecido a todos os ${similarRows.length} lançamentos similares encontrados?`);
         }
 
+        // Busca potencial match no sistema após selecionar o favorecido
+        let potentialMatch: any = null;
+        if (newProvider && row.status === 'A_LANCAR' && row.type === 'DESPESA') {
+            const isProfessional = newProvider.startsWith('prov_');
+            const entityId = isProfessional ? newProvider.replace('prov_', '') : newProvider;
+            
+            // Procura despesa pendente para este favorecido com valor similar
+            potentialMatch = expenses.find(e => 
+                e.status === 'Pendente' && 
+                (isProfessional ? e.providerId === entityId : e.supplierId === entityId) &&
+                Math.abs(e.amount - row.amount) < 1.00 // Tolerância de R$ 1,00 para centavos de diferença
+            );
+        }
+
         setReconciledRows(prev => prev.map(r => {
             const matches = r.id === id || (updateAll && r.status === row.status && (
                 cleanDesc(r.description) === targetClean || 
                 (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15)))
             ));
+            
             if (matches) {
+                // Se encontramos um match potencial após o usuário identificar o favorecido,
+                // mudamos o status para A_CONFERIR para permitir o vínculo
+                if (potentialMatch && r.id === id) {
+                    return { 
+                        ...r, 
+                        suggestedProvider: newProvider,
+                        status: 'A_CONFERIR' as const,
+                        matchId: potentialMatch.id,
+                        matchType: 'DESPESA' as const,
+                        suggestedCategory: potentialMatch.category,
+                        divergenceReason: `Possível conta a pagar encontrada para ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
+                    };
+                }
                 return { ...r, suggestedProvider: newProvider };
             }
             return r;
         }));
-    }, [reconciledRows]);
+    }, [reconciledRows, expenses]);
 
     const handleQuickCreateCategory = React.useCallback((rowId: string, type: 'RECEITA' | 'DESPESA') => {
         setQuickCreatePayload({ id: rowId, type });
@@ -316,6 +352,12 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         setReconciledRows(prev => prev.map(r =>
             r.id === id ? { ...r, status: 'CONCILIADOS' as const } : r
         ));
+        // Adiciona automaticamente à fila de aprovação para facilitar
+        setApprovalQueue(prev => {
+            const next = new Set(prev);
+            next.add(id);
+            return next;
+        });
     }, []);
 
     const handleAdjustDate = React.useCallback((id: string) => {

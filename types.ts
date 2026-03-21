@@ -310,6 +310,8 @@ export interface Expense {
   providerId?: string;
   recurringId?: string;
   isReconciled?: boolean;
+  payroll_id?: string;
+  employeeId?: string;
 }
 
 export interface Supplier {
@@ -590,6 +592,7 @@ export interface EmployeeLoan {
   installments: number;
   installmentAmount: number;
   remainingAmount: number;
-  status: 'ATIVO' | 'QUITADO' | 'CANCELADO';
+  status: 'ATIVO' | 'QUITADO' | 'CANCELADO' | 'CONCLUIDO';
   reason?: string;
+  schedule?: any[];
 }

@@ -297,7 +297,8 @@ const App: React.FC = () => {
           installmentAmount: l.installment_amount,
           remainingAmount: l.remaining_amount,
           status: l.status,
-          reason: l.reason
+          reason: l.reason,
+          schedule: l.schedule
         })));
       }
 
@@ -543,8 +544,11 @@ const App: React.FC = () => {
           status: e.status,
           paymentMethod: e.payment_method,
           supplierId: e.supplier_id,
+          providerId: e.provider_id,
+          employeeId: e.employee_id,
           recurringId: e.recurring_id,
-          isReconciled: e.is_reconciled
+          isReconciled: e.is_reconciled,
+          payroll_id: e.payroll_id
         })));
       }
 
@@ -700,7 +704,7 @@ const App: React.FC = () => {
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
-        return <Finance services={services} appointments={appointments} setAppointments={setAppointments} sales={sales} setSales={setSales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} setCustomers={setCustomers} stock={stock} campaigns={campaigns} partners={partners} financialConfigs={financialConfigs} />;
+        return <Finance services={services} appointments={appointments} setAppointments={setAppointments} sales={sales} setSales={setSales} expenses={expenses} setExpenses={setExpenses} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} commissionSettings={commissionSettings} suppliers={suppliers} setSuppliers={setSuppliers} providers={providers} customers={customers} setCustomers={setCustomers} stock={stock} campaigns={campaigns} partners={partners} financialConfigs={financialConfigs} employees={employees} payroll={payroll} />;
       case ViewState.FECHAMENTOS:
         return <Closures services={services} appointments={appointments} providers={providers} customers={customers} />;
       case ViewState.ESTOQUE:

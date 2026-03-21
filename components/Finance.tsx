@@ -376,7 +376,6 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
         </div>
     );
 };
-
 interface FinanceProps {
     services: Service[];
     appointments: Appointment[];
@@ -398,10 +397,12 @@ interface FinanceProps {
     campaigns: Campaign[];
     partners: Partner[];
     financialConfigs: FinancialConfig[];
+    employees?: Employee[];
+    payroll?: PayrollRecord[];
 }
 
 export const Finance: React.FC<FinanceProps> = ({ services, appointments, setAppointments, sales, setSales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, setCustomers, stock,
-    expenses, setExpenses, campaigns = [], partners = [], financialConfigs = []
+    expenses, setExpenses, campaigns = [], partners = [], financialConfigs = [], employees = [], payroll = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
@@ -815,8 +816,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const { error } = await supabase.from('suppliers').delete().eq('id', id);
             if (error) throw error;
             setSuppliers(prev => prev.filter(s => s.id !== id));
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error deleting supplier:', error);
+            if (error.code === '23503') {
+                alert('Não é possível excluir este fornecedor pois existem despesas vinculadas a ele. Exclua ou altere as despesas primeiro.');
+            } else {
+                alert('Erro ao excluir fornecedor: ' + (error.message || 'Erro desconhecido'));
+            }
         }
     };
 
@@ -1009,7 +1015,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     }, [transactions, startDate, endDate]);
 
     const combinedSuppliers = useMemo(() => {
-        const supList = (suppliers || []).map(s => ({ ...s, isProvider: false }));
+        const supList = (suppliers || []).map(s => ({ ...s, isProvider: false, isEmployee: false }));
         const provList = (providers || []).map(p => ({
             id: `prov_${p.id}`,
             name: p.name,
@@ -1018,10 +1024,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             phone: p.phone,
             email: '',
             isProvider: true,
+            isEmployee: false,
             originalProvider: p
         }));
-        return [...supList, ...provList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-    }, [suppliers, providers]);
+        const empList = (employees || []).map(e => ({
+            id: `emp_${e.id}`,
+            name: e.name,
+            category: e.role,
+            document: '-',
+            phone: e.phone,
+            email: '',
+            isProvider: false,
+            isEmployee: true,
+            originalEmployee: e
+        }));
+        return [...supList, ...provList, ...empList].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [suppliers, providers, employees]);
 
     const summary = useMemo(() => calculateDailySummary(filteredTransactions), [filteredTransactions]);
     const { totalServices, totalProducts, totalAjustes, totalTips, totalAnticipationFees, totalRevenue, servicesWithTips } = summary;
@@ -1123,27 +1141,47 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const filteredPayables = useMemo(() => {
         return expenses.filter(exp => {
-            const isPendenteOuAtrasado = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(23, 59, 59, 999));
             const matchesDate = payablesIgnoreDateFilter 
                 ? (exp.status === 'Pendente' || (exp.date >= startDate && exp.date <= endDate))
                 : (exp.date >= startDate && exp.date <= endDate);
             
-            const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
+            const relatedPayroll = (exp as any).payroll_id ? payroll.find(pay => pay.id === (exp as any).payroll_id) : null;
+            const relatedEmployee = relatedPayroll ? employees.find(emp => emp.id === relatedPayroll.employeeId) : null;
+
+            const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || 
+                               providers.find(p => p.id === exp.providerId)?.name || 
+                               employees.find(e => e.id === exp.employeeId)?.name ||
+                               (exp.payroll_id ? employees.find(emp => emp.id === payroll.find(pay => pay.id === exp.payroll_id)?.employeeId)?.name : '') ||
+                               '';
+            
             const searchLower = payablesSearch.toLowerCase();
             const matchesSearch = exp.description.toLowerCase().includes(searchLower) || 
-                                supplierName.toLowerCase().includes(searchLower);
+                                 (supplierName || '').toLowerCase().includes(searchLower);
             
-            const isAtrasado = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+            const normalizedStatus = (exp.status || '').toUpperCase();
+            const isAtrasado = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+            
             const matchesStatus = payablesStatusFilter === 'ALL' || 
-                                (payablesStatusFilter === 'Atrasado' ? isAtrasado : exp.status === payablesStatusFilter);
+                                (payablesStatusFilter === 'Atrasado' ? isAtrasado : 
+                                 payablesStatusFilter === 'Pago' ? normalizedStatus === 'PAGO' :
+                                 payablesStatusFilter === 'Pendente' ? (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') :
+                                 normalizedStatus === payablesStatusFilter.toUpperCase());
             
-            const matchesSupplier = payablesSupplierFilter === 'ALL' || exp.supplierId === payablesSupplierFilter;
+            // For employee-linked expenses via payroll_id or direct employee_id, we map them to "emp_ID" in the filter check
+            let entityId = exp.supplierId || 
+                           (exp.providerId ? `prov_${exp.providerId}` : 
+                           (exp.employeeId ? `emp_${exp.employeeId}` : null));
+            if (!entityId && relatedEmployee) {
+                entityId = `emp_${relatedEmployee.id}`;
+            }
+
+            const matchesSupplier = payablesSupplierFilter === 'ALL' || entityId === payablesSupplierFilter;
 
             const isNotRevenue = exp.dreClass !== 'REVENUE';
 
             return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, payablesIgnoreDateFilter]);
+    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, employees, payroll]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -1406,7 +1444,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         if (expense) { 
             setEditingExpenseId(expense.id); 
             // Map supplierId/providerId to the select format (prov_ID for professionals)
-            const combinedId = expense.providerId ? `prov_${expense.providerId}` : (expense.supplierId || '');
+            const combinedId = expense.providerId ? `prov_${expense.providerId}` : 
+                             (expense.employeeId ? `emp_${expense.employeeId}` : 
+                             (expense.supplierId || ''));
             setExpenseForm({ ...expense, supplierId: combinedId }); 
             setCategoryInputSearch(expense.category || '');
             setRecurrenceMonths(1); 
@@ -1435,6 +1475,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 paymentMethod: e.payment_method,
                 supplierId: e.supplier_id,
                 providerId: e.provider_id,
+                employeeId: e.employee_id,
+                payroll_id: e.payroll_id,
                 recurringId: e.recurring_id
             })));
         }
@@ -1582,8 +1624,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             date: expenseForm.date,
             status: expenseForm.status,
             payment_method: expenseForm.paymentMethod || 'Pix',
-            supplier_id: expenseForm.supplierId?.startsWith('prov_') ? null : (expenseForm.supplierId || null),
-            provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null)
+            supplier_id: (expenseForm.supplierId?.startsWith('prov_') || expenseForm.supplierId?.startsWith('emp_')) ? null : (expenseForm.supplierId || null),
+            provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null),
+            employee_id: expenseForm.supplierId?.startsWith('emp_') ? expenseForm.supplierId.replace('emp_', '') : (expenseForm.employeeId || null)
         };
 
         try {
@@ -2588,7 +2631,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             if (exp) {
                                                                 displayDesc = exp.description;
                                                                 displayCat = exp.category;
-                                                                displayEnt = suppliers.find(s => s.id === exp.supplierId)?.name || '';
+                                                                displayEnt = suppliers.find(s => s.id === exp.supplierId)?.name || 
+                                                                             providers.find(p => p.id === exp.providerId)?.name || 
+                                                                             employees.find(emp => emp.id === exp.employeeId)?.name || '';
                                                             }
                                                         } else if (match.type === 'SALE') {
                                                             const sale = sales.find(s => s.id === match.id);
@@ -2692,11 +2737,26 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         >
                                                                             <option value="">Selecione...</option>
                                                                             {t.type === 'DESPESA'
-                                                                                ? [
-                                                                                    ...suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>),
-                                                                                    ...providers.map(p => <option key={`prov_${p.id}`} value={p.name}>{p.name}</option>)
-                                                                                ]
-                                                                                : customers.map(c => <option key={c.id} value={c.name}>{c.name}</option>)
+                                                                                ? (
+                                                                                    <>
+                                                                                        <optgroup label="Fornecedores" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                            {combinedSuppliers.filter(s => !(s as any).isProvider && !(s as any).isEmployee).map(s => (
+                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                            ))}
+                                                                                        </optgroup>
+                                                                                        <optgroup label="Profissionais" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                            {combinedSuppliers.filter(s => (s as any).isProvider).map(s => (
+                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                            ))}
+                                                                                        </optgroup>
+                                                                                        <optgroup label="Funcionários" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                            {combinedSuppliers.filter(s => (s as any).isEmployee).map(s => (
+                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                            ))}
+                                                                                        </optgroup>
+                                                                                    </>
+                                                                                )
+                                                                                : customers.map(c => <option key={c.id} value={c.name}>{c.name?.toUpperCase()}</option>)
                                                                             }
                                                                         </select>
                                                                         <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -2873,9 +2933,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     onChange={e => setPayablesSupplierFilter(e.target.value)}
                                                 >
                                                     <option value="ALL">TODOS FAVORECIDOS</option>
-                                                    {suppliers.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(s => (
-                                                        <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
-                                                    ))}
+                                                    <optgroup label="Fornecedores">
+                                                        {combinedSuppliers.filter(s => !(s as any).isProvider && !(s as any).isEmployee).map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                    <optgroup label="Profissionais">
+                                                        {combinedSuppliers.filter(s => (s as any).isProvider).map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                    <optgroup label="Funcionários">
+                                                        {combinedSuppliers.filter(s => (s as any).isEmployee).map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                                                        ))}
+                                                    </optgroup>
                                                 </select>
                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
                                             </div>
@@ -2901,7 +2973,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         onChange={e => setPayablesSupplierFilter(e.target.value)}
                                                     >
                                                         <option value="ALL">TODOS FAVORECIDOS</option>
-                                                        {suppliers.map(s => (
+                                                        {combinedSuppliers.map(s => (
                                                             <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
                                                         ))}
                                                     </select>
@@ -2967,8 +3039,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                                 {filteredPayables.length > 0 ? filteredPayables.map(exp => {
-                                                    const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || '';
-                                                    const isOverdue = exp.status === 'Pendente' && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+                                                    const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || 
+                                                                       providers.find(p => p.id === exp.providerId)?.name || 
+                                                                       employees.find(emp => emp.id === exp.employeeId)?.name || 
+                                                                       ((exp as any).payroll_id ? employees.find(emp => emp.id === payroll.find(pay => pay.id === (exp as any).payroll_id)?.employeeId)?.name : '');
+                                                    const normalizedStatus = (exp.status || '').toUpperCase();
+                                                    const isOverdue = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
                                                     return (
                                                         <tr key={exp.id} className={`group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors ${selectedExpenseIds.includes(exp.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
                                                             <td className="px-4 py-4">
@@ -4654,13 +4730,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         </div>
                                         <div className="relative">
                                             <select
+                                                autoComplete="off"
                                                 value={expenseForm.supplierId || ''}
                                                 onChange={e => {
                                                     const val = e.target.value;
                                                     let updatedForm = { ...expenseForm, supplierId: val };
                                                     
-                                                    // Auto-fill category if supplier has one
-                                                    if (val && !val.startsWith('prov_')) {
+                                                    // Auto-fill category ONLY for Fornecedores (suppliers)
+                                                    if (val && !val.startsWith('prov_') && !val.startsWith('emp_')) {
                                                         const sup = suppliers.find(s => s.id === val);
                                                         if (sup?.category) {
                                                             const cat = expenseCategories.find(c => c.name === sup.category);
@@ -4676,12 +4753,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 }}
                                                 className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                             >
-                                                <option value="">Nenhum</option>
+                                                <option value="">Nenhum / Geral</option>
                                                 <optgroup label="Fornecedores">
-                                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>)}
                                                 </optgroup>
                                                 <optgroup label="Profissionais">
-                                                    {providers.map(p => <option key={p.id} value={`prov_${p.id}`}>{p.name}</option>)}
+                                                    {providers.map(p => <option key={p.id} value={`prov_${p.id}`}>{p.name?.toUpperCase()}</option>)}
+                                                </optgroup>
+                                                <optgroup label="Funcionários">
+                                                    {employees.map(e => <option key={e.id} value={`emp_${e.id}`}>{e.name?.toUpperCase()}</option>)}
                                                 </optgroup>
                                             </select>
                                             <Users size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -5038,19 +5118,40 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <select
                                                 value={editReconciledForm.supplierId}
                                                 onChange={(e) => {
-                                                    const sup = suppliers.find(s => s.id === e.target.value);
+                                                    const val = e.target.value;
+                                                    let name = '';
+                                                    if (val.startsWith('prov_')) {
+                                                        name = providers.find(p => p.id === val.replace('prov_', ''))?.name || '';
+                                                    } else if (val.startsWith('emp_')) {
+                                                        name = employees.find(e => e.id === val.replace('emp_', ''))?.name || '';
+                                                    } else {
+                                                        name = suppliers.find(s => s.id === val)?.name || '';
+                                                    }
+
                                                     setEditReconciledForm({
                                                         ...editReconciledForm,
-                                                        supplierId: e.target.value,
-                                                        customerOrProviderName: sup?.name || ''
+                                                        supplierId: val,
+                                                        customerOrProviderName: name
                                                     });
                                                 }}
                                                 className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
                                             >
                                                 <option value="">Selecione...</option>
-                                                {suppliers.map(sup => (
-                                                    <option key={sup.id} value={sup.id}>{sup.name}</option>
-                                                ))}
+                                                <optgroup label="Fornecedores">
+                                                    {suppliers.map(sup => (
+                                                        <option key={sup.id} value={sup.id}>{sup.name?.toUpperCase()}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="Profissionais">
+                                                    {providers.map(p => (
+                                                        <option key={p.id} value={`prov_${p.id}`}>{p.name?.toUpperCase()}</option>
+                                                    ))}
+                                                </optgroup>
+                                                <optgroup label="Funcionários">
+                                                    {employees.map(e => (
+                                                        <option key={e.id} value={`emp_${e.id}`}>{e.name?.toUpperCase()}</option>
+                                                    ))}
+                                                </optgroup>
                                             </select>
                                         </div>
                                     </div>

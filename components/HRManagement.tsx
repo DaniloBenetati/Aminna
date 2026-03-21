@@ -27,7 +27,8 @@ import {
     History,
     FileText,
     Receipt,
-    Printer
+    Printer,
+    Pencil
 } from 'lucide-react';
 import { Employee, PayrollRecord, EmployeeLoan, ViewState } from '../types';
 import { Avatar } from './Avatar';
@@ -136,13 +137,66 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         setEndDate(toLocalDateStr(end));
     }, [timeView, dateRef]);
 
-    // Derived filtered payroll
-    const filteredPayroll = useMemo(() => {
-        return payroll.filter(p => {
-            const dateStr = `${p.year}-${String(p.month).padStart(2, '0')}-01`;
-            return dateStr >= startDate && dateStr <= endDate && dateStr >= "2026-01-01";
+    // Derived filtered payroll and Dynamic View Data
+    const payrollViewData = useMemo(() => {
+        const targetMonth = dateRef.getMonth() + 1;
+        const targetYear = dateRef.getFullYear();
+        
+        // Return a unified list for the current month
+        return employees.filter(e => e.active).map(emp => {
+            const existing = payroll.find(p => p.employeeId === emp.id && p.month === targetMonth && p.year === targetYear);
+            
+            // Calculate active loans for this month that aren't already PAGO in the schedule
+            const employeeLoans = loans.filter(l => 
+                l.employeeId === emp.id && 
+                l.status === 'ATIVO' &&
+                (l.remainingAmount || 0) > 0
+            );
+            
+            let liveLoanDeduction = 0;
+            employeeLoans.forEach(loan => {
+                const s = loan.schedule || [];
+                const inst = s.find((i: any) => i.month === targetMonth && i.year === targetYear);
+                // We show it if it's there and not cancelled
+                if (inst && inst.status !== 'CANCELADO') {
+                    liveLoanDeduction += (Number(inst.amount) || 0);
+                }
+            });
+            
+            // If the record is already PAGO, we show its exact historic state
+            if (existing && existing.status === 'PAGO') {
+                return { ...existing, isDraft: false };
+            }
+            
+            // For PENDENTE or NON-EXISTENT payroll, we show live calculations
+            const baseSalary = emp.baseSalary || 0;
+            const commissions = existing?.commissions || 0;
+            const bonus = existing?.bonus || 0;
+            const otherDeductions = existing?.otherDeductions || 0;
+            
+            // If existing has a loanDeduction > 0, we trust it, otherwise we use live calculation
+            const loanDeduction = (existing && existing.loanDeduction > 0) ? existing.loanDeduction : liveLoanDeduction;
+            
+            const netSalary = baseSalary + commissions + bonus - loanDeduction - otherDeductions;
+            
+            return {
+                id: existing?.id || `draft-${emp.id}`,
+                employeeId: emp.id,
+                month: targetMonth,
+                year: targetYear,
+                baseSalary,
+                commissions,
+                bonus,
+                deductions: existing?.deductions || 0,
+                loanDeduction,
+                otherDeductions,
+                otherDeductionsReason: existing?.otherDeductionsReason || '',
+                netSalary,
+                status: existing?.status || 'PENDENTE',
+                isDraft: !existing
+            };
         });
-    }, [payroll, startDate, endDate]);
+    }, [employees, payroll, loans, dateRef]);
 
     // Initial Employee Form State
     const [employeeForm, setEmployeeForm] = useState<Partial<Employee>>({
@@ -268,6 +322,57 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         });
         setIsEmployeeModalOpen(true);
     };
+    const syncPayrollToExpense = async (payrollRec: PayrollRecord) => {
+        const employee = employees.find(emp => emp.id === payrollRec.employeeId);
+        const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const refMonth = monthNames[payrollRec.month];
+        const description = `FOLHA ${refMonth.toUpperCase()}/${payrollRec.year} - ${employee?.name.toUpperCase() || 'COLABORADOR'}`;
+        
+        // Status mapping
+        const expenseStatus = payrollRec.status === 'PAGO' ? 'Pago' : 'Pendente';
+        
+        // Determine date: end of the month of reference
+        const lastDay = new Date(payrollRec.year, payrollRec.month, 0).toISOString().split('T')[0];
+
+        try {
+            // Check if expense already exists for this payroll_id
+            const { data: existing } = await supabase
+                .from('expenses')
+                .select('id')
+                .eq('payroll_id', payrollRec.id)
+                .maybeSingle();
+
+            if (existing) {
+                // Update
+                await supabase
+                    .from('expenses')
+                    .update({
+                        description,
+                        amount: payrollRec.netSalary,
+                        status: expenseStatus,
+                        date: lastDay,
+                        employee_id: payrollRec.employeeId // Ensure link is updated/set
+                    })
+                    .eq('id', existing.id);
+            } else {
+                // Insert
+                await supabase
+                    .from('expenses')
+                    .insert([{
+                        payroll_id: payrollRec.id,
+                        employee_id: payrollRec.employeeId, // NEW: Link directly to employee
+                        description,
+                        amount: payrollRec.netSalary,
+                        status: expenseStatus,
+                        date: lastDay,
+                        category: 'PESSOAL ADMINISTRATIVO'
+                    }]);
+            }
+        } catch (err) {
+            console.error("Erro ao sincronizar folha com financeiro:", err);
+        }
+    };
+
 
     const handleUpdatePayroll = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -299,25 +404,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
 
             if (error) throw error;
 
-            // Also update the linked expense in financial module if it exists and is PENDING
-            const employee = employees.find(emp => emp.id === updatedRecord.employeeId);
-            const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-            const refMonth = monthNames[updatedRecord.month];
-            
-            // Heuristic to find the synced expense
-            const searchTerms = [
-                refMonth.toUpperCase(),
-                employee?.name.split(' ')[0].toUpperCase() || ''
-            ];
-
-            const expenseToUpdate = (expenses || []).find(ex => 
-                ex.status === 'PENDING' && 
-                searchTerms.every(term => ex.description?.toUpperCase().includes(term))
-            );
-
-            if (expenseToUpdate) {
-                await supabase.from('expenses').update({ amount: updatedRecord.netSalary }).eq('id', expenseToUpdate.id);
-            }
+            // Sincronizar com financeiro (expenses)
+            await syncPayrollToExpense(updatedRecord);
 
             onUpdatePayroll(prev => prev.map(p => p.id === updatedRecord.id ? updatedRecord : p));
             setIsPayrollModalOpen(false);
@@ -350,27 +438,18 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                     l.status === 'ATIVO' && 
                     (l.remainingAmount || 0) > 0
                 );
-                
                 let loanDeduction = 0;
                 for (const loan of employeeLoans) {
-                    // PARSE VIRTUAL SCHEDULE
-                    let schedule: any[] = [];
-                    try {
-                        if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                            schedule = JSON.parse(loan.reason);
-                        }
-                    } catch (e) {
-                        console.warn("Could not parse schedule for loan:", loan.id);
-                    }
+                    const schedule = loan.schedule || [];
 
                     if (schedule.length > 0) {
                         // Find installment for target period
-                        const inst = schedule.find(i => i.month === targetMonth && i.year === targetYear);
+                        const inst = schedule.find((i: any) => i.month === targetMonth && i.year === targetYear);
                         if (inst && inst.status !== 'CANCELADO') {
                             loanDeduction += (Number(inst.amount) || 0);
                         }
                     } else {
-                        // FALLBACK TO AUTO-CALCULATION
+                        // Chronological Logic (Fallback)
                         const loanDate = new Date(loan.date + "T12:00:00");
                         const loanM = loanDate.getMonth() + 1;
                         const loanY = loanDate.getFullYear();
@@ -399,7 +478,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                     
                     if (error) throw error;
                     if (data && data[0]) {
-                        updatedPayroll.push({
+                        const newRec: PayrollRecord = {
                             id: data[0].id,
                             employeeId: emp.id,
                             month: targetMonth,
@@ -409,27 +488,122 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                             otherDeductions: 0,
                             netSalary: data[0].net_salary,
                             status: 'PENDENTE'
-                        } as PayrollRecord);
-                    }
-                } else if (existing.loanDeduction !== loanDeduction) {
-                    // Force update if the loan deduction differs from our calculation
-                    const diff = loanDeduction - (existing.loanDeduction || 0);
-                    const newNet = (existing.netSalary || 0) - diff;
+                        } as PayrollRecord;
+                        
+                        // Deduct from loans and update schedules
+                        for (const loan of employeeLoans) {
+                            let schedule = [...(loan.schedule || [])];
 
-                    const { error } = await supabase
-                        .from('payroll')
-                        .update({ 
-                            loan_deduction: loanDeduction,
-                            net_salary: newNet 
-                        })
-                        .eq('id', existing.id);
-                    
-                    if (error) throw error;
-                    updatedPayroll.push({ 
-                        ...existing, 
-                        loanDeduction, 
-                        netSalary: newNet 
-                    });
+                            if (schedule.length > 0) {
+                                const instIdx = schedule.findIndex(i => i.month === targetMonth && i.year === targetYear);
+                                if (instIdx !== -1 && schedule[instIdx].status !== 'PAGO') {
+                                    const amount = Number(schedule[instIdx].amount) || 0;
+                                    schedule[instIdx].status = 'PAGO';
+                                    const newRemaining = Math.max(0, (loan.remainingAmount || 0) - amount);
+                                    
+                                    await supabase.from('employee_loans')
+                                        .update({ 
+                                            schedule,
+                                            remaining_amount: newRemaining,
+                                            status: newRemaining <= 0 ? 'CONCLUIDO' : 'ATIVO'
+                                        })
+                                        .eq('id', loan.id);
+                                    
+                                    onUpdateLoans(prev => prev.map(l => l.id === loan.id ? {
+                                        ...l,
+                                        schedule,
+                                        remainingAmount: newRemaining,
+                                        status: newRemaining <= 0 ? 'CONCLUIDO' : l.status
+                                    } : l));
+                                }
+                            } else {
+                                const newRemaining = Math.max(0, (loan.remainingAmount || 0) - (loan.installmentAmount || 0));
+                                await supabase.from('employee_loans')
+                                    .update({ 
+                                        remaining_amount: newRemaining,
+                                        status: newRemaining <= 0 ? 'CONCLUIDO' : 'ATIVO'
+                                    })
+                                    .eq('id', loan.id);
+                                
+                                onUpdateLoans(prev => prev.map(l => l.id === loan.id ? {
+                                    ...l,
+                                    remainingAmount: newRemaining,
+                                    status: newRemaining <= 0 ? 'CONCLUIDO' : l.status
+                                } : l));
+                            }
+                        }
+
+                        updatedPayroll.push(newRec);
+                        await syncPayrollToExpense(newRec);
+                    }
+                } else {
+                    // APPLY LOANS TO EXISTING PAYROLL
+                    let currentLoanDeduction = Number(existing.loanDeduction) || 0;
+                    let currentNetSalary = Number(existing.netSalary) || 0;
+                    let hasNewDeductions = false;
+
+                    for (const loan of employeeLoans) {
+                        let schedule = [...(loan.schedule || [])];
+
+                        if (schedule.length > 0) {
+                            const instIdx = schedule.findIndex(i => i.month === targetMonth && i.year === targetYear);
+                            // Avoid double deduction: only apply if the installment is not marked PAGO
+                            if (instIdx !== -1 && schedule[instIdx].status !== 'PAGO') {
+                                const amount = Number(schedule[instIdx].amount) || 0;
+                                schedule[instIdx].status = 'PAGO';
+                                const newRemaining = Math.max(0, (loan.remainingAmount || 0) - amount);
+                                
+                                currentLoanDeduction += amount;
+                                currentNetSalary -= amount;
+                                hasNewDeductions = true;
+
+                                await supabase.from('employee_loans').update({ 
+                                    schedule,
+                                    remaining_amount: newRemaining,
+                                    status: newRemaining <= 0 ? 'CONCLUIDO' : 'ATIVO'
+                                }).eq('id', loan.id);
+                                
+                                onUpdateLoans(prev => prev.map(l => l.id === loan.id ? {
+                                    ...l,
+                                    schedule,
+                                    remainingAmount: newRemaining,
+                                    status: newRemaining <= 0 ? 'CONCLUIDO' : l.status
+                                } : l));
+                            }
+                        } else {
+                            if (currentLoanDeduction === 0) {
+                                const amount = Number(loan.installmentAmount) || 0;
+                                currentLoanDeduction += amount;
+                                currentNetSalary -= amount;
+                                hasNewDeductions = true;
+
+                                const newRemaining = Math.max(0, (loan.remainingAmount || 0) - amount);
+                                await supabase.from('employee_loans').update({ 
+                                    remaining_amount: newRemaining,
+                                    status: newRemaining <= 0 ? 'CONCLUIDO' : 'ATIVO'
+                                }).eq('id', loan.id);
+                                
+                                onUpdateLoans(prev => prev.map(l => l.id === loan.id ? {
+                                    ...l,
+                                    remainingAmount: newRemaining,
+                                    status: newRemaining <= 0 ? 'CONCLUIDO' : l.status
+                                } : l));
+                            }
+                        }
+                    }
+
+                    if (hasNewDeductions) {
+                        const { error } = await supabase.from('payroll').update({ 
+                            loan_deduction: currentLoanDeduction,
+                            net_salary: currentNetSalary 
+                        }).eq('id', existing.id);
+                        
+                        if (!error) {
+                            const updRec = { ...existing, loanDeduction: currentLoanDeduction, netSalary: currentNetSalary };
+                            await syncPayrollToExpense(updRec);
+                            updatedPayroll.push(updRec);
+                        }
+                    }
                 }
             }
 
@@ -474,7 +648,6 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             const scheduleJson = JSON.stringify(initialSchedule);
 
             if (editingLoan) {
-                // UPDATE LOAN
                 const { error: loanError } = await supabase
                     .from('employee_loans')
                     .update({
@@ -483,7 +656,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         installment_amount: installmentValue,
                         remaining_amount: loanForm.totalAmount,
                         date: loanForm.date,
-                        reason: scheduleJson, // Store schedule in reason field
+                        reason: loanForm.reason, 
+                        schedule: initialSchedule,
                         status: 'ATIVO',
                         installments: loanForm.installments
                     })
@@ -498,12 +672,12 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                     installmentAmount: installmentValue,
                     remainingAmount: loanForm.totalAmount,
                     date: loanForm.date,
-                    reason: scheduleJson,
+                    reason: loanForm.reason,
+                    schedule: initialSchedule,
                     installments: loanForm.installments
                 } : l));
 
             } else {
-                // INSERT NEW LOAN
                 const { data, error } = await supabase
                     .from('employee_loans')
                     .insert([{
@@ -512,7 +686,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         installment_amount: installmentValue,
                         remaining_amount: loanForm.totalAmount,
                         date: loanForm.date,
-                        reason: scheduleJson,
+                        reason: loanForm.reason,
+                        schedule: initialSchedule,
                         status: 'ATIVO',
                         installments: loanForm.installments
                     }])
@@ -529,6 +704,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         remainingAmount: data[0].remaining_amount,
                         date: data[0].date,
                         reason: data[0].reason,
+                        schedule: data[0].schedule,
                         status: data[0].status,
                         installments: data[0].installments
                     };
@@ -573,30 +749,57 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             if (loanError) throw loanError;
 
             // 2. Identify and update all affected payroll records
-            const startDate = new Date(loanToDelete.date + "T12:00:00");
-            const insts = Number(loanToDelete.installments || 1);
-            const instValue = Number(loanToDelete.installmentAmount || 0);
+            const schedule = loanToDelete.schedule || [];
             
-            for (let i = 0; i < insts; i++) {
-                const targetDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
-                const m = targetDate.getMonth() + 1;
-                const y = targetDate.getFullYear();
-
-                const payRec = payroll.find(p => String(p.employeeId) === String(loanToDelete.employeeId) && Number(p.month) === m && Number(p.year) === y);
-                if (payRec) {
-                    const newVal = Math.max(0, Number(payRec.loanDeduction || 0) - instValue);
-                    const newNetRec = Number(payRec.netSalary || 0) + instValue;
-                    
-                    const { error: updErr } = await supabase.from('payroll')
-                        .update({ loan_deduction: newVal, net_salary: newNetRec })
-                        .eq('id', payRec.id);
+            if (schedule.length > 0) {
+                // Use the precise schedule to revert deductions
+                for (const inst of schedule) {
+                    const payRec = payroll.find(p => String(p.employeeId) === String(loanToDelete.employeeId) && Number(p.month) === inst.month && Number(p.year) === inst.year);
+                    if (payRec) {
+                        const amount = Number(inst.amount) || 0;
+                        const newVal = Math.max(0, Number(payRec.loanDeduction || 0) - amount);
+                        const newNetRec = Number(payRec.netSalary || 0) + amount;
                         
-                    if (!updErr) {
-                        onUpdatePayroll(prev => prev.map(p => p.id === payRec.id ? {
-                            ...p,
-                            loanDeduction: newVal,
-                            netSalary: newNetRec
-                        } : p));
+                        const { error: updErr } = await supabase.from('payroll')
+                            .update({ loan_deduction: newVal, net_salary: newNetRec })
+                            .eq('id', payRec.id);
+                            
+                        if (!updErr) {
+                            onUpdatePayroll(prev => prev.map(p => p.id === payRec.id ? {
+                                ...p,
+                                loanDeduction: newVal,
+                                netSalary: newNetRec
+                            } : p));
+                        }
+                    }
+                }
+            } else {
+                // Fallback for loans without schedule
+                const startDate = new Date(loanToDelete.date + "T12:00:00");
+                const insts = Number(loanToDelete.installments || 1);
+                const instValue = Number(loanToDelete.installmentAmount || 0);
+                
+                for (let i = 0; i < insts; i++) {
+                    const targetDate = new Date(startDate.getFullYear(), startDate.getMonth() + i, 1);
+                    const m = targetDate.getMonth() + 1;
+                    const y = targetDate.getFullYear();
+
+                    const payRec = payroll.find(p => String(p.employeeId) === String(loanToDelete.employeeId) && Number(p.month) === m && Number(p.year) === y);
+                    if (payRec) {
+                        const newVal = Math.max(0, Number(payRec.loanDeduction || 0) - instValue);
+                        const newNetRec = Number(payRec.netSalary || 0) + instValue;
+                    
+                        const { error: updErr } = await supabase.from('payroll')
+                            .update({ loan_deduction: newVal, net_salary: newNetRec })
+                            .eq('id', payRec.id);
+                            
+                        if (!updErr) {
+                            onUpdatePayroll(prev => prev.map(p => p.id === payRec.id ? {
+                                ...p,
+                                loanDeduction: newVal,
+                                netSalary: newNetRec
+                            } : p));
+                        }
                     }
                 }
             }
@@ -622,6 +825,102 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         } catch (err) {
             console.error("Erro ao excluir registro de folha:", err);
             alert("Erro ao excluir registro.");
+        }
+    };
+
+    const handlePayPayroll = async (payrollId: string) => {
+        let record = payrollViewData.find(p => p.id === payrollId);
+        if (!record) return;
+
+        if (!confirm(`Confirmar pagamento de R$ ${record.netSalary?.toLocaleString('pt-BR')} para ${employees.find(e => e.id === record.employeeId)?.name}?`)) return;
+
+        try {
+            let actualId = payrollId;
+            let updatedRec = { ...record, status: 'PAGO' as const, paymentDate: new Date().toISOString().split('T')[0] };
+
+            if (record.isDraft) {
+                // First, create the record since it's a draft
+                const { data, error } = await supabase
+                    .from('payroll')
+                    .insert([{
+                        employee_id: record.employeeId,
+                        month: record.month,
+                        year: record.year,
+                        base_salary: record.baseSalary,
+                        commissions: record.commissions,
+                        bonus: record.bonus,
+                        deductions: record.deductions || 0,
+                        loan_deduction: record.loanDeduction,
+                        other_deductions: record.otherDeductions,
+                        other_deductions_reason: record.otherDeductionsReason,
+                        net_salary: record.netSalary,
+                        status: 'PAGO',
+                        payment_date: new Date().toISOString().split('T')[0]
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                if (data && data[0]) {
+                    actualId = data[0].id;
+                    updatedRec.id = actualId;
+                }
+            } else {
+                const { error } = await supabase
+                    .from('payroll')
+                    .update({ 
+                        status: 'PAGO', 
+                        payment_date: new Date().toISOString().split('T')[0],
+                        loan_deduction: record.loanDeduction, // Ensure the live calculated loan is saved
+                        net_salary: record.netSalary
+                    })
+                    .eq('id', payrollId);
+
+                if (error) throw error;
+            }
+
+            // Deduct from Loan balance if not already deducted in schedule
+            // (We reuse the logic from process payroll here)
+            const targetMonth = record.month;
+            const targetYear = record.year;
+            const empLoans = loans.filter(l => l.employeeId === record.employeeId && l.status === 'ATIVO');
+            
+            for (const loan of empLoans) {
+                let schedule = [...(loan.schedule || [])];
+                const instIdx = schedule.findIndex(i => i.month === targetMonth && i.year === targetYear);
+                if (instIdx !== -1 && schedule[instIdx].status !== 'PAGO') {
+                    const amount = Number(schedule[instIdx].amount) || 0;
+                    if (record.loanDeduction > 0) { // Only deduct from loan if it was part of this payroll's deduction
+                        schedule[instIdx].status = 'PAGO';
+                        const newRemaining = Math.max(0, (loan.remainingAmount || 0) - amount);
+                        
+                        await supabase.from('employee_loans').update({ 
+                            schedule,
+                            remaining_amount: newRemaining,
+                            status: newRemaining <= 0 ? 'CONCLUIDO' : 'ATIVO'
+                        }).eq('id', loan.id);
+                        
+                        onUpdateLoans(prev => prev.map(l => l.id === loan.id ? {
+                            ...l,
+                            schedule,
+                            remainingAmount: newRemaining,
+                            status: newRemaining <= 0 ? 'CONCLUIDO' : l.status
+                        } : l));
+                    }
+                }
+            }
+
+            // Sync with financial module
+            await syncPayrollToExpense(updatedRec);
+
+            // Update local state
+            onUpdatePayroll(prev => {
+                const filtered = prev.filter(p => p.id !== record.id); // Remove old record/draft
+                return [...filtered, updatedRec];
+            });
+
+        } catch (err) {
+            console.error("Erro ao dar baixa na folha:", err);
+            alert("Erro ao processar baixa.");
         }
     };
 
@@ -889,7 +1188,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                {filteredPayroll.length === 0 ? (
+                                {payrollViewData.length === 0 ? (
                                     <tr>
                                         <td colSpan={9} className="px-8 py-20 text-center">
                                             <div className="flex flex-col items-center gap-3 opacity-30">
@@ -899,10 +1198,10 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredPayroll.map(rec => {
+                                    payrollViewData.map(rec => {
                                         const monthNames = ["", "JAN", "FEV", "MAR", "ABR", "MAI", "JUN", "JUL", "AGO", "SET", "OUT", "NOV", "DEZ"];
                                         return (
-                                            <tr key={rec.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                                            <tr key={rec.id} className={`hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors ${rec.isDraft ? 'opacity-70 italic' : ''}`}>
                                                 <td className="px-8 py-5 font-black text-slate-950 dark:text-white uppercase">{employees.find(e => e.id === rec.employeeId)?.name || 'N/A'}</td>
                                                 <td className="px-8 py-5">
                                                     <span className="px-3 py-1 bg-slate-100 dark:bg-zinc-800 rounded-lg text-[10px] font-black text-slate-600 dark:text-slate-300">
@@ -948,7 +1247,12 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                                                 Limpar
                                                             </button>
                                                         )}
-                                                        <button className="text-zinc-950 dark:text-zinc-400 font-black text-[10px] uppercase hover:underline">Baixar</button>
+                                                        <button 
+                                                            onClick={rec.status !== 'PAGO' ? () => handlePayPayroll(rec.id) : undefined}
+                                                            className={`font-black text-[10px] uppercase hover:underline ${rec.status === 'PAGO' ? 'text-slate-300 cursor-not-allowed' : 'text-zinc-950 dark:text-zinc-400'}`}
+                                                        >
+                                                            {rec.status === 'PAGO' ? 'Pago' : 'Baixar'}
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -982,19 +1286,17 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                     const targetYear = dateRef.getFullYear();
                                     
                                     const filteredLoans = loans.filter(loan => {
-                                        let s = [];
-                                        try {
-                                            if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                                                s = JSON.parse(loan.reason);
-                                            } else {
-                                                const d = new Date(loan.date + "T12:00:00");
-                                                const lm = d.getMonth() + 1;
-                                                const ly = d.getFullYear();
-                                                const diff = (targetYear - ly) * 12 + (targetMonth - lm);
-                                                return diff >= 0 && diff < (loan.installments || 1);
-                                            }
-                                        } catch(e) {}
-                                        return s.some((i: any) => i.month === targetMonth && i.year === targetYear);
+                                        let s = loan.schedule || [];
+                                        if (s.length > 0) {
+                                            return s.some((i: any) => i.month === targetMonth && i.year === targetYear);
+                                        }
+                                        
+                                        // Fallback if no schedule
+                                        const d = new Date(loan.date + "T12:00:00");
+                                        const lm = d.getMonth() + 1;
+                                        const ly = d.getFullYear();
+                                        const diff = (targetYear - ly) * 12 + (targetMonth - lm);
+                                        return diff >= 0 && diff < (loan.installments || 1);
                                     });
 
                                     if (filteredLoans.length === 0) {
@@ -1007,12 +1309,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                     }
 
                                     return filteredLoans.map(loan => {
-                                        let loanS: any[] = [];
-                                        try {
-                                            if (loan.reason && (loan.reason.startsWith('[') || loan.reason.startsWith('{'))) {
-                                                loanS = JSON.parse(loan.reason);
-                                            }
-                                        } catch(e) {}
+                                        const loanS = loan.schedule || [];
                                         
                                         const instIdx = loanS.findIndex(i => i.month === targetMonth && i.year === targetYear);
                                         const total = loan.totalAmount || 0;
@@ -1038,13 +1335,10 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                                                 setEditingLoan(loan); 
                                                                 let firstMonth = new Date().getMonth() + 1;
                                                                 let firstYear = new Date().getFullYear();
-                                                                try {
-                                                                    const s = JSON.parse(loan.reason || '[]');
-                                                                    if (s.length > 0) {
-                                                                        firstMonth = s[0].month;
-                                                                        firstYear = s[0].year;
-                                                                    }
-                                                                } catch(e) {}
+                                                                if (loan.schedule && loan.schedule.length > 0) {
+                                                                    firstMonth = loan.schedule[0].month;
+                                                                    firstYear = loan.schedule[0].year;
+                                                                }
 
                                                                 setLoanForm({
                                                                     employeeId: loan.employeeId,
@@ -1631,13 +1925,11 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                             O(A) DEVEDOR(A) autoriza, neste ato, com fulcro no <strong>Artigo 462, § 1º, da CLT</strong>, 
                                             o desconto mensal em sua folha de pagamento no valor de <strong>R$ {showDebtDocument.loan.installmentAmount.toLocaleString('pt-BR')}</strong>, 
                                             a iniciar-se na folha do mês de {(() => {
-                                                try {
-                                                    const s = JSON.parse(showDebtDocument.loan.reason || '[]');
-                                                    if (s.length > 0) {
-                                                        const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
-                                                        return `${months[s[0].month - 1]} de ${s[0].year}`;
-                                                    }
-                                                } catch(e) {}
+                                                const s = showDebtDocument.loan.schedule || [];
+                                                if (s.length > 0) {
+                                                    const months = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+                                                    return `${months[s[0].month - 1]} de ${s[0].year}`;
+                                                }
                                                 return new Date(showDebtDocument.loan.date).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
                                             })()}, 
                                             até a total quitação do saldo devedor.
