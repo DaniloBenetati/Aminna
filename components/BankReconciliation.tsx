@@ -252,25 +252,27 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const cleanDesc = (s: string) => s?.trim().toLowerCase() || '';
         const targetClean = cleanDesc(row.description);
         
-        // Buscamos itens similares: descrição idêntica (trimmed) ou mesmo prefixo (mínimo 10 chars)
+        // Buscamos itens similares: descrição idêntica ou mesmo prefixo longo
         const similarRows = reconciledRows.filter(r => 
             r.id !== id && 
-            r.status === row.status && 
+            (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
             (cleanDesc(r.description) === targetClean || 
-             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15))))
+             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12))))
         );
 
         let updateAll = false;
         if (similarRows.length > 0) {
-            updateAll = window.confirm(`Deseja aplicar a categoria "${newCategory}" a todos os ${similarRows.length} lançamentos similares encontrados?`);
+            updateAll = window.confirm(`Foram encontrados outros ${similarRows.length} lançamentos com a mesma descrição. Deseja aplicar a categoria "${newCategory}" para TODOS eles (Repetir) ou apenas para este?`);
         }
 
         setReconciledRows(prev => prev.map(r => {
-            const matches = r.id === id || (updateAll && r.status === row.status && (
+            const isTarget = r.id === id;
+            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && (
                 cleanDesc(r.description) === targetClean || 
-                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15)))
-            ));
-            if (matches) {
+                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12)))
+            );
+
+            if (isTarget || isSimilar) {
                 return { ...r, suggestedCategory: newCategory };
             }
             return r;
@@ -286,49 +288,53 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
         const similarRows = reconciledRows.filter(r => 
             r.id !== id && 
-            r.status === row.status && 
+            (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
             (cleanDesc(r.description) === targetClean || 
-             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15))))
+             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12))))
         );
 
         let updateAll = false;
         if (similarRows.length > 0) {
-            updateAll = window.confirm(`Deseja aplicar este favorecido a todos os ${similarRows.length} lançamentos similares encontrados?`);
+            updateAll = window.confirm(`Foram encontrados outros ${similarRows.length} lançamentos similares. Deseja aplicar este favorecido para TODOS ou apenas para este?`);
         }
 
-        // Busca potencial match no sistema após selecionar o favorecido
-        let potentialMatch: any = null;
-        if (newProvider && row.status === 'A_LANCAR' && row.type === 'DESPESA') {
-            const isProfessional = newProvider.startsWith('prov_');
-            const entityId = isProfessional ? newProvider.replace('prov_', '') : newProvider;
-            
-            // Procura despesa pendente para este favorecido com valor similar
-            potentialMatch = expenses.find(e => 
-                e.status === 'Pendente' && 
-                (isProfessional ? e.providerId === entityId : e.supplierId === entityId) &&
-                Math.abs(e.amount - row.amount) < 1.00 // Tolerância de R$ 1,00 para centavos de diferença
-            );
-        }
+        // Preparar lista de despesas já "comprometidas" para não casar a mesma despesa do sistema com dois itens do banco
+        const usedMatchIds = new Set<string>();
+        reconciledRows.forEach(r => { if (r.matchId) usedMatchIds.add(r.matchId); });
 
         setReconciledRows(prev => prev.map(r => {
-            const matches = r.id === id || (updateAll && r.status === row.status && (
+            const isTarget = r.id === id;
+            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && (
                 cleanDesc(r.description) === targetClean || 
-                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 15)))
-            ));
+                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12)))
+            );
             
-            if (matches) {
-                // Se encontramos um match potencial após o usuário identificar o favorecido,
-                // mudamos o status para A_CONFERIR para permitir o vínculo
-                if (potentialMatch && r.id === id) {
-                    return { 
-                        ...r, 
-                        suggestedProvider: newProvider,
-                        status: 'A_CONFERIR' as const,
-                        matchId: potentialMatch.id,
-                        matchType: 'DESPESA' as const,
-                        suggestedCategory: potentialMatch.category,
-                        divergenceReason: `Possível conta a pagar encontrada para ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
-                    };
+            if (isTarget || isSimilar) {
+                // Se for despesa e tiver favorecido, tenta buscar match no sistema (Auto-Correção)
+                if (newProvider && r.type === 'DESPESA') {
+                    const isProfessional = newProvider.startsWith('prov_');
+                    const entityId = isProfessional ? newProvider.replace('prov_', '') : newProvider;
+                    
+                    // Busca despesa pendente para este favorecido com valor idêntico ou muito próximo
+                    const potentialMatch = expenses.find(e => 
+                        e.status === 'Pendente' && 
+                        !usedMatchIds.has(e.id) &&
+                        (isProfessional ? e.providerId === entityId : e.supplierId === entityId) &&
+                        Math.abs(e.amount - r.amount) < 1.00
+                    );
+
+                    if (potentialMatch) {
+                        usedMatchIds.add(potentialMatch.id);
+                        return { 
+                            ...r, 
+                            suggestedProvider: newProvider,
+                            status: 'A_CONFERIR' as const,
+                            matchId: potentialMatch.id,
+                            matchType: 'DESPESA' as const,
+                            suggestedCategory: potentialMatch.category,
+                            divergenceReason: `Match encontrado: ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
+                        };
+                    }
                 }
                 return { ...r, suggestedProvider: newProvider };
             }
