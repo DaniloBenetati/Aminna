@@ -38,6 +38,7 @@ interface BankReconciliationProps {
     setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
     paymentSettings: PaymentSetting[];
     financialConfigs: FinancialConfig[];
+    employees: any[];
     onClose: () => void;
 }
 
@@ -215,6 +216,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     expenses, setExpenses, sales, setSales, appointments, setAppointments,
     customers, setCustomers, categories, setExpenseCategories, suppliers, setSuppliers,
     providers,
+    employees,
     paymentSettings, financialConfigs, onClose
 }) => {
     const [rawText, setRawText] = useState('');
@@ -313,13 +315,14 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 // Se for despesa e tiver favorecido, tenta buscar match no sistema (Auto-Correção)
                 if (newProvider && r.type === 'DESPESA') {
                     const isProfessional = newProvider.startsWith('prov_');
-                    const entityId = isProfessional ? newProvider.replace('prov_', '') : newProvider;
+                    const isEmployee = newProvider.startsWith('emp_');
+                    const entityId = (isProfessional || isEmployee) ? newProvider.split('_')[1] : newProvider;
                     
                     // Busca despesa pendente para este favorecido com valor idêntico ou muito próximo
                     const potentialMatch = expenses.find(e => 
                         e.status === 'Pendente' && 
                         !usedMatchIds.has(e.id) &&
-                        (isProfessional ? e.providerId === entityId : e.supplierId === entityId) &&
+                        (isProfessional ? e.providerId === entityId : isEmployee ? e.employeeId === entityId : e.supplierId === entityId) &&
                         Math.abs(e.amount - r.amount) < 1.00
                     );
 
@@ -711,7 +714,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         const bDesc = bankTx.description.toLowerCase();
                         const cDesc = c.description.toLowerCase();
                         const supName = suppliers.find(s => s.id === c.supplierId)?.name.toLowerCase() || '';
-                        return bDesc.includes(cDesc.substring(0, 5)) || (supName && bDesc.includes(supName.substring(0, 5)));
+                        const empName = employees.find(e => e.id === c.employeeId)?.name.toLowerCase() || '';
+                        const provName = providers.find(p => p.id === c.providerId)?.name.toLowerCase() || '';
+                        
+                        return bDesc.includes(cDesc.substring(0, 5)) || 
+                               (supName && bDesc.includes(supName.substring(0, 5))) ||
+                               (empName && bDesc.includes(empName.substring(0, 5))) ||
+                               (provName && bDesc.includes(provName.substring(0, 5)));
                     }) || candidates[0];
                     bankTx.matchType = 'DESPESA';
                 }
@@ -777,7 +786,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
                 if (mType === 'DESPESA') {
                     sysCat = bestMatch.category;
-                    sysProv = bestMatch.supplierId;
+                    sysProv = bestMatch.supplierId || 
+                              (bestMatch.providerId ? `prov_${bestMatch.providerId}` : 
+                              (bestMatch.employeeId ? `emp_${bestMatch.employeeId}` : ''));
                 } else if (mType === 'RECEITA') {
                     sysCat = 'Produto';
                     sysProv = bestMatch.customerId;
@@ -1074,8 +1085,16 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     } else if (row.matchType === 'DESPESA') {
                         const e = expenses.find(x => x.id === row.matchId);
                         systemCategory = row.suggestedCategory || e?.category;
-                        const sup = suppliers.find(x => x.id === row.suggestedProvider || x.id === e?.supplierId);
-                        systemEntityName = sup?.name;
+                        let entityId = row.suggestedProvider || e?.supplierId || (e?.providerId ? `prov_${e.providerId}` : (e?.employeeId ? `emp_${e.employeeId}` : ''));
+                        
+                        if (entityId?.startsWith('prov_')) {
+                            systemEntityName = providers.find(x => x.id === entityId.replace('prov_', ''))?.name;
+                        } else if (entityId?.startsWith('emp_')) {
+                            systemEntityName = employees.find(x => x.id === entityId.replace('emp_', ''))?.name;
+                        } else {
+                            systemEntityName = suppliers.find(x => x.id === entityId)?.name;
+                        }
+                        
                         systemPaymentMethod = e?.paymentMethod;
                     }
                 } else if (row.status === 'A_LANCAR') {
@@ -1124,7 +1143,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     payment_method: e.paymentMethod,
                     is_reconciled: e.isReconciled ?? true,
                     supplier_id: e.supplierId,
-                    provider_id: e.providerId
+                    provider_id: e.providerId,
+                    employee_id: (e as any).employeeId
                 }));
                 const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
                 if (error) {
@@ -1313,11 +1333,12 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         ...providers.map(p => <option key={`prov-${p.id}`} value={`prov_${p.id}`}>[💇] {p.name}</option>)
     ], [customers, providers]);
 
-    // Despesas podem ter como favorecido fornecedores E profissionais (ex: Repasse Comissão)
+    // Despesas podem ter como favorecido fornecedores E profissionais (ex: Repasse Comissão) E funcionários (Folha)
     const expenseEntityOptions = useMemo(() => [
-        ...suppliers.map(s => <option key={`sup-${s.id}`} value={s.id}>{s.name}</option>),
-        ...providers.map(p => <option key={`prov-${p.id}`} value={`prov_${p.id}`}>[💇] {p.name}</option>)
-    ], [suppliers, providers]);
+        ...suppliers.map(s => <option key={`sup-${s.id}`} value={s.id}>{s.name?.toUpperCase()}</option>),
+        ...providers.map(p => <option key={`prov-${p.id}`} value={`prov_${p.id}`}>[💇] {p.name?.toUpperCase()}</option>),
+        ...employees.map(e => <option key={`emp-${e.id}`} value={`emp_${e.id}`}>[👤] {e.name?.toUpperCase()}</option>)
+    ], [suppliers, providers, employees]);
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center py-10 overflow-y-auto">

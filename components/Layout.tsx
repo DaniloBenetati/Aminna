@@ -97,7 +97,12 @@ export const Layout: React.FC<LayoutProps> = ({
     ViewState.DAILY_APPOINTMENTS,
     ViewState.DASHBOARD,
     ViewState.PARTNERSHIPS,
-    ViewState.RECURSOS_HUMANOS
+    ViewState.RECURSOS_HUMANOS,
+    ViewState.PROFISSIONAIS,
+    ViewState.CLIENTES,
+    ViewState.SERVICOS,
+    ViewState.VENDAS,
+    ViewState.SETTINGS
   ].includes(currentView);
 
   return (

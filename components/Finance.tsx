@@ -10,10 +10,10 @@ import {
     Download, AlertTriangle, Target, Files, Save, List, ArrowRight, Sparkles, MessageCircle, Lock,
     PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp, 
     ShieldCheck, Share2, Copy, Send, Percent, Crown, BarChart2, Zap, Link2, FilePlus,
-    Calculator
+    Calculator, Scissors, Truck
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
-import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig } from '../types';
+import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig, Employee, PayrollRecord } from '../types';
 import { supabase } from '../services/supabase';
 import { FinanceCharts } from './FinanceCharts';
 import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary, getAnticipationRate } from '../services/financialService';
@@ -406,6 +406,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
+    const [payablesFavorecidoTab, setPayablesFavorecidoTab] = useState<'GERAL' | 'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('GERAL');
+    const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
     const [receivablesFilter, setReceivablesFilter] = useState('');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
@@ -769,7 +771,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
     const [editingSupplierId, setEditingSupplierId] = useState<string | null>(null);
     const [supplierForm, setSupplierForm] = useState<Partial<Supplier>>({
-        name: '', category: '', document: '', phone: '', email: '', active: true
+        name: '', document: '', phone: '', email: '', active: true
     });
 
     const handleOpenSupplierModal = (sup?: Supplier) => {
@@ -778,7 +780,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setSupplierForm(sup);
         } else {
             setEditingSupplierId(null);
-            setSupplierForm({ name: '', category: '', document: '', phone: '', email: '', active: true });
+            setSupplierForm({ name: '', document: '', phone: '', email: '', active: true });
         }
         setIsSupplierModalOpen(true);
     };
@@ -1179,7 +1181,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const isNotRevenue = exp.dreClass !== 'REVENUE';
 
-            return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue;
+            const matchesFavorecidoTab = payablesFavorecidoTab === 'GERAL' || 
+                                        (payablesFavorecidoTab === 'PROFISSIONAIS' && exp.providerId) ||
+                                        (payablesFavorecidoTab === 'RH' && (exp.employeeId || (exp as any).payroll_id || relatedEmployee)) ||
+                                        (payablesFavorecidoTab === 'FORNECEDORES' && exp.supplierId && !exp.providerId && !exp.employeeId && !(exp as any).payroll_id && !relatedEmployee);
+
+            return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue && matchesFavorecidoTab;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, employees, payroll]);
 
@@ -2910,9 +2917,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 </div>
 
                                 <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                                    <div className="p-5 border-b flex flex-col md:flex-row justify-between items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
-                                        <div className="flex items-center gap-4 w-full md:w-auto">
-                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+                                    <div className="p-5 border-b flex flex-col gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
                                             
                                             <div className="hidden md:flex relative flex-1 min-w-[200px]">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -2951,9 +2959,28 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </select>
                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
                                             </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setBatchActionType('SAVE')} className={`text-[10px] font-black uppercase text-white bg-emerald-600 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-emerald-700 active:scale-95 flex items-center gap-1.5 ${selectedExpenseIds.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}><CheckCircle2 size={12} /> Pagar ({selectedExpenseIds.length})</button>
+                                                <button onClick={() => setBatchActionType('DELETE')} className={`text-[10px] font-black uppercase text-white bg-rose-600 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-rose-700 active:scale-95 flex items-center gap-1.5 ${selectedExpenseIds.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}><Trash2 size={12} /> Excluir ({selectedExpenseIds.length})</button>
+                                                <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-slate-900 dark:bg-zinc-700 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-slate-800 dark:hover:bg-zinc-600 active:scale-95 flex items-center gap-1.5"><Plus size={12} /> Nova Conta</button>
+                                            </div>
                                         </div>
 
-                                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                                        {/* Sub-tabs for Payables Beneficiaries */}
+                                        <div className="flex bg-slate-200/50 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-fit">
+                                            {(['GERAL', 'PROFISSIONAIS', 'RH', 'FORNECEDORES'] as const).map(v => (
+                                                <button
+                                                    key={v}
+                                                    onClick={() => setPayablesFavorecidoTab(v)}
+                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${payablesFavorecidoTab === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                                >
+                                                    {v}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                        <div className="p-5 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
                                             <div className="md:hidden relative w-full space-y-2">
                                                 <div className="relative">
                                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
@@ -3235,23 +3262,64 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         })()}
                         {/* ===== FORNECEDORES ===== */}
                         {accountsSubTab === 'SUPPLIERS' && (() => {
-                            const list = combinedSuppliers || [];
+                            const list = combinedSuppliers.filter(sup => {
+                                if (supplierSubTab === 'PROFISSIONAIS') return sup.isProvider;
+                                if (supplierSubTab === 'RH') return (sup as any).isEmployee;
+                                return !sup.isProvider && !(sup as any).isEmployee;
+                            });
                             return (
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
-                                    <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-                                        <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><Users size={16} /> Cadastro de Fornecedores</h3>
+                                <div className="space-y-6">
+                                    <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-700 w-fit">
+                                        {[
+                                            { id: 'PROFISSIONAIS', label: 'Profissionais', icon: Scissors },
+                                            { id: 'RH', label: 'Recursos Humanos', icon: Users },
+                                            { id: 'FORNECEDORES', label: 'Fornecedores', icon: Truck }
+                                        ].map(st => (
+                                            <button
+                                                key={st.id}
+                                                onClick={() => setSupplierSubTab(st.id as any)}
+                                                className={`px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${supplierSubTab === st.id ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                            >
+                                                <st.icon size={14} />
+                                                {st.label}
+                                            </button>
+                                        ))}
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-sm">
-                                            <thead>
-                                                <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
-                                                    <th className="px-6 py-4">Nome</th>
-                                                    <th className="px-6 py-4">Categoria</th>
-                                                    <th className="px-6 py-4">Documento</th>
-                                                    <th className="px-6 py-4">Contato</th>
-                                                    <th className="px-6 py-4 text-center">Ações</th>
-                                                </tr>
-                                            </thead>
+
+                                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                                {supplierSubTab === 'PROFISSIONAIS' ? <Scissors size={16} /> : 
+                                                 supplierSubTab === 'RH' ? <Users size={16} /> : <Truck size={16} />} 
+                                                {supplierSubTab === 'PROFISSIONAIS' ? 'Profissionais' : 
+                                                 supplierSubTab === 'RH' ? 'Recursos Humanos' : 'Fornecedores'}
+                                            </h3>
+                                            {! (supplierSubTab === 'PROFISSIONAIS' || supplierSubTab === 'RH') && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setEditingSupplierId(null);
+                                                        setSupplierForm({ name: '', document: '', phone: '', email: '', category: '' });
+                                                        setIsSupplierModalOpen(true);
+                                                    }}
+                                                    className="px-4 py-2 bg-slate-900 dark:bg-zinc-100 text-white dark:text-slate-900 text-[10px] font-black uppercase rounded-xl hover:scale-95 transition-all flex items-center gap-2"
+                                                >
+                                                    <Plus size={14} /> Novo Fornecedor
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left text-sm">
+                                                <thead>
+                                                    <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
+                                                        <th className="px-6 py-4">Nome</th>
+                                                        {supplierSubTab === 'FORNECEDORES' && <th className="px-6 py-4">Categoria</th>}
+                                                        {supplierSubTab === 'RH' && <th className="px-6 py-4">Cargo/Função</th>}
+                                                        {supplierSubTab === 'PROFISSIONAIS' && <th className="px-6 py-4">Especialidade</th>}
+                                                        <th className="px-6 py-4">Documento</th>
+                                                        <th className="px-6 py-4">Contato</th>
+                                                        <th className="px-6 py-4 text-center">Ações</th>
+                                                    </tr>
+                                                </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                                 {list.map(sup => (
                                                     <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
@@ -3265,7 +3333,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">{sup.category || '-'}</td>
+                                                        <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">
+                                                            {supplierSubTab === 'FORNECEDORES' ? (sup.category || '-') : 
+                                                             supplierSubTab === 'RH' ? ((sup as any).role || '-') : 
+                                                             ((sup as any).specialty || '-')}
+                                                        </td>
                                                         <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col">
@@ -3292,6 +3364,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         </table>
                                     </div>
                                 </div>
+                            </div>
                             );
                         })()}
                     </div>
@@ -4736,19 +4809,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     const val = e.target.value;
                                                     let updatedForm = { ...expenseForm, supplierId: val };
                                                     
-                                                    // Auto-fill category ONLY for Fornecedores (suppliers)
-                                                    if (val && !val.startsWith('prov_') && !val.startsWith('emp_')) {
-                                                        const sup = suppliers.find(s => s.id === val);
-                                                        if (sup?.category) {
-                                                            const cat = expenseCategories.find(c => c.name === sup.category);
-                                                            if (cat) {
-                                                                updatedForm.category = cat.name;
-                                                                updatedForm.dreClass = cat.dreClass as any;
-                                                                setCategoryInputSearch(cat.name);
-                                                            }
-                                                        }
-                                                    }
-                                                    
+                                                    // No auto-fill category anymore as per user request
                                                     setExpenseForm(updatedForm);
                                                 }}
                                                 className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
@@ -4792,27 +4853,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nome do Fornecedor</label>
                                     <input type="text" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Categoria</label>
-                                        <div className="relative">
-                                            <select
-                                                required
-                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
-                                                value={supplierForm.category}
-                                                onChange={e => setSupplierForm({ ...supplierForm, category: e.target.value })}
-                                            >
-                                                <option value="" disabled>Selecione...</option>
-                                                {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                                                <option value="Outros">Outros</option>
-                                            </select>
-                                            <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Documento (CPF/CNPJ)</label>
-                                        <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.document} onChange={e => setSupplierForm({ ...supplierForm, document: e.target.value })} />
-                                    </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Documento (CPF/CNPJ)</label>
+                                    <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.document} onChange={e => setSupplierForm({ ...supplierForm, document: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -5052,6 +5095,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         suppliers={suppliers}
                         setSuppliers={setSuppliers}
                         providers={providers}
+                        employees={employees}
                         paymentSettings={paymentSettings}
                         financialConfigs={financialConfigs}
                         onClose={() => setIsReconciliationOpen(false)}

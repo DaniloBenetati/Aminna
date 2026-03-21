@@ -326,7 +326,9 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         const employee = employees.find(emp => emp.id === payrollRec.employeeId);
         const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
         const refMonth = monthNames[payrollRec.month];
-        const description = `FOLHA ${refMonth.toUpperCase()}/${payrollRec.year} - ${employee?.name.toUpperCase() || 'COLABORADOR'}`;
+        
+        // Updated description format as requested: SALÁRIO MENSAL - [NOME] - REF [MES]/[ANO]
+        const description = `SALÁRIO MENSAL - ${employee?.name.toUpperCase() || 'COLABORADOR'} - REF ${refMonth}/${payrollRec.year}`;
         
         // Status mapping
         const expenseStatus = payrollRec.status === 'PAGO' ? 'Pago' : 'Pendente';
@@ -351,7 +353,9 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         amount: payrollRec.netSalary,
                         status: expenseStatus,
                         date: lastDay,
-                        employee_id: payrollRec.employeeId // Ensure link is updated/set
+                        employee_id: payrollRec.employeeId, // Ensure link is updated/set
+                        category: 'Salários CLT',
+                        dre_class: 'EXPENSE_ADM'
                     })
                     .eq('id', existing.id);
             } else {
@@ -360,12 +364,13 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                     .from('expenses')
                     .insert([{
                         payroll_id: payrollRec.id,
-                        employee_id: payrollRec.employeeId, // NEW: Link directly to employee
+                        employee_id: payrollRec.employeeId, 
                         description,
                         amount: payrollRec.netSalary,
                         status: expenseStatus,
                         date: lastDay,
-                        category: 'PESSOAL ADMINISTRATIVO'
+                        category: 'Salários CLT',
+                        dre_class: 'EXPENSE_ADM'
                     }]);
             }
         } catch (err) {
