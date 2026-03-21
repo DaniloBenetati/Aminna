@@ -524,12 +524,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         const fileName = `Fatura_Garantia_AminnaStore_${customer?.name?.replace(/\s+/g, '_') || 'Cliente'}.pdf`;
         
         const invoiceHtml = `
-            <div style="font-family: 'Inter', sans-serif; padding: 20mm; color: #1e293b; background: white; width: 210mm; margin: 0; box-sizing: border-box; position: relative;">
-                <!-- Decorative Border -->
-                <!-- Decorative Border removed as requested -->
+            <div style="font-family: 'Inter', sans-serif; padding: 15mm; color: #1e293b; background: white; width: 210mm; margin: 0; box-sizing: border-box; position: relative;">
+                <style>
+                    .no-break { page-break-inside: avoid !important; break-inside: avoid !important; }
+                    table tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+                </style>
 
                 <!-- Header -->
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 60px; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; position: relative;">
                     <div style="display: flex; align-items: center; gap: 24px;">
                         <img src="/logo.png" style="height: 50px; width: auto; filter: grayscale(1) contrast(1.2);" alt="Aminna" />
                         <div style="border-left: 1px solid #e2e8f0; padding-left: 24px;">
@@ -539,18 +541,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     </div>
                     <div style="text-align: right;">
                         <p style="margin: 0; font-size: 8px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.2em;">Data de Emissão</p>
-                        <p style="margin: 4px 0 0; font-size: 13px; font-weight: 500; color: #0f172a; font-family: 'Times New Roman', serif; italic;">${formatDateBR(sale.date)}</p>
+                        <p style="margin: 4px 0 0; font-size: 13px; font-weight: 500; color: #0f172a;">${formatDateBR(sale.date)}</p>
                     </div>
                 </div>
 
                 <!-- Client Info -->
-                <div style="margin-bottom: 50px; position: relative;">
+                <div style="margin-bottom: 40px; position: relative;">
                     <p style="margin: 0 0 12px; font-size: 8px; font-weight: 800; color: #947c4c; text-transform: uppercase; letter-spacing: 0.2em;">Destinatário</p>
-                    <h2 style="margin: 0; font-size: 18px; font-weight: 300; color: #475569; text-transform: uppercase; letter-spacing: 0.15em; font-family: 'Inter', sans-serif;">${customer?.name || 'Cliente Particular'}</h2>
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 300; color: #475569; text-transform: uppercase; letter-spacing: 0.15em;">${customer?.name || 'Cliente Particular'}</h2>
                 </div>
 
                 <!-- Items Table -->
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 50px;">
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
                     <thead>
                         <tr style="border-bottom: 1px solid #0f172a;">
                             <th style="padding: 12px 0; text-align: left; font-size: 8px; font-weight: 800; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.2em; width: 80px;">Imagem</th>
@@ -568,18 +570,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                             return `
                                 <tr style="border-bottom: 1px solid #f8fafc;">
-                                    <td style="padding: 20px 0;">
+                                    <td style="padding: 15px 0;">
                                         <div style="width: 60px; height: 60px; border-radius: 8px; overflow: hidden; border: 1px solid #f1f5f9; background: #fff;">
-                                            <img src="${productImg}" style="width: 100%; height: 100%; object-cover;" />
+                                            <img src="${productImg}" style="width: 100%; height: 100%; object-fit: cover;" />
                                         </div>
                                     </td>
-                                    <td style="padding: 20px 15px;">
+                                    <td style="padding: 15px 15px;">
                                         <div style="font-size: 13px; font-weight: 600; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em;">${item.name || product?.name || 'Produto'}</div>
                                         <div style="font-size: 9px; font-weight: 500; color: #94a3b8; margin-top: 4px; letter-spacing: 0.1em;">REF: ${productCode}</div>
                                     </td>
-                                    <td style="padding: 20px 10px; text-align: center; font-size: 11px; font-weight: 400; color: #64748b;">${item.quantity}</td>
-                                    <td style="padding: 20px 10px; text-align: right; font-size: 10px; font-weight: 400; color: #94a3b8; letter-spacing: 0.05em;">R$ ${item.unitPrice.toFixed(2)}</td>
-                                    <td style="padding: 20px 0; text-align: right; font-size: 13px; font-weight: 600; color: #0f172a; letter-spacing: 0.02em;">R$ ${(item.quantity * item.unitPrice).toFixed(2)}</td>
+                                    <td style="padding: 15px 10px; text-align: center; font-size: 11px; font-weight: 400; color: #64748b;">${item.quantity}</td>
+                                    <td style="padding: 15px 10px; text-align: right; font-size: 10px; font-weight: 400; color: #94a3b8; letter-spacing: 0.05em;">R$ ${item.unitPrice.toFixed(2)}</td>
+                                    <td style="padding: 15px 0; text-align: right; font-size: 13px; font-weight: 600; color: #0f172a; letter-spacing: 0.02em;">R$ ${(item.quantity * item.unitPrice).toFixed(2)}</td>
                                 </tr>
                             `;
                         }).join('')}
@@ -587,7 +589,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </table>
 
                 <!-- Summary -->
-                <div style="display: flex; justify-content: flex-end; margin-bottom: 80px;">
+                <div class="no-break" style="display: flex; justify-content: flex-end; margin-bottom: 50px;">
                     <div style="width: 280px;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 10px;">
                             <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em;">Subtotal Bruto</span>
@@ -609,7 +611,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
 
                 <!-- Guarantee Section -->
-                <div style="background: #fdfdfd; padding: 40px; border-radius: 2px; color: #0f172a; display: flex; gap: 40px; align-items: center; position: relative; overflow: hidden; border: 1px solid #f1f5f9;">
+                <div class="no-break" style="background: #fdfdfd; padding: 30px; border-radius: 2px; color: #0f172a; display: flex; gap: 40px; align-items: center; position: relative; overflow: hidden; border: 1px solid #f1f5f9;">
                     <!-- Decorative Element -->
                     <div style="position: absolute; right: -20px; top: -20px; width: 120px; height: 120px; border: 1px solid rgba(148, 124, 76, 0.1); border-radius: 50%;"></div>
                     
@@ -625,11 +627,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             Este documento atesta a excelência e procedência da peça adquirida. Garantimos assistência total contra defeitos latentes de fabricação por um período de 90 dias a contar de <b>${formatDateBR(sale.date)}</b>. 
                             Nossa garantia preserva a integridade original da joia, eximindo-se de danos oriundos de desgaste natural, acondicionamento impróprio ou agentes químicos.
                         </p>
-                        <div style="margin-top: 20px; height: 1px; width: 40px; background: #947c4c;"></div>
                     </div>
                 </div>
                 
-                <div style="margin-top: 60px; text-align: center;">
+                <div style="margin-top: 40px; text-align: center;">
                     <p style="font-size: 8px; font-weight: 600; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.5em;">Thank you for choosing Aminna Store Experience</p>
                 </div>
             </div>

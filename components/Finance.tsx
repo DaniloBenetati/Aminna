@@ -1,13 +1,16 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import {
-    DollarSign, Download, FileText, Filter, Calendar,
-    TrendingUp, Users, Wallet, Printer, ArrowUpCircle,
-    ArrowDownCircle, AlertTriangle, BarChart3, Target, Calculator, Files,
-    Plus, Minus, Save, X, Edit2, Trash2, CheckCircle2, List, AlertCircle, ArrowRight, Clock,
-    ShoppingBag, Sparkles, MessageCircle, Lock, PenTool, FolderPlus, ChevronLeft, ChevronRight, CalendarRange, ChevronDown, ChevronUp, Menu,
-    TrendingDown, Paperclip, Stamp, ShieldCheck, Share2, Copy, Send, Search, Calculator as CalcIcon, Percent, Info, Crown,
-    BrainCircuit, BarChart2, Zap, RefreshCw, Link2, Check, FilePlus
+import { 
+    ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, 
+    DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, 
+    ChevronDown, Trash2, ShoppingBag, ArrowDownCircle, ArrowUpCircle, CheckCircle2, 
+    Clock, AlertCircle, FileText, Printer, Edit2, Users, ChevronRight, BarChart as BarChartIcon, 
+    PieChart, BrainCircuit, Landmark, Wallet2, Receipt, Building2, LayoutPanelLeft, 
+    Calculator as CalcIcon, History, Info, ChevronLeft, CalendarDays, RefreshCw, XCircle, SearchIcon,
+    Download, AlertTriangle, Target, Files, Save, List, ArrowRight, Sparkles, MessageCircle, Lock,
+    PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp, 
+    ShieldCheck, Share2, Copy, Send, Percent, Crown, BarChart2, Zap, Link2, FilePlus,
+    Calculator
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig } from '../types';
@@ -878,6 +881,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Filter States for Payables
     const [payablesSearch, setPayablesSearch] = useState('');
     const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
+    const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('ALL');
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -1133,11 +1137,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const matchesStatus = payablesStatusFilter === 'ALL' || 
                                 (payablesStatusFilter === 'Atrasado' ? isAtrasado : exp.status === payablesStatusFilter);
             
+            const matchesSupplier = payablesSupplierFilter === 'ALL' || exp.supplierId === payablesSupplierFilter;
+
             const isNotRevenue = exp.dreClass !== 'REVENUE';
 
-            return matchesDate && matchesSearch && matchesStatus && isNotRevenue;
+            return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, suppliers, payablesIgnoreDateFilter]);
+    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, payablesIgnoreDateFilter]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -2848,28 +2854,59 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         <div className="flex items-center gap-4 w-full md:w-auto">
                                             <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
                                             
-                                            <div className="hidden md:flex relative flex-1 min-w-[300px]">
+                                            <div className="hidden md:flex relative flex-1 min-w-[200px]">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                                 <input
                                                     type="text"
-                                                    placeholder="Buscar por descrição ou favorecido..."
+                                                    placeholder="Buscar por descrição..."
                                                     className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
                                                     value={payablesSearch}
                                                     onChange={e => setPayablesSearch(e.target.value)}
                                                 />
                                             </div>
+
+                                            <div className="hidden md:flex relative flex-1 min-w-[180px]">
+                                                <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                <select
+                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                                    value={payablesSupplierFilter}
+                                                    onChange={e => setPayablesSupplierFilter(e.target.value)}
+                                                >
+                                                    <option value="ALL">TODOS FAVORECIDOS</option>
+                                                    {suppliers.sort((a,b) => (a.name || '').localeCompare(b.name || '')).map(s => (
+                                                        <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                                                    ))}
+                                                </select>
+                                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
+                                            </div>
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                                            <div className="md:hidden relative w-full">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                                <input
-                                                    type="text"
-                                                    placeholder="Buscar descrição ou favorecido..."
-                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
-                                                    value={payablesSearch}
-                                                    onChange={e => setPayablesSearch(e.target.value)}
-                                                />
+                                            <div className="md:hidden relative w-full space-y-2">
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar por descrição..."
+                                                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
+                                                        value={payablesSearch}
+                                                        onChange={e => setPayablesSearch(e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="relative">
+                                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                                                    <select
+                                                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                                        value={payablesSupplierFilter}
+                                                        onChange={e => setPayablesSupplierFilter(e.target.value)}
+                                                    >
+                                                        <option value="ALL">TODOS FAVORECIDOS</option>
+                                                        {suppliers.map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
+                                                        ))}
+                                                    </select>
+                                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
+                                                </div>
                                             </div>
                                             
                                             <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-full sm:w-auto justify-center">
