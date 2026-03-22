@@ -312,31 +312,56 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             );
             
             if (isTarget || isSimilar) {
-                // Se for despesa e tiver favorecido, tenta buscar match no sistema (Auto-Correção)
-                if (newProvider && r.type === 'DESPESA') {
-                    const isProfessional = newProvider.startsWith('prov_');
-                    const isEmployee = newProvider.startsWith('emp_');
-                    const entityId = (isProfessional || isEmployee) ? newProvider.split('_')[1] : newProvider;
-                    
-                    // Busca despesa pendente para este favorecido com valor idêntico ou muito próximo
-                    const potentialMatch = expenses.find(e => 
-                        e.status === 'Pendente' && 
-                        !usedMatchIds.has(e.id) &&
-                        (isProfessional ? e.providerId === entityId : isEmployee ? e.employeeId === entityId : e.supplierId === entityId) &&
-                        Math.abs(e.amount - r.amount) < 1.00
-                    );
+                // Se tiver favorecido identificado, tenta buscar match no sistema (Auto-Correção)
+                if (newProvider) {
+                    if (r.type === 'DESPESA') {
+                        const isProfessional = newProvider.startsWith('prov_');
+                        const isEmployee = newProvider.startsWith('emp_');
+                        const entityId = (isProfessional || isEmployee) ? newProvider.split('_')[1] : newProvider;
+                        
+                        const potentialMatch = expenses.find(e => 
+                            e.status === 'Pendente' && 
+                            !usedMatchIds.has(e.id) &&
+                            (isProfessional ? e.providerId === entityId : isEmployee ? e.employeeId === entityId : e.supplierId === entityId) &&
+                            Math.abs(e.amount - r.amount) < 1.00
+                        );
 
-                    if (potentialMatch) {
-                        usedMatchIds.add(potentialMatch.id);
-                        return { 
-                            ...r, 
-                            suggestedProvider: newProvider,
-                            status: 'A_CONFERIR' as const,
-                            matchId: potentialMatch.id,
-                            matchType: 'DESPESA' as const,
-                            suggestedCategory: potentialMatch.category,
-                            divergenceReason: `Match encontrado: ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
-                        };
+                        if (potentialMatch) {
+                            usedMatchIds.add(potentialMatch.id);
+                            return { 
+                                ...r, suggestedProvider: newProvider,
+                                status: 'A_CONFERIR' as const,
+                                matchId: potentialMatch.id, matchType: 'DESPESA' as const,
+                                suggestedCategory: potentialMatch.category,
+                                divergenceReason: `Match encontrado: ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
+                            };
+                        }
+                    } else if (r.type === 'RECEITA') {
+                        const entityId = newProvider.startsWith('prov_') ? newProvider.split('_')[1] : newProvider;
+                        
+                        // Tenta encontrar em vendas
+                        const saleMatch = sales.find(s => !s.isReconciled && s.customerId === entityId && Math.abs(s.totalAmount - r.amount) < 0.05);
+                        if (saleMatch) {
+                            return {
+                                ...r, suggestedProvider: newProvider,
+                                status: 'A_CONFERIR' as const,
+                                matchId: saleMatch.id, matchType: 'RECEITA' as const,
+                                suggestedCategory: 'Produto',
+                                divergenceReason: `Match encontrado em Vendas (R$ ${saleMatch.totalAmount.toFixed(2)})`
+                            };
+                        }
+
+                        // Tenta encontrar em agendamentos
+                        const appMatch = appointments.find(a => !a.isReconciled && a.customerId === entityId && Math.abs((a.pricePaid || a.bookedPrice || 0) - r.amount) < 0.05);
+                        if (appMatch) {
+                            return {
+                                ...r, suggestedProvider: newProvider,
+                                status: 'A_CONFERIR' as const,
+                                matchId: appMatch.id, matchType: 'SERVICO' as const,
+                                suggestedCategory: 'Serviço',
+                                divergenceReason: `Match encontrado em Agendamentos (R$ ${(appMatch.pricePaid || appMatch.bookedPrice || 0).toFixed(2)})`
+                            };
+                        }
                     }
                 }
                 return { ...r, suggestedProvider: newProvider };
@@ -992,13 +1017,39 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     if (existingExp) {
                         toUpdateExpenseStatus.push(existingExp.id);
                         updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
-                    } else {
+                    } else if (row.suggestedProvider) {
+                        // REGRA: Somente cria no contas a pagar se houver favorecido identificado
+                        
+                        let sId = null;
+                        let pId = null;
+                        let eId = null;
+
+                        if (row.suggestedProvider.startsWith('prov_')) {
+                            pId = row.suggestedProvider.replace('prov_', '');
+                        } else if (row.suggestedProvider.startsWith('emp_')) {
+                            eId = row.suggestedProvider.replace('emp_', '');
+                        } else {
+                            // If it doesn't have a prefix, it might be a supplier ID OR a name
+                            const foundSupplier = suppliers.find(s => s.id === row.suggestedProvider || s.name === row.suggestedProvider);
+                            const foundProvider = providers.find(p => p.id === row.suggestedProvider || p.name === row.suggestedProvider);
+                            const foundEmployee = employees.find(emp => emp.id === row.suggestedProvider || emp.name === row.suggestedProvider);
+
+                            if (foundSupplier) sId = foundSupplier.id;
+                            else if (foundProvider) pId = foundProvider.id;
+                            else if (foundEmployee) eId = foundEmployee.id;
+                            else if (row.suggestedProvider.length > 20) {
+                                // Likely an ID but no prefix
+                                sId = row.suggestedProvider; 
+                            }
+                        }
+
                         newExpenses.push({
                             description: row.description,
                             amount: row.amount,
                             date: row.date,
-                            supplierId: row.suggestedProvider?.startsWith('prov_') ? null : (row.suggestedProvider || null),
-                            providerId: row.suggestedProvider?.startsWith('prov_') ? row.suggestedProvider.replace('prov_', '') : null,
+                            supplierId: sId,
+                            providerId: pId,
+                            employeeId: eId,
                             category: row.suggestedCategory || 'Despesas Diversas',
                             dreClass: 'EXPENSE_ADM',
                             status: 'Pago',
@@ -1017,17 +1068,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     if (existingExp) {
                         toUpdateExpenseStatus.push(existingExp.id);
                         updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
-                    } else {
+                    } else if (row.suggestedProvider) {
+                        // REGRA: Somente cria no contas a receber/vendas se houver favorecido identificado
                         // Determina o dreClass com base na categoria selecionada:
                         // REVENUE = receita de serviços (Receita Bruta), OTHER_INCOME = devoluções/reembolsos (Outras Receitas)
                         const selectedCat = categories.find(c => c.name === row.suggestedCategory);
                         const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
                         const fallbackCat = categories.find(c => c.dreClass === 'REVENUE');
-                        const entityForRevenue = row.suggestedProvider
-                            ? (customers.find(x => x.id === row.suggestedProvider)?.name ||
-                                providers.find(x => x.id === row.suggestedProvider)?.name ||
-                                null)
-                            : null;
+                        
+                        const customerEntity = customers.find(x => x.id === row.suggestedProvider);
+                        const providerEntity = providers.find(x => x.id === row.suggestedProvider?.replace('prov_', ''));
+                        const entityName = customerEntity?.name || providerEntity?.name || '';
+
                         newExpenses.push({
                             description: row.description,
                             amount: row.amount,
@@ -1037,7 +1089,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             status: 'Pago',
                             paymentMethod: 'Transferência',
                             isReconciled: true,
-                            ...(entityForRevenue ? { notes: entityForRevenue } : {})
+                            ...(entityName ? { notes: entityName } : {})
                         } as any);
                     }
                 }

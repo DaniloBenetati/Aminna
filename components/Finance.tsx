@@ -1181,14 +1181,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const isNotRevenue = exp.dreClass !== 'REVENUE';
 
-            const matchesFavorecidoTab = payablesFavorecidoTab === 'GERAL' || 
+            const hasFavorecido = exp.supplierId || exp.providerId || exp.employeeId || (exp as any).payroll_id || relatedEmployee || 
+                                 exp.isReconciled || (exp.category && exp.category !== 'Despesas Diversas');
+
+            const matchesFavorecidoTab = (payablesFavorecidoTab === 'GERAL' ? hasFavorecido : false) || 
                                         (payablesFavorecidoTab === 'PROFISSIONAIS' && exp.providerId) ||
                                         (payablesFavorecidoTab === 'RH' && (exp.employeeId || (exp as any).payroll_id || relatedEmployee)) ||
                                         (payablesFavorecidoTab === 'FORNECEDORES' && exp.supplierId && !exp.providerId && !exp.employeeId && !(exp as any).payroll_id && !relatedEmployee);
 
             return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue && matchesFavorecidoTab;
         }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, employees, payroll]);
+    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, employees, payroll, payablesFavorecidoTab]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -2691,11 +2694,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                             onChange={async (e) => {
                                                                                 const newCategory = e.target.value;
                                                                                 try {
+                                                                                    // 1. Update bank transaction
                                                                                     const { error } = await supabase
                                                                                         .from('bank_transactions')
                                                                                         .update({ system_category: newCategory })
                                                                                         .eq('id', t.id);
                                                                                     if (error) throw error;
+                                                                                    
+                                                                                    // 2. Sync with linked expense if exists
+                                                                                    if (match && match.type === 'EXPENSE') {
+                                                                                        await supabase
+                                                                                            .from('expenses')
+                                                                                            .update({ category: newCategory })
+                                                                                            .eq('id', match.id);
+                                                                                        // Local state update
+                                                                                        setExpenses(prev => prev.map(exp => exp.id === match.id ? { ...exp, category: newCategory } : exp));
+                                                                                    }
+
                                                                                     setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
                                                                                 } catch (err) {
                                                                                     console.error('Failed to update category', err);
@@ -2727,17 +2742,93 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         <select
                                                                             value={t.systemEntityName || ''}
                                                                             onChange={async (e) => {
-                                                                                const newProvider = e.target.value;
+                                                                                const newName = e.target.value; 
+                                                                                
                                                                                 try {
-                                                                                    const { error } = await supabase
-                                                                                        .from('bank_transactions')
-                                                                                        .update({ system_entity_name: newProvider })
-                                                                                        .eq('id', t.id);
-                                                                                    if (error) throw error;
-                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newProvider } : tx));
+                                                                                    // 1. Update bank transaction (storing name or null)
+                                                                                    await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
+                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || null } : tx));
+
+                                                                                    if (!newName) {
+                                                                                        // Case: UN-LINK / CLEAR Beneficiary
+                                                                                        if (match && match.type === 'EXPENSE' && window.confirm("Deseja remover o favorecido deste lançamento no Contas a Pagar?")) {
+                                                                                            await supabase.from('expenses').update({ provider_id: null, employee_id: null, supplier_id: null }).eq('id', match.id);
+                                                                                            setExpenses(prev => prev.map(exp => exp.id === match.id ? { ...exp, providerId: null, employeeId: null, supplierId: null } : exp));
+                                                                                        }
+                                                                                        return;
+                                                                                    }
+
+                                                                                    const selectedEntity = combinedSuppliers.find(s => s.name === newName) || 
+                                                                                                         customers.find(c => c.name === newName);
+                                                                                    if (!selectedEntity) return;
+
+                                                                                    const combinedId = selectedEntity.id;
+                                                                                    const isProfessional = (selectedEntity as any).isProvider;
+                                                                                    const isEmployee = (selectedEntity as any).isEmployee;
+                                                                                    const realId = (isProfessional || isEmployee) ? combinedId.split('_')[1] : combinedId;
+
+                                                                                    // 2. Logic for Syncing / Linking / Creating
+                                                                                    let currentMatch = match;
+                                                                                    
+                                                                                    if (!currentMatch) {
+                                                                                        // Search for candidates (already has identification logic)
+                                                                                        const candidate = expenses.find(exp => 
+                                                                                            Math.abs(exp.amount - t.amount) < 0.01 && 
+                                                                                            Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
+                                                                                            !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
+                                                                                        );
+
+                                                                                        if (candidate && window.confirm(`Encontramos um lançamento de R$ ${candidate.amount.toFixed(2)} (${candidate.description}) no sistema. Deseja vincular a este registro?`)) {
+                                                                                            const newMatches = [{ id: candidate.id, type: 'EXPENSE', amount: candidate.amount }];
+                                                                                            await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
+                                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                            currentMatch = { id: candidate.id, type: 'EXPENSE', amount: candidate.amount };
+                                                                                        } else if (window.confirm(`Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`)) {
+                                                                                            const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
+                                                                                                description: t.description,
+                                                                                                amount: t.amount,
+                                                                                                date: t.date,
+                                                                                                category: t.systemCategory || 'Despesas Diversas',
+                                                                                                provider_id: isProfessional ? realId : null,
+                                                                                                employee_id: isEmployee ? realId : null,
+                                                                                                supplier_id: (!isProfessional && !isEmployee) ? realId : null,
+                                                                                                status: 'Pago',
+                                                                                                payment_method: 'Transferência',
+                                                                                                is_reconciled: true,
+                                                                                                dre_class: 'EXPENSE_ADM'
+                                                                                            }).select().single();
+
+                                                                                            if (expErr) throw expErr;
+
+                                                                                            const newMatches = [{ id: newExp.id, type: 'EXPENSE', amount: newExp.amount }];
+                                                                                            await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
+                                                                                            
+                                                                                            setExpenses(prev => [...prev, {
+                                                                                                id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
+                                                                                                category: newExp.category, status: newExp.status, isReconciled: true,
+                                                                                                providerId: newExp.provider_id, employeeId: newExp.employee_id, supplierId: newExp.supplier_id
+                                                                                            }]);
+                                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                            currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
+                                                                                        }
+                                                                                    }
+
+                                                                                    if (currentMatch && currentMatch.type === 'EXPENSE') {
+                                                                                        const updatePayload = isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } : 
+                                                                                                             isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } : 
+                                                                                                             { supplier_id: realId, provider_id: null, employee_id: null };
+                                                                                                             
+                                                                                        await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
+                                                                                        setExpenses(prev => prev.map(exp => exp.id === currentMatch!.id ? { 
+                                                                                            ...exp, 
+                                                                                            providerId: isProfessional ? realId : null,
+                                                                                            employeeId: isEmployee ? realId : null,
+                                                                                            supplierId: (!isProfessional && !isEmployee) ? realId : null
+                                                                                         } : exp));
+                                                                                    }
                                                                                 } catch (err) {
-                                                                                    console.error('Failed to update provider', err);
-                                                                                    alert('Erro ao atualizar favorecido: ' + (err as any).message);
+                                                                                    console.error('Failed to update provider/link', err);
+                                                                                    alert('Erro ao processar: ' + (err as any).message);
                                                                                 }
                                                                             }}
                                                                             className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
