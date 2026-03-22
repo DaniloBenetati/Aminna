@@ -190,6 +190,58 @@ const App: React.FC = () => {
         return allAppts;
       };
 
+      const fetchExpenses = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('expenses')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) {
+          console.error('Error getting expenses count:', countError);
+          return [];
+        }
+
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('expenses')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: false })
+        );
+
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
+      const fetchSales = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('sales')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) {
+          console.error('Error getting sales count:', countError);
+          return [];
+        }
+
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('sales')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: false })
+        );
+
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
       const [
         { data: providersData },
         { data: servicesData },
@@ -208,8 +260,8 @@ const App: React.FC = () => {
         { data: nfseRecordsData },
         fetchedCustomers,
         fetchedAppointments,
-        { data: salesData },
-        { data: expensesData },
+        fetchedSales,
+        fetchedExpenses,
         { data: financialConfigData },
         { data: fiscalConfigsData },
         { data: employeesDataRaw },
@@ -233,8 +285,8 @@ const App: React.FC = () => {
         supabase.from('nfse_records').select('*').gte('created_at', minDate),
         fetchCustomers(),
         fetchAppointments(),
-        supabase.from('sales').select('*').gte('date', minDate),
-        supabase.from('expenses').select('*').gte('date', minDate).order('date', { ascending: false }),
+        fetchSales(),
+        fetchExpenses(),
         supabase.from('financial_config').select('*').order('valid_from', { ascending: false }),
         supabase.from('professional_fiscal_config').select('*'),
         supabase.from('employees').select('*'),
@@ -247,7 +299,8 @@ const App: React.FC = () => {
         services: servicesData?.length || 0,
         customers: fetchedCustomers?.length || 0,
         appointments: fetchedAppointments?.length || 0,
-        sales: salesData?.length || 0,
+        sales: fetchedSales?.length || 0,
+        expenses: fetchedExpenses?.length || 0,
         nfse: nfseRecordsData?.length || 0,
         employees: employeesDataRaw?.length || 0
       });
@@ -532,14 +585,14 @@ const App: React.FC = () => {
       }
 
       // Map and Set Expenses
-      if (expensesData) {
-        setExpenses(expensesData.map((e: any) => ({
+      if (fetchedExpenses) {
+        setExpenses(fetchedExpenses.map((e: any) => ({
           id: e.id,
           description: e.description,
           category: e.category,
           subcategory: e.subcategory,
           dreClass: e.dre_class,
-          amount: e.amount,
+          amount: Number(e.amount) || 0,
           date: e.date,
           status: e.status,
           paymentMethod: e.payment_method,
@@ -626,20 +679,20 @@ const App: React.FC = () => {
       }
 
       // Set Sales
-      if (salesData) {
-        setSales(salesData.map((s: any) => ({
+      if (fetchedSales) {
+        setSales(fetchedSales.map((s: any) => ({
           id: s.id,
           customerId: s.customer_id,
           items: s.items || [],
-          total: s.total_amount || s.total_price || 0,
-          totalAmount: s.total_amount || s.total_price || 0,
+          total: Number(s.total_amount || s.total_price || 0),
+          totalAmount: Number(s.total_amount || s.total_price || 0),
           date: s.date,
           paymentMethod: s.payment_method,
           payments: s.payments || [],
           status: s.status,
           createdAt: s.created_at,
           isReconciled: s.is_reconciled,
-          adjustmentAmount: s.adjustment_amount,
+          adjustmentAmount: Number(s.adjustment_amount || 0),
           adjustmentReason: s.adjustment_reason
         })));
 

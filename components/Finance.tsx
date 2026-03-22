@@ -1,14 +1,14 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-    ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, 
-    DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, 
-    ChevronDown, Trash2, ShoppingBag, ArrowDownCircle, ArrowUpCircle, CheckCircle2, 
-    Clock, AlertCircle, FileText, Printer, Edit2, Users, ChevronRight, BarChart as BarChartIcon, 
-    PieChart, BrainCircuit, Landmark, Wallet2, Receipt, Building2, LayoutPanelLeft, 
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import {
+    ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X,
+    DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight,
+    ChevronDown, Trash2, ShoppingBag, ArrowDownCircle, ArrowUpCircle, CheckCircle2,
+    Clock, AlertCircle, FileText, Printer, Edit2, Users, ChevronRight, BarChart as BarChartIcon,
+    PieChart, BrainCircuit, Landmark, Wallet2, Receipt, Building2, LayoutPanelLeft,
     Calculator as CalcIcon, History, Info, ChevronLeft, CalendarDays, RefreshCw, XCircle, SearchIcon,
     Download, AlertTriangle, Target, Files, Save, List, ArrowRight, Sparkles, MessageCircle, Lock,
-    PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp, 
+    PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp,
     ShieldCheck, Share2, Copy, Send, Percent, Crown, BarChart2, Zap, Link2, FilePlus,
     Calculator, Scissors, Truck
 } from 'lucide-react';
@@ -58,56 +58,78 @@ interface ManualLinkModalProps {
     suppliers: Supplier[];
     customers: Customer[];
     expenseCategories: ExpenseCategory[];
+    providers: Provider[];
+    employees: Employee[];
+    transactions: FinancialTransaction[];
+    bankTransactions: BankTransaction[];
 }
 
 const ManualLinkModal: React.FC<ManualLinkModalProps> = ({ 
-    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories 
+    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories, providers, employees, transactions, bankTransactions
 }) => {
     const [innerSearch, setInnerSearch] = useState('');
     const [selectedItems, setSelectedItems] = useState<{ id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]>([]);
     const [filterMonth, setFilterMonth] = useState<string>('all');
     const [filterYear, setFilterYear] = useState<string>('all');
     const [filterType, setFilterType] = useState<string>('all');
-    
+
     // Quick Expense Creation State
     const [isCreatingQuickExpense, setIsCreatingQuickExpense] = useState(false);
     const [quickExpenseCategory, setQuickExpenseCategory] = useState('');
     const [quickExpenseDescription, setQuickExpenseDescription] = useState('');
+    const [quickSupplierId, setQuickSupplierId] = useState('');
+    const [quickProviderId, setQuickProviderId] = useState('');
+    const [quickEmployeeId, setQuickEmployeeId] = useState('');
 
     // Reset state when bankTx changes or modal opens
     useEffect(() => {
         if (isOpen && bankTx) {
             setInnerSearch('');
             setSelectedItems(bankTx.systemMatches || []);
-            
+
             // Auto-filter by month and year of the bank transaction
             const txDate = new Date(bankTx.date);
             setFilterMonth((txDate.getMonth() + 1).toString());
             setFilterYear(txDate.getFullYear().toString());
-            
+
             // Auto-filter by type: BANK RECEITA matches SALE/APPOINTMENT, BANK DESPESA matches EXPENSE
             setFilterType(bankTx.type === 'RECEITA' ? 'REVENUE' : 'EXPENSE');
-            
+
             // Reset quick expense creation
             setIsCreatingQuickExpense(false);
             setQuickExpenseCategory('');
             setQuickExpenseDescription(bankTx.description || '');
+            setQuickSupplierId('');
+            setQuickProviderId('');
+            setQuickEmployeeId('');
         }
     }, [isOpen, bankTx?.id]);
 
     if (!isOpen || !bankTx) return null;
 
-    const pendingExpenses = (expenses || []).filter(e => (e.status === 'Pendente' && !e.isReconciled) || (bankTx.systemMatches || []).some(m => m.type === 'EXPENSE' && m.id === e.id));
+    const pendingExpenses = (expenses || []).filter(e => !e.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'EXPENSE' && m.id === e.id));
     const pendingSales = (sales || []).filter(s => !s.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'SALE' && m.id === s.id));
-    const pendingAppointments = (appointments || []).filter(a => (a.status === 'Concluído' && !a.isReconciled) || (bankTx.systemMatches || []).some(m => m.type === 'APPOINTMENT' && m.id === a.id));
+    const pendingAppointments = (appointments || []).filter(a => !a.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'APPOINTMENT' && m.id === a.id));
+    
+    // Add derived commissions to the list of linkable items
+    const linkableCommissions = transactions.filter(t => 
+        t.category === 'Repasse Comissão' && 
+        (!bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === t.id)) || (bankTx.systemMatches || []).some(m => m.id === t.id))
+    );
+
     const allPending = [
         ...pendingExpenses.map(e => {
             const sup = (suppliers || []).find(s => s.id === e.supplierId);
-            return { id: e.id, type: 'EXPENSE' as const, description: e.description || '', amount: e.amount || 0, date: e.date, origin: 'Despesa', entity: sup?.name || '' };
+            const prov = (providers || []).find(p => p.id === e.providerId);
+            const emp = (employees || []).find(ee => ee.id === e.employeeId);
+            return { id: e.id, type: 'EXPENSE' as const, description: e.description || '', amount: e.amount || 0, date: e.date, origin: 'Despesa', entity: sup?.name || prov?.name || emp?.name || '' };
         }),
+        ...linkableCommissions.map(c => ({
+            id: c.id, type: 'EXPENSE' as const, description: c.description, amount: c.amount, date: c.date, origin: 'Despesa', entity: c.providerName || ''
+        })),
         ...pendingSales.map(s => {
             const cus = (customers || []).find(c => c.id === s.customerId);
-            return { id: s.id, type: 'SALE' as const, description: `Venda #${(s.id || '').slice(0,5)}`, amount: s.totalAmount || 0, date: s.date, origin: 'Venda', entity: cus?.name || '' };
+            return { id: s.id, type: 'SALE' as const, description: `Venda #${(s.id || '').slice(0, 5)}`, amount: s.totalAmount || 0, date: s.date, origin: 'Venda', entity: cus?.name || '' };
         }),
         ...pendingAppointments.map(a => {
             const cus = (customers || []).find(c => c.id === a.customerId);
@@ -117,18 +139,18 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
         const itemDate = parseDateSafe(item.date);
         const matchesMonth = filterMonth === 'all' || (itemDate.getMonth() + 1).toString() === filterMonth;
         const matchesYear = filterYear === 'all' || itemDate.getFullYear().toString() === filterYear;
-        
+
         // REVENUE type matches SALE and APPOINTMENT
-        const matchesType = filterType === 'all' || 
-                           (filterType === 'EXPENSE' && item.type === 'EXPENSE') || 
-                           (filterType === 'REVENUE' && (item.type === 'SALE' || item.type === 'APPOINTMENT'));
-        
+        const matchesType = filterType === 'all' ||
+            (filterType === 'EXPENSE' && item.type === 'EXPENSE') ||
+            (filterType === 'REVENUE' && (item.type === 'SALE' || item.type === 'APPOINTMENT'));
+
         const desc = (item.description || '').toLowerCase();
         const ent = (item.entity || '').toLowerCase();
         const amt = (item.amount || 0).toString();
         const search = (innerSearch || '').toLowerCase();
         return matchesMonth && matchesYear && matchesType && (desc.includes(search) || ent.includes(search) || amt.includes(search));
-    }).sort((a,b) => {
+    }).sort((a, b) => {
         const dateA = a.date ? new Date(a.date).getTime() : 0;
         const dateB = b.date ? new Date(b.date).getTime() : 0;
         if (isNaN(dateA) || isNaN(dateB)) return 0;
@@ -209,11 +231,11 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             <span className="text-lg font-black font-mono">R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
-                    
+
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
                             <Calendar size={14} className="text-slate-400 ml-1" />
-                            <select 
+                            <select
                                 value={filterMonth}
                                 onChange={e => setFilterMonth(e.target.value)}
                                 className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300 min-w-[120px]"
@@ -223,10 +245,10 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                 ))}
                             </select>
                         </div>
-                        
+
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
                             <Clock size={14} className="text-slate-400 ml-1" />
-                            <select 
+                            <select
                                 value={filterYear}
                                 onChange={e => setFilterYear(e.target.value)}
                                 className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300"
@@ -239,7 +261,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
 
                         <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
                             <BarChart2 size={14} className="text-slate-400 ml-1" />
-                            <select 
+                            <select
                                 value={filterType}
                                 onChange={e => setFilterType(e.target.value)}
                                 className="bg-transparent border-none text-xs font-bold focus:ring-0 outline-none text-slate-600 dark:text-slate-300 min-w-[100px]"
@@ -251,7 +273,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         </div>
 
                         {(filterMonth !== 'all' || filterYear !== 'all' || filterType !== 'all') && (
-                            <button 
+                            <button
                                 onClick={() => { setFilterMonth('all'); setFilterYear('all'); setFilterType('all'); }}
                                 className="text-[10px] font-black uppercase text-indigo-500 hover:text-indigo-600 ml-2"
                             >
@@ -260,42 +282,109 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         )}
                     </div>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 space-y-3">
-                    {allPending.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-10 text-slate-400">
-                            <Search size={40} className="mb-2 opacity-20" />
-                            <p className="font-bold uppercase text-[10px]">Nada pendente encontrado</p>
-                        </div>
-                    ) : allPending.map(item => {
-                        const isSelected = selectedItems.some(si => si.id === item.id && si.type === item.type);
-                        return (
-                            <button
-                                key={`${item.type}-${item.id}`}
-                                onClick={() => {
-                                    if (isSelected) {
-                                        setSelectedItems(prev => prev.filter(si => !(si.id === item.id && si.type === item.type)));
-                                    } else {
-                                        setSelectedItems(prev => [...prev, { id: item.id, type: item.type, amount: item.amount }]);
-                                    }
-                                }}
-                                className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10' : 'border-slate-50 dark:border-zinc-800/50 hover:border-slate-200'}`}
-                            >
-                                <div className="flex items-center gap-4 text-left">
-                                    <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-zinc-700'}`}>
-                                        <Check size={12} strokeWidth={4} />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[8px] font-black uppercase bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-slate-500">{item.origin}</span>
-                                            <span className="text-[8px] font-black text-slate-400">{parseDateSafe(item.date).toLocaleDateString('pt-BR')}</span>
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Current Links Section */}
+                    {selectedItems.length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-black uppercase text-indigo-500 mb-3 tracking-widest flex items-center gap-2">
+                                <Link2 size={12} /> Vínculos Atuais ({selectedItems.length})
+                            </p>
+                            <div className="space-y-2">
+                                {selectedItems.map(item => {
+                                    const detail = (() => {
+                                        if (item.type === 'EXPENSE') {
+                                            const exp = expenses.find(e => e.id === item.id);
+                                            if (exp) return { desc: exp.description, cat: exp.category, ent: suppliers.find(s => s.id === exp.supplierId)?.name || providers.find(p => p.id === exp.providerId)?.name || employees.find(e => e.id === exp.employeeId)?.name || 'Despesa' };
+                                            
+                                            // Check derived transactions (Commissions, Card Fees)
+                                            const tx = transactions.find(tr => tr.id === item.id);
+                                            if (tx) return { desc: tx.description, cat: tx.category, ent: tx.customerOrProviderName || tx.providerName || 'Despesa' };
+                                            
+                                            return { desc: 'Lançamento Vinculado', cat: 'Despesa', ent: '-' };
+                                        } else if (item.type === 'SALE') {
+                                            const s = sales.find(s => s.id === item.id);
+                                            if (s) return { desc: `Venda #${s.id.slice(0, 5)}`, cat: 'Venda', ent: customers.find(c => c.id === s.customerId)?.name || 'Cliente' };
+                                            return { desc: 'Venda Vinculada', cat: 'Venda', ent: '-' };
+                                        } else {
+                                            const a = appointments.find(a => a.id === item.id);
+                                            if (a) return { desc: `Serviço: ${a.combinedServiceNames || 'Agendamento'}`, cat: 'Serviço', ent: customers.find(c => c.id === a.customerId)?.name || 'Cliente' };
+                                            return { desc: 'Agendamento Vinculado', cat: 'Serviço', ent: '-' };
+                                        }
+                                    })();
+
+                                    return (
+                                        <div 
+                                            key={`selected-${item.type}-${item.id}`}
+                                            className="w-full p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10 flex items-center justify-between group animate-in zoom-in-95 duration-200"
+                                        >
+                                            <div className="flex items-center gap-4 text-left">
+                                                <div className="w-5 h-5 rounded bg-indigo-600 text-white flex items-center justify-center">
+                                                    <Check size={12} strokeWidth={4} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[8px] font-black uppercase bg-indigo-200 text-indigo-700 px-1.5 py-0.5 rounded">{detail.cat}</span>
+                                                        <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">{detail.ent}</span>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{detail.desc}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <p className="text-sm font-black text-indigo-600">R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                <button 
+                                                    onClick={() => setSelectedItems(prev => prev.filter(si => !(si.id === item.id && si.type === item.type)))}
+                                                    className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                                                    title="Desvincular"
+                                                >
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.description}</p>
-                                    </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Available Items Section */}
+                    <div>
+                        <p className="text-[10px] font-black uppercase text-slate-400 mb-3 tracking-widest">
+                            {innerSearch ? 'Resultados da Busca' : 'Outros Itens Pendentes'}
+                        </p>
+                        <div className="space-y-2">
+                            {allPending.filter(item => !selectedItems.some(si => si.id === item.id && si.type === item.type)).length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 dark:bg-zinc-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                    <Search size={32} className="mb-2 opacity-20" />
+                                    <p className="font-bold uppercase text-[9px] tracking-widest">Nenhum item adicional encontrado</p>
                                 </div>
-                                <p className="text-sm font-black text-slate-900 dark:text-white">R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                            </button>
-                        );
-                    })}
+                            ) : allPending.filter(item => !selectedItems.some(si => si.id === item.id && si.type === item.type)).map(item => {
+                                return (
+                                    <button
+                                        key={`pending-${item.type}-${item.id}`}
+                                        onClick={() => {
+                                            setSelectedItems(prev => [...prev, { id: item.id, type: item.type, amount: item.amount }]);
+                                        }}
+                                        className="w-full p-4 rounded-2xl border-2 border-slate-50 dark:border-zinc-800/50 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center justify-between group"
+                                    >
+                                        <div className="flex items-center gap-4 text-left">
+                                            <div className="w-5 h-5 rounded bg-slate-200 dark:bg-zinc-700 text-transparent flex items-center justify-center group-hover:bg-indigo-100 group-hover:text-indigo-400 transition-colors">
+                                                <Check size={12} strokeWidth={4} />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[8px] font-black uppercase bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-slate-500">{item.origin}</span>
+                                                    <span className="text-[8px] font-black text-slate-400">{parseDateSafe(item.date).toLocaleDateString('pt-BR')}</span>
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">{item.description}</p>
+                                                <p className="text-[9px] text-slate-400 font-bold uppercase">{item.entity}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm font-black text-slate-900 dark:text-white">R$ {item.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
                 </div>
                 <div className="p-8 border-t dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between">
                     <div className="flex-1">
@@ -305,7 +394,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                     <AlertCircle size={14} />
                                     <p className="text-[9px] font-black uppercase">Diferença de R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => setIsCreatingQuickExpense(true)}
                                     className="text-[10px] font-black uppercase text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
                                 >
@@ -320,14 +409,14 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                     <button onClick={() => setIsCreatingQuickExpense(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
                                 </div>
                                 <div className="space-y-2">
-                                    <input 
-                                        type="text" 
-                                        placeholder="Descrição do ajuste..." 
-                                        value={quickExpenseDescription} 
+                                    <input
+                                        type="text"
+                                        placeholder="Descrição do ajuste..."
+                                        value={quickExpenseDescription}
                                         onChange={e => setQuickExpenseDescription(e.target.value)}
                                         className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
                                     />
-                                    <select 
+                                    <select
                                         value={quickExpenseCategory}
                                         onChange={e => setQuickExpenseCategory(e.target.value)}
                                         className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
@@ -335,6 +424,33 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                         <option value="">Selecione a Categoria...</option>
                                         {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                     </select>
+                                    
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <select 
+                                            value={quickProviderId ? `PRO_${quickProviderId}` : quickEmployeeId ? `EMP_${quickEmployeeId}` : quickSupplierId || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setQuickProviderId('');
+                                                setQuickEmployeeId('');
+                                                setQuickSupplierId('');
+                                                if (val.startsWith('PRO_')) setQuickProviderId(val.replace('PRO_', ''));
+                                                else if (val.startsWith('EMP_')) setQuickEmployeeId(val.replace('EMP_', ''));
+                                                else setQuickSupplierId(val);
+                                            }}
+                                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="">Selecione o Favorecido (Opcional)...</option>
+                                            <optgroup label="Profissionais">
+                                                {providers.map(p => <option key={p.id} value={`PRO_${p.id}`}>{p.name?.toUpperCase()}</option>)}
+                                            </optgroup>
+                                            <optgroup label="Funcionários">
+                                                {employees.map(p => <option key={p.id} value={`EMP_${p.id}`}>{p.name?.toUpperCase()}</option>)}
+                                            </optgroup>
+                                            <optgroup label="Fornecedores">
+                                                {suppliers.map(p => <option key={p.id} value={p.id}>{p.name?.toUpperCase()}</option>)}
+                                            </optgroup>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -350,7 +466,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             Fechar
                         </button>
                         <button
-                            disabled={(selectedItems.length === 0 && !isCreatingQuickExpense) || isProcessing || (isCreatingQuickExpense && !quickExpenseCategory)}
+                            disabled={((selectedItems.length === 0 && (!bankTx.systemMatches || bankTx.systemMatches.length === 0)) && !isCreatingQuickExpense) || isProcessing || (isCreatingQuickExpense && !quickExpenseCategory)}
                             onClick={async () => {
                                 let newExpense = undefined;
                                 if (isCreatingQuickExpense) {
@@ -358,7 +474,10 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                     newExpense = {
                                         description: quickExpenseDescription || bankTx.description,
                                         category: quickExpenseCategory,
-                                        amount: Math.abs(diff)
+                                        amount: Math.abs(diff),
+                                        supplierId: quickSupplierId,
+                                        providerId: quickProviderId,
+                                        employeeId: quickEmployeeId
                                     };
                                 } else if (Math.abs(diff) > 0.01) {
                                     if (!window.confirm(`Valores não batem. Deseja vincular assim mesmo?`)) return;
@@ -367,7 +486,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             }}
                             className="px-8 py-3.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 flex items-center gap-2"
                         >
-                            {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 size={14} />} 
+                            {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 size={14} />}
                             {isCreatingQuickExpense ? 'Criar e Vincular' : `Vincular ${selectedItems.length > 1 ? `(${selectedItems.length})` : ''}`}
                         </button>
                     </div>
@@ -406,15 +525,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
-    const [payablesFavorecidoTab, setPayablesFavorecidoTab] = useState<'GERAL' | 'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('GERAL');
     const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
     const [receivablesFilter, setReceivablesFilter] = useState('');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(toLocalDateStr(new Date()));
+    const [endDate, setEndDate] = useState(toLocalDateStr(new Date()));
     const [chartsSubTab, setChartsSubTab] = useState<'GENERAL' | 'PREDICTIVE'>('GENERAL');
     const [predictiveTargetGrowth, setPredictiveTargetGrowth] = useState(20);
     const [filterProvider, setFilterProvider] = useState('all');
@@ -652,9 +770,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const handleManualLink = async (
-        bankTxId: string, 
+        bankTxId: string,
         matches: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[],
-        newExpenseData?: { description: string, category: string, amount: number }
+        newExpenseData?: { 
+            description: string; 
+            category: string; 
+            amount: number;
+            supplierId?: string;
+            providerId?: string;
+            employeeId?: string;
+        }
     ) => {
         try {
             // 1. Identify items that are being UNLINKED (present in previous matches but not in new matches)
@@ -676,11 +801,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         date: linkingBankTx?.date || new Date().toISOString().split('T')[0],
                         status: 'Pago',
                         is_reconciled: true,
-                        payment_method: 'Pix'
+                        payment_method: 'Pix',
+                        supplier_id: newExpenseData.supplierId || null,
+                        provider_id: newExpenseData.providerId || null,
+                        employee_id: newExpenseData.employeeId || null
                     }])
                     .select()
                     .single();
-                
+
                 if (expErr) throw expErr;
                 if (newExp) {
                     finalMatches.push({ id: newExp.id, type: 'EXPENSE', amount: newExp.amount });
@@ -694,7 +822,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         date: newExp.date,
                         status: newExp.status as any,
                         paymentMethod: newExp.payment_method as any,
-                        isReconciled: true
+                        isReconciled: true,
+                        supplierId: newExp.supplier_id,
+                        providerId: newExp.provider_id,
+                        employeeId: newExp.employee_id
                     };
                     setExpenses(prev => [mappedExp, ...prev]);
                 }
@@ -733,7 +864,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             // 5. Update local state
             setBankTransactions(prev => prev.map(tx => tx.id === bankTxId ? { ...tx, systemMatches: finalMatches } : tx));
-            
+
             setExpenses(prev => prev.map(e => {
                 const isLinked = finalMatches.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
@@ -873,7 +1004,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [recurrenceMonths, setRecurrenceMonths] = useState(1);
     const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({
-        description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix'
+        description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: toLocalDateStr(new Date()), status: 'Pago', paymentMethod: 'Pix'
     });
 
     // Daily Close States
@@ -895,6 +1026,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [detailedFilter, setDetailedFilter] = useState('');
 
     // Date Navigation & View States
+    const datePickerRef = useRef<HTMLInputElement>(null);
     const [dateRef, setDateRef] = useState(new Date());
     const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
     const [payablesIgnoreDateFilter, setPayablesIgnoreDateFilter] = useState(false);
@@ -1142,56 +1274,75 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const filteredPayables = useMemo(() => {
-        return expenses.filter(exp => {
-            const matchesDate = payablesIgnoreDateFilter 
-                ? (exp.status === 'Pendente' || (exp.date >= startDate && exp.date <= endDate))
-                : (exp.date >= startDate && exp.date <= endDate);
+        // 1. Base Payables from Transactions (includes Expenses, Commissions, Fees)
+        const basePayables = transactions.filter(t => {
+            // We only want Outgoing items that are not Revenue
+            if (t.type !== 'DESPESA') return false;
             
-            const relatedPayroll = (exp as any).payroll_id ? payroll.find(pay => pay.id === (exp as any).payroll_id) : null;
-            const relatedEmployee = relatedPayroll ? employees.find(emp => emp.id === relatedPayroll.employeeId) : null;
+            const matchesDate = payablesIgnoreDateFilter
+                ? (t.status === 'Pendente' || (t.date >= startDate && t.date <= endDate))
+                : (t.date >= startDate && t.date <= endDate);
 
-            const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || 
-                               providers.find(p => p.id === exp.providerId)?.name || 
-                               employees.find(e => e.id === exp.employeeId)?.name ||
-                               (exp.payroll_id ? employees.find(emp => emp.id === payroll.find(pay => pay.id === exp.payroll_id)?.employeeId)?.name : '') ||
-                               '';
-            
             const searchLower = payablesSearch.toLowerCase();
-            const matchesSearch = exp.description.toLowerCase().includes(searchLower) || 
-                                 (supplierName || '').toLowerCase().includes(searchLower);
-            
-            const normalizedStatus = (exp.status || '').toUpperCase();
-            const isAtrasado = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
-            
-            const matchesStatus = payablesStatusFilter === 'ALL' || 
-                                (payablesStatusFilter === 'Atrasado' ? isAtrasado : 
-                                 payablesStatusFilter === 'Pago' ? normalizedStatus === 'PAGO' :
-                                 payablesStatusFilter === 'Pendente' ? (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') :
-                                 normalizedStatus === payablesStatusFilter.toUpperCase());
-            
-            // For employee-linked expenses via payroll_id or direct employee_id, we map them to "emp_ID" in the filter check
-            let entityId = exp.supplierId || 
-                           (exp.providerId ? `prov_${exp.providerId}` : 
-                           (exp.employeeId ? `emp_${exp.employeeId}` : null));
-            if (!entityId && relatedEmployee) {
-                entityId = `emp_${relatedEmployee.id}`;
+            const matchesSearch = (t.description || '').toLowerCase().includes(searchLower) ||
+                (t.customerOrProviderName || '').toLowerCase().includes(searchLower) ||
+                (t.providerName || '').toLowerCase().includes(searchLower);
+
+            const statusLabel = (t.status || '').toUpperCase();
+            const isAtrasado = (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') && new Date(t.date) < new Date(new Date().setHours(0, 0, 0, 0));
+
+            const matchesStatus = payablesStatusFilter === 'ALL' ||
+                (payablesStatusFilter === 'Atrasado' ? isAtrasado :
+                    payablesStatusFilter === 'Pago' ? statusLabel === 'PAGO' :
+                        payablesStatusFilter === 'Pendente' ? (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') :
+                            statusLabel === payablesStatusFilter.toUpperCase());
+
+            // Supplier Filter Logic
+            // For derived transactions, we check against their calculated professional/supplier IDs or names
+            let entityIdMatch = true;
+            if (payablesSupplierFilter !== 'ALL') {
+                const targetId = payablesSupplierFilter; // e.g. "SUP_ID" or "emp_ID" or "prov_ID"
+                const item = t as any;
+                const isMatch = item.supplierId === targetId || 
+                                (item.providerId && `prov_${item.providerId}` === targetId) ||
+                                (item.employeeId && `emp_${item.employeeId}` === targetId) ||
+                                // Special case for aggregated commissions where we might only have names
+                                (t.category === 'Repasse Comissão' && providers.some(p => p.name === t.providerName && `prov_${p.id}` === targetId));
+                entityIdMatch = isMatch;
             }
 
-            const matchesSupplier = payablesSupplierFilter === 'ALL' || entityId === payablesSupplierFilter;
+            return matchesDate && matchesSearch && matchesStatus && entityIdMatch;
+        });
 
-            const isNotRevenue = exp.dreClass !== 'REVENUE';
+        // 2. FORCED SPLITS: Also include anything linked in current bank transactions view
+        const forcedTxIds = new Set<string>();
+        bankTransactions.forEach(t => {
+            if (t.systemMatches) {
+                t.systemMatches.forEach(m => forcedTxIds.add(m.id));
+            }
+        });
 
-            const hasFavorecido = exp.supplierId || exp.providerId || exp.employeeId || (exp as any).payroll_id || relatedEmployee || 
-                                 exp.isReconciled || (exp.category && exp.category !== 'Despesas Diversas');
+        const forcedTxs = transactions.filter(t => forcedTxIds.has(t.id));
+        const combined = [...basePayables, ...forcedTxs];
 
-            const matchesFavorecidoTab = (payablesFavorecidoTab === 'GERAL' ? hasFavorecido : false) || 
-                                        (payablesFavorecidoTab === 'PROFISSIONAIS' && exp.providerId) ||
-                                        (payablesFavorecidoTab === 'RH' && (exp.employeeId || (exp as any).payroll_id || relatedEmployee)) ||
-                                        (payablesFavorecidoTab === 'FORNECEDORES' && exp.supplierId && !exp.providerId && !exp.employeeId && !(exp as any).payroll_id && !relatedEmployee);
+        // 4. Filter out items without identified Favorecido (removing UUIDs)
+        const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+        
+        const identifiedPayables = combined.filter(t => {
+            const name = t.customerOrProviderName || t.providerName || '';
+            const isForced = forcedTxIds.has(t.id);
+            // If it's a "Forced Split" (linked item), we WANT it regardless of current display name logic
+            if (isForced) return true;
+            
+            // For others, if it's empty OR it's just a UUID, it's not identified (user wants a clean list)
+            return name.trim() !== '' && !isUUID(name);
+        });
 
-            return matchesDate && matchesSearch && matchesStatus && matchesSupplier && isNotRevenue && matchesFavorecidoTab;
-        }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [expenses, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, employees, payroll, payablesFavorecidoTab]);
+        // 5. Unique results and sort
+        const unique = Array.from(new Map(identifiedPayables.map(t => [t.id, t])).values());
+
+        return unique.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -1451,20 +1602,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     }, [appointments, sales, expenses, startDate, endDate, timeView, financialConfigs, monthlyClosings]);
 
     const handleOpenModal = (expense?: Expense) => {
-        if (expense) { 
-            setEditingExpenseId(expense.id); 
+        if (expense) {
+            setEditingExpenseId(expense.id);
             // Map supplierId/providerId to the select format (prov_ID for professionals)
-            const combinedId = expense.providerId ? `prov_${expense.providerId}` : 
-                             (expense.employeeId ? `emp_${expense.employeeId}` : 
-                             (expense.supplierId || ''));
-            setExpenseForm({ ...expense, supplierId: combinedId }); 
+            const combinedId = expense.providerId ? `prov_${expense.providerId}` :
+                (expense.employeeId ? `emp_${expense.employeeId}` :
+                    (expense.supplierId || ''));
+            setExpenseForm({ ...expense, supplierId: combinedId });
             setCategoryInputSearch(expense.category || '');
-            setRecurrenceMonths(1); 
+            setRecurrenceMonths(1);
         }
-        else { 
-            setEditingExpenseId(null); 
-            setRecurrenceMonths(1); 
-            setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' }); 
+        else {
+            setEditingExpenseId(null);
+            setRecurrenceMonths(1);
+            setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
             setCategoryInputSearch('');
         }
         setIsModalOpen(true);
@@ -1487,7 +1638,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 providerId: e.provider_id,
                 employeeId: e.employee_id,
                 payroll_id: e.payroll_id,
-                recurringId: e.recurring_id
+                recurringId: e.recurring_id,
+                isReconciled: e.is_reconciled
             })));
         }
     };
@@ -1607,7 +1759,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const handleSaveExpense = async (e?: React.FormEvent, overrideOption?: 'ONLY_THIS' | 'THIS_AND_FUTURE' | 'ALL') => {
         if (e) e.preventDefault();
-        
+
         const finalAmount = sanitizeAmount(expenseForm.amount);
 
         if (!expenseForm.description) {
@@ -1650,51 +1802,41 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 }
 
                 if (originalExpense?.recurringId && currentOption !== 'ONLY_THIS') {
-                    // BATCH UPDATE: Needs smart handling to preserve (x/y) suffixes and shift dates relative to the original
+                    // BATCH UPDATE (logic remains same as original script, preserves shifted dates)
                     let query = supabase.from('expenses').select('*').eq('recurring_id', originalExpense.recurringId);
-
-                    if (currentOption === 'THIS_AND_FUTURE') {
-                        query = query.gte('date', originalExpense.date);
-                    }
-
+                    if (currentOption === 'THIS_AND_FUTURE') query = query.gte('date', originalExpense.date);
                     const { data: expensesToUpdate } = await query;
-
                     if (expensesToUpdate) {
                         const originalDateObj = parseDateSafe(originalExpense.date);
                         const newDateObj = parseDateSafe(expenseForm.date!);
-                        const timeDiff = newDateObj.getTime() - originalDateObj.getTime(); // Time difference in ms
-
-                        // Base description: remove the (x/y) suffix from the input to get the clean name
-                        // This assumes the user might have edited the description, e.g., "Loan B (10/12)" -> "Loan B"
+                        const timeDiff = newDateObj.getTime() - originalDateObj.getTime();
                         const baseDescription = expenseForm.description.replace(/\s*\(\d+\/\d+\)$/, '');
-
                         const updates = expensesToUpdate.map(exp => {
-                            // Preserve the EXISTING suffix of the expense being updated (e.g. 11/12)
                             const suffixMatch = exp.description.match(/\s*\(\d+\/\d+\)$/);
                             const suffix = suffixMatch ? suffixMatch[0] : '';
-
-                            // Calculate new shifted date safely
                             const currentExpDate = parseDateSafe(exp.date);
                             const shiftedDate = new Date(currentExpDate);
-
-                            // Only apply time shift - this preserves the 'month-apart' structure
-                            // while letting the user shift the whole series by N days.
                             shiftedDate.setTime(shiftedDate.getTime() + timeDiff);
-
                             return {
                                 ...exp,
-                                ...expenseData, // Apply new Amount, Category, dre_class, etc.
+                                ...expenseData,
                                 supplier_id: expenseForm.supplierId?.startsWith('prov_') ? null : (expenseForm.supplierId || null),
                                 provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null),
                                 recurring_id: originalExpense.recurringId,
-                                description: baseDescription + suffix, // New Name + Old Suffix
-                                date: toLocalDateStr(shiftedDate) // Shifted Date
+                                description: baseDescription + suffix,
+                                date: toLocalDateStr(shiftedDate)
                             };
                         });
-
                         const { error } = await supabase.from('expenses').upsert(updates);
                         if (error) throw error;
                     }
+                } else if (editingExpenseId.startsWith('comm-')) {
+                    // NEW: Convert virtual commission grouping to real expense record
+                    const { error } = await supabase.from('expenses').insert([{
+                        ...expenseData,
+                        is_reconciled: originalExpense?.isReconciled || false
+                    }]);
+                    if (error) throw error;
                 } else {
                     // SINGLE UPDATE
                     const { error } = await supabase.from('expenses').update(expenseData).eq('id', editingExpenseId);
@@ -2166,9 +2308,35 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         ))}
                     </div>
                     {timeView !== 'custom' ? (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between">
+                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between group">
                             <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
-                            <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight whitespace-nowrap">{getDateLabel()}</span>
+                            <div 
+                                className="relative flex items-center justify-center cursor-pointer min-w-[140px]"
+                                onClick={() => {
+                                    if (datePickerRef.current && ('showPicker' in HTMLInputElement.prototype)) {
+                                        (datePickerRef.current as any).showPicker();
+                                    }
+                                }}
+                            >
+                                <CalendarDays className="absolute left-0 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" size={12} />
+                                <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight whitespace-nowrap px-4 py-1 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">{getDateLabel()}</span>
+                                <input 
+                                    ref={datePickerRef}
+                                    type={timeView === 'day' ? 'date' : timeView === 'month' ? 'month' : 'text'}
+                                    className={`absolute inset-0 opacity-0 cursor-pointer w-full ${(timeView as string) === 'year' || (timeView as string) === 'custom' ? 'pointer-events-none' : ''}`}
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            const val = e.target.value;
+                                            let dString = val;
+                                            if (timeView === 'month') dString += '-01';
+                                            if (timeView === 'day' || timeView === 'month') {
+                                                const d = new Date(dString + 'T12:00:00'); // Use 12:00 to avoid UTC shift issues
+                                                if (!isNaN(d.getTime())) setDateRef(d);
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
                             <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
 
                             {timeView === 'month' && activeTab === 'DRE' && (
@@ -2387,12 +2555,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             desc = exp.description;
                                             cat = exp.category;
                                             const sup = suppliers.find(s => s.id === exp.supplierId);
-                                            ent = sup?.name || '';
+                                            ent = sup?.name || providers.find(p => p.id === exp.providerId)?.name || employees.find(e => e.id === exp.employeeId)?.name || '';
+                                        } else {
+                                            // Check if it's a commission or other derived transaction
+                                            const tx = transactions.find(tr => tr.id === match.id);
+                                            if (tx) {
+                                                desc = tx.description;
+                                                cat = tx.category;
+                                                ent = tx.customerOrProviderName || tx.providerName || '';
+                                            }
                                         }
                                     } else if (match.type === 'SALE') {
                                         const sale = sales.find(s => s.id === match.id);
                                         if (sale) {
-                                            desc = `Venda #${sale.id.slice(0,5)}`;
+                                            desc = `Venda #${sale.id.slice(0, 5)}`;
                                             cat = 'Venda';
                                             const cust = customers.find(c => c.id === sale.customerId);
                                             ent = cust?.name || '';
@@ -2436,14 +2612,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     let d = t.description;
                                     let c = t.systemCategory || '';
                                     let e = t.systemEntityName || '';
-                                    
+
                                     if (match) {
                                         if (match.type === 'EXPENSE') {
                                             const x = expenses.find(ex => ex.id === match.id);
                                             if (x) { d = x.description; c = x.category; e = suppliers.find(s => s.id === x.supplierId)?.name || ''; }
                                         } else if (match.type === 'SALE') {
                                             const s = sales.find(sl => sl.id === match.id);
-                                            if (s) { d = `Venda #${s.id.slice(0,5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
+                                            if (s) { d = `Venda #${s.id.slice(0, 5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
                                         } else if (match.type === 'APPOINTMENT') {
                                             const a = appointments.find(ap => ap.id === match.id);
                                             if (a) { d = `Agendamento: ${a.combinedServiceNames || 'Serviço'}`; c = 'Serviço'; e = customers.find(cu => cu.id === a.customerId)?.name || ''; }
@@ -2459,7 +2635,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         <td>${t.systemPaymentMethod || ''}</td>
                                         <td style="text-align:right;color:${delta >= 0 ? '#059669' : '#dc2626'}">${delta >= 0 ? '+' : ''}${delta.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                                         <td style="text-align:right">${balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                                    </tr>`;}).join('');
+                                    </tr>`;
+                                }).join('');
                                 const w = window.open('', '_blank');
                                 if (!w) return;
                                 w.document.write(`<html><head><title>Extrato Conciliado</title><style>
@@ -2489,14 +2666,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     let d = t.description;
                                     let c = t.systemCategory || '';
                                     let e = t.systemEntityName || '';
-                                    
+
                                     if (match) {
                                         if (match.type === 'EXPENSE') {
                                             const x = expenses.find(ex => ex.id === match.id);
                                             if (x) { d = x.description; c = x.category; e = suppliers.find(s => s.id === x.supplierId)?.name || ''; }
                                         } else if (match.type === 'SALE') {
                                             const s = sales.find(sl => sl.id === match.id);
-                                            if (s) { d = `Venda #${s.id.slice(0,5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
+                                            if (s) { d = `Venda #${s.id.slice(0, 5)}`; c = 'Venda'; e = customers.find(cu => cu.id === s.customerId)?.name || ''; }
                                         } else if (match.type === 'APPOINTMENT') {
                                             const a = appointments.find(ap => ap.id === match.id);
                                             if (a) { d = `Agendamento: ${a.combinedServiceNames || 'Serviço'}`; c = 'Serviço'; e = customers.find(cu => cu.id === a.customerId)?.name || ''; }
@@ -2641,9 +2818,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             if (exp) {
                                                                 displayDesc = exp.description;
                                                                 displayCat = exp.category;
-                                                                displayEnt = suppliers.find(s => s.id === exp.supplierId)?.name || 
-                                                                             providers.find(p => p.id === exp.providerId)?.name || 
-                                                                             employees.find(emp => emp.id === exp.employeeId)?.name || '';
+                                                                displayEnt = suppliers.find(s => s.id === exp.supplierId)?.name ||
+                                                                    providers.find(p => p.id === exp.providerId)?.name ||
+                                                                    employees.find(emp => emp.id === exp.employeeId)?.name || '';
+                                                            } else {
+                                                                // Handle derived transactions (Commissions, etc)
+                                                                const tx = transactions.find(tr => tr.id === match.id);
+                                                                if (tx) {
+                                                                    displayDesc = tx.description;
+                                                                    displayCat = tx.category;
+                                                                    displayEnt = tx.customerOrProviderName || tx.providerName || '';
+                                                                }
                                                             }
                                                         } else if (match.type === 'SALE') {
                                                             const sale = sales.find(s => s.id === match.id);
@@ -2700,7 +2885,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         .update({ system_category: newCategory })
                                                                                         .eq('id', t.id);
                                                                                     if (error) throw error;
-                                                                                    
+
                                                                                     // 2. Sync with linked expense if exists
                                                                                     if (match && match.type === 'EXPENSE') {
                                                                                         await supabase
@@ -2742,8 +2927,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         <select
                                                                             value={t.systemEntityName || ''}
                                                                             onChange={async (e) => {
-                                                                                const newName = e.target.value; 
-                                                                                
+                                                                                const newName = e.target.value;
+
                                                                                 try {
                                                                                     // 1. Update bank transaction (storing name or null)
                                                                                     await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
@@ -2758,8 +2943,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         return;
                                                                                     }
 
-                                                                                    const selectedEntity = combinedSuppliers.find(s => s.name === newName) || 
-                                                                                                         customers.find(c => c.name === newName);
+                                                                                    const selectedEntity = combinedSuppliers.find(s => s.name === newName) ||
+                                                                                        customers.find(c => c.name === newName);
                                                                                     if (!selectedEntity) return;
 
                                                                                     const combinedId = selectedEntity.id;
@@ -2769,11 +2954,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                                                     // 2. Logic for Syncing / Linking / Creating
                                                                                     let currentMatch = match;
-                                                                                    
+
                                                                                     if (!currentMatch) {
                                                                                         // Search for candidates (already has identification logic)
-                                                                                        const candidate = expenses.find(exp => 
-                                                                                            Math.abs(exp.amount - t.amount) < 0.01 && 
+                                                                                        const candidate = expenses.find(exp =>
+                                                                                            Math.abs(exp.amount - t.amount) < 0.01 &&
                                                                                             Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
                                                                                             !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
                                                                                         );
@@ -2802,7 +2987,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                                                             const newMatches = [{ id: newExp.id, type: 'EXPENSE', amount: newExp.amount }];
                                                                                             await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
-                                                                                            
+
                                                                                             setExpenses(prev => [...prev, {
                                                                                                 id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
                                                                                                 category: newExp.category, status: newExp.status, isReconciled: true,
@@ -2814,17 +2999,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                     }
 
                                                                                     if (currentMatch && currentMatch.type === 'EXPENSE') {
-                                                                                        const updatePayload = isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } : 
-                                                                                                             isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } : 
-                                                                                                             { supplier_id: realId, provider_id: null, employee_id: null };
-                                                                                                             
+                                                                                        const updatePayload = isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
+                                                                                            isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
+                                                                                                { supplier_id: realId, provider_id: null, employee_id: null };
+
                                                                                         await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
-                                                                                        setExpenses(prev => prev.map(exp => exp.id === currentMatch!.id ? { 
-                                                                                            ...exp, 
+                                                                                        setExpenses(prev => prev.map(exp => exp.id === currentMatch!.id ? {
+                                                                                            ...exp,
                                                                                             providerId: isProfessional ? realId : null,
                                                                                             employeeId: isEmployee ? realId : null,
                                                                                             supplierId: (!isProfessional && !isEmployee) ? realId : null
-                                                                                         } : exp));
+                                                                                        } : exp));
                                                                                     }
                                                                                 } catch (err) {
                                                                                     console.error('Failed to update provider/link', err);
@@ -2988,10 +3173,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 {/* Indicadores Contas a Pagar */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                     {[
-                                        { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + curr.amount, 0), icon: FileText, color: 'indigo' },
-                                        { label: 'Total Pago', value: filteredPayables.filter(p => p.status === 'Pago').reduce((acc, curr) => acc + curr.amount, 0), icon: CheckCircle2, color: 'emerald' },
-                                        { label: 'Pendente', value: filteredPayables.filter(p => p.status === 'Pendente').reduce((acc, curr) => acc + curr.amount, 0), icon: Clock, color: 'amber' },
-                                        { label: 'Atrasado', value: filteredPayables.filter(p => p.status === 'Pendente' && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + curr.amount, 0), icon: AlertCircle, color: 'rose' },
+                                        { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: FileText, color: 'indigo' },
+                                        { label: 'Total Pago', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PAGO').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: CheckCircle2, color: 'emerald' },
+                                        { label: 'Pendente', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: Clock, color: 'amber' },
+                                        { label: 'Atrasado', value: filteredPayables.filter(p => ((p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING') && p.date && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: AlertCircle, color: 'rose' },
                                     ].map((card, idx) => (
                                         <div key={idx} className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all">
                                             <div className="flex justify-between items-start mb-4">
@@ -3007,24 +3192,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     ))}
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden mt-6">
                                     <div className="p-5 border-b flex flex-col gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
-                                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                                            <div className="flex items-center gap-4 w-full md:w-auto">
-                                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
-                                            
-                                            <div className="hidden md:flex relative flex-1 min-w-[200px]">
+                                        <div className="flex flex-wrap items-center gap-4 lg:gap-6">
+                                            <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
+
+                                            <div className="relative flex-1 min-w-[200px] max-w-sm">
                                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                                 <input
                                                     type="text"
-                                                    placeholder="Buscar por descrição..."
+                                                    placeholder="Buscar descrição..."
                                                     className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
                                                     value={payablesSearch}
                                                     onChange={e => setPayablesSearch(e.target.value)}
                                                 />
                                             </div>
 
-                                            <div className="hidden md:flex relative flex-1 min-w-[180px]">
+                                            <div className="relative flex-1 min-w-[180px] max-w-xs">
                                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                                 <select
                                                     className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
@@ -3050,56 +3234,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </select>
                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={() => setBatchActionType('SAVE')} className={`text-[10px] font-black uppercase text-white bg-emerald-600 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-emerald-700 active:scale-95 flex items-center gap-1.5 ${selectedExpenseIds.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}><CheckCircle2 size={12} /> Pagar ({selectedExpenseIds.length})</button>
-                                                <button onClick={() => setBatchActionType('DELETE')} className={`text-[10px] font-black uppercase text-white bg-rose-600 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-rose-700 active:scale-95 flex items-center gap-1.5 ${selectedExpenseIds.length === 0 ? 'opacity-50 pointer-events-none' : ''}`}><Trash2 size={12} /> Excluir ({selectedExpenseIds.length})</button>
-                                                <button onClick={() => handleOpenModal()} className="text-[10px] font-black uppercase text-white bg-slate-900 dark:bg-zinc-700 px-4 py-2.5 rounded-xl shadow-lg transition-all hover:bg-slate-800 dark:hover:bg-zinc-600 active:scale-95 flex items-center gap-1.5"><Plus size={12} /> Nova Conta</button>
-                                            </div>
-                                        </div>
 
-                                        {/* Sub-tabs for Payables Beneficiaries */}
-                                        <div className="flex bg-slate-200/50 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-fit">
-                                            {(['GERAL', 'PROFISSIONAIS', 'RH', 'FORNECEDORES'] as const).map(v => (
-                                                <button
-                                                    key={v}
-                                                    onClick={() => setPayablesFavorecidoTab(v)}
-                                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${payablesFavorecidoTab === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                                                >
-                                                    {v}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                        <div className="p-5 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                                            <div className="md:hidden relative w-full space-y-2">
-                                                <div className="relative">
-                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Buscar por descrição..."
-                                                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
-                                                        value={payablesSearch}
-                                                        onChange={e => setPayablesSearch(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div className="relative">
-                                                    <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                                    <select
-                                                        className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-                                                        value={payablesSupplierFilter}
-                                                        onChange={e => setPayablesSupplierFilter(e.target.value)}
-                                                    >
-                                                        <option value="ALL">TODOS FAVORECIDOS</option>
-                                                        {combinedSuppliers.map(s => (
-                                                            <option key={s.id} value={s.id}>{s.name?.toUpperCase()}</option>
-                                                        ))}
-                                                    </select>
-                                                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
-                                                </div>
-                                            </div>
-                                            
-                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-full sm:w-auto justify-center">
+                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
                                                 {(['ALL', 'Pago', 'Pendente', 'Atrasado'] as const).map(s => (
                                                     <button
                                                         key={s}
@@ -3111,19 +3247,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 ))}
                                             </div>
 
-                                            <label className="flex items-center gap-2 cursor-pointer bg-white dark:bg-zinc-800 px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm hover:bg-slate-50 transition-all">
-                                                <input
-                                                    type="checkbox"
-                                                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                                    checked={payablesIgnoreDateFilter}
-                                                    onChange={e => setPayablesIgnoreDateFilter(e.target.checked)}
-                                                />
-                                                <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-300">Exibir todos pendentes</span>
-                                            </label>
-
-                                            <button onClick={handlePrintPayablesReport} className="hidden sm:flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all"><Printer size={12} /> Relatório</button>
+                                            <button onClick={handlePrintPayablesReport} className="flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"><Printer size={12} /> Relatório</button>
                                         </div>
                                     </div>
+
                                     <div className="overflow-x-auto scrollbar-hide">
                                         <table className="w-full text-left text-sm min-w-[800px]">
                                             <thead>
@@ -3157,10 +3284,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
                                                 {filteredPayables.length > 0 ? filteredPayables.map(exp => {
-                                                    const supplierName = suppliers.find(s => s.id === exp.supplierId)?.name || 
-                                                                       providers.find(p => p.id === exp.providerId)?.name || 
-                                                                       employees.find(emp => emp.id === exp.employeeId)?.name || 
-                                                                       ((exp as any).payroll_id ? employees.find(emp => emp.id === payroll.find(pay => pay.id === (exp as any).payroll_id)?.employeeId)?.name : '');
+                                                    const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+                                                    const rawName = exp.customerOrProviderName || exp.providerName || '';
+                                                    const supplierName = (isUUID(rawName) || !rawName)
+                                                        ? (suppliers.find(s => s.id === (exp as any).supplierId)?.name || 
+                                                           providers.find(p => p.id === (exp as any).providerId)?.name || 
+                                                           employees.find(e => e.id === (exp as any).employeeId)?.name || 
+                                                           '')
+                                                        : rawName;
                                                     const normalizedStatus = (exp.status || '').toUpperCase();
                                                     const isOverdue = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
                                                     return (
@@ -3380,13 +3511,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
                                         <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                                             <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                                {supplierSubTab === 'PROFISSIONAIS' ? <Scissors size={16} /> : 
-                                                 supplierSubTab === 'RH' ? <Users size={16} /> : <Truck size={16} />} 
-                                                {supplierSubTab === 'PROFISSIONAIS' ? 'Profissionais' : 
-                                                 supplierSubTab === 'RH' ? 'Recursos Humanos' : 'Fornecedores'}
+                                                {supplierSubTab === 'PROFISSIONAIS' ? <Scissors size={16} /> :
+                                                    supplierSubTab === 'RH' ? <Users size={16} /> : <Truck size={16} />}
+                                                {supplierSubTab === 'PROFISSIONAIS' ? 'Profissionais' :
+                                                    supplierSubTab === 'RH' ? 'Recursos Humanos' : 'Fornecedores'}
                                             </h3>
-                                            {! (supplierSubTab === 'PROFISSIONAIS' || supplierSubTab === 'RH') && (
-                                                <button 
+                                            {!(supplierSubTab === 'PROFISSIONAIS' || supplierSubTab === 'RH') && (
+                                                <button
                                                     onClick={() => {
                                                         setEditingSupplierId(null);
                                                         setSupplierForm({ name: '', document: '', phone: '', email: '', category: '' });
@@ -3411,51 +3542,51 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <th className="px-6 py-4 text-center">Ações</th>
                                                     </tr>
                                                 </thead>
-                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                                {list.map(sup => (
-                                                    <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-black text-xs uppercase">{sup.name || 'Sem Nome'}</span>
-                                                                {sup.isProvider ? (
-                                                                    <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100 dark:border-indigo-800">Profissional</span>
+                                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                    {list.map(sup => (
+                                                        <tr key={sup.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/50 transition-colors group">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-black text-xs uppercase">{sup.name || 'Sem Nome'}</span>
+                                                                    {sup.isProvider ? (
+                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100 dark:border-indigo-800">Profissional</span>
+                                                                    ) : (
+                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100 dark:border-zinc-700">Fornecedor</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">
+                                                                {supplierSubTab === 'FORNECEDORES' ? (sup.category || '-') :
+                                                                    supplierSubTab === 'RH' ? ((sup as any).role || '-') :
+                                                                        ((sup as any).specialty || '-')}
+                                                            </td>
+                                                            <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</span>
+                                                                    <span className="text-[9px] text-slate-400">{sup.email || '-'}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 flex items-center justify-center gap-2">
+                                                                {!sup.isProvider ? (
+                                                                    <>
+                                                                        <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                                                        <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                                    </>
                                                                 ) : (
-                                                                    <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100 dark:border-zinc-700">Fornecedor</span>
+                                                                    <span className="text-[10px] font-black text-slate-300 uppercase italic">Gerenciado em Profissionais</span>
                                                                 )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase">
-                                                            {supplierSubTab === 'FORNECEDORES' ? (sup.category || '-') : 
-                                                             supplierSubTab === 'RH' ? ((sup as any).role || '-') : 
-                                                             ((sup as any).specialty || '-')}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-xs font-bold font-mono">{sup.document || '-'}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</span>
-                                                                <span className="text-[9px] text-slate-400">{sup.email || '-'}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4 flex items-center justify-center gap-2">
-                                                            {!sup.isProvider ? (
-                                                                <>
-                                                                    <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                                                    <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
-                                                                </>
-                                                            ) : (
-                                                                <span className="text-[10px] font-black text-slate-300 uppercase italic">Gerenciado em Profissionais</span>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                {list.length === 0 && (
-                                                    <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
-                                                )}
-                                            </tbody>
-                                        </table>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {list.length === 0 && (
+                                                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
                             );
                         })()}
                     </div>
@@ -3480,17 +3611,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         </div>
 
                         {chartsSubTab === 'GENERAL' ? (
-                            <FinanceCharts 
-                                transactions={transactions} 
-                                expenses={expenses} 
-                                startDate={startDate} 
-                                endDate={endDate} 
-                                timeView={timeView} 
+                            <FinanceCharts
+                                transactions={transactions}
+                                expenses={expenses}
+                                startDate={startDate}
+                                endDate={endDate}
+                                timeView={timeView}
                                 yearlyBillingData={Array.from({ length: 12 }, (_, i) => ({
                                     month: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][i],
                                     currentYear: yearlyBillingData.currentYear[i]?.total || 0,
                                     previousYear: yearlyBillingData.previousYear[i]?.total || 0
-                                }))} 
+                                }))}
                             />
                         ) : (
                             <div className="animate-in fade-in duration-500 pb-20">
@@ -4038,7 +4169,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </tr>
                                                         ))}
                                                     </>)}
-                                                    
+
                                                     {/* Sub-linha: Venda de Produtos */}
                                                     <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
@@ -4758,13 +4889,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Valor (R$)</label>
-                                        <input 
-                                            type="text" 
-                                            placeholder="0,00" 
-                                            required 
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" 
-                                            value={expenseForm.amount || ''} 
-                                            onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value as any })} 
+                                        <input
+                                            type="text"
+                                            placeholder="0,00"
+                                            required
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                            value={expenseForm.amount || ''}
+                                            onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value as any })}
                                         />
                                     </div>
                                     <div>
@@ -4899,7 +5030,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 onChange={e => {
                                                     const val = e.target.value;
                                                     let updatedForm = { ...expenseForm, supplierId: val };
-                                                    
+
                                                     // No auto-fill category anymore as per user request
                                                     setExpenseForm(updatedForm);
                                                 }}
@@ -5313,7 +5444,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
 
             {/* Manual Link Modal */}
-            <ManualLinkModal 
+            <ManualLinkModal
                 isOpen={isManualLinkModalOpen}
                 onClose={() => { setIsManualLinkModalOpen(false); setLinkingBankTx(null); }}
                 bankTx={linkingBankTx}
@@ -5332,6 +5463,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 suppliers={suppliers}
                 customers={customers}
                 expenseCategories={expenseCategories}
+                providers={providers}
+                employees={employees || []}
+                transactions={transactions}
+                bankTransactions={bankTransactions}
             />
         </div >
     );

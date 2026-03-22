@@ -1,34 +1,31 @@
 import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig, Supplier } from '../types';
 
-export const toLocalDateStr = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+export const toLocalDateStr = (date: Date | string) => {
+    const d = typeof date === 'string' ? parseDateSafe(date) : date;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
 };
 
-export const parseDateSafe = (dateStr: string | undefined): Date => {
+export const parseDateSafe = (dateStr: string | undefined | Date): Date => {
     if (!dateStr) return new Date();
+    if (dateStr instanceof Date) return dateStr;
     try {
-        // 1. Handle common Supabase/Postgres formats: "YYYY-MM-DD HH:mm:ss+ZZ"
-        // If there's a space followed by time, we extract just the date part to avoid timezone shifts
         let cleanDate = dateStr;
         if (cleanDate.includes(' ')) {
-            cleanDate = cleanDate.split(' ')[1].includes(':') ? cleanDate.split(' ')[0] : cleanDate;
+            cleanDate = cleanDate.split(' ')[0];
         } else if (cleanDate.includes('T')) {
             cleanDate = cleanDate.split('T')[0];
         }
 
-        // 2. Intercept DD/MM/YYYY and convert to YYYY-MM-DD
-        if (cleanDate.includes('/') && cleanDate.split('/').length === 3) {
-            const parts = cleanDate.split('/');
-            if (parts[0].length === 2 && parts[2].length === 4) {
-                cleanDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
-            }
+        // If format is YYYY-MM-DD, parse as LOCAL time to avoid UTC shift
+        if (/^\d{4}-\d{2}-\d{2}$/.test(cleanDate)) {
+            const [y, m, d] = cleanDate.split('-').map(Number);
+            return new Date(y, m - 1, d);
         }
 
-        // 3. Create date at midday to avoid day jumps
-        const d = new Date(`${cleanDate}T12:00:00`);
+        const d = new Date(dateStr);
         return isNaN(d.getTime()) ? new Date() : d;
     } catch (e) {
         return new Date();
@@ -408,10 +405,9 @@ export const generateFinancialTransactions = (
             status: exp.status === 'Pago' ? 'Pago' : 'Pendente',
             paymentMethod: exp.paymentMethod || 'Dinheiro',
             origin: 'Despesa',
-            customerOrProviderName: supplier?.name || '',
+            customerOrProviderName: supplier?.name || providers.find(p => p.id === exp.providerId)?.name || '',
             // Use exp.id as providerName so that DB expense records with category 'Repasse Comissão'
             // are never merged together in the commission grouping step below.
-            // Appointment-generated commissions use real provider names, DB expenses use UUIDs → no collision.
             providerName: exp.id,
             supplierId: exp.supplierId,
             isReconciled: exp.isReconciled
