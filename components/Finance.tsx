@@ -524,9 +524,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     expenses, setExpenses, campaigns = [], partners = [], financialConfigs = [], employees = [], payroll = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
-    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'RECEIVABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
+    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
     const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
-    const [receivablesFilter, setReceivablesFilter] = useState('');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
@@ -1295,7 +1294,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 (payablesStatusFilter === 'Atrasado' ? isAtrasado :
                     payablesStatusFilter === 'Pago' ? statusLabel === 'PAGO' :
                         payablesStatusFilter === 'Pendente' ? (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') :
-                            statusLabel === payablesStatusFilter.toUpperCase());
+                            false);
 
             // Supplier Filter Logic
             // For derived transactions, we check against their calculated professional/supplier IDs or names
@@ -2240,8 +2239,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     return (
         <div className="space-y-4 md:space-y-6 relative h-full flex flex-col pb-24 md:pb-8 text-slate-900 dark:text-slate-100">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                <div><h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Gestão Financeira</h2><p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Controle total e sincronizado</p></div>
+            <div className="flex justify-between items-center w-full mb-2">
+                <div>
+                    <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Gestão Financeira</h2>
+                    <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Controle total e sincronizado</p>
+                </div>
+                {/* Lançar Button in Header */}
+                {activeTab === 'ACCOUNTS' && accountsSubTab === 'PAYABLES' && (
+                    <button onClick={() => handleOpenModal()} className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black shadow-md active:scale-95 transition-all">
+                        <Plus size={16} />
+                        <span className="hidden md:inline text-[10px] uppercase tracking-widest">Lançar Despesa</span>
+                    </button>
+                )}
             </div>
 
             <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
@@ -2372,14 +2381,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
                                     { id: 'CONCILIADO', label: 'Conciliados', icon: CheckCircle2 },
                                     { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
-                                    { id: 'RECEIVABLES', label: 'Contas a Receber', icon: ArrowUpCircle },
                                     { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
                                     { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
                                 ].map(st => (
                                     <button
                                         key={st.id}
                                         onClick={() => {
-                                            setAccountsSubTab(st.id as any);
+                                            setAccountsSubTab(st.id as AccountsSubTab);
                                             if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
                                         }}
                                         className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
@@ -2390,28 +2398,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
-                                    <RefreshCw size={12} /> Conciliação
-                                </button>
-
-                                {accountsSubTab === 'PAYABLES' && (
-                                    <>
-                                        <button onClick={() => handleOpenModal()} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
-                                            <Plus size={12} /> Lançar Despesa
-                                        </button>
-                                        <button onClick={() => handleOpenModal()} className="md:hidden fixed bottom-24 right-5 z-[60] h-14 px-5 bg-indigo-600 dark:bg-indigo-500 text-white rounded-full flex items-center justify-center gap-2 shadow-xl shadow-indigo-500/30 active:scale-95 transition-all border-2 border-white dark:border-zinc-900 group">
-                                            <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" />
-                                            <span className="font-black text-[11px] uppercase tracking-widest">Lançar</span>
-                                        </button>
-                                    </>
-                                )}
-                                {accountsSubTab === 'SUPPLIERS' && (
-                                    <button onClick={() => handleOpenSupplierModal()} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-black dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all">
-                                        <Plus size={12} /> Novo Fornecedor
+                                {accountsSubTab === 'CONCILIADO' && (
+                                    <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                        <RefreshCw size={12} /> Conciliação
                                     </button>
                                 )}
                             </div>
                         </div>
+
+                        {/* Mobile centered Conciliação button */}
+                        {accountsSubTab === 'CONCILIADO' && (
+                            <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                    <RefreshCw size={14} /> Conciliação
+                                </button>
+                            </div>
+                        )}
 
                         {/* ===== EXTRATO / FLUXO ===== */}
                         {accountsSubTab === 'DETAILED' && (
@@ -2424,9 +2426,65 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors"><Printer size={16} /></button>
                                 </div>
                                 <div className="overflow-x-auto scrollbar-hide">
-                                    <table className="w-full text-left border-collapse min-w-[1000px]">
+                                    {/* Mobile Cards View */}
+                                    <div className="grid grid-cols-1 md:hidden p-4 space-y-3">
+                                        {filteredTransactions.length > 0 ? (
+                                            filteredTransactions.map(t => (
+                                                <div key={t.id} className={`p-4 rounded-2xl border-2 flex flex-col gap-2 transition-colors ${selectedExpenseIds.includes(t.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm'}`}>
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex items-center gap-2">
+                                                            {t.origin === 'Despesa' && (
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                                    checked={selectedExpenseIds.includes(t.id)}
+                                                                    onChange={() => toggleSelectExpense(t.id)}
+                                                                />
+                                                            )}
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-bold text-slate-500 font-mono">
+                                                                    {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
+                                                                </span>
+                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">{t.origin}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[8px] font-black uppercase border ${t.type === 'RECEITA' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-rose-50 text-rose-700 border-rose-100'}`}>
+                                                            {t.type === 'RECEITA' ? <ArrowUpCircle size={8} /> : <ArrowDownCircle size={8} />}
+                                                            {t.type}
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-1">
+                                                        <div className="flex justify-between gap-2">
+                                                            <p className="font-black text-slate-950 dark:text-white uppercase text-[11px] leading-tight line-clamp-2 flex-1">{t.description}</p>
+                                                            {t.systemReconciled && <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />}
+                                                        </div>
+                                                        {t.customerOrProviderName && <p className="text-[10px] text-slate-500 font-bold mt-0.5 italic">{t.customerOrProviderName}</p>}
+                                                    </div>
+                                                    <div className="flex items-center justify-between pt-2 border-t border-slate-50 dark:border-zinc-800 mt-1">
+                                                        <div className="flex flex-col gap-1">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase">{t.paymentMethod}</span>
+                                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border w-fit ${t.status === 'Pago' ? 'bg-emerald-50 text-emerald-800 border-emerald-100' : t.status === 'Atrasado' ? 'bg-rose-50 text-rose-800 border-rose-100 animate-pulse' : 'bg-amber-50 text-amber-800 border-amber-100'}`}>
+                                                                {t.status}
+                                                            </span>
+                                                        </div>
+                                                        <div className={`text-right font-black text-base ${t.type === 'RECEITA' ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                                            {t.type === 'DESPESA' ? '-' : '+'} R$ {t.amount.toFixed(2)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="py-12 text-center opacity-30">
+                                                <Search size={48} className="mx-auto mb-2" />
+                                                <p className="text-xs font-black uppercase tracking-widest">Nenhuma transação</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Desktop Table View */}
+                                    <table className="hidden md:table w-full text-left border-collapse min-w-[1000px]">
                                         <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
-                                            <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
+                                            <tr>
                                                 <th className="px-4 py-4 w-10">
                                                     <input
                                                         type="checkbox"
@@ -2436,11 +2494,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             const visibleExpenses = filteredTransactions.filter(t => t.origin === 'Despesa');
                                                             if (visibleExpenses.length === 0) return;
                                                             const visibleIds = visibleExpenses.map(e => e.id);
-                                                            const allAlreadySelected = visibleIds.every(id => selectedExpenseIds.includes(id));
+                                                            const allAlreadySelected = visibleIds.every((id: string) => selectedExpenseIds.includes(id));
                                                             if (allAlreadySelected) {
-                                                                setSelectedExpenseIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                                                                setSelectedExpenseIds((prev: string[]) => prev.filter(id => !visibleIds.includes(id)));
                                                             } else {
-                                                                setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...visibleIds])));
+                                                                setSelectedExpenseIds((prev: string[]) => Array.from(new Set([...prev, ...visibleIds])));
                                                             }
                                                         }}
                                                     />
@@ -2504,7 +2562,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </tr>
                                             )) : (
                                                 <tr>
-                                                    <td colSpan={7} className="px-6 py-20 text-center opacity-30">
+                                                    <td colSpan={9} className="px-6 py-20 text-center opacity-30">
                                                         <Search size={48} className="mx-auto mb-2" />
                                                         <p className="text-xs font-black uppercase tracking-widest">Nenhuma transação no período</p>
                                                     </td>
@@ -2710,14 +2768,27 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     {/* Header */}
                                     <div className="p-5 border-b bg-slate-50/50 dark:bg-zinc-800/50">
                                         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                            <div className="flex-1">
-                                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                                    <CheckCircle2 size={16} className="text-emerald-500" /> Extrato Conciliado
-                                                </h3>
-                                                <p className="text-[9px] text-slate-500 uppercase mt-0.5">
-                                                    {filtered.length} lançamentos validados pelo banco
-                                                </p>
+                                            <div className="flex-1 flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
+                                                        <CheckCircle2 size={16} className="text-emerald-500" /> Extrato Conciliado
+                                                    </h3>
+                                                    <p className="text-[9px] text-slate-500 uppercase mt-0.5">
+                                                        {filtered.length} lançamentos validados pelo banco
+                                                    </p>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button onClick={handlePrintConciliado} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors shadow-sm" title="Imprimir Extrato">
+                                                        <Printer size={16} />
+                                                    </button>
+                                                    <button onClick={handleDownloadCSV} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors shadow-sm" title="Baixar CSV">
+                                                        <Download size={16} />
+                                                    </button>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-4">
                                             {/* Totals Chips */}
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-200 text-slate-600 border border-slate-300">
@@ -2729,15 +2800,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
                                                     ↓ R$ {totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
-                                                <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                                                    Saldo Final: R$ {runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                                                        Saldo Final: R$ {runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
                                             </div>
 
                                             {/* Type Filters */}
-                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700">
+                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-fit">
                                                 <button
-                                                    onClick={() => setConciliadoTypeFilter(prev => prev === 'RECEITA' ? 'ALL' : 'RECEITA')}
+                                                    onClick={() => setConciliadoTypeFilter((prev: 'ALL' | 'RECEITA' | 'DESPESA') => prev === 'RECEITA' ? 'ALL' : 'RECEITA')}
                                                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'RECEITA'
                                                         ? 'bg-emerald-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
@@ -2746,22 +2819,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <ArrowUpCircle size={12} /> Receitas
                                                 </button>
                                                 <button
-                                                    onClick={() => setConciliadoTypeFilter(prev => prev === 'DESPESA' ? 'ALL' : 'DESPESA')}
+                                                    onClick={() => setConciliadoTypeFilter((prev: 'ALL' | 'RECEITA' | 'DESPESA') => prev === 'DESPESA' ? 'ALL' : 'DESPESA')}
                                                     className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'DESPESA'
                                                         ? 'bg-rose-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-rose-600 dark:hover:text-rose-400'
                                                         }`}
                                                 >
                                                     <ArrowDownCircle size={12} /> Despesas
-                                                </button>
-                                            </div>
-                                            {/* Action buttons */}
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={handlePrintConciliado} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors" title="Imprimir Extrato">
-                                                    <Printer size={16} />
-                                                </button>
-                                                <button onClick={handleDownloadCSV} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors" title="Baixar CSV">
-                                                    <Download size={16} />
                                                 </button>
                                             </div>
                                         </div>
@@ -2779,9 +2843,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     </div>
 
                                     {/* Table */}
-                                    <div className="overflow-x-auto scrollbar-hide">
-                                        <table className="w-full text-left border-collapse min-w-[1100px]">
-                                            <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
+                                    <div className="overflow-x-auto scrollbar-hide md:overflow-visible">
+                                        <table className="w-full text-left md:border-collapse block md:table md:min-w-[1100px]">
+                                            <thead className="hidden md:table-header-group bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
                                                 <tr>
                                                     <th className="px-5 py-4">Data</th>
                                                     <th className="px-5 py-4">Tipo</th>
@@ -2795,16 +2859,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <th className="px-5 py-4 w-10"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                            <tbody className="block md:table-row-group divide-y md:divide-y divide-slate-100 dark:divide-zinc-800 mt-4 px-4 md:px-0 md:mt-0">
                                                 {/* Opening balance row */}
-                                                <tr className="bg-slate-50/70 dark:bg-zinc-800/40">
-                                                    <td colSpan={8} className="px-5 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                <tr className="flex flex-col md:table-row bg-slate-50 dark:bg-zinc-800/80 border md:border-0 border-slate-200 dark:border-zinc-700 rounded-2xl md:rounded-none mb-4 md:mb-0 p-4 md:p-0">
+                                                    <td className="block md:table-cell md:px-5 md:py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-0">
                                                         Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
                                                     </td>
-                                                    <td className="px-5 py-3 text-right text-[11px] font-black text-slate-700 dark:text-slate-200">
+                                                    <td className="block md:table-cell md:px-5 md:py-3 text-[16px] md:text-[11px] font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-900 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border md:border-0 border-slate-200 dark:border-zinc-800">
                                                         R$ {openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </td>
-                                                    <td></td>
                                                 </tr>
 
                                                 {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance, match, isSplit }) => {
@@ -2848,11 +2911,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     }
 
                                                     return (
-                                                        <tr key={`${t.id}-${match?.id || 'main'}`} className={`hover:bg-slate-50/60 dark:hover:bg-zinc-800/30 transition-colors group text-sm ${isSplit ? 'bg-slate-50/30 dark:bg-zinc-900/20' : ''}`}>
-                                                            <td className="px-5 py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap">
+                                                        <tr key={`${t.id}-${match?.id || 'main'}`} className={`flex flex-col md:table-row md:hover:bg-slate-50/60 md:dark:hover:bg-zinc-800/30 transition-colors group text-sm block bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 rounded-3xl mb-4 p-5 md:border-b md:border-x-0 md:border-t-0 md:rounded-none md:mb-0 md:p-0 relative md:static shadow-sm md:shadow-none ${isSplit ? 'bg-slate-50/30 dark:bg-zinc-900/20' : ''}`}>
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap mb-2 md:mb-0">
                                                                 {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
                                                             </td>
-                                                            <td className="px-5 py-3.5">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 absolute right-5 top-5 md:static">
                                                                 {(() => {
                                                                     const isReceita = t.type === 'RECEITA';
                                                                     const label = isReceita ? 'Receita' : 'Despesa';
@@ -2869,9 +2932,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     );
                                                                 })()}
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-[120px] truncate">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-full md:max-w-[120px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Categoria</span>
                                                                 {isSplit ? (
-                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold">{displayCat}</span>
+                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayCat}</span>
                                                                 ) : (
                                                                     <div className="relative">
                                                                         <select
@@ -2893,10 +2957,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             .update({ category: newCategory })
                                                                                             .eq('id', match.id);
                                                                                         // Local state update
-                                                                                        setExpenses(prev => prev.map(exp => exp.id === match.id ? { ...exp, category: newCategory } : exp));
+                                                                                        setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, category: newCategory } : exp));
                                                                                     }
 
-                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
+                                                                                    setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemCategory: newCategory } : tx));
                                                                                 } catch (err) {
                                                                                     console.error('Failed to update category', err);
                                                                                     alert('Erro ao atualizar categoria: ' + (err as any).message);
@@ -2919,9 +2983,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     </div>
                                                                 )}
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-[130px] truncate">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-full md:max-w-[130px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Favorecido / Cliente</span>
                                                                 {isSplit ? (
-                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold">{displayEnt || '-'}</span>
+                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayEnt || '-'}</span>
                                                                 ) : (
                                                                     <div className="relative">
                                                                         <select
@@ -2932,13 +2997,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                 try {
                                                                                     // 1. Update bank transaction (storing name or null)
                                                                                     await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
-                                                                                    setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || null } : tx));
+                                                                                    setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || null } : tx));
 
                                                                                     if (!newName) {
                                                                                         // Case: UN-LINK / CLEAR Beneficiary
                                                                                         if (match && match.type === 'EXPENSE' && window.confirm("Deseja remover o favorecido deste lançamento no Contas a Pagar?")) {
                                                                                             await supabase.from('expenses').update({ provider_id: null, employee_id: null, supplier_id: null }).eq('id', match.id);
-                                                                                            setExpenses(prev => prev.map(exp => exp.id === match.id ? { ...exp, providerId: null, employeeId: null, supplierId: null } : exp));
+                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, providerId: null, employeeId: null, supplierId: null } : exp));
                                                                                         }
                                                                                         return;
                                                                                     }
@@ -2948,8 +3013,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                     if (!selectedEntity) return;
 
                                                                                     const combinedId = selectedEntity.id;
-                                                                                    const isProfessional = (selectedEntity as any).isProvider;
-                                                                                    const isEmployee = (selectedEntity as any).isEmployee;
+                                                                                    const isProfessional = (selectedEntity as any).isProvider || false;
+                                                                                    const isEmployee = (selectedEntity as any).isEmployee || false;
                                                                                     const realId = (isProfessional || isEmployee) ? combinedId.split('_')[1] : combinedId;
 
                                                                                     // 2. Logic for Syncing / Linking / Creating
@@ -2964,9 +3029,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         );
 
                                                                                         if (candidate && window.confirm(`Encontramos um lançamento de R$ ${candidate.amount.toFixed(2)} (${candidate.description}) no sistema. Deseja vincular a este registro?`)) {
-                                                                                            const newMatches = [{ id: candidate.id, type: 'EXPENSE', amount: candidate.amount }];
+                                                                                            const newMatches = [{ id: candidate.id, type: 'EXPENSE' as const, amount: candidate.amount }];
                                                                                             await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
-                                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                            setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
                                                                                             currentMatch = { id: candidate.id, type: 'EXPENSE', amount: candidate.amount };
                                                                                         } else if (window.confirm(`Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`)) {
                                                                                             const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
@@ -2985,15 +3050,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                                                             if (expErr) throw expErr;
 
-                                                                                            const newMatches = [{ id: newExp.id, type: 'EXPENSE', amount: newExp.amount }];
+                                                                                            const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
                                                                                             await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
 
-                                                                                            setExpenses(prev => [...prev, {
+                                                                                            setExpenses((prev: Expense[]) => [...prev, {
                                                                                                 id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
                                                                                                 category: newExp.category, status: newExp.status, isReconciled: true,
-                                                                                                providerId: newExp.provider_id, employeeId: newExp.employee_id, supplierId: newExp.supplier_id
+                                                                                                providerId: newExp.provider_id, employeeId: newExp.employee_id, supplierId: newExp.supplier_id,
+                                                                                                paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
                                                                                             }]);
-                                                                                            setBankTransactions(prev => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                            setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
                                                                                             currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
                                                                                         }
                                                                                     }
@@ -3004,7 +3070,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                 { supplier_id: realId, provider_id: null, employee_id: null };
 
                                                                                         await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
-                                                                                        setExpenses(prev => prev.map(exp => exp.id === currentMatch!.id ? {
+                                                                                        setExpenses((prev: Expense[]) => prev.map(exp => exp.id === currentMatch!.id ? {
                                                                                             ...exp,
                                                                                             providerId: isProfessional ? realId : null,
                                                                                             employeeId: isEmployee ? realId : null,
@@ -3046,24 +3112,29 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     </div>
                                                                 )}
                                                             </td>
-                                                            <td className="px-5 py-3.5">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Descrição / Documento</span>
                                                                 <div className="flex flex-col gap-0.5">
-                                                                    <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-[280px] truncate">{displayDesc}</p>
+                                                                    <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-full md:max-w-[280px] line-clamp-2 md:truncate">{displayDesc}</p>
                                                                     {isSplit && (
                                                                         <p className="text-[9px] text-slate-400 font-mono italic truncate">Ref. Banco: {t.description}</p>
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap">
-                                                                {t.systemPaymentMethod || '-'}
+                                                            <td className="flex items-center justify-between md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 uppercase whitespace-nowrap mb-2 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-2 md:pb-0">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Pagamento</span>
+                                                                <span>{t.systemPaymentMethod || '-'}</span>
                                                             </td>
-                                                            <td className={`px-5 py-3.5 text-right font-black text-[12px] whitespace-nowrap ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                                                {delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            <td className={`flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[14px] md:text-[12px] whitespace-nowrap mb-2 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-2 md:pb-0 ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Valor Atual</span>
+                                                                <span>{delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                             </td>
-                                                            <td className="px-5 py-3.5 text-right font-black text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap">
-                                                                R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            <td className="flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[13px] md:text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap mb-4 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Saldo Resultante</span>
+                                                                <span className="bg-slate-50 dark:bg-zinc-800 md:bg-transparent px-2 md:px-0 py-1 md:py-0 rounded font-mono">R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                             </td>
-                                                            <td className="px-5 py-3.5">
+                                                            <td className="flex items-center justify-between md:table-cell md:px-5 md:py-3.5">
+                                                                <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Gerenciar Vínculo</span>
                                                                 <div className="flex items-center gap-2">
                                                                     <button
                                                                         onClick={() => {
@@ -3084,13 +3155,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     )}
                                                                 </div>
                                                             </td>
-                                                            <td className="px-5 py-3.5">
-                                                            </td>
+                                                            <td className="hidden md:table-cell"></td>
                                                         </tr>
                                                     );
                                                 }) : (
-                                                    <tr>
-                                                        <td colSpan={10} className="px-6 py-20 text-center">
+                                                    <tr className="block md:table-row p-4 md:p-0">
+                                                        <td colSpan={10} className="block md:table-cell px-6 py-20 text-center border-t border-slate-100 dark:border-zinc-800 md:border-0">
                                                             <div className="flex flex-col items-center gap-3">
                                                                 <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-full text-slate-300"><CheckCircle2 size={32} /></div>
                                                                 <div>
@@ -3112,13 +3182,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     {/* Pagination Controls */}
                                     {
                                         totalPages > 1 && (
-                                            <div className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-700">
-                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                            <div className="flex flex-col md:flex-row items-center justify-between p-4 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-700 gap-4 md:gap-0">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center md:text-left">
                                                     Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, rowsWithBalance.length)} de {rowsWithBalance.length}
                                                 </span>
-                                                <div className="flex items-center gap-1">
+                                                <div className="flex items-center gap-1 justify-center w-full md:w-auto md:justify-end">
                                                     <button
-                                                        onClick={() => setConciliadoPage(prev => Math.max(1, prev - 1))}
+                                                        onClick={() => setConciliadoPage((prev: number) => Math.max(1, prev - 1))}
                                                         disabled={conciliadoPage === 1}
                                                         className="p-1 rounded bg-slate-200 dark:bg-zinc-700 text-slate-500 disabled:opacity-50"
                                                     >
@@ -3149,7 +3219,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </div>
 
                                                     <button
-                                                        onClick={() => setConciliadoPage(prev => Math.min(totalPages, prev + 1))}
+                                                        onClick={() => setConciliadoPage((prev: number) => Math.min(totalPages, prev + 1))}
                                                         disabled={conciliadoPage === totalPages}
                                                         className="p-1 rounded bg-slate-200 dark:bg-zinc-700 text-slate-500 disabled:opacity-50"
                                                     >
@@ -3171,22 +3241,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         {accountsSubTab === 'PAYABLES' && (
                             <>
                                 {/* Indicadores Contas a Pagar */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
                                     {[
                                         { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: FileText, color: 'indigo' },
                                         { label: 'Total Pago', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PAGO').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: CheckCircle2, color: 'emerald' },
                                         { label: 'Pendente', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: Clock, color: 'amber' },
                                         { label: 'Atrasado', value: filteredPayables.filter(p => ((p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING') && p.date && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: AlertCircle, color: 'rose' },
                                     ].map((card, idx) => (
-                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all">
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
-                                                    <card.icon size={20} />
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-3 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all flex flex-col justify-between">
+                                            <div className="flex items-center gap-2 mb-2 md:mb-4">
+                                                <div className={`p-2 md:p-3 rounded-xl md:rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
+                                                    <card.icon size={16} className="md:w-5 md:h-5" />
                                                 </div>
+                                                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest flex-1 leading-tight">{card.label}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                                                <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
+                                                <h4 className="text-sm md:text-xl font-black text-slate-950 dark:text-white mt-1 md:mt-0">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
                                             </div>
                                         </div>
                                     ))}
@@ -3251,8 +3321,60 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         </div>
                                     </div>
 
-                                    <div className="overflow-x-auto scrollbar-hide">
-                                        <table className="w-full text-left text-sm min-w-[800px]">
+                                    <div className="overflow-x-auto scrollbar-hide md:overflow-visible">
+                                        <div className="grid grid-cols-1 gap-3 md:hidden p-4 border-t border-slate-100 dark:border-zinc-800">
+                                            {filteredPayables.length > 0 ? filteredPayables.map(exp => {
+                                                const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+                                                const rawName = exp.customerOrProviderName || exp.providerName || '';
+                                                const supplierName = (isUUID(rawName) || !rawName)
+                                                    ? (suppliers.find(s => s.id === (exp as any).supplierId)?.name || 
+                                                       providers.find(p => p.id === (exp as any).providerId)?.name || 
+                                                       employees.find(e => e.id === (exp as any).employeeId)?.name || 
+                                                       '')
+                                                    : rawName;
+                                                const normalizedStatus = (exp.status || '').toUpperCase();
+                                                const isOverdue = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+                                                
+                                                return (
+                                                    <div key={exp.id} className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-colors shadow-sm ${selectedExpenseIds.includes(exp.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900'}`}>
+                                                        <div className="flex justify-between items-start gap-2">
+                                                            <div className="flex gap-3">
+                                                                <input type="checkbox" className="mt-1 flex-shrink-0 w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer" checked={selectedExpenseIds.includes(exp.id)} onChange={() => toggleSelectExpense(exp.id)} />
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                                                                            {new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                        </span>
+                                                                        {isOverdue && <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
+                                                                    </div>
+                                                                    <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">{exp.description}</h4>
+                                                                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{supplierName || '—'}</p>
+                                                                </div>
+                                                            </div>
+                                                            <button onClick={() => toggleExpenseStatus(exp.id)} className={`shrink-0 text-[8px] font-black px-2 py-1 flex-shrink-0 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-100 dark:border-amber-800'}`}>
+                                                                {exp.status}
+                                                            </button>
+                                                        </div>
+                                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-zinc-800 mt-1">
+                                                            <span className="text-[9px] font-black text-slate-400 bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded uppercase">{exp.category}</span>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-black text-sm text-rose-600 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-zinc-800 rounded-lg"><Edit2 size={12} /></button>
+                                                                    <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 dark:bg-zinc-800 rounded-lg"><Trash2 size={12} /></button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }) : (
+                                                <div className="py-12 mt-2 mx-1 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl bg-slate-50/50 dark:bg-zinc-800/10">
+                                                    Nenhuma despesa no período
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <table className="hidden md:table w-full text-left text-sm min-w-[800px]">
                                             <thead>
                                                 <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
                                                     <th className="px-4 py-4 w-10">
@@ -3313,7 +3435,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </td>
                                                             <td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td>
                                                             <td className="px-6 py-4 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                                <button onClick={() => handleOpenModal(exp)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
+                                                                <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
                                                                 <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
                                                             </td>
                                                         </tr>
@@ -3328,160 +3450,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </>
                         )}
 
-                        {/* ======= CONTAS A RECEBER ======= */}
-                        {accountsSubTab === 'RECEIVABLES' && (() => {
-                            // Derive receivables from appointments: future or unpaid
-                            const today = new Date();
-                            today.setHours(0, 0, 0, 0);
-
-                            const receivableApps = appointments.filter(a => {
-                                if (a.status === 'Cancelado') return false;
-                                const appDate = new Date(a.date + 'T12:00:00');
-                                const isInPeriod = appDate >= new Date(startDate + 'T00:00:00') && appDate <= new Date(endDate + 'T23:59:59');
-                                // Concluído = pago; só inclui pendentes no período selecionado
-                                const isPaid = a.status === 'Concluído' || (a.pricePaid ?? 0) >= ((a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0));
-                                return isInPeriod && !isPaid;
-                            }).filter(a => {
-                                const clientName = customers.find(c => c.id === a.customerId)?.name || '';
-                                const svcName = services.find(s => s.id === a.serviceId)?.name || '';
-                                const f = receivablesFilter.toLowerCase();
-                                return !f || clientName.toLowerCase().includes(f) || svcName.toLowerCase().includes(f);
-                            });
-
-                            const totalReceivable = receivableApps.reduce((acc, a) => {
-                                const price = a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
-                                const paid = a.pricePaid ?? 0;
-                                return acc + Math.max(0, price - paid);
-                            }, 0);
-
-                            const overdue = receivableApps.filter(a => {
-                                const appDate = new Date(a.date + 'T12:00:00');
-                                return appDate < today && (a.pricePaid ?? 0) < (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-                            });
-
-                            const future = receivableApps.filter(a => {
-                                const appDate = new Date(a.date + 'T12:00:00');
-                                return appDate >= today;
-                            });
-
-                            const received = appointments.filter(a => {
-                                const appDate = new Date(a.date + 'T12:00:00');
-                                const price = a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
-                                const paid = a.pricePaid ?? price;
-                                return appDate >= new Date(startDate + 'T00:00:00') && appDate <= new Date(endDate + 'T23:59:59') && paid >= price && a.status !== 'Cancelado';
-                            });
-
-                            const totalReceived = received.reduce((acc, a) => {
-                                return acc + (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-                            }, 0);
-
-                            return (
-                                <>
-                                    {/* Indicadores Receivables */}
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        {[
-                                            { label: 'A Receber', value: totalReceivable, icon: ArrowUpCircle, color: 'indigo', sub: `${receivableApps.length} pendente(s)` },
-                                            { label: 'Recebido no período', value: totalReceived, icon: CheckCircle2, color: 'emerald', sub: `${received.length} atendimento(s)` },
-                                            { label: 'Em Aberto (Futuro)', value: future.reduce((acc, a) => acc + Math.max(0, (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) - (a.pricePaid ?? 0)), 0), icon: Clock, color: 'amber', sub: `${future.length} agendamento(s)` },
-                                            { label: 'Atrasado', value: overdue.reduce((acc, a) => acc + Math.max(0, (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) - (a.pricePaid ?? 0)), 0), icon: AlertCircle, color: 'rose', sub: `${overdue.length} atrasado(s)` },
-                                        ].map((card, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className={`p-3 rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
-                                                        <card.icon size={20} />
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{card.label}</p>
-                                                    <h4 className="text-xl font-black text-slate-950 dark:text-white mt-1">R$ {card.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h4>
-                                                    <p className="text-[9px] text-slate-400 font-bold mt-0.5">{card.sub}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden">
-                                        <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-                                            <div>
-                                                <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><ArrowUpCircle size={16} className="text-emerald-500" /> Contas a Receber</h3>
-                                                <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Agendamentos com pagamento pendente ou futuro</p>
-                                            </div>
-                                        </div>
-                                        <div className="overflow-x-auto scrollbar-hide">
-                                            <table className="w-full text-left text-sm min-w-[1000px]">
-                                                <thead>
-                                                    <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
-                                                        <th className="px-6 py-4">Data</th>
-                                                        <th className="px-6 py-4">Cliente</th>
-                                                        <th className="px-6 py-4">Serviço</th>
-                                                        <th className="px-6 py-4">Profissional</th>
-                                                        <th className="px-6 py-4 text-center">Status</th>
-                                                        <th className="px-6 py-4 text-right">Valor Total</th>
-                                                        <th className="px-6 py-4 text-right">Pago</th>
-                                                        <th className="px-6 py-4 text-right">A Receber</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                                    {receivableApps.length > 0 ? receivableApps
-                                                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                                                        .map(a => {
-                                                            const client = customers.find(c => c.id === a.customerId);
-                                                            const svc = services.find(s => s.id === a.serviceId);
-                                                            const provider = providers.find(p => p.id === a.providerId);
-                                                            const totalPrice = a.bookedPrice ?? svc?.price ?? 0;
-                                                            const paid = a.pricePaid ?? 0;
-                                                            const remaining = Math.max(0, totalPrice - paid);
-                                                            const appDate = new Date(a.date + 'T12:00:00');
-                                                            const isOverdueRec = appDate < today && remaining > 0;
-                                                            const isFuture = appDate >= today;
-                                                            return (
-                                                                <tr key={a.id} className="group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                                                                    <td className="px-6 py-4 text-[11px] font-bold text-slate-500 whitespace-nowrap">
-                                                                        {appDate.toLocaleDateString('pt-BR')}
-                                                                        {isOverdueRec && <span className="ml-1 text-[8px] font-black text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
-                                                                        {isFuture && <span className="ml-1 text-[8px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-full uppercase">Futuro</span>}
-                                                                    </td>
-                                                                    <td className="px-6 py-4 font-black text-[11px] text-slate-900 dark:text-white">{client?.name || '—'}</td>
-                                                                    <td className="px-6 py-4 text-[11px] text-slate-500 dark:text-slate-300">{svc?.name || '—'}</td>
-                                                                    <td className="px-6 py-4 text-[11px] text-slate-400">{provider?.name || '—'}</td>
-                                                                    <td className="px-6 py-4 text-center">
-                                                                        <span className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase ${a.status === 'Concluído' ? 'bg-emerald-50 text-emerald-700' :
-                                                                            a.status === 'Em Andamento' ? 'bg-indigo-50 text-indigo-700' :
-                                                                                a.status === 'Aguardando' ? 'bg-amber-50 text-amber-700' :
-                                                                                    'bg-slate-100 text-slate-600'
-                                                                            }`}>{a.status}</span>
-                                                                    </td>
-                                                                    <td className="px-6 py-4 text-right font-bold text-[11px] text-slate-700 dark:text-slate-200">R$ {totalPrice.toFixed(2)}</td>
-                                                                    <td className="px-6 py-4 text-right font-bold text-[11px] text-emerald-600">R$ {paid.toFixed(2)}</td>
-                                                                    <td className="px-6 py-4 text-right font-black text-[12px] text-rose-600">{formatCurrency(remaining)}</td>
-                                                                </tr>
-                                                            );
-                                                        }) : (
-                                                        <tr><td colSpan={8} className="px-6 py-16 text-center text-slate-400 text-sm font-bold uppercase">Nenhuma conta a receber encontrada</td></tr>
-                                                    )}
-                                                </tbody>
-                                                {receivableApps.length > 0 && (
-                                                    <tfoot>
-                                                        <tr className="bg-slate-50 dark:bg-zinc-800 border-t-2 border-slate-200 dark:border-zinc-700">
-                                                            <td colSpan={5} className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">Total</td>
-                                                            <td className="px-6 py-4 text-right font-black text-slate-900 dark:text-white">
-                                                                {formatCurrency(receivableApps.reduce((acc, a) => acc + (a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0), 0))}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right font-black text-emerald-600">
-                                                                {formatCurrency(receivableApps.reduce((acc, a) => acc + (a.pricePaid ?? 0), 0))}
-                                                            </td>
-                                                            <td className="px-6 py-4 text-right font-black text-rose-600">
-                                                                {formatCurrency(totalReceivable)}
-                                                            </td>
-                                                        </tr>
-                                                    </tfoot>
-                                                )}
-                                            </table>
-                                        </div>
-                                    </div>
-                                </>
-                            );
-                        })()}
                         {/* ===== FORNECEDORES ===== */}
                         {accountsSubTab === 'SUPPLIERS' && (() => {
                             const list = combinedSuppliers.filter(sup => {
@@ -3491,7 +3459,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             });
                             return (
                                 <div className="space-y-6">
-                                    <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-700 w-fit">
+                                    <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                         {[
                                             { id: 'PROFISSIONAIS', label: 'Profissionais', icon: Scissors },
                                             { id: 'RH', label: 'Recursos Humanos', icon: Users },
@@ -3500,9 +3468,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <button
                                                 key={st.id}
                                                 onClick={() => setSupplierSubTab(st.id as any)}
-                                                className={`px-6 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${supplierSubTab === st.id ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                                className={`px-3 md:px-6 py-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 md:gap-2 ${supplierSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                             >
-                                                <st.icon size={14} />
+                                                <st.icon size={12} className="md:size-[14px]" />
                                                 {st.label}
                                             </button>
                                         ))}
@@ -3529,8 +3497,60 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left text-sm">
+                                        <div className="overflow-x-auto scrollbar-hide">
+                                            {/* Mobile Cards View */}
+                                            <div className="grid grid-cols-1 md:hidden p-4 space-y-3">
+                                                {list.length > 0 ? list.map(sup => (
+                                                    <div key={sup.id} className="p-4 rounded-2xl border-2 border-slate-50 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex flex-col gap-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-black text-xs uppercase text-slate-900 dark:text-white">{sup.name || 'Sem Nome'}</span>
+                                                                    {sup.isProvider ? (
+                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100">Profissional</span>
+                                                                    ) : (
+                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100">Fornecedor</span>
+                                                                    )}
+                                                                </div>
+                                                                <span className="text-[10px] font-bold text-slate-400 uppercase">
+                                                                    {supplierSubTab === 'FORNECEDORES' ? (sup.category || '-') :
+                                                                        supplierSubTab === 'RH' ? ((sup as any).role || '-') :
+                                                                            ((sup as any).specialty || '-')}
+                                                                </span>
+                                                            </div>
+                                                            {!sup.isProvider && (
+                                                                <div className="flex items-center gap-2">
+                                                                    <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors"><Edit2 size={14} /></button>
+                                                                    <button onClick={() => handleDeleteSupplier(sup.id)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors"><Trash2 size={14} /></button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-slate-50 dark:border-zinc-800 mt-1">
+                                                            <div>
+                                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Documento</p>
+                                                                <p className="text-[10px] font-bold font-mono text-slate-600 dark:text-slate-300">{sup.document || '-'}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contato</p>
+                                                                <p className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{sup.phone || '-'}</p>
+                                                                <p className="text-[9px] text-slate-400 truncate">{sup.email || '-'}</p>
+                                                            </div>
+                                                        </div>
+                                                        {sup.isProvider && (
+                                                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-xl text-center">
+                                                                <span className="text-[9px] font-black text-slate-400 uppercase italic">Gerenciado em Profissionais</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )) : (
+                                                    <div className="py-12 text-center opacity-30">
+                                                        <Search size={40} className="mx-auto mb-2 text-slate-400" />
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-300">Nenhum registro cadastrado</p>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <table className="hidden md:table w-full text-left text-sm min-w-[800px]">
                                                 <thead>
                                                     <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-100 dark:border-zinc-700">
                                                         <th className="px-6 py-4">Nome</th>
@@ -3580,7 +3600,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         </tr>
                                                     ))}
                                                     {list.length === 0 && (
-                                                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum fornecedor cadastrado</td></tr>
+                                                        <tr><td colSpan={7} className="py-20 text-center text-slate-400 text-xs font-bold uppercase">Nenhum registro cadastrado</td></tr>
                                                     )}
                                                 </tbody>
                                             </table>

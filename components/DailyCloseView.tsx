@@ -353,22 +353,17 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
     return (
         <div className="space-y-4 animate-in slide-in-from-right duration-300 relative">
-            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-4 rounded-3xl shadow-sm flex flex-col lg:flex-row justify-between items-center gap-4 print:hidden">
-                <div>
-                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                        <Lock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fechamento de Caixa
-                    </h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase mt-0.5">Ref: {date.toLocaleDateString('pt-BR')}</p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-6 text-right">
+            {/* Removido cabeçalho grande — agora é Card no Grid abaixo */}
+
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 print:hidden">
+                {/* Card Principal de Fechamento */}
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl"><Lock size={20} /></div>
                     <div>
-                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Faturamento Bruto</p>
-                        <p className="text-2xl font-black text-slate-950 dark:text-white">R$ {totalRevenue.toFixed(2)}</p>
+                        <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fechamento</p>
+                        <p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalRevenue.toFixed(2)}</p>
                     </div>
                 </div>
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 print:hidden">
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
                     <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={20} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalServices.toFixed(2)}</p></div>

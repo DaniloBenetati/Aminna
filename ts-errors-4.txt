@@ -1,0 +1,4 @@
+﻿components/Finance.tsx(2242,10): error TS17008: JSX element 'div' has no corresponding closing tag.
+components/Finance.tsx(4287,9): error TS1005: ')' expected.
+components/Finance.tsx(4289,1): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+components/Finance.tsx(4292,1): error TS1005: '</' expected.
