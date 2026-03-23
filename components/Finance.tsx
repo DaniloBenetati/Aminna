@@ -528,6 +528,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
+    const [conciliadoSplitFilter, setConciliadoSplitFilter] = useState<'ALL' | 'SPLIT' | 'NOT_SPLIT'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
     const [startDate, setStartDate] = useState(toLocalDateStr(new Date()));
@@ -2601,7 +2602,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             const totalOut = bankTransactions.filter(t => t.type === 'DESPESA').reduce((s, t) => s + Math.abs(t.amount), 0);
                             const runningBalance = currentBal;
 
-                            const rowsWithBalance = allWithBalance.filter(({ t, match }) => {
+                            const rowsWithBalance = allWithBalance.filter(({ t, match, isSplit }) => {
                                 let desc = t.description;
                                 let cat = t.systemCategory || '';
                                 let ent = t.systemEntityName || '';
@@ -2650,8 +2651,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 );
 
                                 const matchesType = conciliadoTypeFilter === 'ALL' || t.type === conciliadoTypeFilter;
+                                const matchesSplit = conciliadoSplitFilter === 'ALL' || (conciliadoSplitFilter === 'SPLIT' ? isSplit : !isSplit);
 
-                                return matchesSearch && matchesType;
+                                return matchesSearch && matchesType && matchesSplit;
                             });
 
                             const itemsPerPage = 50;
@@ -2828,6 +2830,37 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <ArrowDownCircle size={12} /> Despesas
                                                 </button>
                                             </div>
+
+                                            {/* Conciliation Filters */}
+                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-fit ml-auto">
+                                                <button
+                                                    onClick={() => setConciliadoSplitFilter('ALL')}
+                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${conciliadoSplitFilter === 'ALL'
+                                                        ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm'
+                                                        : 'text-slate-500 hover:text-slate-700'
+                                                        }`}
+                                                >
+                                                    Todos
+                                                </button>
+                                                <button
+                                                    onClick={() => setConciliadoSplitFilter('SPLIT')}
+                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'SPLIT'
+                                                        ? 'bg-emerald-500 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
+                                                        }`}
+                                                >
+                                                    Conciliado Sim
+                                                </button>
+                                                <button
+                                                    onClick={() => setConciliadoSplitFilter('NOT_SPLIT')}
+                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'NOT_SPLIT'
+                                                        ? 'bg-amber-500 text-white shadow-sm'
+                                                        : 'text-slate-500 hover:text-amber-600 dark:hover:text-amber-400'
+                                                        }`}
+                                                >
+                                                    Conciliado Não
+                                                </button>
+                                            </div>
                                         </div>
                                         {/* Search bar */}
                                         <div className="mt-3 relative">
@@ -2844,31 +2877,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                     {/* Table */}
                                     <div className="overflow-x-auto scrollbar-hide md:overflow-visible">
-                                        <table className="w-full text-left md:border-collapse block md:table md:min-w-[1100px]">
+                                        <table className="w-full text-left md:border-collapse block md:table md:min-w-[1500px]">
                                             <thead className="hidden md:table-header-group bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
                                                 <tr>
-                                                    <th className="px-5 py-4">Data</th>
-                                                    <th className="px-5 py-4">Tipo</th>
-                                                    <th className="px-5 py-4">Categoria</th>
-                                                    <th className="px-5 py-4">Favorecido</th>
+                                                    <th className="px-5 py-4 md:w-[110px]">Data</th>
+                                                    <th className="px-5 py-4 md:w-[100px]">Tipo</th>
+                                                    <th className="px-5 py-4 md:w-[200px]">Categoria</th>
+                                                    <th className="px-5 py-4 md:w-[250px]">Favorecido</th>
                                                     <th className="px-5 py-4">Descrição / Documento</th>
-                                                    <th className="px-5 py-4">Pagamento</th>
-                                                    <th className="px-5 py-4 text-right">Valor (R$)</th>
-                                                    <th className="px-5 py-4 text-right">Saldo (R$)</th>
-                                                    <th className="px-5 py-4">Vínculo</th>
+                                                    <th className="px-5 py-4 md:w-[120px]">Pagamento</th>
+                                                    <th className="px-5 py-4 md:w-[130px] text-right">Valor (R$)</th>
+                                                    <th className="px-5 py-4 md:w-[130px] text-right">Saldo (R$)</th>
+                                                    <th className="px-5 py-4 md:w-[80px]">Vínculo</th>
                                                     <th className="px-5 py-4 w-10"></th>
                                                 </tr>
                                             </thead>
                                             <tbody className="block md:table-row-group divide-y md:divide-y divide-slate-100 dark:divide-zinc-800 mt-4 px-4 md:px-0 md:mt-0">
                                                 {/* Opening balance row */}
                                                 <tr className="flex flex-col md:table-row bg-slate-50 dark:bg-zinc-800/80 border md:border-0 border-slate-200 dark:border-zinc-700 rounded-2xl md:rounded-none mb-4 md:mb-0 p-4 md:p-0">
-                                                    <td className="block md:table-cell md:px-5 md:py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-0">
-                                                        Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
-                                                    </td>
-                                                    <td className="block md:table-cell md:px-5 md:py-3 text-[16px] md:text-[11px] font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-900 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border md:border-0 border-slate-200 dark:border-zinc-800">
-                                                        R$ {openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                                    </td>
-                                                </tr>
+                                                     <td colSpan={7} className="block md:table-cell md:px-5 md:py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-0 uppercase">
+                                                         Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
+                                                     </td>
+                                                     <td className="block md:table-cell md:px-5 md:py-3 text-[16px] md:text-[11px] font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-900 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border md:border-0 border-slate-200 dark:border-zinc-800 md:text-right">
+                                                         R$ {openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                     </td>
+                                                     <td colSpan={2} className="hidden md:table-cell"></td>
+                                                 </tr>
 
                                                 {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance, match, isSplit }) => {
                                                     let displayDesc = t.description;
@@ -2932,7 +2966,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     );
                                                                 })()}
                                                             </td>
-                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-full md:max-w-[120px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-full md:w-[200px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Categoria</span>
                                                                 {isSplit ? (
                                                                     <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayCat}</span>
@@ -2983,7 +3017,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     </div>
                                                                 )}
                                                             </td>
-                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-full md:max-w-[130px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                            <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-full md:w-[250px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Favorecido / Cliente</span>
                                                                 {isSplit ? (
                                                                     <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayEnt || '-'}</span>
@@ -3115,7 +3149,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <td className="block md:table-cell md:px-5 md:py-3.5 mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Descrição / Documento</span>
                                                                 <div className="flex flex-col gap-0.5">
-                                                                    <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-full md:max-w-[280px] line-clamp-2 md:truncate">{displayDesc}</p>
+                                                                    <p className="font-bold text-[11px] text-slate-900 dark:text-white uppercase leading-tight max-w-full md:max-w-[450px] line-clamp-2 md:truncate">{displayDesc}</p>
                                                                     {isSplit && (
                                                                         <p className="text-[9px] text-slate-400 font-mono italic truncate">Ref. Banco: {t.description}</p>
                                                                     )}
@@ -3125,11 +3159,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Pagamento</span>
                                                                 <span>{t.systemPaymentMethod || '-'}</span>
                                                             </td>
-                                                            <td className={`flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[14px] md:text-[12px] whitespace-nowrap mb-2 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-2 md:pb-0 ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                            <td className={`flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[14px] md:text-[12px] whitespace-nowrap mb-2 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-2 md:pb-0 md:w-[130px] ${delta >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Valor Atual</span>
                                                                 <span>{delta >= 0 ? '+' : ''} R$ {Math.abs(delta).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                             </td>
-                                                            <td className="flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[13px] md:text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap mb-4 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
+                                                            <td className="flex items-center justify-between md:table-cell md:px-5 md:py-3.5 md:text-right font-black text-[13px] md:text-[12px] text-slate-700 dark:text-slate-200 whitespace-nowrap mb-4 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0 md:w-[130px]">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400">Saldo Resultante</span>
                                                                 <span className="bg-slate-50 dark:bg-zinc-800 md:bg-transparent px-2 md:px-0 py-1 md:py-0 rounded font-mono">R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                                             </td>
