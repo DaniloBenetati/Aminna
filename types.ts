@@ -312,6 +312,7 @@ export interface Expense {
   isReconciled?: boolean;
   payroll_id?: string;
   employeeId?: string;
+  invoiceNumber?: string;
 }
 
 export interface Supplier {
@@ -348,6 +349,7 @@ export interface FinancialTransaction {
   serviceName?: string;
   appointmentDate?: string;
   isReconciled?: boolean;
+  invoiceNumber?: string;
 }
 
 export interface BankTransaction {

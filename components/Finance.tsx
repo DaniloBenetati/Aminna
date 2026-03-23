@@ -52,7 +52,7 @@ interface ManualLinkModalProps {
     expenses: Expense[];
     sales: Sale[];
     appointments: Appointment[];
-    onLink: (bankTxId: string, items: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[], newExpense?: { description: string, category: string, amount: number }) => Promise<void>;
+    onLink: (bankTxId: string, items: { id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[], newExpense?: { description: string, category: string, amount: number, supplierId?: string, providerId?: string, employeeId?: string }) => Promise<void>;
     isProcessing: boolean;
     parseDateSafe: (date: any) => Date;
     suppliers: Supplier[];
@@ -642,7 +642,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
         };
 
-        if (accountsSubTab === 'CONCILIADO') {
+        if (accountsSubTab === 'CONCILIADO' || accountsSubTab === 'PAYABLES') {
             fetchBankTransactions();
         }
     }, [startDate, endDate, accountsSubTab, financialConfigs]);
@@ -1004,7 +1004,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [recurrenceMonths, setRecurrenceMonths] = useState(1);
     const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({
-        description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: toLocalDateStr(new Date()), status: 'Pago', paymentMethod: 'Pix'
+        description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: toLocalDateStr(new Date()), status: 'Pago', paymentMethod: 'Pix', invoiceNumber: ''
     });
 
     // Daily Close States
@@ -1330,12 +1330,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         
         const identifiedPayables = combined.filter(t => {
             const name = t.customerOrProviderName || t.providerName || '';
+            const category = t.category || '';
             const isForced = forcedTxIds.has(t.id);
+            
             // If it's a "Forced Split" (linked item), we WANT it regardless of current display name logic
+            // This ensures that once the user starts working on a transaction, it doesn't disappear
             if (isForced) return true;
             
-            // For others, if it's empty OR it's just a UUID, it's not identified (user wants a clean list)
-            return name.trim() !== '' && !isUUID(name);
+            // For others, only show if BOTH Favorecido AND Category are present
+            const hasFavorecido = name.trim() !== '' && !isUUID(name);
+            const hasCategory = category.trim() !== '' && category !== 'Sem Categoria';
+            
+            return hasFavorecido && hasCategory;
         });
 
         // 5. Unique results and sort
@@ -1608,14 +1614,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const combinedId = expense.providerId ? `prov_${expense.providerId}` :
                 (expense.employeeId ? `emp_${expense.employeeId}` :
                     (expense.supplierId || ''));
-            setExpenseForm({ ...expense, supplierId: combinedId });
+            setExpenseForm({ ...expense, supplierId: combinedId, invoiceNumber: expense.invoiceNumber || '' });
             setCategoryInputSearch(expense.category || '');
             setRecurrenceMonths(1);
         }
         else {
             setEditingExpenseId(null);
             setRecurrenceMonths(1);
-            setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix' });
+            setExpenseForm({ description: '', amount: 0, category: '', subcategory: '', dreClass: 'EXPENSE_ADM', date: new Date().toISOString().split('T')[0], status: 'Pago', paymentMethod: 'Pix', invoiceNumber: '' });
             setCategoryInputSearch('');
         }
         setIsModalOpen(true);
@@ -1639,7 +1645,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 employeeId: e.employee_id,
                 payroll_id: e.payroll_id,
                 recurringId: e.recurring_id,
-                isReconciled: e.is_reconciled
+                isReconciled: e.is_reconciled,
+                invoiceNumber: e.document_number
             })));
         }
     };
@@ -1788,7 +1795,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             payment_method: expenseForm.paymentMethod || 'Pix',
             supplier_id: (expenseForm.supplierId?.startsWith('prov_') || expenseForm.supplierId?.startsWith('emp_')) ? null : (expenseForm.supplierId || null),
             provider_id: expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : (expenseForm.providerId || null),
-            employee_id: expenseForm.supplierId?.startsWith('emp_') ? expenseForm.supplierId.replace('emp_', '') : (expenseForm.employeeId || null)
+            employee_id: expenseForm.supplierId?.startsWith('emp_') ? expenseForm.supplierId.replace('emp_', '') : (expenseForm.employeeId || null),
+            document_number: expenseForm.invoiceNumber || null
         };
 
         try {
@@ -2245,13 +2253,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Gestão Financeira</h2>
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Controle total e sincronizado</p>
                 </div>
-                {/* Lançar Button in Header */}
-                {activeTab === 'ACCOUNTS' && accountsSubTab === 'PAYABLES' && (
-                    <button onClick={() => handleOpenModal()} className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black shadow-md active:scale-95 transition-all">
-                        <Plus size={16} />
-                        <span className="hidden md:inline text-[10px] uppercase tracking-widest">Lançar Despesa</span>
-                    </button>
-                )}
             </div>
 
             <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
@@ -2282,20 +2283,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto items-stretch md:items-center">
-                    {activeTab === 'ACCOUNTS' && accountsSubTab === 'RECEIVABLES' && (
-                        <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
-                            <div className="relative w-full md:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                                <input
-                                    type="text"
-                                    placeholder="Cliente ou serviço..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
-                                    value={receivablesFilter}
-                                    onChange={e => setReceivablesFilter(e.target.value)}
-                                />
-                            </div>
-                        </div>
-                    )}
 
                     {activeTab === 'ACCOUNTS' && accountsSubTab === 'DETAILED' && (
                         <div className="flex gap-2 w-full md:w-auto animate-in fade-in slide-in-from-right-2 duration-300">
@@ -2372,6 +2359,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 </div>
             </div>
 
+            { (activeTab === 'ACCOUNTS') && (accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                <div className="flex justify-end mb-4 pr-6">
+                    <button 
+                        onClick={() => handleOpenModal()} 
+                        className="group relative flex items-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                    >
+                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                        Lançar Despesa
+                    </button>
+                </div>
+            )}
+
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
@@ -2388,7 +2387,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <button
                                         key={st.id}
                                         onClick={() => {
-                                            setAccountsSubTab(st.id as AccountsSubTab);
+                                            setAccountsSubTab(st.id as any);
                                             if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
                                         }}
                                         className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
@@ -2457,7 +2456,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <div className="mt-1">
                                                         <div className="flex justify-between gap-2">
                                                             <p className="font-black text-slate-950 dark:text-white uppercase text-[11px] leading-tight line-clamp-2 flex-1">{t.description}</p>
-                                                            {t.systemReconciled && <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />}
+                                                            {t.isReconciled && <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />}
                                                         </div>
                                                         {t.customerOrProviderName && <p className="text-[10px] text-slate-500 font-bold mt-0.5 italic">{t.customerOrProviderName}</p>}
                                                     </div>
@@ -3031,13 +3030,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                 try {
                                                                                     // 1. Update bank transaction (storing name or null)
                                                                                     await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
-                                                                                    setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || null } : tx));
+                                                                                    setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || undefined } : tx));
 
                                                                                     if (!newName) {
                                                                                         // Case: UN-LINK / CLEAR Beneficiary
                                                                                         if (match && match.type === 'EXPENSE' && window.confirm("Deseja remover o favorecido deste lançamento no Contas a Pagar?")) {
                                                                                             await supabase.from('expenses').update({ provider_id: null, employee_id: null, supplier_id: null }).eq('id', match.id);
-                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, providerId: null, employeeId: null, supplierId: null } : exp));
+                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, providerId: undefined, employeeId: undefined, supplierId: undefined } : exp));
                                                                                         }
                                                                                         return;
                                                                                     }
@@ -3069,7 +3068,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             currentMatch = { id: candidate.id, type: 'EXPENSE', amount: candidate.amount };
                                                                                         } else if (window.confirm(`Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`)) {
                                                                                             const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
-                                                                                                description: t.description,
+                                                                                                description: newName, // Use the entity name for a cleaner description
                                                                                                 amount: t.amount,
                                                                                                 date: t.date,
                                                                                                 category: t.systemCategory || 'Despesas Diversas',
@@ -3085,12 +3084,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             if (expErr) throw expErr;
 
                                                                                             const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
-                                                                                            await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
-
                                                                                             setExpenses((prev: Expense[]) => [...prev, {
                                                                                                 id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
                                                                                                 category: newExp.category, status: newExp.status, isReconciled: true,
-                                                                                                providerId: newExp.provider_id, employeeId: newExp.employee_id, supplierId: newExp.supplier_id,
+                                                                                                providerId: newExp.provider_id || undefined, employeeId: newExp.employee_id || undefined, supplierId: newExp.supplier_id || undefined,
                                                                                                 paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
                                                                                             }]);
                                                                                             setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
@@ -3099,16 +3096,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                     }
 
                                                                                     if (currentMatch && currentMatch.type === 'EXPENSE') {
-                                                                                        const updatePayload = isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
-                                                                                            isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
-                                                                                                { supplier_id: realId, provider_id: null, employee_id: null };
+                                                                                        const updatePayload = {
+                                                                                            description: newName, // Update description to cleaner name
+                                                                                            date: t.date,         // Sync date with bank transaction
+                                                                                            ...(isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
+                                                                                                isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
+                                                                                                    { supplier_id: realId, provider_id: null, employee_id: null })
+                                                                                        };
 
                                                                                         await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
                                                                                         setExpenses((prev: Expense[]) => prev.map(exp => exp.id === currentMatch!.id ? {
                                                                                             ...exp,
-                                                                                            providerId: isProfessional ? realId : null,
-                                                                                            employeeId: isEmployee ? realId : null,
-                                                                                            supplierId: (!isProfessional && !isEmployee) ? realId : null
+                                                                                            description: newName,
+                                                                                            date: t.date, // Sync date in state
+                                                                                            providerId: isProfessional ? realId : undefined,
+                                                                                            employeeId: isEmployee ? realId : undefined,
+                                                                                            supplierId: (!isProfessional && !isEmployee) ? realId : undefined
                                                                                         } : exp));
                                                                                     }
                                                                                 } catch (err) {
@@ -3382,7 +3385,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         {isOverdue && <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
                                                                     </div>
                                                                     <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">{exp.description}</h4>
-                                                                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{supplierName || '—'}</p>
+                                                                    <div className="flex items-center gap-2 mt-1">
+                                                                        <p className="text-[10px] text-slate-500 font-bold italic line-clamp-1">{supplierName || '—'}</p>
+                                                                        {exp.invoiceNumber && <span className="text-[9px] font-black text-slate-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-700 uppercase">NF: {exp.invoiceNumber}</span>}
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                             <button onClick={() => toggleExpenseStatus(exp.id)} className={`shrink-0 text-[8px] font-black px-2 py-1 flex-shrink-0 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 border border-amber-100 dark:border-amber-800'}`}>
@@ -3431,8 +3437,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </th>
                                                     <th className="px-6 py-4">Data</th>
                                                     <th className="px-6 py-4">Descrição</th>
-                                                    <th className="px-6 py-4">Favorecido</th>
-                                                    <th className="px-6 py-4">Categoria</th>
+                                                    <th className="px-6 py-4">Nº Nota</th>
+                                                    <th className="px-6 py-4 min-w-[150px]">Favorecido</th>
+                                                    <th className="px-6 py-4 min-w-[150px]">Categoria</th>
                                                     <th className="px-6 py-4 text-center">Status</th>
                                                     <th className="px-6 py-4 text-right">Valor</th>
                                                     <th className="px-6 py-4 text-center">Ações</th>
@@ -3460,8 +3467,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 {isOverdue && <span className="ml-1 text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-[11px] text-slate-900 dark:text-white max-w-[200px] truncate">{exp.description}</td>
-                                                            <td className="px-6 py-4 text-[11px] text-slate-500">{supplierName || '—'}</td>
-                                                            <td className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">{exp.category}</td>
+                                                            <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || '—'}</td>
+                                                            <td className="px-6 py-4 text-[11px] text-slate-500 truncate max-w-[180px]">{supplierName || '—'}</td>
+                                                            <td className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase truncate max-w-[150px]">{exp.category}</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100'}`}>
                                                                     {exp.status}
@@ -4918,14 +4926,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         </tbody>
                                     </table>
                                 </div>
-
                             </>
                         )}
                     </div>
-                )
-                }
-            </div >
-
+                )}
+            </div>
 
             {
                 isModalOpen && (
@@ -4953,9 +4958,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
-                                        <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Número da Nota / Doc</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ex: 123456"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                            value={expenseForm.invoiceNumber || ''}
+                                            onChange={e => setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })}
+                                        />
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
+                                    <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
                                 </div>
 
                                 {/* Recurrence Field (Only for new expenses) */}
@@ -5522,6 +5537,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 transactions={transactions}
                 bankTransactions={bankTransactions}
             />
-        </div >
+        </div>
     );
 };

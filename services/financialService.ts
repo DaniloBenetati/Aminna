@@ -410,7 +410,8 @@ export const generateFinancialTransactions = (
             // are never merged together in the commission grouping step below.
             providerName: exp.id,
             supplierId: exp.supplierId,
-            isReconciled: exp.isReconciled
+            isReconciled: exp.isReconciled,
+            invoiceNumber: exp.invoiceNumber
         });
     });
 
