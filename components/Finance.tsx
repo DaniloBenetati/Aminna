@@ -3067,11 +3067,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
                                                                                             currentMatch = { id: candidate.id, type: 'EXPENSE', amount: candidate.amount };
                                                                                         } else if (window.confirm(`Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`)) {
+                                                                                            const isProfitDist = (newName?.toLowerCase().includes('lucro') || newName?.toLowerCase().includes('distribuição') || t.description?.toLowerCase().includes('lucro') || t.description?.toLowerCase().includes('distribuição'));
                                                                                             const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
                                                                                                 description: newName, // Use the entity name for a cleaner description
                                                                                                 amount: t.amount,
                                                                                                 date: t.date,
-                                                                                                category: t.systemCategory || 'Despesas Diversas',
+                                                                                                category: isProfitDist ? 'Distribuição de Lucros' : (t.systemCategory || 'Despesas Diversas'),
                                                                                                 provider_id: isProfessional ? realId : null,
                                                                                                 employee_id: isEmployee ? realId : null,
                                                                                                 supplier_id: (!isProfessional && !isEmployee) ? realId : null,

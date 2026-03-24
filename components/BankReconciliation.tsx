@@ -885,7 +885,14 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         const revenueCats = categories.filter(c => c.dreClass === 'REVENUE');
                         suggestedCat = revenueCats[0]?.name || 'Receita de Serviços';
                     } else {
-                        suggestedCat = 'Despesas Diversas';
+                        // Common manual overrides based on description
+        const lowerDesc = t.description.toLowerCase();
+        if (lowerDesc.includes('distribuição') || lowerDesc.includes('lucro')) {
+            suggestedCat = 'Distribuição de Lucros';
+        } else {
+            suggestedCat = 'Despesas Diversas';
+        }
+
                     }
                 }
 
