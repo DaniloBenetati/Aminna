@@ -350,6 +350,8 @@ export interface FinancialTransaction {
   appointmentDate?: string;
   isReconciled?: boolean;
   invoiceNumber?: string;
+  providerId?: string;
+  employeeId?: string;
 }
 
 export interface BankTransaction {

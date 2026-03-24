@@ -1005,7 +1005,16 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const toUpdateExpenseStatus: string[] = [];
         const toUpdateSaleStatus: string[] = [];
         const toUpdateAppointmentStatus: string[] = [];
-        const updatesToExecute: { type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', id: string, date: string }[] = [];
+        const updatesToExecute: { 
+            type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', 
+            id: string, 
+            date: string,
+            category?: string,
+            dre_class?: string,
+            supplier_id?: string | null,
+            provider_id?: string | null,
+            employee_id?: string | null
+        }[] = [];
 
         for (const row of rowsToProcess) {
             if (row.status === 'A_LANCAR') {
@@ -1050,6 +1059,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             }
                         }
 
+                        const catInfo = categories.find(c => c.name === row.suggestedCategory);
+                        
                         newExpenses.push({
                             description: row.description,
                             amount: row.amount,
@@ -1058,7 +1069,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             providerId: pId,
                             employeeId: eId,
                             category: row.suggestedCategory || 'Despesas Diversas',
-                            dreClass: 'EXPENSE_ADM',
+                            dreClass: catInfo?.dreClass || 'EXPENSE_ADM',
                             status: 'Pago',
                             paymentMethod: 'Transferência',
                             isReconciled: true
@@ -1114,7 +1125,30 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         updatesToExecute.push({ type: 'APPOINTMENT', id: m.id, date: row.date });
                     } else {
                         toUpdateExpenseStatus.push(m.id);
-                        updatesToExecute.push({ type: 'EXPENSE', id: m.id, date: row.date });
+                        
+                        const catInfo = categories.find(c => c.name === row.suggestedCategory);
+                        let sId = null;
+                        let pId = null;
+                        let eId = null;
+
+                        if (row.suggestedProvider?.startsWith('prov_')) {
+                            pId = row.suggestedProvider.replace('prov_', '');
+                        } else if (row.suggestedProvider?.startsWith('emp_')) {
+                            eId = row.suggestedProvider.replace('emp_', '');
+                        } else if (row.suggestedProvider) {
+                            sId = row.suggestedProvider;
+                        }
+
+                        updatesToExecute.push({ 
+                            type: 'EXPENSE', 
+                            id: m.id, 
+                            date: row.date,
+                            category: row.suggestedCategory,
+                            dre_class: catInfo?.dreClass,
+                            supplier_id: sId,
+                            provider_id: pId,
+                            employee_id: eId
+                        });
                     }
                 }
             }
@@ -1170,6 +1204,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     systemPaymentMethod = 'Transferência';
                 }
 
+                const matches = row.linkedMatches && row.linkedMatches.length > 0 
+                    ? row.linkedMatches 
+                    : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
+
                 newBankTransactions.push({
                     date: row.date,
                     description: row.description,
@@ -1179,7 +1217,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     fingerprint: row.fingerprint,
                     system_category: systemCategory,
                     system_entity_name: systemEntityName,
-                    system_payment_method: systemPaymentMethod
+                    system_payment_method: systemPaymentMethod,
+                    system_matches: matches.length > 0 ? matches : null
                 });
             }
         }
@@ -1246,7 +1285,16 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     } else if (u.type === 'APPOINTMENT') {
                         return supabase.from('appointments').update({ is_reconciled: true, payment_date: u.date }).eq('id', u.id);
                     } else {
-                        return supabase.from('expenses').update({ status: 'Pago', is_reconciled: true, date: u.date }).eq('id', u.id);
+                        return supabase.from('expenses').update({ 
+                            status: 'Pago', 
+                            is_reconciled: true, 
+                            date: u.date,
+                            ...(u.category ? { category: u.category } : {}),
+                            ...(u.dre_class ? { dre_class: u.dre_class } : {}),
+                            ...(u.supplier_id !== undefined ? { supplier_id: u.supplier_id } : {}),
+                            ...(u.provider_id !== undefined ? { provider_id: u.provider_id } : {}),
+                            ...(u.employee_id !== undefined ? { employee_id: u.employee_id } : {})
+                        }).eq('id', u.id);
                     }
                 });
 
@@ -1254,7 +1302,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
                 setExpenses(prev => prev.map(e => {
                     const update = updatesToExecute.find(u => u.type === 'EXPENSE' && u.id === e.id);
-                    return update ? { ...e, status: 'Pago', isReconciled: true, date: update.date } : e;
+                    if (!update) return e;
+                    return { 
+                        ...e, 
+                        status: 'Pago', 
+                        isReconciled: true, 
+                        date: update.date,
+                        category: update.category || e.category,
+                        dreClass: (update.dre_class as any) || e.dreClass,
+                        supplierId: update.supplier_id !== undefined ? update.supplier_id : e.supplierId,
+                        providerId: update.provider_id !== undefined ? update.provider_id : e.providerId,
+                        employeeId: update.employee_id !== undefined ? update.employee_id : e.employeeId
+                    };
                 }));
 
                 setSales(prev => prev.map(s => {
@@ -1269,7 +1328,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             }
 
             if (newBankTransactions.length > 0) {
-                const { error } = await supabase.from('bank_transactions').upsert(newBankTransactions, { onConflict: 'fingerprint', ignoreDuplicates: true });
+                // Remove ignoreDuplicates: true to allow updating existing records when they are reconciled
+                const { error } = await supabase.from('bank_transactions').upsert(newBankTransactions, { onConflict: 'fingerprint' });
                 if (error) {
                     console.error('Error inserting bank_transactions:', error);
                     throw error;

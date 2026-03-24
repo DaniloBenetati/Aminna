@@ -545,6 +545,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // Quick add states
     const [isQuickAddingSupplier, setIsQuickAddingSupplier] = useState(false);
     const [isQuickAddingCategory, setIsQuickAddingCategory] = useState(false);
+    const [reconcilingTx, setReconcilingTx] = useState<BankTransaction | null>(null);
 
     // Reconciled Edit States
     const [editingReconciled, setEditingReconciled] = useState<FinancialTransaction | null>(null);
@@ -933,6 +934,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (isQuickAddingSupplier) {
                         setExpenseForm(prev => ({ ...prev, supplierId: data[0].id }));
                     }
+                    if (reconcilingTx) {
+                        // Automatically link the new supplier to the transaction being reconciled
+                        await handleLinkNewPayeeToTx(reconcilingTx, data[0].name, data[0].id, 'SUPPLIER');
+                        setReconcilingTx(null);
+                    }
                 }
             }
             setIsSupplierModalOpen(false);
@@ -1119,11 +1125,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             customers,
             providers,
             suppliers,
+            employees,
             commissionSettings || [],
             paymentSettings,
             financialConfigs
         );
-    }, [appointments, sales, expenses, services, customers, providers, suppliers, commissionSettings, paymentSettings, financialConfigs]);
+    }, [appointments, sales, expenses, services, customers, providers, suppliers, employees, commissionSettings, paymentSettings, financialConfigs]);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -1329,10 +1336,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
         
         const identifiedPayables = combined.filter(t => {
-            const name = t.customerOrProviderName || t.providerName || '';
+            const rawName = t.customerOrProviderName || t.providerName || '';
             const category = t.category || '';
             const isForced = forcedTxIds.has(t.id);
             
+            // Robust Name Identification (fallback for when state mapping missed it)
+            const name = (isUUID(rawName) || !rawName)
+                ? (suppliers.find(s => s.id === (t as any).supplierId)?.name || 
+                   providers.find(p => p.id === (t as any).providerId)?.name || 
+                   employees.find(e => e.id === (t as any).employeeId)?.name || 
+                   '')
+                : rawName;
+
             // If it's a "Forced Split" (linked item), we WANT it regardless of current display name logic
             // This ensures that once the user starts working on a transaction, it doesn't disappear
             if (isForced) return true;
@@ -1606,6 +1621,51 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         return { ...currentPeriod, monthlySnapshots, totalYearlyReserve, totalYearlyAnticFees };
     }, [appointments, sales, expenses, startDate, endDate, timeView, financialConfigs, monthlyClosings]);
+
+    const handleLinkNewPayeeToTx = async (tx: BankTransaction, name: string, id: string, type: 'SUPPLIER' | 'CUSTOMER') => {
+        try {
+            // 1. Update bank transaction
+            await supabase.from('bank_transactions').update({ system_entity_name: name }).eq('id', tx.id);
+            setBankTransactions((prev: BankTransaction[]) => prev.map(bt => bt.id === tx.id ? { ...bt, systemEntityName: name } : bt));
+
+            // 2. Extract real ID if it's a prefixed ID (though for newly created it should be clean)
+            const realId = id; 
+
+            // 3. Create a new expense/revenue item to match
+            if (tx.type === 'DESPESA') {
+                const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
+                    description: name,
+                    amount: tx.amount,
+                    date: tx.date,
+                    category: tx.systemCategory || 'Despesas Diversas',
+                    supplier_id: id,
+                    status: 'Pago',
+                    payment_method: 'Transferência',
+                    is_reconciled: true,
+                    dre_class: 'EXPENSE_ADM'
+                }).select().single();
+
+                if (expErr) throw expErr;
+
+                const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                setExpenses((prev: Expense[]) => [...prev, {
+                    id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
+                    category: newExp.category, status: newExp.status, isReconciled: true,
+                    supplierId: newExp.supplier_id || undefined,
+                    paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
+                }]);
+                await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', tx.id);
+                setBankTransactions((prev: BankTransaction[]) => prev.map(bt => bt.id === tx.id ? { ...bt, systemMatches: newMatches } : bt));
+            } else {
+                // For Receita, we might just update the transaction identification for now
+                // or create a sale/appointment link if the system supports it.
+                // For now, let's just make sure the name is saved.
+            }
+        } catch (err) {
+            console.error('Error linking new payee:', err);
+            alert('Erro ao vincular novo favorecido.');
+        }
+    };
 
     const handleOpenModal = (expense?: Expense) => {
         if (expense) {
@@ -2359,18 +2419,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 </div>
             </div>
 
-            { (activeTab === 'ACCOUNTS') && (accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
-                <div className="flex justify-end mb-4 pr-6">
-                    <button 
-                        onClick={() => handleOpenModal()} 
-                        className="group relative flex items-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
-                    >
-                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
-                        Lançar Despesa
-                    </button>
-                </div>
-            )}
-
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
@@ -2398,6 +2446,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                                    <button 
+                                        onClick={() => handleOpenModal()} 
+                                        className="hidden md:flex group relative items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                                    >
+                                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                                        Lançar Despesa
+                                    </button>
+                                )}
                                 {accountsSubTab === 'CONCILIADO' && (
                                     <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
                                         <RefreshCw size={12} /> Conciliação
@@ -2406,7 +2463,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
                         </div>
 
-                        {/* Mobile centered Conciliação button */}
+                        {/* Mobile centered buttons */}
+                        {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                            <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <button 
+                                    onClick={() => handleOpenModal()} 
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all outline-none"
+                                >
+                                    <Plus size={16} strokeWidth={3} />
+                                    Lançar Despesa
+                                </button>
+                            </div>
+                        )}
                         {accountsSubTab === 'CONCILIADO' && (
                             <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <button onClick={() => setIsReconciliationOpen(true)} className="w-full text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
@@ -3022,44 +3090,44 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayEnt || '-'}</span>
                                                                 ) : (
                                                                     <div className="relative">
-                                                                        <select
-                                                                            value={t.systemEntityName || ''}
-                                                                            onChange={async (e) => {
-                                                                                const newName = e.target.value;
+                                                                            <select
+                                                                                value={t.systemEntityName || ''}
+                                                                                onChange={async (e) => {
+                                                                                    const newName = e.target.value;
 
-                                                                                try {
-                                                                                    // 1. Update bank transaction (storing name or null)
-                                                                                    await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
-                                                                                    setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || undefined } : tx));
+                                                                                    try {
+                                                                                        // 1. Update bank transaction (storing name or null)
+                                                                                        await supabase.from('bank_transactions').update({ system_entity_name: newName || null }).eq('id', t.id);
+                                                                                        setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemEntityName: newName || undefined } : tx));
 
-                                                                                    if (!newName) {
-                                                                                        // Case: UN-LINK / CLEAR Beneficiary
-                                                                                        if (match && match.type === 'EXPENSE' && window.confirm("Deseja remover o favorecido deste lançamento no Contas a Pagar?")) {
-                                                                                            await supabase.from('expenses').update({ provider_id: null, employee_id: null, supplier_id: null }).eq('id', match.id);
-                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, providerId: undefined, employeeId: undefined, supplierId: undefined } : exp));
+                                                                                        if (!newName) {
+                                                                                            // Case: UN-LINK / CLEAR Beneficiary
+                                                                                            if (match && match.type === 'EXPENSE' && window.confirm("Deseja remover o favorecido deste lançamento no Contas a Pagar?")) {
+                                                                                                await supabase.from('expenses').update({ provider_id: null, employee_id: null, supplier_id: null }).eq('id', match.id);
+                                                                                                setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? { ...exp, providerId: undefined, employeeId: undefined, supplierId: undefined } : exp));
+                                                                                            }
+                                                                                            return;
                                                                                         }
-                                                                                        return;
-                                                                                    }
 
-                                                                                    const selectedEntity = combinedSuppliers.find(s => s.name === newName) ||
-                                                                                        customers.find(c => c.name === newName);
-                                                                                    if (!selectedEntity) return;
+                                                                                        const selectedEntity = combinedSuppliers.find(s => s.name === newName) ||
+                                                                                            customers.find(c => c.name === newName);
+                                                                                        if (!selectedEntity) return;
 
-                                                                                    const combinedId = selectedEntity.id;
-                                                                                    const isProfessional = (selectedEntity as any).isProvider || false;
-                                                                                    const isEmployee = (selectedEntity as any).isEmployee || false;
-                                                                                    const realId = (isProfessional || isEmployee) ? combinedId.split('_')[1] : combinedId;
+                                                                                        const combinedId = selectedEntity.id;
+                                                                                        const isProfessional = (selectedEntity as any).isProvider || false;
+                                                                                        const isEmployee = (selectedEntity as any).isEmployee || false;
+                                                                                        const realId = (isProfessional || isEmployee) ? combinedId.split('_')[1] : combinedId;
 
-                                                                                    // 2. Logic for Syncing / Linking / Creating
-                                                                                    let currentMatch = match;
+                                                                                        // 2. Logic for Syncing / Linking / Creating
+                                                                                        let currentMatch = match;
 
-                                                                                    if (!currentMatch) {
-                                                                                        // Search for candidates (already has identification logic)
-                                                                                        const candidate = expenses.find(exp =>
-                                                                                            Math.abs(exp.amount - t.amount) < 0.01 &&
-                                                                                            Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
-                                                                                            !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
-                                                                                        );
+                                                                                        if (!currentMatch) {
+                                                                                            // Search for candidates (already has identification logic)
+                                                                                            const candidate = expenses.find(exp =>
+                                                                                                Math.abs(exp.amount - t.amount) < 0.01 &&
+                                                                                                Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
+                                                                                                !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
+                                                                                            );
 
                                                                                         if (candidate && window.confirm(`Encontramos um lançamento de R$ ${candidate.amount.toFixed(2)} (${candidate.description}) no sistema. Deseja vincular a este registro?`)) {
                                                                                             const newMatches = [{ id: candidate.id, type: 'EXPENSE' as const, amount: candidate.amount }];
@@ -3082,71 +3150,95 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                 dre_class: 'EXPENSE_ADM'
                                                                                             }).select().single();
 
-                                                                                            if (expErr) throw expErr;
 
-                                                                                            const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
-                                                                                            setExpenses((prev: Expense[]) => [...prev, {
-                                                                                                id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
-                                                                                                category: newExp.category, status: newExp.status, isReconciled: true,
-                                                                                                providerId: newExp.provider_id || undefined, employeeId: newExp.employee_id || undefined, supplierId: newExp.supplier_id || undefined,
-                                                                                                paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
-                                                                                            }]);
-                                                                                            setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
-                                                                                            currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
+                                                                                                if (expErr) throw expErr;
+
+                                                                                                const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                                                                                                setExpenses((prev: Expense[]) => [...prev, {
+                                                                                                    id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
+                                                                                                    category: newExp.category, status: newExp.status, isReconciled: true,
+                                                                                                    providerId: newExp.provider_id || undefined, employeeId: newExp.employee_id || undefined, supplierId: newExp.supplier_id || undefined,
+                                                                                                    paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
+                                                                                                }]);
+                                                                                                setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                                currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
+                                                                                            }
                                                                                         }
-                                                                                    }
 
-                                                                                    if (currentMatch && currentMatch.type === 'EXPENSE') {
-                                                                                        const updatePayload = {
-                                                                                            description: newName, // Update description to cleaner name
-                                                                                            date: t.date,         // Sync date with bank transaction
-                                                                                            ...(isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
-                                                                                                isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
-                                                                                                    { supplier_id: realId, provider_id: null, employee_id: null })
-                                                                                        };
+                                                                                        if (currentMatch && currentMatch.type === 'EXPENSE') {
+                                                                                            const updatePayload = {
+                                                                                                description: newName, // Update description to cleaner name
+                                                                                                date: t.date,         // Sync date with bank transaction
+                                                                                                ...(isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
+                                                                                                    isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
+                                                                                                        { supplier_id: realId, provider_id: null, employee_id: null })
+                                                                                            };
 
-                                                                                        await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
-                                                                                        setExpenses((prev: Expense[]) => prev.map(exp => exp.id === currentMatch!.id ? {
-                                                                                            ...exp,
-                                                                                            description: newName,
-                                                                                            date: t.date, // Sync date in state
-                                                                                            providerId: isProfessional ? realId : undefined,
-                                                                                            employeeId: isEmployee ? realId : undefined,
-                                                                                            supplierId: (!isProfessional && !isEmployee) ? realId : undefined
-                                                                                        } : exp));
+                                                                                            await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
+                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === currentMatch!.id ? {
+                                                                                                ...exp,
+                                                                                                description: newName,
+                                                                                                date: t.date, // Sync date in state
+                                                                                                providerId: isProfessional ? realId : undefined,
+                                                                                                employeeId: isEmployee ? realId : undefined,
+                                                                                                supplierId: (!isProfessional && !isEmployee) ? realId : undefined
+                                                                                            } : exp));
+                                                                                        }
+                                                                                    } catch (err) {
+                                                                                        console.error('Failed to update provider/link', err);
+                                                                                        alert('Erro ao processar: ' + (err as any).message);
                                                                                     }
-                                                                                } catch (err) {
-                                                                                    console.error('Failed to update provider/link', err);
-                                                                                    alert('Erro ao processar: ' + (err as any).message);
+                                                                                }}
+                                                                                className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
+                                                                            >
+                                                                                <option value="">Selecione...</option>
+                                                                                {t.type === 'DESPESA'
+                                                                                    ? (
+                                                                                        <>
+                                                                                            <optgroup label="Fornecedores" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                                {combinedSuppliers.filter(s => !(s as any).isProvider && !(s as any).isEmployee).map(s => (
+                                                                                                    <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                                ))}
+                                                                                            </optgroup>
+                                                                                            <optgroup label="Profissionais" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                                {combinedSuppliers.filter(s => (s as any).isProvider).map(s => (
+                                                                                                    <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                                ))}
+                                                                                            </optgroup>
+                                                                                            <optgroup label="Funcionários" className="bg-slate-50 dark:bg-zinc-800 font-black">
+                                                                                                {combinedSuppliers.filter(s => (s as any).isEmployee).map(s => (
+                                                                                                    <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
+                                                                                                ))}
+                                                                                            </optgroup>
+                                                                                        </>
+                                                                                    )
+                                                                                    : customers.map(c => <option key={c.id} value={c.name}>{c.name?.toUpperCase()}</option>)
                                                                                 }
-                                                                            }}
-                                                                            className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
-                                                                        >
-                                                                            <option value="">Selecione...</option>
-                                                                            {t.type === 'DESPESA'
-                                                                                ? (
-                                                                                    <>
-                                                                                        <optgroup label="Fornecedores" className="bg-slate-50 dark:bg-zinc-800 font-black">
-                                                                                            {combinedSuppliers.filter(s => !(s as any).isProvider && !(s as any).isEmployee).map(s => (
-                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
-                                                                                            ))}
-                                                                                        </optgroup>
-                                                                                        <optgroup label="Profissionais" className="bg-slate-50 dark:bg-zinc-800 font-black">
-                                                                                            {combinedSuppliers.filter(s => (s as any).isProvider).map(s => (
-                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
-                                                                                            ))}
-                                                                                        </optgroup>
-                                                                                        <optgroup label="Funcionários" className="bg-slate-50 dark:bg-zinc-800 font-black">
-                                                                                            {combinedSuppliers.filter(s => (s as any).isEmployee).map(s => (
-                                                                                                <option key={s.id} value={s.name}>{s.name?.toUpperCase()}</option>
-                                                                                            ))}
-                                                                                        </optgroup>
-                                                                                    </>
-                                                                                )
-                                                                                : customers.map(c => <option key={c.id} value={c.name}>{c.name?.toUpperCase()}</option>)
-                                                                            }
-                                                                        </select>
-                                                                        <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                                                            </select>
+                                                                            <div className="absolute right-0.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 pr-0.5">
+                                                                                <ChevronDown size={10} className="text-slate-400 pointer-events-none" />
+                                                                                <button
+                                                                                    onClick={async () => {
+                                                                                        if (t.type === 'DESPESA') {
+                                                                                            setReconcilingTx(t);
+                                                                                            handleOpenSupplierModal();
+                                                                                        } else {
+                                                                                            const name = window.prompt('Nome do Novo Cliente:');
+                                                                                            if (name) {
+                                                                                                const { data, error } = await supabase.from('customers').insert([{ name }]).select();
+                                                                                                if (!error && data) {
+                                                                                                    setCustomers(prev => [...prev, data[0]]);
+                                                                                                    handleLinkNewPayeeToTx(t, data[0].name, data[0].id, 'CUSTOMER');
+                                                                                                }
+                                                                                            }
+                                                                                        }
+                                                                                    }}
+                                                                                    className="p-1 hover:bg-slate-200 dark:hover:bg-zinc-700 text-indigo-500 rounded transition-colors"
+                                                                                    title="Criar Novo"
+                                                                                >
+                                                                                    <Plus size={10} />
+                                                                                </button>
+                                                                            </div>
                                                                     </div>
                                                                 )}
                                                             </td>

@@ -1,4 +1,4 @@
-import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig, Supplier } from '../types';
+import { Appointment, Service, Customer, Provider, CommissionSetting, PaymentSetting, FinancialTransaction, Sale, Expense, FinancialConfig, Supplier, Employee } from '../types';
 
 export const toLocalDateStr = (date: Date | string) => {
     const d = typeof date === 'string' ? parseDateSafe(date) : date;
@@ -56,6 +56,7 @@ export const generateFinancialTransactions = (
     customers: Customer[],
     providers: Provider[],
     suppliers: Supplier[],
+    employees: Employee[],
     commissionSettings: CommissionSetting[],
     paymentSettings: PaymentSetting[],
     financialConfigs: FinancialConfig[] = []
@@ -395,6 +396,9 @@ export const generateFinancialTransactions = (
 
     expenses.forEach(exp => {
         const supplier = suppliers.find(s => s.id === exp.supplierId);
+        const provider = providers.find(p => p.id === exp.providerId);
+        const employee = employees.find(e => e.id === exp.employeeId);
+        
         allTrans.push({
             id: exp.id,
             date: exp.date,
@@ -405,11 +409,13 @@ export const generateFinancialTransactions = (
             status: exp.status === 'Pago' ? 'Pago' : 'Pendente',
             paymentMethod: exp.paymentMethod || 'Dinheiro',
             origin: 'Despesa',
-            customerOrProviderName: supplier?.name || providers.find(p => p.id === exp.providerId)?.name || '',
+            customerOrProviderName: supplier?.name || provider?.name || employee?.name || '',
             // Use exp.id as providerName so that DB expense records with category 'Repasse Comissão'
             // are never merged together in the commission grouping step below.
             providerName: exp.id,
             supplierId: exp.supplierId,
+            providerId: exp.providerId,
+            employeeId: exp.employeeId,
             isReconciled: exp.isReconciled,
             invoiceNumber: exp.invoiceNumber
         });
