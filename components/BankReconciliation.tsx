@@ -1163,6 +1163,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     systemPaymentMethod = 'Transferência';
                 }
 
+                const matches = row.linkedMatches && row.linkedMatches.length > 0 
+                    ? row.linkedMatches 
+                    : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
+
                 newBankTransactions.push({
                     date: row.date,
                     description: row.description,
@@ -1172,7 +1176,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     fingerprint: row.fingerprint,
                     system_category: systemCategory,
                     system_entity_name: systemEntityName,
-                    system_payment_method: systemPaymentMethod
+                    system_payment_method: systemPaymentMethod,
+                    system_matches: matches.length > 0 ? matches : null
                 });
             }
         }
@@ -1262,7 +1267,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             }
 
             if (newBankTransactions.length > 0) {
-                const { error } = await supabase.from('bank_transactions').upsert(newBankTransactions, { onConflict: 'fingerprint', ignoreDuplicates: true });
+                // Remove ignoreDuplicates: true to allow updating existing records when they are reconciled
+                const { error } = await supabase.from('bank_transactions').upsert(newBankTransactions, { onConflict: 'fingerprint' });
                 if (error) {
                     console.error('Error inserting bank_transactions:', error);
                     throw error;
