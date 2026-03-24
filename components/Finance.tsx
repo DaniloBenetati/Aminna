@@ -2359,18 +2359,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 </div>
             </div>
 
-            { (activeTab === 'ACCOUNTS') && (accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
-                <div className="flex justify-end mb-4 pr-6">
-                    <button 
-                        onClick={() => handleOpenModal()} 
-                        className="group relative flex items-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
-                    >
-                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
-                        Lançar Despesa
-                    </button>
-                </div>
-            )}
-
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
@@ -2398,6 +2386,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
 
                             <div className="flex items-center gap-2">
+                                {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                                    <button 
+                                        onClick={() => handleOpenModal()} 
+                                        className="hidden md:flex group relative items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                                    >
+                                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                                        Lançar Despesa
+                                    </button>
+                                )}
                                 {accountsSubTab === 'CONCILIADO' && (
                                     <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
                                         <RefreshCw size={12} /> Conciliação
@@ -2406,7 +2403,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
                         </div>
 
-                        {/* Mobile centered Conciliação button */}
+                        {/* Mobile centered buttons */}
+                        {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                            <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                                <button 
+                                    onClick={() => handleOpenModal()} 
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all outline-none"
+                                >
+                                    <Plus size={16} strokeWidth={3} />
+                                    Lançar Despesa
+                                </button>
+                            </div>
+                        )}
                         {accountsSubTab === 'CONCILIADO' && (
                             <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <button onClick={() => setIsReconciliationOpen(true)} className="w-full text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
