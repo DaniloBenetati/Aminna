@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown, Gift, Package, DollarSign } from 'lucide-react';
-import { Partner, Campaign, PartnerExchange, Appointment, Customer } from '../types';
+import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown, Gift, Package, DollarSign, Share2 } from 'lucide-react';
+import { Partner, Campaign, PartnerExchange, Appointment, Customer, Service } from '../types';
 import { PartnerProducts } from './PartnerProducts';
 
 interface PartnershipsProps {
@@ -15,6 +15,7 @@ interface PartnershipsProps {
   setPartnerExchanges: React.Dispatch<React.SetStateAction<PartnerExchange[]>>;
   appointments: Appointment[];
   customers: Customer[];
+  services: Service[];
 }
 
 export const Partnerships: React.FC<PartnershipsProps> = ({ 
@@ -25,10 +26,13 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   partnerExchanges,
   setPartnerExchanges,
   appointments,
-  customers
+  customers,
+  services
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS'>('INFLUENCERS');
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
+  const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'YES' | 'NO'>('ALL');
   const [customerSearch, setCustomerSearch] = useState('');
   const [analysisDateRange, setAnalysisDateRange] = useState({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
@@ -298,10 +302,158 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
     }
   };
 
-  const filteredPartners = partners.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.socialMedia.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleVideomakerReport = () => {
+    const reportData = partners
+      .filter(p => p.active && p.linkedCustomerId)
+      .map(p => {
+        const pAppts = appointments
+          .filter(a => 
+            a.customerId === p.linkedCustomerId && 
+            a.date >= new Date().toISOString().split('T')[0] && 
+            (a.status === 'Confirmado' || a.status === 'Pendente' || a.status === 'Em atendimento')
+          )
+          .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+        return { partner: p, appts: pAppts };
+      })
+      .filter(item => item.appts.length > 0)
+      .sort((a, b) => {
+        const firstA = a.appts[0].date + a.appts[0].time;
+        const firstB = b.appts[0].date + b.appts[0].time;
+        return firstA.localeCompare(firstB);
+      });
+
+    if (reportData.length === 0) {
+      alert("Nenhum agendamento futuro encontrado para influenciadoras ativas.");
+      return;
+    }
+
+    const printContent = `
+      <html>
+        <head>
+          <title>Relatório para Videomaker - Aminna</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+            body { font-family: 'Inter', sans-serif; padding: 40px; color: #1a1a1a; line-height: 1.5; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
+            .header p { margin: 5px 0 0; color: #666; font-weight: 700; font-size: 12px; }
+            .influencer-section { margin-bottom: 30px; page-break-inside: avoid; }
+            .name { font-size: 16px; font-weight: 900; color: #4f46e5; text-transform: uppercase; margin-bottom: 10px; border-left: 4px solid #4f46e5; padding-left: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 5px; }
+            th { text-align: left; font-size: 10px; font-weight: 900; text-transform: uppercase; color: #999; padding: 8px 12px; border-bottom: 1px solid #eee; }
+            td { padding: 12px; border-bottom: 1px solid #f9f9f9; font-size: 12px; font-weight: 700; }
+            .status { font-size: 10px; text-transform: uppercase; padding: 2px 8px; rounded: 10px; }
+            @media print { .no-print { display: none; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Gravações (Influencers)</h1>
+            <p>Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+          </div>
+          ${reportData.map(item => `
+            <div class="influencer-section">
+              <div class="name">${item.partner.name}</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Horário</th>
+                    <th>Serviço</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${item.appts.map(appt => {
+                    const srv = services.find(s => s.id === appt.serviceId);
+                    const dateFormatted = new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR');
+                    return `
+                      <tr>
+                        <td>${dateFormatted}</td>
+                        <td>${appt.time}</td>
+                        <td>${srv?.name || '---'}</td>
+                        <td><span class="status">${appt.status}</span></td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `).join('')}
+          <script>window.onload = () => { window.print(); window.close(); }</script>
+        </body>
+      </html>
+    `;
+
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(printContent);
+      win.document.close();
+    }
+  };
+
+  const handleWhatsappReport = () => {
+    const reportData = partners
+      .filter(p => p.active && p.linkedCustomerId)
+      .map(p => {
+        const pAppts = appointments
+          .filter(a => 
+            a.customerId === p.linkedCustomerId && 
+            a.date >= new Date().toISOString().split('T')[0] && 
+            (a.status === 'Confirmado' || a.status === 'Pendente' || a.status === 'Em atendimento')
+          )
+          .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+        return { partner: p, appts: pAppts };
+      })
+      .filter(item => item.appts.length > 0)
+      .sort((a, b) => {
+        const firstA = a.appts[0].date + a.appts[0].time;
+        const firstB = b.appts[0].date + b.appts[0].time;
+        return firstA.localeCompare(firstB);
+      });
+
+    if (reportData.length === 0) {
+      alert("Nenhum agendamento futuro encontrado para influenciadoras ativas.");
+      return;
+    }
+
+    let message = `*RELATÓRIO DE GRAVAÇÕES - AMINNA*\n`;
+    message += `_Gerado em: ${new Date().toLocaleString('pt-BR')}_\n\n`;
+
+    reportData.forEach(item => {
+      message += `\n*INFLUENCIADORA: ${item.partner.name.toUpperCase()}*\n`;
+      item.appts.forEach(appt => {
+        const srv = services.find(s => s.id === appt.serviceId);
+        const dateFormatted = new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR');
+        message += `[AGENDA]: ${dateFormatted} às ${appt.time}\n`;
+        message += `[SERVIÇO]: ${srv?.name || '---'}\n`;
+      });
+      message += `----------------------------\n`;
+    });
+
+    const encodedMessage = encodeURIComponent(message);
+    window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+  };
+
+  const filteredPartners = partners.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.socialMedia.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === 'ALL' ? true : 
+                         statusFilter === 'ACTIVE' ? p.active : !p.active;
+
+    const partnerAppts = appointments.filter(a => 
+      a.customerId === p.linkedCustomerId && 
+      a.date >= new Date().toISOString().split('T')[0] && 
+      (a.status === 'Confirmado' || a.status === 'Pendente' || a.status === 'Em atendimento')
+    );
+
+    const hasAgenda = partnerAppts.length > 0;
+    const matchesAgenda = agendaFilter === 'ALL' ? true :
+                         agendaFilter === 'YES' ? hasAgenda : !hasAgenda;
+    
+    return matchesSearch && matchesStatus && matchesAgenda;
+  });
 
   return (
     <div className="space-y-4 md:space-y-6 pb-24 md:pb-8 text-slate-900 dark:text-white">
@@ -368,17 +520,75 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
             <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[400px]">
               <div className="p-5 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h3 className="font-black text-slate-800 dark:text-white uppercase text-[10px] tracking-widest flex items-center gap-2"><Users size={16} /> Parceiros e Campanhas</h3>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                  {/* Status Filter Toggle */}
+                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
+                    <button
+                      onClick={() => setStatusFilter('ACTIVE')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ACTIVE' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Ativos
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('INACTIVE')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${statusFilter === 'INACTIVE' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Inativos
+                    </button>
+                    <button
+                      onClick={() => setStatusFilter('ALL')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ALL' ? 'bg-slate-900 dark:bg-white dark:text-black text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Todos
+                    </button>
+                  </div>
+
+                  {/* Agenda Filter Toggle */}
+                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
+                    <span className="px-2 py-1.5 text-[8px] font-black text-slate-400 uppercase self-center border-r-2 border-slate-100 dark:border-zinc-700 mr-1">Agenda</span>
+                    <button
+                      onClick={() => setAgendaFilter('YES')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'YES' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Sim
+                    </button>
+                    <button
+                      onClick={() => setAgendaFilter('NO')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'NO' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Não
+                    </button>
+                    <button
+                      onClick={() => setAgendaFilter('ALL')}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'ALL' ? 'bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                    >
+                      Ver todos
+                    </button>
+                  </div>
+
                   <div className="relative flex-1 sm:flex-none">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" size={14} />
                     <input
                       type="text"
                       placeholder="Buscar parceiro..."
-                      className="w-full sm:w-64 pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all placeholder:text-slate-500"
+                      className="w-full sm:w-48 pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all placeholder:text-slate-500"
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
                   </div>
+
+                  {/* Report Button */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleWhatsappReport}
+                      title="Enviar por WhatsApp"
+                      className="p-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-slate-600 dark:text-slate-400 hover:text-green-600 hover:border-green-600 transition-all flex items-center gap-2"
+                    >
+                      <Share2 size={18} />
+                      <span className="text-[9px] font-black uppercase hidden lg:inline">Relatório WhatsApp</span>
+                    </button>
+                  </div>
+
                   <button onClick={() => handleOpenPartnerModal()} className="p-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-105 transition-all shadow-md"><Plus size={18} /></button>
                 </div>
               </div>
@@ -395,15 +605,6 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-col md:flex-row md:items-center gap-x-3 gap-y-1">
                               <p className="font-black text-slate-950 dark:text-white text-sm leading-tight truncate">{p.name}</p>
-                              <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                                {p.socialMediaList && p.socialMediaList.length > 0 ? (
-                                  p.socialMediaList.map((sm, idx) => (
-                                    <span key={idx} className="text-[10px] text-indigo-800 font-black truncate">{sm}</span>
-                                  ))
-                                ) : (
-                                  <span className="text-[10px] text-indigo-800 font-black truncate">{p.socialMedia}</span>
-                                )}
-                              </div>
                               <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
                                 <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase border whitespace-nowrap ${p.partnershipType === 'PERMUTA' ? 'bg-purple-50 text-purple-800 border-purple-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>{p.partnershipType}</span>
                                 <span className="text-[8px] text-slate-600 font-black uppercase tracking-tighter border border-slate-200 px-2 py-0.5 rounded-full whitespace-nowrap bg-slate-50">{p.category}</span>
@@ -440,6 +641,44 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                             )}
                           </div>
                         </div>
+
+                        {/* Agenda Section */}
+                        {p.linkedCustomerId && (
+                          <div className="flex-1 min-w-[140px] border-l border-slate-100 dark:border-zinc-800/50 pl-4 hidden md:block">
+                            <div className="flex items-center gap-1 mb-1.5 uppercase tracking-widest text-slate-400 font-black text-[8px]">
+                              <Calendar size={12} className="text-indigo-600" />
+                              <span>Agenda</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {appointments
+                                .filter(a => a.customerId === p.linkedCustomerId && (a.status === 'Confirmado' || a.status === 'Pendente' || a.status === 'Em atendimento'))
+                                .filter(a => a.date >= new Date().toISOString().split('T')[0])
+                                .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime())
+                                .slice(0, 3)
+                                .map(appt => {
+                                  const srv = services.find(s => s.id === appt.serviceId);
+                                  const dateObj = new Date(appt.date + 'T12:00:00');
+                                  return (
+                                    <div key={appt.id} className="inline-flex items-center gap-2 p-1.5 bg-white dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-700/50 shadow-sm relative pr-3">
+                                      <div className="flex flex-col items-center justify-center w-7 h-7 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                                        <span className="text-[7px] font-black leading-none text-indigo-400">{dateObj.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '')}</span>
+                                        <span className="text-xs font-black leading-none text-indigo-700 dark:text-indigo-300">{dateObj.getDate()}</span>
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-[9px] font-black text-slate-950 dark:text-white truncate uppercase max-w-[80px] leading-none mb-1">{srv?.name || 'Serviço'}</p>
+                                        <p className="text-[8px] font-bold text-slate-500 leading-none">{appt.time}</p>
+                                      </div>
+                                      <div className={`w-1.5 h-1.5 rounded-full absolute -top-0.5 -right-0.5 ${appt.status === 'Confirmado' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                    </div>
+                                  );
+                                })}
+                              {appointments.filter(a => a.customerId === p.linkedCustomerId && a.date >= new Date().toISOString().split('T')[0] && (a.status === 'Confirmado' || a.status === 'Pendente' || a.status === 'Em atendimento')).length === 0 && (
+                                <p className="text-[8px] font-black text-slate-400 italic uppercase">Sem agendamentos</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-2">
                           <button onClick={() => togglePartnerStatus(p.id)} className={`p-2 rounded-xl transition-all ${p.active ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100'}`}><ToggleRight size={24} /></button>
                           <button onClick={() => handleOpenPartnerModal(p)} className="p-2 text-slate-500 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-all"><Edit2 size={18} /></button>

@@ -834,7 +834,7 @@ const App: React.FC = () => {
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
-        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} appointments={appointments} customers={customers} />;
+        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} appointments={appointments} customers={customers} services={services} />;
       case ViewState.COPA:
         return (
           <Copa

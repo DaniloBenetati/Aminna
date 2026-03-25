@@ -216,6 +216,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          
           <button 
             onClick={() => activeView === 'PARTNERS' ? (setEditingPartner(null), setIsPartnerModalOpen(true)) : (setEditingExchange({}), setIsExchangeModalOpen(true))}
             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition-all w-full sm:w-auto"
