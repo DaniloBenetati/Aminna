@@ -872,6 +872,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return;
         }
 
+        // --- VALIDATE SERVICES VS PROFESSIONALS ---
+        for (const line of lines) {
+            if (!isServiceAllowed(line.serviceId, line.providerId)) {
+                const srv = services.find(s => s.id === line.serviceId);
+                const pro = providers.find(p => p.id === line.providerId);
+                alert(`⚠️ SERVIÇO INVÁLIDO\n\nO serviço "${srv?.name || 'Selecionado'}" não está habilitado para o(a) profissional "${pro?.name || 'Selecionado'}".\n\nPor favor, corrija a seleção antes de finalizar.`);
+                setIsSaving(false);
+                return;
+            }
+        }
+
         setIsSaving(true);
 
         // Check merge (though unlikely in finish flow, better safe)
@@ -1166,6 +1177,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         if (restrictionData.isRestricted) {
             alert(`⚠️ Agendamento Bloqueado\n\nMotivo: ${restrictionData.reason}`);
             return;
+        }
+
+        const linesToUse = manualLines || lines;
+
+        // --- VALIDATE SERVICES VS PROFESSIONALS ---
+        for (const line of linesToUse) {
+            if (!isServiceAllowed(line.serviceId, line.providerId)) {
+                const srv = services.find(s => s.id === line.serviceId);
+                const pro = providers.find(p => p.id === line.providerId);
+                alert(`⚠️ SERVIÇO INVÁLIDO\n\nO serviço "${srv?.name || 'Selecionado'}" não está habilitado para o(a) profissional "${pro?.name || 'Selecionado'}".\n\nPor favor, verifique as especialidades da profissional ou altere o serviço.`);
+                setIsSaving(false);
+                return;
+            }
         }
 
         if (customer.isBlocked) {
@@ -2075,6 +2099,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
+    const isServiceAllowed = (serviceId: string | undefined, providerId: string | undefined) => {
+        if (!serviceId || !providerId) return true;
+        const pro = providers.find(p => p.id === providerId);
+        const srv = services.find(s => s.id === serviceId);
+        if (!pro || !srv) return true;
+        
+        // If professional has NO specialties defined, assume they can do everything (default behavior)
+        if (!pro.specialties || pro.specialties.length === 0) return true;
+        
+        // Match by name (case insensitive for safety)
+        const srvNameNormalized = srv.name.trim().toLowerCase();
+        return pro.specialties.some(spec => spec.trim().toLowerCase() === srvNameNormalized);
+    };
+
     const updateLine = (id: string, field: keyof ServiceLine, value: any) => {
         setLines(lines.map(line => {
             if (line.id !== id) return line;
@@ -2378,19 +2416,38 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <div className="space-y-0.5">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                                         <select
-                                                            className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                            className={`w-full bg-slate-50 dark:bg-zinc-900 border rounded-xl p-3 text-xs font-black uppercase outline-none transition-all appearance-none cursor-pointer ${
+                                                                !isServiceAllowed(line.serviceId, line.providerId)
+                                                                ? 'border-rose-400 dark:border-rose-900 text-rose-700 dark:text-rose-400' 
+                                                                : 'border-slate-200 dark:border-zinc-700 text-slate-950 dark:text-white focus:border-slate-400 dark:focus:border-zinc-500'
+                                                            }`}
                                                             style={{ colorScheme: 'dark' }}
                                                             value={line.serviceId}
                                                             onChange={e => updateLine(line.id, 'serviceId', e.target.value)}
                                                         >
-                                                            {services
-                                                                .filter(s => {
-                                                                    const provider = providers.find(p => p.id === line.providerId);
-                                                                    if (!provider) return true;
-                                                                    if (!provider.specialties || provider.specialties.length === 0) return true;
-                                                                    return provider.specialties.includes(s.name);
-                                                                })
-                                                                .map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(0)}</option>)}
+                                                            <option value="">Selecione...</option>
+                                                            {(() => {
+                                                                const currentSrv = services.find(s => s.id === line.serviceId);
+                                                                const filtered = services
+                                                                    .filter(s => {
+                                                                        const provider = providers.find(p => p.id === line.providerId);
+                                                                        if (!provider) return true;
+                                                                        if (!provider.specialties || provider.specialties.length === 0) return true;
+                                                                        const sNameLower = s.name.trim().toLowerCase();
+                                                                        return provider.specialties.some(spec => spec.trim().toLowerCase() === sNameLower);
+                                                                    });
+                                                                
+                                                                const allToShow = [...filtered];
+                                                                if (currentSrv && !filtered.some(f => f.id === currentSrv.id)) {
+                                                                    allToShow.unshift(currentSrv);
+                                                                }
+
+                                                                return allToShow.map(s => (
+                                                                    <option key={s.id} value={s.id}>
+                                                                        {s.name} - R$ {s.price.toFixed(0)} {!isServiceAllowed(s.id, line.providerId) ? '⚠️' : ''}
+                                                                    </option>
+                                                                ));
+                                                            })()}
                                                         </select>
                                                     </div>
 
