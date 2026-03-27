@@ -867,8 +867,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const handleFinishService = async () => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
 
-        if (Math.abs(totalPaid - totalValue) > 0.01) {
-            alert(`⚠️ Divergência de Valores\n\nTotal a Pagar: R$ ${totalValue.toFixed(2)}\nTotal Informado: R$ ${totalPaid.toFixed(2)}\n\nPor favor, ajuste os pagamentos para igualar o total.`);
+        if (totalPaid < totalValue - 0.01) {
+            alert(`⚠️ Divergência de Valores\n\nTotal a Pagar: R$ ${totalValue.toFixed(2)}\nTotal Informado: R$ ${totalPaid.toFixed(2)}\n\nPor favor, o valor pago deve ser igual ou superior ao total.`);
             return;
         }
 
@@ -890,6 +890,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const isReFinalizing = appointment.status === 'Concluído';
         const previousPricePaid = appointment.pricePaid || 0;
         const priceDifference = isReFinalizing ? (totalValue - previousPricePaid) : totalValue;
+        const overpayment = Math.max(0, totalPaid - totalValue);
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const allProductsUsed = lines.flatMap(l => l.products);
@@ -985,9 +986,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 total_spent: customer.totalSpent + priceDifference,
                 outstanding_balance: newOutstandingBalance,
                 status: customer.status === 'Novo' ? 'Regular' : customer.status,
-                credit_balance: (customer.creditBalance || 0) - usedCredit
+                credit_balance: (customer.creditBalance || 0) + overpayment - usedCredit
             }).eq('id', customer.id);
             if (custError) throw custError;
+
+            // Notify about credit update
+            if (overpayment > 0) {
+                alert(`✅ Crédito Aminna Gerado!\n\nValor Excedente: R$ ${overpayment.toFixed(2)}\nNovo Saldo: R$ ${((customer.creditBalance || 0) + overpayment - usedCredit).toFixed(2)}`);
+            }
 
             // Notify about credit update
             if (usedCredit > 0) {
@@ -1054,7 +1060,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         totalSpent: c.totalSpent + priceDifference,
                         status: c.status === 'Novo' ? 'Regular' : c.status,
                         history: isReFinalizing ? c.history : [...newEntries, ...c.history],
-                        creditBalance: (c.creditBalance || 0) - usedCredit,
+                        creditBalance: (c.creditBalance || 0) + overpayment - usedCredit,
                         outstandingBalance: newOutstandingBalance
                     };
                 }
@@ -1240,11 +1246,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
         }
 
-        const linesToUse = manualLines || lines;
-        const serviceNamesArray = linesToUse.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
+        const linesToUseForSave = manualLines || lines;
+        const serviceNamesArray = linesToUseForSave.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
         const uniqueNames = Array.from(new Set(serviceNamesArray));
         const combinedNames = uniqueNames.join(' + ');
-        const extrasUnprocessed = linesToUse.slice(1).map(l => ({
+        const extrasUnprocessed = linesToUseForSave.slice(1).map(l => ({
             serviceId: l.serviceId,
             providerId: l.providerId,
             isCourtesy: l.isCourtesy,
@@ -1268,19 +1274,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         // Overall status optimization: if at least one is "Em Andamento", and global is "Em atendimento", keep "Em Andamento" or similar.
         // But for now, let's keep the global status as the user sets it or as it was.
         let finalGlobalStatus = status;
-        if (linesToUse.some(l => l.status === 'Em Andamento') && (status === 'Aguardando' || status === 'Em atendimento' || status === 'Confirmado' || status === 'Pendente')) {
+        if (linesToUseForSave.some(l => l.status === 'Em Andamento') && (status === 'Aguardando' || status === 'Em atendimento' || status === 'Confirmado' || status === 'Pendente')) {
             finalGlobalStatus = 'Em Andamento';
         }
 
         const dataToSave = {
-            time: linesToUse[0].startTime,
+            time: linesToUseForSave[0].startTime,
             date: appointmentDate,
             status: finalGlobalStatus,
             combined_service_names: combinedNames,
-            service_id: linesToUse[0].serviceId,
-            provider_id: linesToUse[0].providerId,
-            booked_price: linesToUse[0].unitPrice,
-            main_service_products: linesToUse[0].products,
+            service_id: linesToUseForSave[0].serviceId,
+            provider_id: linesToUseForSave[0].providerId,
+            booked_price: linesToUseForSave[0].unitPrice,
+            main_service_products: linesToUseForSave[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
@@ -1288,17 +1294,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             adjustment_reason: adjustmentReason,
             customer_id: customer.id,
             payments: payments,
-            end_time: linesToUse[0].endTime,
-            tip_amount: linesToUse.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+            end_time: linesToUseForSave[0].endTime,
+            tip_amount: linesToUseForSave.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             recurrence_id: recId,
-            quantity: linesToUse[0].quantity || 1,
+            quantity: linesToUseForSave[0].quantity || 1,
             start_time_actual: linesToUse[0].startTimeActual
         };
 
         try {
             // 0. Identify secondary appointments to "cancel/merge"
             const secondaryAppointmentIds = Array.from(new Set(
-                linesToUse
+                linesToUseForSave
                     .map(l => l.appointmentId)
                     .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
             ));
@@ -3390,11 +3396,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 </div>
 
                                 <div className="flex gap-2 mt-4">
-                                    <div className={`flex-1 p-3 rounded-xl border flex items-center justify-between ${Math.abs(totalPaid - totalValue) < 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
-                                        <span className={`text-xs font-black ${Math.abs(totalPaid - totalValue) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                            R$ {totalPaid.toFixed(2)} / R$ {totalValue.toFixed(2)}
-                                        </span>
+                                    <div className={`flex-1 p-3 rounded-xl border flex flex-col justify-center ${totalPaid >= totalValue - 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
+                                        <div className="flex items-center justify-between w-full">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
+                                            <span className={`text-xs font-black ${totalPaid >= totalValue - 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                                R$ {totalPaid.toFixed(2)} / R$ {totalValue.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        {totalPaid > totalValue + 0.01 && (
+                                            <div className="flex items-center justify-between w-full mt-1 pt-1 border-t border-emerald-100/50 dark:border-emerald-800/50">
+                                                <span className="text-[8px] font-black uppercase text-emerald-600/70 dark:text-emerald-400/70">Crédito a Gerar</span>
+                                                <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400">
+                                                    + R$ {(totalPaid - totalValue).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         type="button"

@@ -1,0 +1,74 @@
+{
+  "customer": {
+    "id": "67d0002e-338c-47c9-b183-c943e2471831",
+    "name": "Patricia Prata"
+  },
+  "appointments": [
+    {
+      "id": "97ed3b45-94c7-469c-8f47-b34e1da65728",
+      "customer_id": "67d0002e-338c-47c9-b183-c943e2471831",
+      "provider_id": "a8f87b8f-a30f-439c-820c-c441ccf47154",
+      "service_id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+      "date": "2026-03-27",
+      "time": "10:00:00",
+      "status": "Em Andamento",
+      "payment_date": null,
+      "price_paid": 0,
+      "booked_price": 258,
+      "commission_rate_snapshot": null,
+      "is_courtesy": false,
+      "applied_coupon": null,
+      "discount_amount": 0,
+      "payment_method": null,
+      "combined_service_names": "Manutenção + BROW Lamination",
+      "created_at": "2026-03-16T02:28:14.951218+00:00",
+      "main_service_products": [],
+      "additional_services": [
+        {
+          "status": "Aguardando",
+          "endTime": "14:00",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "ebf81fc7-ee4f-4bf5-a4ee-5f10c2efb7bf",
+          "startTime": "12:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 258
+        }
+      ],
+      "products_used": null,
+      "payments": [],
+      "nfse_record_id": null,
+      "price": null,
+      "recurrence_id": null,
+      "end_time": "12:00",
+      "tip_amount": 0,
+      "start_time_actual": "11:27",
+      "is_remake": false,
+      "is_reconciled": false,
+      "observation": null,
+      "quantity": 1,
+      "adjustment_amount": 0,
+      "adjustment_reason": "",
+      "service_name": "Manutenção",
+      "provider_name": "GRAZIELE DE SOUZA CRUZ",
+      "additional_services_mapped": [
+        {
+          "status": "Aguardando",
+          "endTime": "14:00",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "ebf81fc7-ee4f-4bf5-a4ee-5f10c2efb7bf",
+          "startTime": "12:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 258
+        }
+      ]
+    }
+  ]
+}

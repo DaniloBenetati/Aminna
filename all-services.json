@@ -1,0 +1,207 @@
+[
+  {
+    "id": "a2c3aac9-15f3-4a5b-8eca-3a24e2b09f55",
+    "name": "COLOCAÇÃO",
+    "price": 378
+  },
+  {
+    "id": "21998350-a13c-413c-b4dd-baa6fe50bd16",
+    "name": "BABY esmaltação",
+    "price": 268
+  },
+  {
+    "id": "95887e9c-6b3e-4a47-a69d-e42f72cee297",
+    "name": "BABYBoomer",
+    "price": 408
+  },
+  {
+    "id": "c136718e-e9ae-4528-9832-c95dc012149c",
+    "name": "BABYLISS Escova",
+    "price": 122
+  },
+  {
+    "id": "64c55ede-2248-426b-b28e-d846abdb702b",
+    "name": "BANHO Gel",
+    "price": 258
+  },
+  {
+    "id": "90d99346-5eed-40d3-b173-fbed0e4e3f39",
+    "name": "BLINDAGEM masculina",
+    "price": 88
+  },
+  {
+    "id": "ebf81fc7-ee4f-4bf5-a4ee-5f10c2efb7bf",
+    "name": "BROW Lamination",
+    "price": 258
+  },
+  {
+    "id": "5a053dec-1c40-4ae6-aa99-23daa6ab6e0d",
+    "name": "BUÇO",
+    "price": 48
+  },
+  {
+    "id": "de09ebb9-3d59-4640-a4b1-2c7e335b1dbf",
+    "name": "CANETA cuticula",
+    "price": 12
+  },
+  {
+    "id": "c600dc8b-a424-463c-b4c1-c068f42e93ba",
+    "name": "CILIOS Extensão",
+    "price": 248
+  },
+  {
+    "id": "74de4b77-89a1-4f74-9dd5-8911db218905",
+    "name": "CILIOS Manutenção",
+    "price": 198
+  },
+  {
+    "id": "0a3db05e-1977-42a7-8019-a4f4b7f220e4",
+    "name": "COLOCAÇÃO Extra",
+    "price": 408
+  },
+  {
+    "id": "fa081eac-0cfe-455f-becd-e1416b8623a7",
+    "name": "DERMA",
+    "price": 198
+  },
+  {
+    "id": "09a67032-a5e6-480f-8820-b119cd9b3f68",
+    "name": "DESIGN Sobrancelha",
+    "price": 88
+  },
+  {
+    "id": "e28ef821-508a-42f9-9dc2-88b8ec8e6572",
+    "name": "ESCOVA",
+    "price": 98
+  },
+  {
+    "id": "b9dac9a3-6db8-41cc-97ea-0e243fd02598",
+    "name": "Esmaltação GEL",
+    "price": 218
+  },
+  {
+    "id": "e072fa1d-010a-4ef7-891f-a0919063d29e",
+    "name": "FERIAS do gel",
+    "price": 118
+  },
+  {
+    "id": "15a96af3-5212-4282-82de-fca12d820d16",
+    "name": "GLOW",
+    "price": 288
+  },
+  {
+    "id": "31369ae7-c1c3-42ee-ae6d-aacc8dc8319e",
+    "name": "HALUX",
+    "price": 68
+  },
+  {
+    "id": "93c00a1c-1d6c-47f9-b9d5-64b28d0f5ea2",
+    "name": "HOME",
+    "price": 15
+  },
+  {
+    "id": "3b9f82a0-3a03-4c80-aefe-948d13c5857e",
+    "name": "HYDRA Gloss",
+    "price": 188
+  },
+  {
+    "id": "bfb4b8ec-c137-4bd4-8293-04fac5ca6e63",
+    "name": "ICE",
+    "price": 408
+  },
+  {
+    "id": "8fca5c33-f49c-46a3-8562-9e222ccd7dc0",
+    "name": "Kids",
+    "price": 42
+  },
+  {
+    "id": "ba40cd50-b5ac-4acb-9878-8741c95f0565",
+    "name": "LASH Lifting",
+    "price": 258
+  },
+  {
+    "id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+    "name": "Manutenção",
+    "price": 258
+  },
+  {
+    "id": "d5d8480b-e148-4641-b6c0-8dbd35d8831c",
+    "name": "MANUTENÇÃO Extra",
+    "price": 278
+  },
+  {
+    "id": "33e72ab0-32e1-4afb-8885-6c522aa28605",
+    "name": "MEIA Remoção",
+    "price": 78
+  },
+  {
+    "id": "8a6f1af9-f804-4cc1-ad60-9adebab669ba",
+    "name": "Nail ART",
+    "price": 160
+  },
+  {
+    "id": "3ed498d8-081c-4759-aca3-6216438f10d1",
+    "name": "NARIZ",
+    "price": 38
+  },
+  {
+    "id": "1df44688-04f8-4544-987b-afbe4b40e20c",
+    "name": "PED GEL",
+    "price": 118
+  },
+  {
+    "id": "3a386518-efac-4ee0-af49-540afe4428b3",
+    "name": "PED Remoção",
+    "price": 88
+  },
+  {
+    "id": "e2cb73d5-c5f8-4eb0-8896-9edfdf24547a",
+    "name": "PEDICURE Trad",
+    "price": 62
+  },
+  {
+    "id": "50b41343-98e5-4051-9f99-6da0c55f97cf",
+    "name": "PENTEADO",
+    "price": 228
+  },
+  {
+    "id": "3586bf79-c205-417f-aa5f-c3db5b549346",
+    "name": "PUMP lips",
+    "price": 638
+  },
+  {
+    "id": "b8f756b2-e57c-4136-82da-396320c8a804",
+    "name": "PUMP lips RETOQUE",
+    "price": 328
+  },
+  {
+    "id": "c2487e75-4d5b-409e-9c3c-682748ad979d",
+    "name": "REMOÇÃO Lash",
+    "price": 88
+  },
+  {
+    "id": "04798824-03d5-4f39-a464-a6e527a3f827",
+    "name": "REPARO",
+    "price": 38
+  },
+  {
+    "id": "ecff6a68-bc63-46e1-8427-1e855567202d",
+    "name": "Rosto",
+    "price": 68
+  },
+  {
+    "id": "abc66c1d-367c-49bf-8b9e-c9d9f2e20bbf",
+    "name": "SHADOW",
+    "price": 658
+  },
+  {
+    "id": "17bfded8-bbd8-4edd-bd7b-f21ef488ae08",
+    "name": "Taxa de Deslocamento",
+    "price": 0
+  },
+  {
+    "id": "47ca7f47-d7e9-4faa-8989-9d914c4bb828",
+    "name": "TRADICIONAL",
+    "price": 58
+  }
+]
