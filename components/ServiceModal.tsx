@@ -434,14 +434,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     // Auto-fill payment amount if single payment method
     useEffect(() => {
-        // "quando entrar na tela de pagamento o valor total já deve estar preenchido, só mude se eu selecionar mais de uma opção de pagamento"
+        // Auto-fill payment amount if it's the only one and it's lower than the total
+        // We allow overpayments to generate credit, but we ensure the total is covered by default.
         if (payments.length === 1) {
-            // Only update if difference is significant to avoid infinite loops with float precision
-            if (Math.abs(payments[0].amount - totalValue) > 0.01) {
+            if (payments[0].amount < totalValue - 0.01) {
                 setPayments(prev => [{ ...prev[0], amount: totalValue }]);
             }
         }
-    }, [totalValue, payments.length, payments]); // payments dependency is needed to check amount, but length check protects logic
+    }, [totalValue, payments.length]);
 
     const totalBeforeCoupon = useMemo(() => {
         return lines.reduce((acc, line) => acc + (line.isCourtesy ? 0 : ((line.unitPrice * (line.quantity || 1)) - line.discount)), 0);
