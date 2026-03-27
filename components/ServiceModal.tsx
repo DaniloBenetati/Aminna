@@ -2492,7 +2492,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         >
                                                             <option value="">Selecione...</option>
                                                             {(() => {
-                                                                const currentSrv = services.find(s => s.id === line.serviceId);
                                                                 const filtered = services
                                                                     .filter(s => {
                                                                         const provider = providers.find(p => p.id === line.providerId);
@@ -2502,14 +2501,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                         return provider.specialties.some(spec => spec.trim().toLowerCase() === sNameLower);
                                                                     });
                                                                 
-                                                                const allToShow = [...filtered];
-                                                                if (currentSrv && !filtered.some(f => f.id === currentSrv.id)) {
-                                                                    allToShow.unshift(currentSrv);
-                                                                }
-
-                                                                return allToShow.map(s => (
+                                                                // Removed the unshift(currentSrv) to maintain strict filtering as requested.
+                                                                return filtered.map(s => (
                                                                     <option key={s.id} value={s.id}>
-                                                                        {s.name} - R$ {s.price.toFixed(0)} {!isServiceAllowed(s.id, line.providerId) ? '⚠️' : ''}
+                                                                        {s.name} - R$ {s.price.toFixed(0)}
                                                                     </option>
                                                                 ));
                                                             })()}
