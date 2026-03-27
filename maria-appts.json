@@ -1,0 +1,265 @@
+{
+  "main": [],
+  "additional": [
+    {
+      "id": "97ed3b45-94c7-469c-8f47-b34e1da65728",
+      "customer_id": "67d0002e-338c-47c9-b183-c943e2471831",
+      "provider_id": "a8f87b8f-a30f-439c-820c-c441ccf47154",
+      "service_id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+      "date": "2026-03-27",
+      "time": "10:00:00",
+      "status": "Concluído",
+      "payment_date": "2026-03-27T00:00:00+00:00",
+      "price_paid": 516,
+      "booked_price": 258,
+      "commission_rate_snapshot": null,
+      "is_courtesy": false,
+      "applied_coupon": null,
+      "discount_amount": 0,
+      "payment_method": "Cartão de Crédito",
+      "combined_service_names": "Manutenção + BROW Lamination",
+      "created_at": "2026-03-16T02:28:14.951218+00:00",
+      "main_service_products": [],
+      "additional_services": [
+        {
+          "status": "Concluído",
+          "endTime": "13:00",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "ebf81fc7-ee4f-4bf5-a4ee-5f10c2efb7bf",
+          "startTime": "12:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 258
+        }
+      ],
+      "products_used": [],
+      "payments": [
+        {
+          "id": "1774628876011",
+          "amount": 516,
+          "method": "Cartão de Crédito",
+          "cardBrand": "Mastercard"
+        }
+      ],
+      "nfse_record_id": null,
+      "price": null,
+      "recurrence_id": null,
+      "end_time": "12:00",
+      "tip_amount": 0,
+      "start_time_actual": "11:27",
+      "is_remake": false,
+      "is_reconciled": false,
+      "observation": null,
+      "quantity": 1,
+      "adjustment_amount": 0,
+      "adjustment_reason": "",
+      "customers": {
+        "name": "Patricia Prata"
+      }
+    },
+    {
+      "id": "14c1837a-03bf-4559-b5c3-da154d0f8c95",
+      "customer_id": "c4a176a2-1261-4576-a2e9-7c804f9f21a8",
+      "provider_id": "b91717c8-78f1-4f84-bc87-a6139bf76120",
+      "service_id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+      "date": "2026-03-27",
+      "time": "16:00:00",
+      "status": "Em Andamento",
+      "payment_date": null,
+      "price_paid": null,
+      "booked_price": 258,
+      "commission_rate_snapshot": null,
+      "is_courtesy": false,
+      "applied_coupon": null,
+      "discount_amount": 0,
+      "payment_method": null,
+      "combined_service_names": "Manutenção + DESIGN Sobrancelha",
+      "created_at": "2026-03-26T22:19:04.719203+00:00",
+      "main_service_products": [],
+      "additional_services": [
+        {
+          "status": "Aguardando",
+          "endTime": "16:30",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "09a67032-a5e6-480f-8820-b119cd9b3f68",
+          "startTime": "16:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 88
+        }
+      ],
+      "products_used": null,
+      "payments": [
+        {
+          "id": "1",
+          "amount": 346,
+          "method": "Pix"
+        }
+      ],
+      "nfse_record_id": null,
+      "price": null,
+      "recurrence_id": null,
+      "end_time": "18:00",
+      "tip_amount": 0,
+      "start_time_actual": "16:06",
+      "is_remake": false,
+      "is_reconciled": false,
+      "observation": null,
+      "quantity": 1,
+      "adjustment_amount": 0,
+      "adjustment_reason": "",
+      "customers": {
+        "name": "Elaine Oliveira"
+      }
+    },
+    {
+      "id": "868886d8-ce60-47ea-b721-17ed2e0696c5",
+      "customer_id": "d59113b5-50b2-426e-933e-5d3b5659427a",
+      "provider_id": "a8f87b8f-a30f-439c-820c-c441ccf47154",
+      "service_id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+      "date": "2026-03-27",
+      "time": "13:00:00",
+      "status": "Concluído",
+      "payment_date": "2026-03-27T00:00:00+00:00",
+      "price_paid": 0,
+      "booked_price": 258,
+      "commission_rate_snapshot": null,
+      "is_courtesy": false,
+      "applied_coupon": null,
+      "discount_amount": 0,
+      "payment_method": "Dívida",
+      "combined_service_names": "Manutenção + PED GEL + DESIGN Sobrancelha",
+      "created_at": "2026-03-27T14:36:03.475201+00:00",
+      "main_service_products": [],
+      "additional_services": [
+        {
+          "discount": 0,
+          "products": [],
+          "serviceId": "1df44688-04f8-4544-987b-afbe4b40e20c",
+          "startTime": "13:30",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "70aec235-6234-4923-899c-e9e22204dbb1",
+          "bookedPrice": 118
+        },
+        {
+          "discount": 0,
+          "products": [],
+          "serviceId": "09a67032-a5e6-480f-8820-b119cd9b3f68",
+          "startTime": "14:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 88
+        }
+      ],
+      "products_used": [],
+      "payments": [
+        {
+          "id": "debt-1774638189189",
+          "amount": 840,
+          "method": "Dívida"
+        }
+      ],
+      "nfse_record_id": null,
+      "price": null,
+      "recurrence_id": null,
+      "end_time": "15:00",
+      "tip_amount": 0,
+      "start_time_actual": "13:39",
+      "is_remake": false,
+      "is_reconciled": false,
+      "observation": null,
+      "quantity": 1,
+      "adjustment_amount": 0,
+      "adjustment_reason": "",
+      "customers": {
+        "name": "Tay Pereira"
+      }
+    },
+    {
+      "id": "22756ab4-7567-4eb1-ad25-9273556f98f7",
+      "customer_id": "13cb0b60-8c8d-49c1-b3f0-6e9873684269",
+      "provider_id": "81d8f8fc-dede-47e5-bd3c-1cb3d2860be7",
+      "service_id": "f5af9bf7-8ae0-45b1-bb77-5dd79b0edb6a",
+      "date": "2026-03-27",
+      "time": "13:00:00",
+      "status": "Concluído",
+      "payment_date": "2026-03-27T00:00:00+00:00",
+      "price_paid": 464,
+      "booked_price": 258,
+      "commission_rate_snapshot": null,
+      "is_courtesy": false,
+      "applied_coupon": null,
+      "discount_amount": 0,
+      "payment_method": "Múltiplos",
+      "combined_service_names": "Manutenção + PED GEL + DESIGN Sobrancelha",
+      "created_at": "2026-03-27T14:41:29.164035+00:00",
+      "main_service_products": [],
+      "additional_services": [
+        {
+          "status": "Concluído",
+          "endTime": "15:20",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "1df44688-04f8-4544-987b-afbe4b40e20c",
+          "startTime": "14:30",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "1bc89211-f17c-42e9-be9f-d8b9bdeabeca",
+          "bookedPrice": 118,
+          "startTimeActual": "13:38"
+        },
+        {
+          "status": "Concluído",
+          "endTime": "13:30",
+          "discount": 0,
+          "products": [],
+          "quantity": 1,
+          "serviceId": "09a67032-a5e6-480f-8820-b119cd9b3f68",
+          "startTime": "13:00:00",
+          "tipAmount": 0,
+          "isCourtesy": false,
+          "providerId": "407a0c35-aa73-46db-b837-ebee1f9e1407",
+          "bookedPrice": 88
+        }
+      ],
+      "products_used": [],
+      "payments": [
+        {
+          "id": "1",
+          "amount": 88,
+          "method": "Pix"
+        },
+        {
+          "id": "1774638944736",
+          "amount": 376,
+          "method": "Cartão de Crédito",
+          "cardBrand": "Mastercard"
+        }
+      ],
+      "nfse_record_id": null,
+      "price": null,
+      "recurrence_id": null,
+      "end_time": "15:00",
+      "tip_amount": 0,
+      "start_time_actual": "13:38",
+      "is_remake": false,
+      "is_reconciled": false,
+      "observation": null,
+      "quantity": 1,
+      "adjustment_amount": 0,
+      "adjustment_reason": "",
+      "customers": {
+        "name": "Brunna Torresan"
+      }
+    }
+  ]
+}

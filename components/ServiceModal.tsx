@@ -114,6 +114,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isZeroing, setIsZeroing] = useState(false);
     const [zeroOutReason, setZeroOutReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
     const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
 
@@ -180,52 +182,109 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     }, [allAppointments, customer.id, appointment.id]);
 
+    // --- REFRESH DATA ON OPEN TO PREVENT STALE STATE REGRESSIONS ---
     useEffect(() => {
-        setStatus(appointment.status);
-        setAppointmentTime(appointment.time);
-        setAppointmentDate(appointment.date);
-        setCouponCode(appointment.appliedCoupon || '');
-        setAppliedCampaign(campaigns.find(c => c.couponCode === appointment.appliedCoupon) || null);
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointment.id);
+        if (isUUID && mode !== 'CHECKOUT' && mode !== 'HISTORY' && !isRefreshing) {
+            const refreshData = async () => {
+                setIsRefreshing(true);
+                try {
+                    const { data, error } = await supabase
+                        .from('appointments')
+                        .select('*')
+                        .eq('id', appointment.id)
+                        .single();
+
+                    if (error) throw error;
+                    if (data) {
+                        const mapped: Appointment = {
+                            id: data.id,
+                            customerId: data.customer_id,
+                            providerId: data.provider_id,
+                            serviceId: data.service_id,
+                            time: data.time,
+                            date: data.date,
+                            status: data.status,
+                            combinedServiceNames: data.combined_service_names,
+                            bookedPrice: data.booked_price,
+                            mainServiceProducts: data.main_service_products,
+                            additionalServices: data.additional_services,
+                            appliedCoupon: data.applied_coupon,
+                            discountAmount: data.discount_amount,
+                            pricePaid: data.price_paid,
+                            amount: data.amount,
+                            paymentMethod: data.payment_method,
+                            payments: data.payments || [],
+                            recurrenceId: data.recurrence_id,
+                            endTime: data.end_time,
+                            quantity: data.quantity || 1,
+                            startTimeActual: data.start_time_actual,
+                            tipAmount: data.tip_amount,
+                            isRemake: data.is_remake,
+                            isReconciled: data.is_reconciled,
+                            adjustmentAmount: data.adjustment_amount,
+                            adjustmentReason: data.adjustment_reason,
+                            observation: data.observation
+                        };
+                        setLatestAppointment(mapped);
+                    }
+                } catch (err) {
+                    console.error('Error refreshing appointment data:', err);
+                } finally {
+                    setIsRefreshing(false);
+                }
+            };
+            refreshData();
+        }
+    }, [appointment.id]);
+
+    useEffect(() => {
+        const apptToUse = latestAppointment || appointment;
+        setStatus(apptToUse.status);
+        setAppointmentTime(apptToUse.time);
+        setAppointmentDate(apptToUse.date);
+        setCouponCode(apptToUse.appliedCoupon || '');
+        setAppliedCampaign(campaigns.find(c => c.couponCode === apptToUse.appliedCoupon) || null);
         setIsCancelling(false);
         setCancellationReason('');
         setIsZeroing(false);
         setZeroOutReason('');
         setIncludeDebt(!!customer.outstandingBalance && customer.outstandingBalance > 0);
 
-        if (appointment.status === 'Concluído') setMode('HISTORY');
-        else if (appointment.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
+        if (apptToUse.status === 'Concluído') setMode('HISTORY');
+        else if (apptToUse.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
         else setMode('VIEW');
 
-        const mainService = services.find(s => s.id === appointment.serviceId);
+        const mainService = services.find(s => s.id === apptToUse.serviceId);
         const initialLines: ServiceLine[] = [{
             id: 'main',
-            serviceId: appointment.serviceId,
-            providerId: appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id || '',
-            products: appointment.mainServiceProducts || [],
+            serviceId: apptToUse.serviceId,
+            providerId: apptToUse.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id || '',
+            products: apptToUse.mainServiceProducts || [],
             currentSearchTerm: '',
-            discount: appointment.discountAmount || 0,
-            isCourtesy: appointment.isCourtesy || false,
+            discount: apptToUse.discountAmount || 0,
+            isCourtesy: apptToUse.isCourtesy || false,
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: appointment.bookedPrice || mainService?.price || 0,
-            startTime: appointment.time,
-            endTime: appointment.endTime || (mainService ? calculateEndTime(appointment.time, mainService.durationMinutes, activeProviders.find(p => p.id === (appointment.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : appointment.time),
-            appointmentId: appointment.id,
-            quantity: appointment.quantity || 1,
-            tipAmount: (appointment.tipAmount || 0) - (appointment.additionalServices?.reduce((acc, s) => acc + (s.tipAmount || 0), 0) || 0),
-            status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado')
-                ? appointment.status
-                : (appointment.startTimeActual ? 'Em Andamento' :
-                    (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' ? 'Aguardando' : 'Pendente')),
-            startTimeActual: appointment.startTimeActual
+            unitPrice: apptToUse.bookedPrice || mainService?.price || 0,
+            startTime: apptToUse.time,
+            endTime: apptToUse.endTime || (mainService ? calculateEndTime(apptToUse.time, mainService.durationMinutes, activeProviders.find(p => p.id === (apptToUse.providerId || customer.assignedProviderIds?.[0] || activeProviders[0]?.id)), mainService.name) : apptToUse.time),
+            appointmentId: apptToUse.id,
+            quantity: apptToUse.quantity || 1,
+            tipAmount: (apptToUse.tipAmount || 0) - (apptToUse.additionalServices?.reduce((acc, s) => acc + (s.tipAmount || 0), 0) || 0),
+            status: (apptToUse.status === 'Concluído' || apptToUse.status === 'Cancelado')
+                ? apptToUse.status
+                : (apptToUse.startTimeActual ? 'Em Andamento' :
+                    (apptToUse.status === 'Aguardando' || apptToUse.status === 'Em Andamento' || apptToUse.status === 'Em atendimento' ? 'Aguardando' : 'Pendente')),
+            startTimeActual: apptToUse.startTimeActual
         }];
 
-        if (appointment.additionalServices) {
+        if (apptToUse.additionalServices) {
             const seenExtras = new Set<string>();
-            seenExtras.add(`${appointment.serviceId}-${appointment.providerId}`);
+            seenExtras.add(`${apptToUse.serviceId}-${apptToUse.providerId}`);
 
-            appointment.additionalServices.forEach((extra, idx) => {
+            apptToUse.additionalServices.forEach((extra, idx) => {
                 const key = `${extra.serviceId}-${extra.providerId}`;
                 if (!seenExtras.has(key)) {
                     initialLines.push({
@@ -240,13 +299,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         rating: 5,
                         feedback: '',
                         unitPrice: extra.bookedPrice || services.find(s => s.id === extra.serviceId)?.price || 0,
-                        startTime: extra.startTime || appointment.time,
+                        startTime: extra.startTime || apptToUse.time,
                         endTime: extra.endTime || (() => {
                             const srv = services.find(s => s.id === extra.serviceId);
                             const prv = activeProviders.find(p => p.id === extra.providerId);
-                            return srv ? calculateEndTime(extra.startTime || appointment.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || appointment.time);
+                            return srv ? calculateEndTime(extra.startTime || apptToUse.time, srv.durationMinutes, prv, srv.name) : (extra.startTime || apptToUse.time);
                         })(),
-                        appointmentId: appointment.id,
+                        appointmentId: apptToUse.id,
                         clientName: extra.clientName,
                         clientPhone: extra.clientPhone,
                         isCompanion: !!extra.clientName,
