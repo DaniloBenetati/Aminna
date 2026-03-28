@@ -17,7 +17,7 @@ import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
     Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert,
-    Wallet
+    Wallet, Sparkles
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig, UserProfile, FinancialConfig } from '../types';
@@ -1196,7 +1196,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             <div className="flex-1 flex flex-col space-y-4 min-w-0">
                 {/* Header Controls (Date & New) */}
                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 w-full md:w-auto">
                         <button
                             onClick={() => {
                                 // On large screens toggle sidebar; on small screens open mobile drawer
@@ -1206,7 +1206,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     setIsMobileDrawerOpen(true);
                                 }
                             }}
-                            className={`p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
+                            className={`hidden md:flex p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
                             title="Alternar Filtros"
                         >
                             <Filter size={18} />
@@ -1235,9 +1235,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                                    <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setIsMobileDrawerOpen(true)}
+                                            className="md:hidden p-2 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 text-slate-500 active:scale-95 transition-all"
+                                        >
+                                            <Filter size={16} />
+                                        </button>
+                                        <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                                    </div>
                                     <div className="flex flex-col items-center min-w-[140px]">
-                                        <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
+                                        <span className="text-[10px] sm:text-xs font-black uppercase text-slate-900 dark:text-white tracking-widest leading-tight">{getDateLabel()}</span>
                                     </div>
                                     <button onClick={() => navigateDate('next')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
                                 </div>
@@ -1297,6 +1305,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
+
+                        <button
+                            onClick={() => setIsFinanceModalOpen(true)}
+                            className="md:hidden flex items-center justify-center bg-white dark:bg-zinc-900 text-emerald-600 p-3 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-lg active:scale-95 transition-all"
+                        >
+                            <Wallet size={18} />
+                        </button>
 
                         <button
                             onClick={() => setIsWhatsAppModalOpen(true)}
@@ -1361,13 +1376,17 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                         {/* Appointment cards */}
                                         {isOnVacation ? (
-                                            <div className="px-4 py-5 text-center text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase">
-                                                {isDayOff ? 'Folga neste dia' : 'Profissional em férias'}
+                                            <div className="px-4 py-8 text-center bg-amber-50/30 dark:bg-amber-900/5">
+                                                <p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest">
+                                                    {isDayOff ? 'Folga neste dia' : 'Profissional em férias'}
+                                                </p>
                                             </div>
                                         ) : provAppts.length === 0 ? (
-                                            <div className="px-4 py-5 text-center text-slate-400 dark:text-slate-600 text-[10px] font-black uppercase">Sem agendamentos</div>
+                                            <div className="px-4 py-8 text-center bg-slate-50/30 dark:bg-zinc-900/5">
+                                                <p className="text-slate-400 dark:text-slate-600 text-[10px] font-black uppercase tracking-widest text-center">Sem agendamentos</p>
+                                            </div>
                                         ) : (
-                                            <div className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                            <div className="p-2 space-y-2 bg-slate-50/50 dark:bg-zinc-950/20">
                                                 {provAppts.map(appt => {
                                                     const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
                                                     const serviceName = appt.combinedServiceNames || services.find(s => s.id === appt.serviceId)?.name || 'Serviço';
@@ -1397,16 +1416,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         <button
                                                             key={appt.id}
                                                             onClick={() => handleAppointmentClick(appt)}
-                                                            className="w-full text-left px-4 py-3 flex items-center gap-3 active:bg-slate-50 dark:active:bg-zinc-800 transition-colors"
+                                                            className="w-full text-left p-3.5 flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/60 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all"
                                                         >
-                                                            <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${statusColor}`} />
+                                                            <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${statusColor} shadow-lg shadow-${statusColor.split('[')[1]?.split(']')[0] || 'indigo'}/20`} />
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
-                                                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase truncate">{serviceName}</p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
+                                                                    {customer?.isVip && <Sparkles size={10} className="text-amber-500 flex-shrink-0" />}
+                                                                </div>
+                                                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate mt-0.5">{serviceName}</p>
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                                                                <span className="text-[11px] font-black text-slate-900 dark:text-white">{appt.time}</span>
-                                                                <span className={`text-[8px] font-black text-white px-1.5 py-0.5 rounded-full uppercase ${statusColor}`}>
+                                                                <span className="text-[12px] font-black text-slate-900 dark:text-white">{appt.time}</span>
+                                                                <span className={`text-[8px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-tighter ${statusColor}`}>
                                                                     {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : localStatus}
                                                                 </span>
                                                             </div>
