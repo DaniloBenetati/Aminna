@@ -116,7 +116,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
-    const [includeDebt, setIncludeDebt] = useState(!!customer.outstandingBalance && customer.outstandingBalance > 0);
+    const [includeDebt, setIncludeDebt] = useState(false);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
 
     // NFSe State
@@ -249,7 +249,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setCancellationReason('');
         setIsZeroing(false);
         setZeroOutReason('');
-        setIncludeDebt(!!customer.outstandingBalance && customer.outstandingBalance > 0);
+        setIncludeDebt(false);
 
         if (apptToUse.status === 'Concluído') setMode('HISTORY');
         else if (apptToUse.status === 'Em Andamento' && source === 'DAILY') setMode('CHECKOUT');
@@ -491,14 +491,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return Math.max(0, final);
     }, [lines, appliedCampaign, customer.isVip, customer.vipDiscountPercent, includeDebt, customer.outstandingBalance, adjustmentAmount]);
 
-    // Auto-fill payment amount if single payment method
+    // Auto-fill/Sync payment amount with totalValue
     useEffect(() => {
-        // Auto-fill payment amount if it's the only one and it's lower than the total
-        // We allow overpayments to generate credit, but we ensure the total is covered by default.
         if (payments.length === 1) {
-            if (payments[0].amount < totalValue - 0.01) {
-                setPayments(prev => [{ ...prev[0], amount: totalValue }]);
-            }
+            // We always sync the amount if there's only one payment, 
+            // unless the user has manually entered a value (totalPaid !== payments[0].amount is not enough, 
+            // we should probably just always sync if length is 1 for better UX in this specific app)
+            // If they want to pay different, they can add another payment or we can add a 'manual' flag.
+            // But based on the request, the sync should be tighter.
+            setPayments(prev => [{ ...prev[0], amount: totalValue }]);
         }
     }, [totalValue, payments.length]);
 
@@ -947,8 +948,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         // Check merge (though unlikely in finish flow, better safe)
         if (await checkForCustomerConflictAndMerge()) return;
         const isReFinalizing = appointment.status === 'Concluído';
+        
+        // Correct revenue calculation: only services and tips, exclude debt repayment
+        const serviceTotal = totalValue - (includeDebt ? (customer.outstandingBalance || 0) : 0);
         const previousPricePaid = appointment.pricePaid || 0;
-        const priceDifference = isReFinalizing ? (totalValue - previousPricePaid) : totalValue;
+        const priceDifference = isReFinalizing ? (serviceTotal - previousPricePaid) : serviceTotal;
         const overpayment = Math.max(0, totalPaid - totalValue);
 
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -977,7 +981,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         const updatedData = {
             status: 'Concluído',
-            price_paid: totalValue,
+            price_paid: serviceTotal,
             payment_date: dischargeDate,
             payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
             products_used: allProductsUsed,
@@ -1068,7 +1072,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     status: 'Concluído',
                     providerId: lines[0].providerId,
                     serviceId: lines[0].serviceId,
-                    pricePaid: totalValue,
+                    pricePaid: serviceTotal,
                     paymentDate: dischargeDate,
                     paymentMethod: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
                     productsUsed: allProductsUsed,
@@ -1245,6 +1249,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
 
         const linesToUse = manualLines || lines;
+
+        // --- VALIDATE SELECTION ---
+        for (const line of linesToUse) {
+            if (!line.serviceId) {
+                alert('⚠️ OPS! SELECIONE O SERVIÇO\n\nPor favor, escolha o serviço desejado para cada procedimento antes de salvar.');
+                return;
+            }
+        }
 
         // --- VALIDATE SERVICES VS PROFESSIONALS ---
         for (const line of linesToUse) {
@@ -2111,12 +2123,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     };
 
     const addServiceLine = () => {
-        const defaultServiceId = services[0].id;
         const defaultProviderId = customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id;
 
         setLines([...lines, {
             id: Date.now().toString(),
-            serviceId: defaultServiceId,
+            serviceId: '',
             providerId: defaultProviderId,
             products: [],
             currentSearchTerm: '',
@@ -2125,9 +2136,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: services[0].price,
+            unitPrice: 0,
             startTime: appointment.time,
-            endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
+            endTime: appointment.time,
             isCompanion: false,
             quantity: 1,
             tipAmount: 0,
@@ -2138,7 +2149,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const addCompanionLine = () => {
         setLines([...lines, {
             id: Date.now().toString(),
-            serviceId: services[0].id,
+            serviceId: '',
             providerId: customer.assignedProviderIds?.[0] || providers.filter(p => p.active)[0].id,
             products: [],
             currentSearchTerm: '',
@@ -2147,9 +2158,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             showProductResults: false,
             rating: 5,
             feedback: '',
-            unitPrice: services[0].price,
+            unitPrice: 0,
             startTime: appointment.time, // Default to main time (parallel)
-            endTime: calculateEndTime(appointment.time, services[0].durationMinutes),
+            endTime: appointment.time,
             isCompanion: true,
             clientName: '',
             clientPhone: '',
@@ -2195,6 +2206,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     if (field === 'serviceId') {
                         updated.unitPrice = srv.price;
                     }
+                } else if (field === 'serviceId') {
+                    updated.endTime = start;
+                    updated.unitPrice = 0;
                 }
 
                 if (field === 'startTime' && line.id === 'main') {

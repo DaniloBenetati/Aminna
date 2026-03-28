@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useMemo } from 'react';
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
@@ -440,7 +440,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         // Set draft details based on context (from grid click) or defaults (from header button)
         setDraftAppointment({
             providerId: context?.providerId || (selectedProviderId !== 'all' ? selectedProviderId : activeProviders[0]?.id),
-            serviceId: services[0]?.id || '',
+            serviceId: '',
             date: context?.date || gridDateStr,
             time: context?.time || '09:00',
             status: 'Pendente'
