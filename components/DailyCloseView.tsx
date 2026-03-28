@@ -352,29 +352,29 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     };
 
     return (
-        <div className="space-y-4 animate-in slide-in-from-right duration-300 relative">
+        <div className="p-4 lg:p-6 space-y-4 lg:space-y-6 animate-in slide-in-from-right duration-300 relative">
             {/* Removido cabeçalho grande — agora é Card no Grid abaixo */}
 
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 print:hidden">
                 {/* Card Principal de Fechamento */}
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl"><Lock size={20} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl"><Lock size={14} /></div>
                     <div>
                         <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fechamento</p>
-                        <p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalRevenue.toFixed(2)}</p>
+                        <p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalRevenue.toFixed(2)}</p>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalServices.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={14} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalServices.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><ShoppingBag size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Produtos</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalProducts.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><ShoppingBag size={14} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Produtos</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalProducts.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3 relative group">
-                    <div className="p-2 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-xl"><Copy size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Descontos</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {discountsData.total.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5 relative group">
+                    <div className="p-1 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-xl"><Copy size={14} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Descontos</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {discountsData.total.toFixed(2)}</p></div>
 
                     {/* Tooltip Popup */}
                     {discountsData.items.length > 0 && (
@@ -406,13 +406,13 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                         </div>
                     )}
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl"><Target size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Caixinhas</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalTips.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl"><Target size={14} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Caixinhas</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalTips.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><Info size={20} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Ajustes</p><p className="text-lg font-black text-slate-950 dark:text-white">R$ {totalAjustes.toFixed(2)}</p></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><Info size={14} /></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Ajustes</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalAjustes.toFixed(2)}</p></div>
                 </div>
             </div>
 
@@ -421,7 +421,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             <div className={`grid grid-cols-1 ${showControls ? 'lg:grid-cols-2' : ''} gap-4 print:hidden`}>
                 <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
-                    <div className="p-2 overflow-y-auto max-h-[400px]">
+                    <div className="p-2 overflow-y-auto max-h-[750px]">
                         {Object.entries(groupedByProviderAndCustomer).sort((a, b) => b[1].amount - a[1].amount).map(([providerName, pData]) => {
                             const isProvExpanded = expandedProvider === providerName;
                             return (

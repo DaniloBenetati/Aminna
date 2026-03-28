@@ -66,6 +66,23 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [rowHeight, setRowHeight] = useState(() => Number(localStorage.getItem('agenda_row_height')) || 100);
     const [searchTerm, setSearchTerm] = useState('');
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
+    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+    const [blockingData, setBlockingData] = useState<{
+        providerId: string;
+        name: string;
+        reason: string;
+        type: 'full' | 'partial';
+        startTime: string;
+        endTime: string;
+    }>({
+        providerId: '',
+        name: '',
+        reason: 'Motivo pessoal',
+        type: 'full',
+        startTime: '09:00',
+        endTime: '18:00'
+    });
+    const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
     // Scroll synchronization refs
     const headerScrollRef = React.useRef<HTMLDivElement>(null);
@@ -134,7 +151,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Per├¡odo Personalizado";
+        if (timeView === 'custom') return "Período Personalizado";
         if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         return dateRef.getFullYear().toString();
@@ -208,7 +225,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Confirmation Logic (Uses Range)
     // Confirmation Logic (Uses Range)
     const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
-        const validApps = apps.filter(a => a.status !== 'Conclu├¡do' && a.status !== 'Cancelado');
+        const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -231,7 +248,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         const firstName = customer.name.split(' ')[0];
         const isPlural = sortedApps.length > 1;
 
-        let message = `Ol├í, ${firstName}! Ô£¿\n`;
+        let message = `Olá, ${firstName}! Ô£¿\n`;
         message += isPlural
             ? `Passando para confirmar seus atendimentos na Aminna:\n`
             : `Passando para confirmar seu atendimento na Aminna:\n`;
@@ -285,7 +302,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 : `\nPodemos confirmar o seu atendimento pendente? ­ƒÑ░`;
         } else {
             message += `\nEstamos te aguardando com carinho. ­ƒÑ░\n`;
-            message += `Se n├úo puder comparecer, por favor nos avise com anteced├¬ncia.\n\n`;
+            message += `Se não puder comparecer, por favor nos avise com anteced├¬ncia.\n\n`;
             message += `Obrigada! ­ƒÿè`;
         }
         return message;
@@ -310,7 +327,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             a.date >= rangeStart &&
             a.date <= rangeEnd &&
             a.status !== 'Cancelado' &&
-            a.status !== 'Conclu├¡do' &&
+            a.status !== 'Concluído' &&
             (selectedProviderId === 'all' || a.providerId === selectedProviderId)
         );
 
@@ -449,12 +466,108 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsCustomerSelectionOpen(true);
     };
 
+    const handleBlockProfessional = async (providerId: string) => {
+        const provider = providers.find(p => p.id === providerId);
+        const name = provider?.name || 'Profissional';
+        const dateLabel = getDateLabel();
+
+        // Check if already blocked (locally or in DB)
+        const block = appointments.find(a =>
+            a.providerId === providerId &&
+            a.date === gridDateStr &&
+            a.combinedServiceNames === 'BLOQUEIO_INTERNO'
+        );
+
+        if (block) {
+            if (window.confirm(`Deseja DESBLOQUEAR a agenda de ${name} para o dia ${dateLabel}?`)) {
+                // Optimistic update
+                setAppointments(prev => prev.filter(a => a.id !== block.id));
+
+                try {
+                    const { error } = await supabase.from('appointments').delete().eq('id', block.id);
+                    if (error) throw error;
+                } catch (error) {
+                    console.error('Error unblocking provider:', error);
+                    alert('Erro ao desbloquear no banco de dados.');
+                }
+            }
+            return;
+        }
+
+        // Open custom block modal instead of prompts
+        setBlockingData({
+            providerId,
+            name,
+            reason: 'Motivo pessoal',
+            type: 'full',
+            startTime: '09:00',
+            endTime: '18:00'
+        });
+        setIsBlockModalOpen(true);
+    };
+
+    const handleConfirmBlock = async () => {
+        const { providerId, name, reason, type, startTime, endTime } = blockingData;
+        
+        setIsSubmittingBlock(true);
+        try {
+            const actualStartTime = type === 'full' ? '00:00' : startTime;
+            const actualEndTime = type === 'full' ? '23:59' : endTime;
+
+            const tempId = `BLOCK-${providerId}-${gridDateStr}-${actualStartTime.replace(':', '')}`;
+
+            // Local draft for immediate feedback
+            const blockAppt: Appointment = {
+                id: tempId,
+                customerId: 'INTERNAL_BLOCK',
+                providerId: providerId,
+                serviceId: 'INTERNAL_BLOCK',
+                date: gridDateStr,
+                time: actualStartTime,
+                endTime: actualEndTime,
+                status: 'Cancelado',
+                combinedServiceNames: 'BLOQUEIO_INTERNO',
+                observation: reason,
+                amount: 0
+            };
+            setAppointments(prev => [...prev, blockAppt]);
+
+            const { data, error } = await supabase.from('appointments').insert([{
+                customer_id: null,
+                provider_id: providerId,
+                service_id: null,
+                date: gridDateStr,
+                time: actualStartTime,
+                end_time: actualEndTime,
+                status: 'Cancelado',
+                combined_service_names: 'BLOQUEIO_INTERNO',
+                observation: reason
+            }]).select().single();
+
+            if (error) throw error;
+
+            // Sync local state with DB ID
+            setAppointments(prev => prev.map(a => a.id === tempId ? {
+                ...a,
+                id: data.id,
+                customerId: data.customer_id || 'INTERNAL_BLOCK'
+            } : a));
+
+            setIsBlockModalOpen(false);
+        } catch (error) {
+            console.error('Error blocking provider:', error);
+            alert('Erro ao bloquear no banco de dados.');
+        } finally {
+            setIsSubmittingBlock(false);
+        }
+    };
+
     // FINALIZE NEW APPOINTMENT (Stage 2: Create Appointment with Selected Customer)
     const handleSelectCustomerForAppointment = (customer: Customer) => {
         if (!draftAppointment) return;
 
         if (customer.isBlocked) {
-            alert(`­ƒÜ½ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'N├úo informado'}\n\nN├úo ├® poss├¡vel realizar agendamentos para clientes bloqueadas.`);
+            alert(`­ƒÜ½ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'N├úo informado'}\n\nN├úo ├® possível realizar agendamentos para clientes bloqueadas.`);
             return;
         }
 
@@ -497,10 +610,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                 .filter(h => h.type === 'RESTRICTION' && h.providerId === draftAppointment.providerId)
                 .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-            const reason = restrictionEntry?.details || "Motivo n├úo registrado.";
+            const reason = restrictionEntry?.details || "Motivo não registrado.";
 
             // ALERT THE USER, BUT DO NOT BLOCK
-            alert(`­ƒÜ½ RESTRI├ç├âO DE ATENDIMENTO\n\nA cliente possui restri├º├úo com ${providerName}.\n${reason}\n\nO sistema selecionar├í outra profissional dispon├¡vel automaticamente.`);
+            alert(`­ƒÜ½ RESTRI├ç├âO DE ATENDIMENTO\n\nA cliente possui restrição com ${providerName}.\n${reason}\n\nO sistema selecionar├í outra profissional dispon├¡vel automaticamente.`);
 
             // Auto-switch to a valid provider (First active provider not in restriction list)
             const fallbackProvider = activeProviders.find(p =>
@@ -520,7 +633,8 @@ export const Agenda: React.FC<AgendaProps> = ({
             serviceId: draftAppointment.serviceId!,
             date: draftAppointment.date!,
             time: draftAppointment.time!,
-            status: 'Pendente'
+            status: 'Pendente',
+            amount: 0
         };
 
         setSelectedAppointment(newAppt);
@@ -662,7 +776,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
                                     className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
-                                    {v === 'day' ? 'Dia' : v === 'month' ? 'M├¬s' : v === 'year' ? 'Ano' : 'Per├¡odo'}
+                                    {v === 'day' ? 'Dia' : v === 'month' ? 'M├¬s' : v === 'year' ? 'Ano' : 'Período'}
                                 </button>
                             ))}
                         </div>
@@ -748,6 +862,12 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <Avatar src={p.avatarUrl || p.avatar} name={p.name} size="w-8 h-8" />
                                     </div>
                                     <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase truncate px-1">{p.name.split(' ')[0]}</p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                        className="mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400"
+                                    >
+                                        <Ban size={8} /> Bloquear
+                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -838,7 +958,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Conclu├¡do').length} Feitos</span>
+                                                        <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
@@ -895,7 +1015,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                 <div className="flex-1 flex flex-col gap-1 overflow-hidden">
                                                     {dayApps.slice(0, 3).map(app => (
-                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                        <div key={app.id} className={`w-full h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                     ))}
                                                     {dayApps.length > 3 && (
                                                         <span className="text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
@@ -926,7 +1046,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex justify-between items-center">
                                                                             <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
                                                                             <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
-                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Conclu├¡do' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
+                                                                            <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-emerald-500' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
                                                                         </div>
                                                                         <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
                                                                         <div className="flex items-center gap-1.5">
@@ -952,35 +1072,58 @@ export const Agenda: React.FC<AgendaProps> = ({
                             {hours.map(hour => (
                                 <div
                                     key={hour}
-                                    className="flex border-b border-slate-100 dark:border-zinc-800"
+                                    className="flex border-b border-slate-100 dark:border-zinc-800 hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 transition-colors group/row"
                                     style={{ minHeight: `${rowHeight}px` }}
                                 >
                                     {/* Time Column */}
-                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-colors">
+                                    <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-30 transition-all group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400 group-hover/row:bg-white dark:group-hover/row:bg-zinc-900 shadow-sm">
                                         {hour}
                                     </div>
 
                                     {/* Provider Columns */}
                                     <div className="flex-1 flex">
                                         {activeVisibileProviders.map(p => {
-                                            const slotAppointments = getCellAppointments(p.id, hour);
+                                            const isVacationPeriod = p.vacationStart && p.vacationEnd &&
+                                                gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                                            const isDayOff = p.daysOff?.includes(gridDateStr);
+                                            const isOnVacation = isVacationPeriod || isDayOff;
+
+                                            const internalBlocks = appointments.filter(a =>
+                                                a.providerId === p.id &&
+                                                a.date === gridDateStr &&
+                                                a.combinedServiceNames === 'BLOQUEIO_INTERNO'
+                                            );
+
+                                            const isBlocked = isOnVacation || internalBlocks.some(a => {
+                                                if (!a.endTime || (a.time === '00:00' && a.endTime === '23:59')) return true;
+                                                return hour >= a.time && hour < a.endTime;
+                                            });
+
+                                            const slotAppointments = getCellAppointments(p.id, hour).filter(a => a.combinedServiceNames !== 'BLOQUEIO_INTERNO');
+                                            
+                                            // Handle interaction availability based on block status
                                             return (
                                                 <div
                                                     key={`${p.id}-${hour}`}
-                                                    className="flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-all duration-300"
+                                                    className={`flex-shrink-0 border-r border-slate-50 dark:border-zinc-800 p-1 relative transition-all duration-300 ${isBlocked ? 'bg-slate-100 dark:bg-zinc-800/80 cursor-not-allowed' : 'group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30'}`}
                                                     style={{ width: `${160 * zoomLevel}px` }}
                                                 >
-                                                    {/* Add Button on Hover */}
-                                                    <button
-                                                        onClick={() => handleNewAppointment({
-                                                            providerId: p.id,
-                                                            date: gridDateStr,
-                                                            time: hour
-                                                        })}
-                                                        className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
-                                                    >
-                                                        <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
-                                                    </button>
+                                                    {/* Add Button on Hover (only if NOT blocked) */}
+                                                    {!isBlocked && (
+                                                        <button
+                                                            onClick={() => handleNewAppointment({
+                                                                providerId: p.id,
+                                                                date: gridDateStr,
+                                                                time: hour
+                                                            })}
+                                                            className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
+                                                        >
+                                                            <div className="bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 p-1.5 px-3 rounded-full shadow-lg border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-2 transform transition-transform hover:scale-110 active:scale-95">
+                                                                <Plus size={14} className="stroke-[3]" />
+                                                                <span className="text-[11px] font-black tracking-tight">{hour}</span>
+                                                            </div>
+                                                        </button>
+                                                    )}
 
                                                     {slotAppointments.map(appt => {
                                                         const customer = customers.find(c => c.id === appt.customerId);
@@ -1020,7 +1163,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                 className={`absolute left-1 right-1 z-10 group p-1.5 rounded-xl border text-left cursor-pointer transition-all hover:z-[100] active:scale-95 shadow-sm ${appt.status === 'Confirmado' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:border-emerald-300' :
                                                                     appt.status === 'Em Andamento' ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:border-blue-300' :
-                                                                        appt.status === 'Conclu├¡do' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
+                                                                        appt.status === 'Concluído' ? 'bg-slate-100 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-70' :
                                                                             'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 hover:border-amber-300'
                                                                     }`}
                                                                 style={{
@@ -1040,10 +1183,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex items-center gap-1">
                                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
                                                                                 appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Conclu├¡do' ? 'bg-slate-500' :
+                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
                                                                                         'bg-amber-400'
                                                                                 }`}></span>
-                                                                            {appt.status === 'Conclu├¡do' && (
+                                                                            {appt.status === 'Concluído' && (
                                                                                 (() => {
                                                                                     const record = nfseRecords.find(r => r.appointmentId === appt.id);
                                                                                     if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
@@ -1094,7 +1237,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <div className="flex justify-between items-center mt-1">
                                                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase ${ca.status === 'Confirmado' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' :
                                                                                                 ca.status === 'Em Andamento' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' :
-                                                                                                    ca.status === 'Conclu├¡do' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
+                                                                                                    ca.status === 'Concluído' ? 'bg-slate-100 text-slate-600 dark:bg-zinc-800 dark:text-zinc-400' :
                                                                                                         'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
                                                                                                 }`}>
                                                                                                 {ca.status}
@@ -1310,8 +1453,99 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
                                         <CheckCircle2 size={48} className="mx-auto mb-2 opacity-20" />
                                         <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per├¡odo</p>
+                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no período</p>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Block Provider Modal */}
+                {isBlockModalOpen && (
+                    <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
+                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
+                            <div className="px-6 py-5 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
+                                <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+                                    <Ban size={18} className="text-rose-500" /> Bloquear Agenda
+                                </h3>
+                                <button onClick={() => setIsBlockModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-8 space-y-6">
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Profissional</label>
+                                    <div className="px-4 py-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border-2 border-slate-100 dark:border-zinc-800 text-sm font-black text-slate-900 dark:text-white uppercase">
+                                        {blockingData.name}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Motivo do Bloqueio</label>
+                                    <select
+                                        value={blockingData.reason}
+                                        onChange={(e) => setBlockingData({ ...blockingData, reason: e.target.value })}
+                                        className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[11px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase transition-all"
+                                    >
+                                        {["Doença", "Falta sem aviso", "Férias", "Motivo pessoal", "Treinamento", "Outros"].map(r => (
+                                            <option key={r} value={r}>{r}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tipo de Bloqueio</label>
+                                    <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-2xl border-2 border-slate-200 dark:border-zinc-800">
+                                        <button
+                                            onClick={() => setBlockingData({ ...blockingData, type: 'full' })}
+                                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'full' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                        >
+                                            Dia Inteiro
+                                        </button>
+                                        <button
+                                            onClick={() => setBlockingData({ ...blockingData, type: 'partial' })}
+                                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'partial' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                        >
+                                            Parcial
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {blockingData.type === 'partial' && (
+                                    <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Hora Início</label>
+                                            <input
+                                                type="time"
+                                                value={blockingData.startTime}
+                                                onChange={(e) => setBlockingData({ ...blockingData, startTime: e.target.value })}
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Hora Fim</label>
+                                            <input
+                                                type="time"
+                                                value={blockingData.endTime}
+                                                onChange={(e) => setBlockingData({ ...blockingData, endTime: e.target.value })}
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="pt-4">
+                                    <button
+                                        onClick={handleConfirmBlock}
+                                        disabled={isSubmittingBlock}
+                                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                    >
+                                        {isSubmittingBlock ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                        {isSubmittingBlock ? 'Salvando...' : 'Confirmar Bloqueio'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>

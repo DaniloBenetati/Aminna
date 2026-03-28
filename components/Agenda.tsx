@@ -147,7 +147,25 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [visibleServiceIds, setVisibleServiceIds] = useState<string[]>([]);
     const [serviceSidebarSearch, setServiceSidebarSearch] = useState('');
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
+    const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+    const [blockingData, setBlockingData] = useState<{
+        providerId: string;
+        name: string;
+        reason: string;
+        type: 'full' | 'partial';
+        startTime: string;
+        endTime: string;
+    }>({
+        providerId: '',
+        name: '',
+        reason: 'Motivo pessoal',
+        type: 'full',
+        startTime: '09:00',
+        endTime: '18:00'
+    });
+    const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
+    const [sidebarSearch, setSidebarSearch] = useState('');
     // Financial Modal States
     const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
     const [physicalCash, setPhysicalCash] = useState('');
@@ -189,7 +207,6 @@ export const Agenda: React.FC<AgendaProps> = ({
             console.error('��� INVALID selectedProviderId! Not "all" and not a valid provider ID');
         }
     }, [selectedProviderId, providers]);
-    const [sidebarSearch, setSidebarSearch] = useState('');
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -809,38 +826,29 @@ export const Agenda: React.FC<AgendaProps> = ({
             return;
         }
 
-        // --- AUSENCIAS LOGIC: Reason and Financial Impact ---
-        const reasons = ["Doença", "Falta sem aviso", "Férias", "Motivo pessoal", "Treinamento", "Outros"];
-        const reason = window.prompt(`Informe o motivo do bloqueio para ${name}:\n\n${reasons.map((r, i) => `${i + 1}. ${r}`).join('\n')}`, "Motivo pessoal");
+        // Open custom block modal instead of prompts
+        setBlockingData({
+            providerId,
+            name,
+            reason: 'Motivo pessoal',
+            type: 'full',
+            startTime: '09:00',
+            endTime: '18:00'
+        });
+        setIsBlockModalOpen(true);
+    };
+
+    const handleConfirmBlock = async () => {
+        const { providerId, name, reason, type, startTime, endTime } = blockingData;
+        const dateLabel = getDateLabel();
         
-        if (reason === null) return; // Cancelled
+        setIsSubmittingBlock(true);
+        try {
+            const actualStartTime = type === 'full' ? '00:00' : startTime;
+            const actualEndTime = type === 'full' ? '23:59' : endTime;
+            const timeLabel = type === 'full' ? 'o dia todo' : `das ${actualStartTime} às ${actualEndTime}`;
 
-        const selectedReason = reasons[parseInt(reason) - 1] || reason || "Motivo pessoal";
-
-        // Calculate Estimated Financial Impact (based on last 30 days)
-        const last30Days = new Date();
-        last30Days.setDate(last30Days.getDate() - 30);
-        const last30DaysStr = last30Days.toISOString().split('T')[0];
-
-        const providerApps = appointments.filter(a => 
-            a.providerId === providerId && 
-            a.date >= last30DaysStr && 
-            a.status === 'Concluído'
-        );
-
-        const totalRevenue = providerApps.reduce((acc, a) => acc + (a.pricePaid || a.bookedPrice || 0), 0);
-        // Assuming 8h work day for simplicity in estimation if we don't have exact hours
-        const activeDays = new Set(providerApps.map(a => a.date)).size || 1;
-        const avgDailyRevenue = totalRevenue / activeDays;
-        
-        // Final Confirmation with Impact
-        const confirmMsg = `Deseja BLOQUEAR a agenda de ${name} para o dia ${dateLabel}?\n\n` +
-                          `Motivo: ${selectedReason}\n` +
-                          `Impacto financeiro estimado: R$ ${avgDailyRevenue.toFixed(2)}\n\n` +
-                          `Isso marcará o profissional como ausente/indisponível.`;
-
-        if (window.confirm(confirmMsg)) {
-            const tempId = `BLOCK-${providerId}-${gridDateStr}`;
+            const tempId = `BLOCK-${providerId}-${gridDateStr}-${actualStartTime.replace(':', '')}`;
 
             // Local draft for immediate feedback
             const blockAppt: Appointment = {
@@ -849,41 +857,42 @@ export const Agenda: React.FC<AgendaProps> = ({
                 providerId: providerId,
                 serviceId: 'INTERNAL_BLOCK',
                 date: gridDateStr,
-                time: '00:00',
-                endTime: '23:59',
+                time: actualStartTime,
+                endTime: actualEndTime,
                 status: 'Cancelado',
                 combinedServiceNames: 'BLOQUEIO_INTERNO',
-                observation: selectedReason,
+                observation: reason,
                 amount: 0
             };
             setAppointments(prev => [...prev, blockAppt]);
 
-            try {
-                const { data, error } = await supabase.from('appointments').insert([{
-                    customer_id: null,
-                    provider_id: providerId,
-                    service_id: null,
-                    date: gridDateStr,
-                    time: '00:00',
-                    end_time: '23:59',
-                    status: 'Cancelado',
-                    combined_service_names: 'BLOQUEIO_INTERNO',
-                    observation: selectedReason
-                }]).select().single();
+            const { data, error } = await supabase.from('appointments').insert([{
+                customer_id: null,
+                provider_id: providerId,
+                service_id: null,
+                date: gridDateStr,
+                time: actualStartTime,
+                end_time: actualEndTime,
+                status: 'Cancelado',
+                combined_service_names: 'BLOQUEIO_INTERNO',
+                observation: reason
+            }]).select().single();
 
-                if (error) throw error;
+            if (error) throw error;
 
-                // Sync local state with DB ID
-                setAppointments(prev => prev.map(a => a.id === tempId ? {
-                    ...a,
-                    id: data.id,
-                    customerId: data.customer_id || 'INTERNAL_BLOCK'
-                } : a));
-            } catch (error) {
-                console.error('Error blocking provider:', error);
-                setAppointments(prev => prev.filter(a => a.id !== tempId));
-                alert('Erro ao bloquear no banco de dados.');
-            }
+            // Sync local state with DB ID
+            setAppointments(prev => prev.map(a => a.id === tempId ? {
+                ...a,
+                id: data.id,
+                customerId: data.customer_id || 'INTERNAL_BLOCK'
+            } : a));
+
+            setIsBlockModalOpen(false);
+        } catch (error) {
+            console.error('Error blocking provider:', error);
+            alert('Erro ao bloquear no banco de dados.');
+        } finally {
+            setIsSubmittingBlock(false);
         }
     };
 
@@ -1523,11 +1532,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         {hours.map(hour => (
                                             <div
                                                 key={hour}
-                                                className="flex border-b border-slate-100 dark:border-zinc-800"
+                                                className="flex border-b border-slate-100 dark:border-zinc-800 hover:bg-slate-50/30 dark:hover:bg-zinc-800/10 transition-colors group/row"
                                                 style={{ minHeight: `${rowHeight}px` }}
                                             >
                                                 {/* Time Column (Sticky Left) */}
-                                                <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-colors flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-40">
+                                                <div className="w-16 flex-shrink-0 border-r border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900 transition-all flex items-center justify-center text-[10px] font-black text-slate-400 sticky left-0 z-40 group-hover/row:text-indigo-600 dark:group-hover/row:text-indigo-400 group-hover/row:bg-white dark:group-hover/row:bg-zinc-900 shadow-sm">
                                                     {hour}
                                                 </div>
 
@@ -1538,13 +1547,24 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
                                                         const isDayOff = p.daysOff?.includes(gridDateStr);
                                                         const isOnVacation = isVacationPeriod || isDayOff;
-                                                        const isBlocked = isOnVacation || appointments.some(a =>
+                                                        
+                                                        const internalBlocks = appointments.filter(a =>
                                                             a.providerId === p.id &&
                                                             a.date === gridDateStr &&
                                                             a.combinedServiceNames === 'BLOQUEIO_INTERNO'
                                                         );
 
-                                                        const slotAppointments = getCellAppointments(p.id, hour);
+                                                        const isBlocked = isOnVacation || internalBlocks.some(a => {
+                                                            if (!a.endTime || (a.time === '00:00' && a.endTime === '23:59')) return true;
+                                                            return hour >= a.time && hour < a.endTime;
+                                                        });
+                                                        
+                                                        const isFullDayBlock = isOnVacation || internalBlocks.some(a => 
+                                                            !a.endTime || (a.time === '00:00' && a.endTime === '23:59')
+                                                        );
+
+                                                        const slotAppointments = getCellAppointments(p.id, hour).filter(a => a.combinedServiceNames !== 'BLOQUEIO_INTERNO');
+                                                        
                                                         return (
                                                             <DroppableCell
                                                                 key={`${p.id}-${hour}`}
@@ -1552,7 +1572,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 isBlocked={isBlocked}
                                                                 zoomLevel={zoomLevel}
                                                             >
-                                                                {isBlocked && hour === '12:00' && (
+                                                                {isFullDayBlock && hour === '12:00' && (
                                                                     <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
                                                                         <div className={`bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 ${isOnVacation ? 'border-amber-400' : 'border-slate-300 dark:border-zinc-700'} px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed`}>
                                                                             <p className={`text-[8px] font-black ${isOnVacation ? 'text-amber-600' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-[0.2em]`}>
@@ -1572,7 +1592,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         })}
                                                                         className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center z-0"
                                                                     >
-                                                                        <div className="bg-indigo-50 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 p-1.5 rounded-full shadow-sm"><Plus size={16} /></div>
+                                                                        <div className="bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 p-1.5 px-3 rounded-full shadow-lg border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-2 transform transition-transform hover:scale-110 active:scale-95">
+                                                                            <Plus size={14} className="stroke-[3]" />
+                                                                            <span className="text-[11px] font-black tracking-tight">{hour}</span>
+                                                                        </div>
                                                                     </button>
                                                                 )}
 
@@ -2310,14 +2333,14 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isFinanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-8 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
                                     <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
                                 </h3>
                                 <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
                             </div>
-                            <div className="p-0 max-h-[80vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                            <div className="p-0 max-h-[90vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
                                 <DailyCloseView
                                     transactions={dailyTransactions}
                                     physicalCash={physicalCash}
@@ -2338,6 +2361,95 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
                 )
             }
+            {/* Block Provider Modal */}
+            {isBlockModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
+                        <div className="px-6 py-5 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
+                            <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Ban size={18} className="text-rose-500" /> Bloquear Agenda
+                            </h3>
+                            <button onClick={() => setIsBlockModalOpen(false)} className="text-slate-400 hover:text-white transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Profissional</label>
+                                <div className="px-4 py-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border-2 border-slate-100 dark:border-zinc-800 text-sm font-black text-slate-900 dark:text-white uppercase">
+                                    {blockingData.name}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Motivo do Bloqueio</label>
+                                <select
+                                    value={blockingData.reason}
+                                    onChange={(e) => setBlockingData({ ...blockingData, reason: e.target.value })}
+                                    className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[11px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase transition-all"
+                                >
+                                    {["Doença", "Falta sem aviso", "Férias", "Motivo pessoal", "Treinamento", "Outros"].map(r => (
+                                        <option key={r} value={r}>{r}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tipo de Bloqueio</label>
+                                <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-2xl border-2 border-slate-200 dark:border-zinc-800">
+                                    <button
+                                        onClick={() => setBlockingData({ ...blockingData, type: 'full' })}
+                                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'full' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                    >
+                                        Dia Inteiro
+                                    </button>
+                                    <button
+                                        onClick={() => setBlockingData({ ...blockingData, type: 'partial' })}
+                                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'partial' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                    >
+                                        Parcial
+                                    </button>
+                                </div>
+                            </div>
+
+                            {blockingData.type === 'partial' && (
+                                <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Hora Início</label>
+                                        <input
+                                            type="time"
+                                            value={blockingData.startTime}
+                                            onChange={(e) => setBlockingData({ ...blockingData, startTime: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Hora Fim</label>
+                                        <input
+                                            type="time"
+                                            value={blockingData.endTime}
+                                            onChange={(e) => setBlockingData({ ...blockingData, endTime: e.target.value })}
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="pt-4">
+                                <button
+                                    onClick={handleConfirmBlock}
+                                    disabled={isSubmittingBlock}
+                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                >
+                                    {isSubmittingBlock ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                    {isSubmittingBlock ? 'Salvando...' : 'Confirmar Bloqueio'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
