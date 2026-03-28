@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useMemo } from 'react';
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
@@ -134,7 +134,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     };
 
     const getDateLabel = () => {
-        if (timeView === 'custom') return "Período Personalizado";
+        if (timeView === 'custom') return "Per├¡odo Personalizado";
         if (timeView === 'day') return dateRef.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'long' });
         if (timeView === 'month') return dateRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
         return dateRef.getFullYear().toString();
@@ -208,7 +208,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     // Confirmation Logic (Uses Range)
     // Confirmation Logic (Uses Range)
     const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
-        const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
+        const validApps = apps.filter(a => a.status !== 'Conclu├¡do' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -231,7 +231,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         const firstName = customer.name.split(' ')[0];
         const isPlural = sortedApps.length > 1;
 
-        let message = `Olá, ${firstName}! ✨\n`;
+        let message = `Ol├í, ${firstName}! Ô£¿\n`;
         message += isPlural
             ? `Passando para confirmar seus atendimentos na Aminna:\n`
             : `Passando para confirmar seu atendimento na Aminna:\n`;
@@ -310,7 +310,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             a.date >= rangeStart &&
             a.date <= rangeEnd &&
             a.status !== 'Cancelado' &&
-            a.status !== 'Concluído' &&
+            a.status !== 'Conclu├¡do' &&
             (selectedProviderId === 'all' || a.providerId === selectedProviderId)
         );
 
@@ -838,7 +838,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 <div className="flex justify-between items-center text-[8px] font-bold uppercase text-slate-400">
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                                        <span>{monthApps.filter(a => a.status === 'Concluído').length} Feitos</span>
+                                                        <span>{monthApps.filter(a => a.status === 'Conclu├¡do').length} Feitos</span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
@@ -1040,10 +1040,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         <div className="flex items-center gap-1">
                                                                             <span className={`w-2 h-2 rounded-full ${appt.status === 'Confirmado' ? 'bg-emerald-500' :
                                                                                 appt.status === 'Em Andamento' ? 'bg-blue-500' :
-                                                                                    appt.status === 'Concluído' ? 'bg-slate-500' :
+                                                                                    appt.status === 'Conclu├¡do' ? 'bg-slate-500' :
                                                                                         'bg-amber-400'
                                                                                 }`}></span>
-                                                                            {appt.status === 'Concluído' && (
+                                                                            {appt.status === 'Conclu├¡do' && (
                                                                                 (() => {
                                                                                     const record = nfseRecords.find(r => r.appointmentId === appt.id);
                                                                                     if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;

@@ -596,7 +596,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
             // Sicredi PDF-to-text pattern matcher
             // Matches: 02/01/2026 COMPRAS NACIONAIS TOULOUSE SAO PAULO BR VE0621684 -49,68 101.130,30
-            const regex = /^(\d{2}\/\d{2}\/\d{4})\s+(.*?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})/;
+            // Improved regex to be more flexible (at least for balance)
+            const regex = /^(\d{2}\/\d{2}\/\d{4})\s+(.*?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})(?:\s+(-?\d{1,3}(?:\.\d{3})*,\d{2}))?/;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
@@ -681,6 +682,12 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             }
 
             // Se não sobrar nada, avisar o usuário
+            if (parsedTransactions.length === 0 && text.trim().length > 0) {
+                alert("Nenhuma linha do extrato pôde ser processada. Verifique se o formato copiado está correto (Data Descrição Valor Saldo).");
+                setIsProcessing(false);
+                return;
+            }
+
             if (newTransactions.length === 0 && parsedTransactions.length > 0) {
                 alert("Todos os lançamentos deste extrato já foram conciliados anteriormente!");
                 setIsProcessing(false);
@@ -692,8 +699,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             setReconciledRows(processed);
 
         } catch (err) {
-            console.error(err);
-            alert("Erro ao processar as linhas do extrato. Verifique o padrão copiado.");
+            console.error("Critical error in parseBankText:", err);
+            alert("Erro inesperado ao processar o extrato: " + (err instanceof Error ? err.message : String(err)));
         } finally {
             setIsProcessing(false);
         }
@@ -715,17 +722,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const matchedAppointmentIds = new Set<string>();
 
         // 1. Map Bank Transactions
-        rawRows.forEach((bankTx, index) => {
+        // --- NEW TWO-PASS RECONCILIATION STRATEGY ---
+        // Pass 1: Strict matches (Amount + Date + Description Similarity)
+        // Pass 2: Greedy matches (Amount + Date only)
+        
+        const intermediateRows = rawRows.map((bankTx, index) => {
             const rowId = `bank_${index}_${bankTx.date}_${bankTx.amount}_${bankTx.description.substring(0, 10)}`;
             const bankDate = parseDateSafe(bankTx.date);
-
-            // 2-day tolerance (before and after) — keeps matches tight and avoids cross-month false positives
             const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 2);
             const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 2);
-            const systemAppointments = [...appointments];
 
             let bestMatch: any = null;
-            let matchConfidence = 0; // The higher, the better
+            let mType: string | undefined = undefined;
 
             if (bankTx.type === 'DESPESA') {
                 const candidates = systemExpenses.filter(e => {
@@ -735,29 +743,31 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 });
 
                 if (candidates.length > 0) {
+                    // Pass 1: Look for description similarity
                     bestMatch = candidates.find(c => {
                         const bDesc = bankTx.description.toLowerCase();
                         const cDesc = c.description.toLowerCase();
-                        const supName = suppliers.find(s => s.id === c.supplierId)?.name.toLowerCase() || '';
-                        const empName = employees.find(e => e.id === c.employeeId)?.name.toLowerCase() || '';
-                        const provName = providers.find(p => p.id === c.providerId)?.name.toLowerCase() || '';
+                        const supName = suppliers.find(s => s.id === c.supplierId)?.name?.toLowerCase() || '';
+                        const empName = employees.find(e => e.id === c.employeeId)?.name?.toLowerCase() || '';
+                        const provName = providers.find(p => p.id === c.providerId)?.name?.toLowerCase() || '';
                         
                         return bDesc.includes(cDesc.substring(0, 5)) || 
                                (supName && bDesc.includes(supName.substring(0, 5))) ||
                                (empName && bDesc.includes(empName.substring(0, 5))) ||
                                (provName && bDesc.includes(provName.substring(0, 5)));
-                    }) || candidates[0];
-                    bankTx.matchType = 'DESPESA';
+                    });
+                    if (bestMatch) {
+                        matchedExpenseIds.add(bestMatch.id);
+                        mType = 'DESPESA';
+                    }
                 }
             } else if (bankTx.type === 'RECEITA') {
-                // Try Sales first
+                // Sales
                 const saleCandidates = systemSales.filter(s => {
                     if (matchedSaleIds.has(s.id)) return false;
                     const saleDate = parseDateSafe(s.date);
                     if (!(saleDate >= dStart && saleDate <= dEnd)) return false;
-
                     if (Math.abs(s.totalAmount - bankTx.amount) < 0.01) return true;
-
                     if (s.paymentMethod === 'Cartão de Crédito') {
                         const method = paymentSettings.find(p => p.method === 'Cartão de Crédito');
                         const fee = method?.fee || 0;
@@ -769,18 +779,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 });
 
                 if (saleCandidates.length > 0) {
-                    bestMatch = saleCandidates[0];
-                    bankTx.matchType = 'RECEITA';
+                    bestMatch = saleCandidates[0]; // Receitas already tend to be specific
+                    matchedSaleIds.add(bestMatch.id);
+                    mType = 'RECEITA';
                 } else {
-                    // Try Appointments
+                    // Appointments
+                    const systemAppointments = [...appointments];
                     const appCandidates = systemAppointments.filter(app => {
                         if (matchedAppointmentIds.has(app.id)) return false;
                         const appDate = parseDateSafe(app.date);
                         if (!(appDate >= dStart && appDate <= dEnd)) return false;
-
                         const amount = app.pricePaid || app.amount || 0;
                         if (Math.abs(amount - bankTx.amount) < 0.01) return true;
-
                         if (app.paymentMethod === 'Cartão de Crédito') {
                             const method = paymentSettings.find(p => p.method === 'Cartão de Crédito');
                             const fee = method?.fee || 0;
@@ -790,34 +800,57 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         }
                         return false;
                     });
-
                     if (appCandidates.length > 0) {
                         bestMatch = appCandidates[0];
-                        bankTx.matchType = 'SERVICO';
+                        matchedAppointmentIds.add(bestMatch.id);
+                        mType = 'SERVICO';
                     }
                 }
             }
 
-            if (bestMatch) {
-                if (bankTx.type === 'DESPESA') matchedExpenseIds.add(bestMatch.id);
-                else {
-                    if (bankTx.matchType === 'SERVICO') matchedAppointmentIds.add(bestMatch.id);
-                    else matchedSaleIds.add(bestMatch.id);
-                }
+            return { bankTx, rowId, bestMatch, mType };
+        });
 
+        // Pass 2: Greedy matches for remaining unmatched rows
+        intermediateRows.forEach(row => {
+            if (row.bestMatch) return;
+
+            const { bankTx } = row;
+            const bankDate = parseDateSafe(bankTx.date);
+            const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 2);
+            const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 2);
+
+            if (bankTx.type === 'DESPESA') {
+                const candidates = systemExpenses.filter(e => {
+                    if (matchedExpenseIds.has(e.id)) return false;
+                    const expDate = parseDateSafe(e.date);
+                    return expDate >= dStart && expDate <= dEnd && Math.abs(e.amount - bankTx.amount) < 0.01;
+                });
+
+                if (candidates.length > 0) {
+                    row.bestMatch = candidates[0];
+                    row.mType = 'DESPESA';
+                    matchedExpenseIds.add(row.bestMatch.id);
+                }
+            }
+        });
+
+        // Finalize results
+        intermediateRows.forEach(({ bankTx, rowId, bestMatch, mType }) => {
+            if (bestMatch) {
                 let sysCat = undefined;
                 let sysProv = undefined;
-                const mType = bankTx.matchType || (bankTx.type === 'DESPESA' ? 'DESPESA' : 'RECEITA');
+                const finalMType = mType as 'RECEITA' | 'DESPESA' | 'SERVICO';
 
-                if (mType === 'DESPESA') {
+                if (finalMType === 'DESPESA') {
                     sysCat = bestMatch.category;
                     sysProv = bestMatch.supplierId || 
                               (bestMatch.providerId ? `prov_${bestMatch.providerId}` : 
                               (bestMatch.employeeId ? `emp_${bestMatch.employeeId}` : ''));
-                } else if (mType === 'RECEITA') {
+                } else if (finalMType === 'RECEITA') {
                     sysCat = 'Produto';
                     sysProv = bestMatch.customerId;
-                } else if (mType === 'SERVICO') {
+                } else if (finalMType === 'SERVICO') {
                     sysCat = 'Serviço';
                     sysProv = bestMatch.customerId;
                 }
@@ -827,7 +860,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     id: rowId,
                     status: 'CONCILIADOS',
                     matchId: bestMatch.id,
-                    matchType: mType,
+                    matchType: finalMType,
                     suggestedCategory: sysCat,
                     suggestedProvider: sysProv
                 });
@@ -840,30 +873,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 let suggestedCat = null;
 
                 if (bankTx.type === 'RECEITA') {
-                    // Tenta identificar se é uma receita de serviço/venda/cartão
-                    const isCardOrBankOrService =
-                        descNorm.includes('pix') ||
-                        descNorm.includes('ted') ||
-                        descNorm.includes('debito') ||
-                        descNorm.includes('credito') ||
-                        descNorm.includes('visa') ||
-                        descNorm.includes('master') ||
-                        descNorm.includes('maquina') ||
-                        descNorm.includes('ante') || // antecipação
-                        descNorm.includes('venda') ||
-                        descNorm.includes('serv') ||
-                        descNorm.includes('receb');
-
-                    if (isCardOrBankOrService) {
-                        // Encontra a melhor categoria de receita no sistema
-                        const revenueCats = categories.filter(c => c.dreClass === 'REVENUE');
-                        const candidate =
-                            revenueCats.find(c => normalize(c.name).includes('servico'))?.name ||
-                            revenueCats.find(c => normalize(c.name).includes('venda'))?.name ||
-                            revenueCats.find(c => normalize(c.name).includes('receita'))?.name ||
-                            revenueCats[0]?.name;
-
-                        suggestedCat = candidate || 'Receita de Serviços';
+                    if (descNorm.includes('devolucao')) {
+                        suggestedCat = 'Devolução de Venda';
+                    } else {
+                        suggestedCat = 'Outras Receitas';
                     }
                 } else {
                     if (descNorm.includes('uber') || descNorm.includes('99')) suggestedCat = 'Transporte por Aplicativo';
@@ -886,21 +899,47 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         suggestedCat = revenueCats[0]?.name || 'Receita de Serviços';
                     } else {
                         // Common manual overrides based on description
-        const lowerDesc = t.description.toLowerCase();
-        if (lowerDesc.includes('distribuição') || lowerDesc.includes('lucro')) {
-            suggestedCat = 'Distribuição de Lucros';
-        } else {
-            suggestedCat = 'Despesas Diversas';
-        }
-
+                        const lowerDesc = bankTx.description.toLowerCase();
+                        if (lowerDesc.includes('distribuição') || lowerDesc.includes('lucro')) {
+                            suggestedCat = 'Distribuição de Lucros';
+                        } else {
+                            suggestedCat = 'Despesas Diversas';
+                        }
                     }
+                }
+
+                // Smart suggestion for Provider/Entity
+                let suggestedProv = undefined;
+                
+                // Check Suppliers
+                const matchingSup = suppliers.find(s => s.name && descNorm.includes(normalize(s.name).substring(0, 8)));
+                if (matchingSup) suggestedProv = matchingSup.id;
+
+                // Check Employees
+                const matchingEmp = !suggestedProv ? employees.find(e => e.name && descNorm.includes(normalize(e.name).substring(0, 8))) : null;
+                if (matchingEmp) {
+                    suggestedProv = `emp_${matchingEmp.id}`;
+                    if (bankTx.type === 'DESPESA') suggestedCat = 'Pessoal';
+                }
+
+                // Check Professionals
+                const matchingProv = !suggestedProv ? providers.find(p => p.name && descNorm.includes(normalize(p.name).substring(0, 8))) : null;
+                if (matchingProv) {
+                    suggestedProv = `prov_${matchingProv.id}`;
+                    if (bankTx.type === 'DESPESA') suggestedCat = 'Repasse Comissão';
+                }
+
+                // Specific rule for Suelen (Profit Distribution)
+                if (descNorm.includes('suelen') || descNorm.includes('alves vital')) {
+                    suggestedCat = 'Distribuição de Lucros';
                 }
 
                 results.push({
                     ...bankTx,
                     id: rowId,
                     status: 'A_LANCAR',
-                    suggestedCategory: suggestedCat
+                    suggestedCategory: suggestedCat,
+                    suggestedProvider: suggestedProv
                 });
             }
         });
