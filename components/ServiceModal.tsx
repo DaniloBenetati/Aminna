@@ -72,7 +72,7 @@ interface ServiceModalProps {
     stock: StockItem[];
     customers: Customer[];
     onNavigate?: (view: ViewState, payload?: any) => void;
-    allSales: Sale[];
+    allSales?: Sale[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -91,7 +91,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     stock,
     customers,
     onNavigate,
-    allSales
+    allSales = []
 }) => {
     const [status, setStatus] = useState<Appointment['status']>(appointment.status);
     const [paymentMethod, setPaymentMethod] = useState(appointment.paymentMethod || 'Pix');
@@ -140,6 +140,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [adjustmentAmount, setAdjustmentAmount] = useState(0);
     const [adjustmentReason, setAdjustmentReason] = useState('');
     const [showAdjustmentField, setShowAdjustmentField] = useState(false);
+
+    const [showDebtDetails, setShowDebtDetails] = useState(false);
 
     const linesInsight = useMemo(() => {
         const productIds = lines.flatMap(l => l.products);
@@ -666,7 +668,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             // 4. Delete current appointment if it exists (not new)
             // Identify if current appointment is persisted
-            const isPersisted = /^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+            const isPersisted = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointment.id);
             if (isPersisted) {
                 const { error: delError } = await supabase.from('appointments').delete().eq('id', appointment.id);
                 if (delError) throw delError;
@@ -2722,120 +2724,205 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         ))}
                                     </div>
 
-                                    {/* RECURENCE & COUPON OPTIONS */}
-                                    {mode === 'VIEW' && (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
-                                                <div className="flex items-center justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                                        <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
+                                {/* RECURENCE & COUPON OPTIONS */}
+                                {mode === 'VIEW' && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                                    <h4 className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest">Repetir Agendamento?</h4>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsRecurring(!isRecurring)}
+                                                    className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                                </button>
+                                            </div>
+
+                                            {isRecurring ? (
+                                                <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-200">
+                                                    <div className="space-y-1">
+                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Freq.</label>
+                                                        <select
+                                                            className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                            value={recurrenceFrequency}
+                                                            onChange={e => setRecurrenceFrequency(e.target.value as any)}
+                                                        >
+                                                            <option value="WEEKLY">Semanal</option>
+                                                            <option value="BIWEEKLY">Quinzenal</option>
+                                                            <option value="MONTHLY">Mensal</option>
+                                                        </select>
                                                     </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsRecurring(!isRecurring)}
-                                                        className={`relative w-10 h-5 rounded-full transition-colors ${isRecurring ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
-                                                    >
-                                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${isRecurring ? 'left-6' : 'left-1'}`} />
+                                                    <div className="space-y-1">
+                                                        <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            max="24"
+                                                            className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                            value={recurrenceCount}
+                                                            onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="h-[44px] flex items-center justify-center border border-dashed border-indigo-100 dark:border-indigo-800/20 rounded-xl">
+                                                    <span className="text-[9px] font-bold text-indigo-300 dark:text-indigo-800 uppercase">Não recorrente</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-2xl border border-slate-100 dark:border-zinc-800 flex flex-col justify-between">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <Tag size={14} className="text-slate-400" />
+                                                <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
+                                            </div>
+                                            {appliedCampaign ? (
+                                                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                                        <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
+                                                    </div>
+                                                    <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
+                                                        <X size={16} />
                                                     </button>
                                                 </div>
-
-                                                {isRecurring ? (
-                                                    <div className="grid grid-cols-2 gap-2 animate-in slide-in-from-top-2 duration-200">
-                                                        <div className="space-y-1">
-                                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Freq.</label>
-                                                            <select
-                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                                value={recurrenceFrequency}
-                                                                onChange={e => setRecurrenceFrequency(e.target.value as any)}
-                                                            >
-                                                                <option value="WEEKLY">Semanal</option>
-                                                                <option value="BIWEEKLY">Quinzenal</option>
-                                                                <option value="MONTHLY">Mensal</option>
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Repetições</label>
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                max="24"
-                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
-                                                                value={recurrenceCount}
-                                                                onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="h-[44px] flex items-center justify-center border border-dashed border-indigo-100 dark:border-indigo-800/20 rounded-xl">
-                                                        <span className="text-[9px] font-bold text-indigo-300 dark:text-indigo-800 uppercase">Não recorrente</span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-2xl border border-slate-100 dark:border-zinc-800 flex flex-col justify-between">
-                                                <div className="flex items-center gap-2 mb-2">
-                                                    <Tag size={14} className="text-slate-400" />
-                                                    <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Código..."
+                                                        value={couponCode}
+                                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+                                                        className="flex-1 min-w-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApplyCoupon}
+                                                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
+                                                    >
+                                                        APLICAR
+                                                    </button>
                                                 </div>
-                                                {appliedCampaign ? (
-                                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
-                                                        <div className="flex items-center gap-2">
-                                                            <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
-                                                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
-                                                        </div>
-                                                        <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
-                                                            <X size={16} />
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex gap-2">
-                                                        <input
-                                                            type="text"
-                                                            placeholder="Código..."
-                                                            value={couponCode}
-                                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                                            onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                                                            className="flex-1 min-w-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleApplyCoupon}
-                                                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
-                                                        >
-                                                            APLICAR
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            )}
                                         </div>
-                                    )}
+                                    </div>
+                                )}
 
-                                    <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
-                                        <div className="flex justify-between items-center px-1 mb-4">
-                                            <div>
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
-                                                <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {(totalValue || 0).toFixed(2)}</p>
-                                            </div>
+                                <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                                    <div className="flex justify-between items-center px-1 mb-4">
+                                        <div>
+                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Valor Acumulado</p>
+                                            <p className="text-xl font-black text-slate-950 dark:text-white tracking-tighter">R$ {(totalValue || 0).toFixed(2)}</p>
                                         </div>
+                                    </div>
 
-                                        {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
-                                            <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800 mb-2">
+                                    {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
+                                        <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900 mb-2">
+                                            <div className="flex items-center gap-2">
                                                 <input
                                                     type="checkbox"
                                                     id="payDebt"
                                                     checked={includeDebt}
                                                     onChange={(e) => setIncludeDebt(e.target.checked)}
-                                                    className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-gray-300"
+                                                    className="w-4 h-4 text-rose-600 rounded focus:ring-rose-500 border-rose-300"
                                                 />
-                                                <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase cursor-pointer select-none">
-                                                    Incluir Pagmento de Dívida Pendente
+                                                <label htmlFor="payDebt" className="flex-1 text-xs font-bold text-rose-900 dark:text-rose-300 uppercase cursor-pointer select-none">
+                                                    Incluir Pagamento de Dívida Pendente
                                                 </label>
                                                 <span className="text-sm font-black text-rose-500">
                                                     + R$ {(customer.outstandingBalance || 0).toFixed(2)}
                                                 </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); setShowDebtDetails(!showDebtDetails); }}
+                                                    className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-lg border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
+                                                >
+                                                    {showDebtDetails ? 'OCULTAR' : 'DETALHES'}
+                                                </button>
                                             </div>
-                                        )}
+
+                                            {showDebtDetails && (
+                                                <div className="mt-2 pt-2 border-t border-rose-100 dark:border-rose-800/50 animate-in slide-in-from-top-2">
+                                                    <p className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                                        Origem do Saldo Devedor:
+                                                    </p>
+                                                    <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                                        {(() => {
+                                                            const unpaidAppointments = allAppointments?.filter(app => 
+                                                                app.customerId === customer.id && 
+                                                                (app.paymentMethod?.toLowerCase() === 'fiado' || app.paymentMethod?.toLowerCase() === 'dívida' || app.payments?.some(p => p.method.toLowerCase() === 'fiado' || p.method.toLowerCase() === 'dívida'))
+                                                            ) || [];
+
+                                                            const unpaidSales = allSales?.filter(sale => 
+                                                                sale.customerId === customer.id && 
+                                                                (sale.paymentMethod?.toLowerCase() === 'fiado' || sale.paymentMethod?.toLowerCase() === 'dívida' || sale.payments?.some(p => p.method.toLowerCase() === 'fiado' || p.method.toLowerCase() === 'dívida'))
+                                                            ) || [];
+
+                                                            const unpaidItems = [
+                                                                ...unpaidAppointments.map(app => {
+                                                                    let amt = 0;
+                                                                    if (app.payments && app.payments.length > 0) {
+                                                                        amt = app.payments.filter(p => p.method.toLowerCase() === 'fiado' || p.method.toLowerCase() === 'dívida').reduce((acc, p) => acc + (p.amount || 0), 0);
+                                                                    }
+                                                                    if (amt === 0) amt = app.pricePaid || app.bookedPrice || 0;
+                                                                    return {
+                                                                        id: app.id,
+                                                                        date: app.date || app.paymentDate,
+                                                                        description: app.combinedServiceNames || (app.serviceId ? (services.find(s => s.id === app.serviceId)?.name || 'Serviço') : 'Agendamento'),
+                                                                        amount: amt,
+                                                                        type: 'Serviço'
+                                                                    };
+                                                                }),
+                                                                ...unpaidSales.map(sale => {
+                                                                    let amt = 0;
+                                                                    if (sale.payments && sale.payments.length > 0) {
+                                                                        amt = sale.payments.filter(p => p.method.toLowerCase() === 'fiado' || p.method.toLowerCase() === 'dívida').reduce((acc, p) => acc + (p.amount || 0), 0);
+                                                                    }
+                                                                    if (amt === 0) amt = sale.totalPrice || sale.totalAmount || 0;
+                                                                    return {
+                                                                        id: sale.id,
+                                                                        date: sale.date,
+                                                                        description: sale.items?.map((i: any) => i.name).join(', ') || 'Produto',
+                                                                        amount: amt,
+                                                                        type: 'Produto'
+                                                                    };
+                                                                })
+                                                            ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+
+                                                            if (unpaidItems.length === 0) {
+                                                                return (
+                                                                    <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                                                                        Este saldo é oriundo de compras pendentes ou anteriores ao novo histórico.
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            return unpaidItems.map((item, i) => (
+                                                                <div key={item.id + '-' + i} className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-bold text-slate-900 dark:text-white">
+                                                                            {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : '-'} 
+                                                                            <span className="ml-2 px-1.5 py-0.5 bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 rounded text-[7px] uppercase">{item.type}</span>
+                                                                        </span>
+                                                                        <span className="text-slate-500 truncate max-w-[200px]" title={item.description}>{item.description}</span>
+                                                                    </div>
+                                                                    <span className="font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">R$ {item.amount.toFixed(2)}</span>
+                                                                </div>
+                                                            ));
+                                                        })()}
+                                                    </div>
+                                                    <p className="text-[9px] text-rose-500/70 dark:text-rose-400/50 mt-2 text-center uppercase font-bold">
+                                                        * Acima constam apenas os últimos registros de criação da dívida
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                         <div className="flex flex-col gap-2">
                                             {isAgendaMode ? (
@@ -3494,27 +3581,52 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </div>
 
                             {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
-                            {/* EXIBIÇÃO DA DÍVIDA ANTERIOR COM CHECKBOX */}
                             {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIncludeDebt(!includeDebt)}
-                                    className={`w-full p-3 rounded-xl flex items-center justify-between transition-all border ${includeDebt ? 'bg-indigo-600 border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 hover:border-indigo-300'}`}
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${includeDebt ? 'bg-white border-white text-indigo-600' : 'border-slate-300 dark:border-zinc-600'}`}>
-                                            {includeDebt && <Check size={14} strokeWidth={4} />}
-                                        </div>
-                                        <div className="flex flex-col items-start">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest ${includeDebt ? 'text-indigo-100' : 'text-slate-500 dark:text-slate-400'}`}>
-                                                Incluir Dívida Pendente
-                                            </span>
-                                        </div>
+                                <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            id="payDebtCheckout"
+                                            checked={includeDebt}
+                                            onChange={(e) => setIncludeDebt(e.target.checked)}
+                                            className="w-4 h-4 text-rose-600 rounded focus:ring-rose-500 border-rose-300"
+                                        />
+                                        <label htmlFor="payDebtCheckout" className="flex-1 text-xs font-bold text-rose-900 dark:text-rose-300 uppercase cursor-pointer select-none">
+                                            Incluir Pagamento de Dívida Pendente
+                                        </label>
+                                        <span className="text-sm font-black text-rose-500">
+                                            R$ {customer.outstandingBalance.toFixed(2)}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={(e) => { e.stopPropagation(); setShowDebtDetails(!showDebtDetails); }}
+                                            className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-lg border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
+                                        >
+                                            {showDebtDetails ? 'OCULTAR' : 'DETALHES'}
+                                        </button>
                                     </div>
-                                    <span className={`text-sm font-black ${includeDebt ? 'text-white' : 'text-rose-600 dark:text-rose-400'}`}>
-                                        R$ {customer.outstandingBalance.toFixed(2)}
-                                    </span>
-                                </button>
+
+                                    {showDebtDetails && (
+                                        <div className="mt-2 pt-2 border-t border-rose-100 dark:border-rose-800/50 animate-in slide-in-from-top-2">
+                                            <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                                                {customer.history?.filter(h => h.details?.includes('Dívida Criada') || h.description?.toLowerCase().includes('fiado')).slice(0, 10).map((h, i) => (
+                                                    <div key={i} className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
+                                                        <div className="flex flex-col">
+                                                            <span className="font-bold text-slate-900 dark:text-white">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
+                                                            <span className="text-slate-500 truncate max-w-[150px]" title={h.description}>{h.description}</span>
+                                                        </div>
+                                                        <span className="font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">{h.details?.split(' | ')[0] || h.details}</span>
+                                                    </div>
+                                                ))}
+                                                {(customer.history?.filter(h => h.details?.includes('Dívida Criada') || h.description?.toLowerCase().includes('fiado'))?.length || 0) === 0 && (
+                                                    <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                                                        Este saldo é oriundo de compras pendentes ou anteriores ao novo histórico.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
 
                             <div className="pt-2 flex flex-col gap-3">

@@ -816,6 +816,7 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
+            sales={sales}
             onNavigate={(view, payload) => {
               if (view === ViewState.CLIENTES) {
                 if (typeof payload === 'string') {

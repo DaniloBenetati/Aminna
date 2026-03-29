@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, AlertTriangle, Clock, Fingerprint, RefreshCw, CheckCircle2, Loader2, AlertCircle, Play, Check
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
-import { ViewState, Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord, UserProfile } from '../types';
+import { ViewState, Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord, UserProfile, Sale } from '../types';
 import { ServiceModal } from './ServiceModal';
 import { issueNFSe } from '../services/focusNfeService';
 
@@ -23,9 +23,10 @@ interface DailyAppointmentsProps {
   userProfile?: UserProfile | null;
   isLoadingData?: boolean;
   onNavigate?: (view: ViewState, payload?: any) => void;
+  sales: Sale[];
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, userProfile, isLoadingData, onNavigate }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, userProfile, isLoadingData, onNavigate, sales }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -410,6 +411,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           stock={stock}
           customers={customers}
           onNavigate={onNavigate}
+          allSales={sales}
         />
       )}
     </div>
