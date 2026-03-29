@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
@@ -74,6 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: ViewState.FECHAMENTOS, label: 'Fechamentos', icon: DollarSign },
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
     { id: ViewState.RECURSOS_HUMANOS, label: 'Recursos Humanos', icon: Users },
+    { id: ViewState.TRAFEGO_PAGO, label: 'Tráfego Pago', icon: Megaphone },
   ].filter(item => {
     if (!userProfile) return true;
     if (userProfile.role === 'admin') return true;
@@ -102,7 +103,8 @@ export const Layout: React.FC<LayoutProps> = ({
     ViewState.CLIENTES,
     ViewState.SERVICOS,
     ViewState.VENDAS,
-    ViewState.SETTINGS
+    ViewState.SETTINGS,
+    ViewState.TRAFEGO_PAGO,
   ].includes(currentView);
 
   return (
@@ -277,7 +279,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${currentView === ViewState.AGENDA ? 'overflow-hidden p-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
+      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
