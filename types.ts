@@ -601,3 +601,63 @@ export interface EmployeeLoan {
   reason?: string;
   schedule?: any[];
 }
+
+// --- CRM TYPES (Meta/WhatsApp Integration) ---
+
+export interface CRMFunnelStage {
+  id: string;
+  name: string;
+  color: string;
+  order: number;
+  active: boolean;
+}
+
+export interface CRMTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface CRMConversation {
+  id: string;
+  customerId?: string;
+  leadId?: string;
+  metaConversationId?: string;
+  platform: 'whatsapp' | 'instagram' | 'messenger';
+  statusId: string;
+  currentAttendantId?: string;
+  lastMessagePreview?: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  metadata?: any;
+  createdAt: string;
+  updatedAt: string;
+  // Join data
+  customer?: Customer;
+  lead?: Lead;
+  status?: CRMFunnelStage;
+  tags?: CRMTag[];
+}
+
+export interface CRMMessage {
+  id: string;
+  conversationId: string;
+  metaMessageId?: string;
+  senderType: 'customer' | 'attendant' | 'system' | 'ai';
+  senderId?: string;
+  content: string;
+  messageType: 'text' | 'image' | 'audio' | 'video' | 'document' | 'template';
+  mediaUrl?: string;
+  status: 'sent' | 'delivered' | 'read' | 'failed';
+  metadata?: any;
+  createdAt: string;
+}
+
+export interface CRMAutomation {
+  id: string;
+  name: string;
+  triggerType: string;
+  conditions: any;
+  actions: any;
+  active: boolean;
+}

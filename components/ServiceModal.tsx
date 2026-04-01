@@ -880,7 +880,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 if (secondaryError) console.error('Error updating secondary appointments:', secondaryError);
             }
 
-            if (result.error) throw result.error;
+            if (result.error) {
+                if (result.error.code === '23505') {
+                    alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO NESTE HORÁRIO.\n\nEste atendimento foi duplicado ou já foi salvo em outra aba. Atualize a página e tente novamente.');
+                    setIsSaving(false);
+                    onClose();
+                    return;
+                }
+                throw result.error;
+            }
             const savedAppt = result.data;
 
             onUpdateAppointments(prev => {
@@ -932,9 +940,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const handleFinishService = async () => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
-
+        
+        setIsSaving(true);
+        
         if (totalPaid < totalValue - 0.01) {
             alert(`⚠️ Divergência de Valores\n\nTotal a Pagar: R$ ${totalValue.toFixed(2)}\nTotal Informado: R$ ${totalPaid.toFixed(2)}\n\nPor favor, o valor pago deve ser igual ou superior ao total.`);
+            setIsSaving(false);
             return;
         }
 
@@ -2385,7 +2396,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     )}
 
-                    {mode === 'CLIENT_EDIT' ? (
+                    {mode === 'EDIT_CUSTOMER' ? (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300">
                             <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-900 dark:border-white/10 shadow-2xl">
                                 <div className="space-y-4">
@@ -3690,10 +3701,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <button
                                     type="button"
                                     onClick={handleFinishService}
-                                    disabled={restrictionData.isRestricted || customer.isBlocked}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                    disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
+                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
                                 >
-                                    {restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>)}
+                                    {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>))}
                                 </button>
 
                                 {appointment.status !== 'Concluído' && (

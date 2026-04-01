@@ -943,7 +943,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                 })
                 .eq('id', appointmentId);
 
-            if (error) throw error;
+            if (error) {
+                if (error.code === '23505') {
+                    alert("⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.");
+                    setAppointments(originalAppointments);
+                    return;
+                }
+                throw error;
+            }
         } catch (error) {
             console.error("Error moving appointment:", error);
             setAppointments(originalAppointments);
