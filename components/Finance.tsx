@@ -16,7 +16,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig, Employee, PayrollRecord } from '../types';
 import { supabase } from '../services/supabase';
 import { FinanceCharts } from './FinanceCharts';
-import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary, getAnticipationRate } from '../services/financialService';
+import { toLocalDateStr, parseDateSafe, generateFinancialTransactions, calculateDailySummary, getAnticipationRate, calculateAppointmentProduction, calculateProductionRevenue } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
 import { BankReconciliation } from './BankReconciliation';
 
@@ -662,7 +662,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const endPrev = `${year - 1}-12-31`;
 
             const fetchYearData = async (start: string, end: string) => {
-                const { data: appData } = await supabase.from('appointments').select('date, booked_price, price_paid').gte('date', start).lte('date', end);
+                const { data: appData } = await supabase.from('appointments')
+                    .select('date, status, booked_price, price_paid, service_id, additional_services, quantity, provider_id, payment_method, is_remake')
+                    .gte('date', start).lte('date', end)
+                    .neq('status', 'Cancelado');
                 const { data: saleData } = await supabase.from('sales').select('date, total_amount').gte('date', start).lte('date', end);
 
                 const monthly = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, total: 0 }));
@@ -672,12 +675,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (parts.length >= 2) {
                         const m = parseInt(parts[1], 10) - 1;
                         if (m >= 0 && m < 12) {
-                        const pPaid = Number(a.price_paid);
-                        const bPrice = Number(a.booked_price);
-                        // Using the production value (booked_price) if price_paid is missing or 0 
-                        // to ensure consistency with other reports.
-                        const finalVal = (pPaid > 0) ? pPaid : bPrice;
-                        monthly[m].total += (finalVal || 0);
+                            // SYNCED LOGIC: Use the unified production calculation
+                            const production = calculateAppointmentProduction(a, services);
+                            monthly[m].total += production;
                         }
                     }
                 });
@@ -703,10 +703,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setYearlyBillingData({ currentYear: current, previousYear: previous });
         };
 
-        if (activeTab === 'CHARTS') {
+        if (activeTab === 'CHARTS' && services.length > 0 && providers.length > 0) {
             fetchYearlyBilling();
         }
-    }, [activeTab]);
+    }, [activeTab, services, providers]);
 
     const handleOpenReconciledEditModal = (t: FinancialTransaction) => {
         setEditingReconciled(t);
@@ -1397,41 +1397,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // For past periods, we treat everything that isn't cancelled as "Realized Production" 
             // to match the Repasses/Closures screen and ensure the DRE isn't empty.
             const todayStr = toLocalDateStr(new Date());
-            const realizedApps = apps.filter(a => {
-                const isPast = a.date < todayStr;
-                const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
-                const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
-                const isNotRemake = !a.isRemake && a.paymentMethod !== 'Refazer' && !a.paymentMethod?.startsWith('Justificativa');
-                
-                return isNotRemake && (isPast ? isNotCancelled : isConcluido);
-            });
+            const realizedApps = apps.filter(a => a.status?.toUpperCase() === 'CONCLUÍDO');
             const forecastApps = apps.filter(a => a.status?.toUpperCase() !== 'CANCELADO' && !a.isRemake && a.customerId !== 'INTERNAL_BLOCK');
 
-            const calculateServiceRevenue = (appList: Appointment[]) => {
-                return appList.reduce((acc, a) => {
-                    const mainService = services.find(s => s.id === a.serviceId);
-                    const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
-                    
-                    const extrasList = (a.additionalServices || []).map(extra => {
-                        const extraS = services.find(s => s.id === extra.serviceId);
-                        return (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
-                    });
-
-                    const totalBooked = mainBooked + extrasList.reduce((sum, e) => sum + e, 0);
-                    const tipAmount = Number(a.tipAmount || 0);
-                    const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
-                    
-                    const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
-                    const actualCollected = isConcluido ? (pricePaid - tipAmount) : totalBooked;
-                    
-                    // For "Gross Revenue" (Faturamento Bruto) in DRE, we count the full production value
-                    // even for courtesies, as the salon produced that value.
-                    return acc + actualCollected;
-                }, 0);
-            };
-
-            const revenueServices = calculateServiceRevenue(realizedApps);
-            const revenueForecast = calculateServiceRevenue(forecastApps);
+            const revenueServices = calculateProductionRevenue(realizedApps, services);
+            const revenueForecast = calculateProductionRevenue(forecastApps, services);
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
@@ -1574,21 +1544,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const irpjCsll = exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
             const netResult = resultBeforeTaxes - irpjCsll;
 
-            const breakdownServices = apps.reduce((acc, a) => {
+            const breakdownServices = realizedApps.reduce((acc, a) => {
+                const production = calculateAppointmentProduction(a, services);
+                if (production <= 0) return acc;
+
                 // Main service
-                const serviceName = services.find(s => s.id === a.serviceId)?.name || 'Serviço Removido';
-                if (!acc[serviceName]) acc[serviceName] = { total: 0, count: 0 };
-                const amount = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-                acc[serviceName].total += amount;
-                acc[serviceName].count += 1;
+                if (a.providerId) {
+                    const mainService = services.find(s => s.id === a.serviceId);
+                    const serviceName = mainService?.name || 'Serviço Removido';
+                    const mainPriceValue = Number(a.bookedPrice ?? mainService?.price ?? 0);
+                    const mainBooked = mainPriceValue * (a.quantity || 1);
+                    
+                    if (!acc[serviceName]) acc[serviceName] = { total: 0, count: 0 };
+                    acc[serviceName].total += mainBooked;
+                    acc[serviceName].count += 1;
+                }
 
                 // Extras
                 (a.additionalServices || []).forEach(extra => {
-                    const extraName = services.find(s => s.id === extra.serviceId)?.name || 'Serviço Removido';
-                    if (!acc[extraName]) acc[extraName] = { total: 0, count: 0 };
-                    const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-                    acc[extraName].total += extraPrice;
-                    acc[extraName].count += 1;
+                    if (extra.providerId) {
+                        const extraS = services.find(s => s.id === extra.serviceId);
+                        const extraName = extraS?.name || 'Serviço Removido';
+                        const extraPriceValue = Number(extra.bookedPrice ?? extraS?.price ?? 0);
+                        const extraBooked = extraPriceValue * (extra.quantity || 1);
+                        
+                        if (!acc[extraName]) acc[extraName] = { total: 0, count: 0 };
+                        acc[extraName].total += extraBooked;
+                        acc[extraName].count += 1;
+                    }
                 });
 
                 return acc;
@@ -4193,16 +4176,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number }> = {};
 
                                     appointments.forEach(a => {
-                                        if (!a.date || a.status === 'Cancelado') return;
+                                        if (!a.date) return;
+                                        
+                                        // 1. FILTER: Dashboard/Strategist Filters
                                         if (filterProvider !== 'all' && a.providerId !== filterProvider) return;
                                         if (filterService !== 'all' && a.serviceId !== filterService) return;
-
                                         if (filterCampaign !== 'all' && a.appliedCoupon !== filterCampaign) return;
                                         if (filterPartner !== 'all') {
                                             const campaign = campaigns.find(c => c.id === a.appliedCoupon || c.couponCode === a.appliedCoupon);
                                             if (campaign?.partnerId !== filterPartner) return;
                                         }
-
                                         if (filterChannel !== 'all') {
                                             const customer = customers.find(c => c.id === a.customerId);
                                             if (customer?.acquisitionChannel !== filterChannel) return;
@@ -4212,49 +4195,36 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         if (dateObj.getFullYear() === currentYear) {
                                             const month = dateObj.getMonth();
                                             
-                                            const mainService = services.find(s => s.id === a.serviceId);
-                                            const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
-                                            const extrasTotal = (a.additionalServices || []).reduce((sum, extra) => {
-                                                const extraS = services.find(s => s.id === extra.serviceId);
-                                                return sum + (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
-                                            }, 0);
-
-                                            const totalBooked = mainBooked + extrasTotal;
-                                            const tipAmount = Number(a.tipAmount || 0);
-                                            const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
-                                            
+                                            // 2. UNIFIED PRODUCTION CALCULATION
+                                            const prodValue = calculateAppointmentProduction(a, services);
                                             const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
-                                            const actualCollected = isConcluido ? (pricePaid - tipAmount) : totalBooked;
-                                            
-                                            // INCLUSIVE REVENUE: We count full production value (including courtesies) 
-                                            // to match Repasses and Dashboard metrics.
-                                            const val = actualCollected;
-
-                                            // Realizado line: For past periods, count all non-cancelled production.
-                                            // For current/future, count only what is Concluído.
-                                            const isPast = a.date < toLocalDateStr(new Date());
                                             const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
-                                            
-                                            if (!a.isRemake && (isPast ? isNotCancelled : isConcluido)) {
-                                                currentRealizedData[month].total += val;
+                                            const isRemake = a.isRemake || a.is_remake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+
+                                            // 3. GREEN LINE (Realizado): Concluído only (Inclusive of all production)
+                                            if (isConcluido) {
+                                                currentRealizedData[month].total += prodValue;
                                             }
                                             
-                                            // Breakdown for current month only to optimize
+                                            // 4. DASHED LINE (Agenda): Not cancelled non-remakes
+                                            if (isNotCancelled && !isRemake && a.customerId !== 'INTERNAL_BLOCK') {
+                                                currentForecastData[month] += prodValue;
+                                            }
+                                            
+                                            // 5. BREAKDOWN (Current Month Only)
                                             const currentMonthIdx = new Date().getMonth();
                                             if (month === currentMonthIdx) {
                                                 const mainService = services.find(s => s.id === a.serviceId);
                                                 const svcName = mainService?.name || 'Outro';
                                                 if (!serviceBreakdown[svcName]) serviceBreakdown[svcName] = { name: svcName, realized: 0, forecast: 0, count: 0 };
-                                                serviceBreakdown[svcName].forecast += val;
-                                                if (isConcluido && !a.isRemake) {
-                                                    serviceBreakdown[svcName].realized += val;
-                                                    serviceBreakdown[svcName].count++;
+                                                
+                                                if (isNotCancelled && !isRemake) {
+                                                    serviceBreakdown[svcName].forecast += prodValue;
+                                                    if (isConcluido) {
+                                                        serviceBreakdown[svcName].realized += prodValue;
+                                                        serviceBreakdown[svcName].count++;
+                                                    }
                                                 }
-                                            }
-                                            
-                                            // Forecast line (Agenda Limpa)
-                                            if (a.customerId !== 'INTERNAL_BLOCK' && !a.isRemake) {
-                                                currentForecastData[month] += val;
                                             }
                                         }
                                     });

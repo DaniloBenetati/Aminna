@@ -48,6 +48,57 @@ export const getAnticipationRate = (dateStr: string, financialConfigs: Financial
     return config.anticipationRate;
 };
 
+/**
+ * Shared logic for 100% synchronization with Professional Closures.
+ * Only counts 'Concluído', only if professional assigned, excludes remakes.
+ */
+export const calculateAppointmentProduction = (app: any, services: Service[]): number => {
+    // 1. FILTER: Only "Concluído" (Production Standard)
+    if (app.status?.toUpperCase() !== 'CONCLUÍDO') return 0;
+
+    // 2. FILTER: Exclude remakes
+    const paymentMethod = app.paymentMethod || app.payment_method;
+    const isRemake = app.isRemake || app.is_remake || paymentMethod === 'Refazer' || paymentMethod?.startsWith('Justificativa');
+    if (isRemake) return 0;
+
+    let total = 0;
+
+    // 3. Main Service (Only if professional assigned)
+    if (app.providerId || app.provider_id) {
+        const serviceId = app.serviceId || app.service_id;
+        const mainS = services.find(s => s.id === serviceId);
+        const booked = Number(app.bookedPrice ?? app.booked_price ?? mainS?.price ?? 0);
+        const qty = Number(app.quantity ?? 1);
+        total += (booked * qty);
+    }
+
+    // 4. Additional Services (Only if professional assigned)
+    const extras = app.additionalServices || app.additional_services || [];
+    extras.forEach((extra: any) => {
+        if (extra.providerId || extra.provider_id) {
+            const extraSId = extra.serviceId || extra.service_id;
+            const extraS = services.find(s => s.id === extraSId);
+            const eBooked = Number(extra.bookedPrice ?? extra.booked_price ?? extraS?.price ?? 0);
+            const eQty = Number(extra.quantity ?? 1);
+            total += (eBooked * eQty);
+        }
+    });
+
+    return total;
+};
+
+export const calculateProductionRevenue = (appointments: any[], services: Service[], startDate?: string, endDate?: string): number => {
+    return appointments.reduce((sum, app) => {
+        if (startDate || endDate) {
+            const d = app.date?.substring(0, 10);
+            if (!d) return sum;
+            if (startDate && d < startDate) return sum;
+            if (endDate && d > endDate) return sum;
+        }
+        return sum + calculateAppointmentProduction(app, services);
+    }, 0);
+};
+
 export const generateFinancialTransactions = (
     appointments: Appointment[],
     sales: Sale[],
@@ -133,23 +184,34 @@ export const generateFinancialTransactions = (
             status = 'Atrasado';
         }
 
-        const mainBooked = (bookedPrice !== undefined && bookedPrice !== null ? bookedPrice : (service?.price || 0)) * quantity;
-        const extrasList = (app.additionalServices || []).map(extra => {
-            const extraRaw = extra as any;
-            const extraS = services.find(s => s.id === extra.serviceId);
-            const extraQty = Number(extra.quantity ?? extraRaw.quantity ?? 1);
-            const eBooked = extra.bookedPrice ?? extraRaw.booked_price;
+        // SYNCED: Use the unified production calculation logic
+        const actualTotalRevenue = calculateAppointmentProduction(app, services);
+        
+        // We still need mainBooked and extrasList for proportional distribution in DRE transactions
+        const mainSvcId = app.serviceId || rawApp.service_id;
+        const mainS = services.find(s => s.id === mainSvcId);
+        const hasMainProvider = !!(app.providerId || rawApp.provider_id);
+        const mainBookedRaw = Number(app.bookedPrice ?? rawApp.booked_price ?? mainS?.price ?? 0);
+        const mainBooked = hasMainProvider ? (mainBookedRaw * quantity) : 0;
+
+        const extrasList = (app.additionalServices || rawApp.additional_services || []).map((extra: any) => {
+            const extraSvcId = extra.serviceId || extra.service_id;
+            const extraS = services.find(s => s.id === extraSvcId);
+            const hasExtraProv = !!(extra.providerId || extra.provider_id);
+            const eBookedRaw = Number(extra.bookedPrice ?? extra.booked_price ?? extraS?.price ?? 0);
+            const eQty = Number(extra.quantity ?? 1);
             return {
                 ...extra,
-                bookedPrice: (eBooked !== undefined && eBooked !== null ? eBooked : (extraS?.price ?? 0)) * extraQty,
+                bookedPrice: hasExtraProv ? (eBookedRaw * eQty) : 0,
                 serviceName: extraS?.name || 'Serviço Extra'
             };
         });
-        const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
 
-        // SYNCED: For revenue reporting, we use the production value (totalBooked) 
-        // to ensure DRE and Charts match the Professional Repayment screen (Closures.tsx).
-        const actualTotalRevenue = totalBooked;
+        // totalBooked here is just for proportion calculation
+        const totalBooked = mainBooked + extrasList.reduce((acc: number, e: any) => acc + e.bookedPrice, 0);
+
+        // Filter: If actualTotalRevenue is 0 (due to status or remake), we skip the revenue lines but might still have expenses
+        if (actualTotalRevenue > 0) {
 
         // Main Service Transaction
         allTrans.push({
@@ -191,6 +253,7 @@ export const generateFinancialTransactions = (
                 isReconciled: app.isReconciled
             });
         });
+    }
 
         // Price Discrepancy is now distributed into the service lines themselves
         /*
