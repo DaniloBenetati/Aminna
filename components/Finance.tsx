@@ -524,7 +524,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     expenses, setExpenses, campaigns = [], partners = [], financialConfigs = [], employees = [], payroll = []
 }) => {
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
-    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO'>('DAILY');
+    const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO' | 'AUDIT'>('DAILY');
     const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
@@ -541,6 +541,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [filterProduct, setFilterProduct] = useState('all');
     const [filterPartner, setFilterPartner] = useState('all');
     const [filterChannel, setFilterChannel] = useState('all');
+
+    // AI Strategist States
+    const [isStrategistDetailModalOpen, setIsStrategistDetailModalOpen] = useState(false);
+    const [strategistDetailData, setStrategistDetailData] = useState<any[]>([]);
+    const [strategistDetailTitle, setStrategistDetailTitle] = useState('');
 
     // Quick add states
     const [isQuickAddingSupplier, setIsQuickAddingSupplier] = useState(false);
@@ -667,7 +672,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (parts.length >= 2) {
                         const m = parseInt(parts[1], 10) - 1;
                         if (m >= 0 && m < 12) {
-                            monthly[m].total += (a.price_paid ?? a.booked_price ?? 0);
+                        const pPaid = Number(a.price_paid);
+                        const bPrice = Number(a.booked_price);
+                        // Using the production value (booked_price) if price_paid is missing or 0 
+                        // to ensure consistency with other reports.
+                        const finalVal = (pPaid > 0) ? pPaid : bPrice;
+                        monthly[m].total += (finalVal || 0);
                         }
                     }
                 });
@@ -1007,6 +1017,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [expandedAuditRows, setExpandedAuditRows] = useState<string[]>([]);
     const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
     const [recurrenceMonths, setRecurrenceMonths] = useState(1);
     const [expenseForm, setExpenseForm] = useState<Partial<Expense>>({
@@ -1382,13 +1393,45 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return true;
             });
 
-            const revenueServices = apps.reduce((acc, a) => {
-                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-                const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
-                    return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+            // SYNCED LOGIC: Realized vs Forecast
+            // For past periods, we treat everything that isn't cancelled as "Realized Production" 
+            // to match the Repasses/Closures screen and ensure the DRE isn't empty.
+            const todayStr = toLocalDateStr(new Date());
+            const realizedApps = apps.filter(a => {
+                const isPast = a.date < todayStr;
+                const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+                const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
+                const isNotRemake = !a.isRemake && a.paymentMethod !== 'Refazer' && !a.paymentMethod?.startsWith('Justificativa');
+                
+                return isNotRemake && (isPast ? isNotCancelled : isConcluido);
+            });
+            const forecastApps = apps.filter(a => a.status?.toUpperCase() !== 'CANCELADO' && !a.isRemake && a.customerId !== 'INTERNAL_BLOCK');
+
+            const calculateServiceRevenue = (appList: Appointment[]) => {
+                return appList.reduce((acc, a) => {
+                    const mainService = services.find(s => s.id === a.serviceId);
+                    const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
+                    
+                    const extrasList = (a.additionalServices || []).map(extra => {
+                        const extraS = services.find(s => s.id === extra.serviceId);
+                        return (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
+                    });
+
+                    const totalBooked = mainBooked + extrasList.reduce((sum, e) => sum + e, 0);
+                    const tipAmount = Number(a.tipAmount || 0);
+                    const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
+                    
+                    const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+                    const actualCollected = isConcluido ? (pricePaid - tipAmount) : totalBooked;
+                    
+                    // For "Gross Revenue" (Faturamento Bruto) in DRE, we count the full production value
+                    // even for courtesies, as the salon produced that value.
+                    return acc + actualCollected;
                 }, 0);
-                return acc + mainPrice + extraPrice;
-            }, 0);
+            };
+
+            const revenueServices = calculateServiceRevenue(realizedApps);
+            const revenueForecast = calculateServiceRevenue(forecastApps);
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
@@ -1400,6 +1443,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 }, 0);
                 return acc + (Number(productTotal) || 0);
             }, 0);
+
+            const grossRevenue = revenueServices + revenueProducts;
+            const grossForecast = revenueForecast + revenueProducts;
 
             const breakdownProducts = sls.reduce((acc, s) => {
                 (s.items || []).forEach(item => {
@@ -1425,34 +1471,42 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 .filter(e => e.dreClass === 'OTHER_INCOME')
                 .reduce((acc, e) => acc + e.amount, 0);
 
-            // Fontes de receita:
-            // AGORA: Receita bruta é baseada APENAS na agenda e vendas, independente de fechamento ou banco.
-            const grossRevenue = (revenueServices + revenueProducts);
+            // Automated Deductions (Fees) - Only for REALIZED in DRE
+            const calculateDeductions = (appList: Appointment[]) => {
+                let fees = 0;
+                let anticipation = 0;
+                
+                appList.forEach(a => {
+                    const method = a.paymentMethod || 'Dinheiro';
+                    const settings = paymentSettings.find(ps => ps.method === method);
+                    
+                    const mainService = services.find(s => s.id === a.serviceId);
+                    const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
+                    const extrasTotal = (a.additionalServices || []).reduce((sum, extra) => {
+                        const extraS = services.find(s => s.id === extra.serviceId);
+                        return sum + (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
+                    }, 0);
 
-            // Automated Deductions (Fees)
-            const automatedDeductions = apps.reduce((acc, a) => {
-                const method = a.paymentMethod || 'Dinheiro';
-                const settings = paymentSettings.find(ps => ps.method === method);
-                if (!settings) return acc;
+                    const totalBooked = mainBooked + extrasTotal;
+                    const tipAmount = Number(a.tipAmount || 0);
+                    const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
+                    const actualValueForFees = pricePaid - tipAmount;
 
-                const totalAppValue = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) +
-                    (a.additionalServices || []).reduce((sum, e) => sum + (e.bookedPrice ?? services.find(s => s.id === e.serviceId)?.price ?? 0), 0);
+                    if (settings && actualValueForFees > 0) {
+                        fees += (actualValueForFees * (settings.fee / 100));
+                    }
 
-                return acc + (totalAppValue * (settings.fee / 100));
-            }, 0);
+                    if (method.toLowerCase().includes('crédito') && actualValueForFees > 0) {
+                        const antRate = getAnticipationRate(a.date, financialConfigs);
+                        if (antRate > 0) {
+                            anticipation += (actualValueForFees * (antRate / 100));
+                        }
+                    }
+                });
+                return { fees, anticipation };
+            };
 
-            const anticipationFees = apps.reduce((acc, a) => {
-                const method = a.paymentMethod || 'Dinheiro';
-                if (!method.toLowerCase().includes('crédito')) return acc;
-
-                const antRate = getAnticipationRate(a.date, financialConfigs);
-                if (antRate <= 0) return acc;
-
-                const totalAppValue = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0) +
-                    (a.additionalServices || []).reduce((sum, e) => sum + (e.bookedPrice ?? services.find(s => s.id === e.serviceId)?.price ?? 0), 0);
-
-                return acc + (totalAppValue * (antRate / 100));
-            }, 0);
+            const { fees: automatedDeductions, anticipation: anticipationFees } = calculateDeductions(realizedApps);
 
             const latestConfig = financialConfigs[0];
             const suggestedCashReserve = grossRevenue * ((latestConfig?.cashFlowReserveRate || 0) / 100);
@@ -1578,6 +1632,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             return {
                 isClosed,
                 grossRevenue, revenueServices, revenueProducts, reconciledBankRevenues, automatedDeductions, anticipationFees,
+                revenueForecast, grossForecast,
                 deductions, netRevenue,
                 totalCOGS, commissions,
                 grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin,
@@ -1621,6 +1676,194 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         return { ...currentPeriod, monthlySnapshots, totalYearlyReserve, totalYearlyAnticFees };
     }, [appointments, sales, expenses, startDate, endDate, timeView, financialConfigs, monthlyClosings]);
+    const auditReportData = useMemo(() => {
+        const data: Record<string, Record<string, { agenda: number, closure: number, count: number, closedCount: number, items: any[] }>> = {};
+
+        appointments.forEach(a => {
+            const d = a.date ? a.date.substring(0, 10) : '';
+            // Skip if out of range, cancelled or internal block
+            if (d < startDate || d > endDate || a.status?.toUpperCase() === 'CANCELADO' || a.customerId === 'INTERNAL_BLOCK') return;
+
+            const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+            const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+            const tipAmount = Number(a.tipAmount || 0);
+
+            // Calculate base and extras exactly like Closures.tsx
+            const mainService = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
+            
+            const extrasList = (a.additionalServices || []).map(extra => {
+                const extraS = services.find(s => s.id === extra.serviceId);
+                return {
+                    ...extra,
+                    bookedPrice: (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1)
+                };
+            });
+
+            const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
+            const pricePaid = a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked;
+            
+            // Production revenue logic (Faturamento)
+            const actualCollectedRevenue = isConcluido ? (pricePaid - tipAmount) : totalBooked;
+            const isCourtesy = a.isCourtesy || a.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && isConcluido);
+            
+            const totalBookedNonCourtesy = (isCourtesy ? 0 : mainBooked) + 
+                extrasList.reduce((acc, e) => acc + (e.isCourtesy || a.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && isConcluido) ? 0 : e.bookedPrice), 0);
+
+            const isDebt = a.paymentMethod === 'Dívida' || (a.payments || []).some((p: any) => p.method === 'Dívida');
+
+            // Helper to assign production to professional
+            const assignProduction = (pId: string, bookedVal: number, serviceName: string) => {
+                const p = providers.find(pr => pr.id === pId);
+                const pName = p?.name || 'Sem Profissional';
+
+                if (!data[d]) data[d] = {};
+                if (!data[d][pName]) data[d][pName] = { agenda: 0, closure: 0, count: 0, closedCount: 0, items: [] };
+
+                // 1. Agenda (Potential production)
+                let serviceAgendaRevenue = 0;
+                if (!isRemake) {
+                    if (isCourtesy || isDebt) {
+                        serviceAgendaRevenue = bookedVal;
+                    } else if (totalBookedNonCourtesy > 0) {
+                        serviceAgendaRevenue = (bookedVal / totalBookedNonCourtesy) * totalBooked;
+                    } else {
+                        serviceAgendaRevenue = bookedVal;
+                    }
+                }
+                data[d][pName].agenda += serviceAgendaRevenue;
+                data[d][pName].count += 1;
+
+                // 2. Closure (Only if completed)
+                let serviceRevenue = 0;
+                if (isConcluido) {
+                    if (isRemake) {
+                        serviceRevenue = 0;
+                    } else if (isCourtesy || isDebt) {
+                        serviceRevenue = bookedVal;
+                    } else if (totalBookedNonCourtesy > 0) {
+                        serviceRevenue = (bookedVal / totalBookedNonCourtesy) * actualCollectedRevenue;
+                    }
+
+                    data[d][pName].closure += serviceRevenue;
+                    data[d][pName].closedCount += 1;
+                }
+
+                data[d][pName].items.push({
+                    id: a.id,
+                    client: customers.find(c => c.id === a.customerId)?.name || '---',
+                    service: serviceName,
+                    status: a.status,
+                    agenda: serviceAgendaRevenue,
+                    closure: isConcluido ? serviceRevenue : 0,
+                    isRemake,
+                    isCourtesy
+                });
+            };
+
+            // Main professional
+            assignProduction(a.providerId, mainBooked, mainService?.name || 'Serviço');
+
+            // Extra professionals
+            extrasList.forEach(extra => {
+                const exS = services.find(s => s.id === extra.serviceId);
+                assignProduction(extra.providerId, extra.bookedPrice, exS?.name || 'Serviço (Extra)');
+            });
+        });
+
+        const flat: { date: string, provider: string, agenda: number, closure: number, count: number, closedCount: number, items: any[] }[] = [];
+        Object.entries(data).forEach(([date, pros]) => {
+            Object.entries(pros).forEach(([provider, vals]) => {
+                flat.push({ date, provider, ...vals });
+            });
+        });
+
+        return flat.sort((a, b) => b.date.localeCompare(a.date) || a.provider.localeCompare(b.provider));
+    }, [appointments, startDate, endDate, providers, services, customers]);
+
+    const handlePrintAuditReport = () => {
+        const totalAgenda = auditReportData.reduce((acc, curr) => acc + curr.agenda, 0);
+        const totalClosure = auditReportData.reduce((acc, curr) => acc + curr.closure, 0);
+        const diff = totalAgenda - totalClosure;
+
+        const printContent = `
+            <html>
+            <head>
+                <title>Relatório de Auditoria - ${getDateLabel()}</title>
+                <style>
+                    body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 40px; color: #1e293b; background: #fff; }
+                    h1 { font-size: 20px; font-weight: 900; margin: 0; color: #000; text-transform: uppercase; }
+                    p.meta { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-top: 4px; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+                    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                    .card { padding: 15px; border: 1px solid #e2e8f0; border-radius: 12px; }
+                    .card p { font-size: 9px; font-weight: 800; text-transform: uppercase; color: #64748b; margin: 0; }
+                    .card span { font-size: 16px; font-weight: 900; color: #0f172a; display: block; margin-top: 4px; }
+                    table { width: 100%; border-collapse: collapse; }
+                    th { text-align: left; padding: 12px 8px; font-size: 9px; font-weight: 900; text-transform: uppercase; color: #64748b; border-bottom: 2px solid #e2e8f0; }
+                    td { padding: 10px 8px; font-size: 10px; font-weight: 600; border-bottom: 1px solid #f1f5f9; }
+                    .text-right { text-align: right; }
+                    .diff { color: #be123c; font-weight: 900; }
+                </style>
+            </head>
+            <body>
+                <h1>Relatório de Auditoria: Agenda vs. Fechamento</h1>
+                <p class="meta">Período: ${getDateLabel()} | Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+                <div class="summary">
+                    <div class="card"><p>Total Agenda</p><span>${formatCurrency(totalAgenda)}</span></div>
+                    <div class="card"><p>Total Fechamento</p><span>${formatCurrency(totalClosure)}</span></div>
+                    <div class="card"><p>Diferença (Não Concluído)</p><span class="diff">${formatCurrency(diff)}</span></div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Profissional</th>
+                            <th class="text-right">Agenda</th>
+                            <th class="text-right">Fechamento</th>
+                            <th class="text-right">Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${auditReportData.map(e => `
+                            <tr>
+                                <td>${new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR')}</td>
+                                <td style="text-transform: uppercase;">${e.provider}</td>
+                                <td class="text-right">${formatCurrency(e.agenda)}</td>
+                                <td class="text-right">${formatCurrency(e.closure)}</td>
+                                <td class="text-right diff">${formatCurrency(e.agenda - e.closure)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <script>window.onload = () => { window.print(); window.close(); }</script>
+            </body>
+            </html>
+        `;
+        const win = window.open('', '_blank');
+        if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
+    const handleDownloadAuditExcel = () => {
+        const header = ['Data', 'Profissional', 'Agenda (R$)', 'Fechamento (R$)', 'Diferenca (R$)', 'Qtd Agenda', 'Qtd Concluido'];
+        const rows = auditReportData.map(e => [
+            e.date,
+            e.provider,
+            e.agenda.toFixed(2).replace('.', ','),
+            e.closure.toFixed(2).replace('.', ','),
+            (e.agenda - e.closure).toFixed(2).replace('.', ','),
+            e.count,
+            e.closedCount
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8," + [header, ...rows].map(e => e.join(";")).join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `auditoria_agenda_fechamento_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     const handleLinkNewPayeeToTx = async (tx: BankTransaction, name: string, id: string, type: 'SUPPLIER' | 'CUSTOMER') => {
         try {
@@ -2431,6 +2674,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
                                     { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
                                     { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
+                                    { id: 'AUDIT', label: 'Ajustes', icon: ShieldCheck },
                                 ].map(st => (
                                     <button
                                         key={st.id}
@@ -3585,6 +3829,153 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </>
                         )}
 
+                        {/* ===== AJUSTES (RECONCILIAÇÃO AGENDA VS FECHAMENTO) ===== */}
+                        {accountsSubTab === 'AUDIT' && (
+                            <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Agenda (Bruto)</p>
+                                        <p className="text-2xl font-black text-slate-900 dark:text-white">
+                                            {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.agenda, 0))}
+                                        </p>
+                                    </div>
+                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Fechamento (Realizado)</p>
+                                        <p className="text-2xl font-black text-emerald-600">
+                                            {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.closure, 0))}
+                                        </p>
+                                    </div>
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-6 rounded-[2rem] border border-rose-100 dark:border-rose-900/30 shadow-sm">
+                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Diferença (Não Concluído)</p>
+                                        <p className="text-2xl font-black text-rose-600">
+                                            {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.agenda, 0) - auditReportData.reduce((acc, curr) => acc + curr.closure, 0))}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                                    <div className="p-8 border-b dark:border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
+                                        <div>
+                                            <h3 className="font-black text-sm uppercase tracking-tighter flex items-center gap-2">
+                                                <ShieldCheck size={20} className="text-indigo-500" /> Auditoria de Atendimentos
+                                            </h3>
+                                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Comparativo entre Agenda e Produção Realizada</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={handleDownloadAuditExcel} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-slate-400 hover:text-emerald-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
+                                                <FileText size={16} /> Excel
+                                            </button>
+                                            <button onClick={handlePrintAuditReport} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-slate-400 hover:text-indigo-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
+                                                <Printer size={16} /> PDF
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50 dark:bg-zinc-800/30 border-b dark:border-zinc-800">
+                                                    <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Data</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest">Profissional</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Agenda (All)</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Fechamento (Concl.)</th>
+                                                    <th className="px-8 py-5 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Diferença</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                {auditReportData.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={5} className="px-8 py-20 text-center">
+                                                            <div className="flex flex-col items-center gap-3 opacity-20">
+                                                                <Target size={48} />
+                                                                <p className="font-black uppercase text-xs tracking-widest">Nenhum atendimento no período</p>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ) : auditReportData.map((e, idx) => {
+                                                    const rowId = `${e.date}-${e.provider}`;
+                                                    const isExpanded = expandedAuditRows.includes(rowId);
+                                                    const diffVal = e.agenda - e.closure;
+
+                                                    return (
+                                                        <React.Fragment key={idx}>
+                                                            <tr 
+                                                                className={`hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-50/30' : ''}`}
+                                                                onClick={() => {
+                                                                    setExpandedAuditRows(prev => 
+                                                                        prev.includes(rowId) ? prev.filter(r => r !== rowId) : [...prev, rowId]
+                                                                    );
+                                                                }}
+                                                            >
+                                                                <td className="px-8 py-5 text-xs font-bold text-slate-500 uppercase">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <ChevronRight size={14} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                                                        {new Date(e.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-8 py-5">
+                                                                    <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-tight">{e.provider}</p>
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase">{e.count} serviços / {e.closedCount} concluídos</p>
+                                                                </td>
+                                                                <td className="px-8 py-5 text-right text-xs font-bold text-slate-600 dark:text-slate-400">
+                                                                    {formatCurrency(e.agenda)}
+                                                                </td>
+                                                                <td className="px-8 py-5 text-right text-xs font-black text-emerald-600">
+                                                                    {formatCurrency(e.closure)}
+                                                                </td>
+                                                                <td className="px-8 py-5 text-right">
+                                                                    <span className={`text-xs font-black ${diffVal > 0.01 ? 'text-rose-600' : 'text-slate-300'}`}>
+                                                                        {formatCurrency(diffVal)}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                            {isExpanded && (
+                                                                <tr>
+                                                                    <td colSpan={5} className="px-8 pb-6 bg-slate-50/30 dark:bg-zinc-900/10">
+                                                                        <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+                                                                            <table className="w-full">
+                                                                                <thead className="bg-slate-50 dark:bg-zinc-800/50">
+                                                                                    <tr>
+                                                                                        <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase text-left">Cliente</th>
+                                                                                        <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase text-left">Serviço</th>
+                                                                                        <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase text-right">Agenda</th>
+                                                                                        <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase text-right">Realizado</th>
+                                                                                        <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase text-center whitespace-nowrap">Status</th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                                                    {e.items.map((item: any, i: number) => (
+                                                                                        <tr key={i} className="hover:bg-slate-50/50">
+                                                                                            <td className="px-4 py-2.5 text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">{item.client}</td>
+                                                                                            <td className="px-4 py-2.5 text-[10px] font-bold text-slate-500 uppercase">{item.service}</td>
+                                                                                            <td className="px-4 py-2.5 text-[10px] font-black text-slate-900 dark:text-white text-right">{formatCurrency(item.agenda)}</td>
+                                                                                            <td className="px-4 py-2.5 text-[10px] font-black text-emerald-600 text-right">{formatCurrency(item.closure)}</td>
+                                                                                            <td className="px-4 py-2.5 text-center">
+                                                                                                <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
+                                                                                                    item.status?.toUpperCase() === 'CONCLUÍDO' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                                    item.status?.toUpperCase() === 'CANCELADO' ? 'bg-rose-100 text-rose-700' :
+                                                                                                    'bg-amber-100 text-amber-700'
+                                                                                                }`}>
+                                                                                                    {item.status}
+                                                                                                </span>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ))}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </React.Fragment>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* ===== FORNECEDORES ===== */}
                         {accountsSubTab === 'SUPPLIERS' && (() => {
                             const list = combinedSuppliers.filter(sup => {
@@ -3797,7 +4188,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     ];
 
                                     const currentYear = new Date().getFullYear();
-                                    const currentData = new Array(12).fill(0);
+                                    const currentRealizedData = new Array(12).fill(0).map(() => ({ total: 0, products: 0 }));
+                                    const currentForecastData = new Array(12).fill(0);
+                                    const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number }> = {};
 
                                     appointments.forEach(a => {
                                         if (!a.date || a.status === 'Cancelado') return;
@@ -3818,12 +4211,51 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         const dateObj = new Date(a.date + 'T12:00:00');
                                         if (dateObj.getFullYear() === currentYear) {
                                             const month = dateObj.getMonth();
-                                            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
-                                            currentData[month] += mainPrice;
-                                            (a.additionalServices || []).forEach(extra => {
-                                                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
-                                                currentData[month] += extraPrice;
-                                            });
+                                            
+                                            const mainService = services.find(s => s.id === a.serviceId);
+                                            const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
+                                            const extrasTotal = (a.additionalServices || []).reduce((sum, extra) => {
+                                                const extraS = services.find(s => s.id === extra.serviceId);
+                                                return sum + (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
+                                            }, 0);
+
+                                            const totalBooked = mainBooked + extrasTotal;
+                                            const tipAmount = Number(a.tipAmount || 0);
+                                            const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
+                                            
+                                            const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+                                            const actualCollected = isConcluido ? (pricePaid - tipAmount) : totalBooked;
+                                            
+                                            // INCLUSIVE REVENUE: We count full production value (including courtesies) 
+                                            // to match Repasses and Dashboard metrics.
+                                            const val = actualCollected;
+
+                                            // Realizado line: For past periods, count all non-cancelled production.
+                                            // For current/future, count only what is Concluído.
+                                            const isPast = a.date < toLocalDateStr(new Date());
+                                            const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
+                                            
+                                            if (!a.isRemake && (isPast ? isNotCancelled : isConcluido)) {
+                                                currentRealizedData[month].total += val;
+                                            }
+                                            
+                                            // Breakdown for current month only to optimize
+                                            const currentMonthIdx = new Date().getMonth();
+                                            if (month === currentMonthIdx) {
+                                                const mainService = services.find(s => s.id === a.serviceId);
+                                                const svcName = mainService?.name || 'Outro';
+                                                if (!serviceBreakdown[svcName]) serviceBreakdown[svcName] = { name: svcName, realized: 0, forecast: 0, count: 0 };
+                                                serviceBreakdown[svcName].forecast += val;
+                                                if (isConcluido && !a.isRemake) {
+                                                    serviceBreakdown[svcName].realized += val;
+                                                    serviceBreakdown[svcName].count++;
+                                                }
+                                            }
+                                            
+                                            // Forecast line (Agenda Limpa)
+                                            if (a.customerId !== 'INTERNAL_BLOCK' && !a.isRemake) {
+                                                currentForecastData[month] += val;
+                                            }
                                         }
                                     });
 
@@ -3834,17 +4266,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         const dateObj = new Date(s.date + 'T12:00:00');
                                         if (dateObj.getFullYear() === currentYear) {
                                             const month = dateObj.getMonth();
-                                            currentData[month] += (s.totalAmount || 0);
+                                            const saleVal = (s.totalAmount || 0);
+                                            currentRealizedData[month].total += saleVal;
+                                            currentRealizedData[month].products += saleVal;
+                                            currentForecastData[month] += saleVal;
+
+                                            // Product breakdown for current month
+                                            const currentMonthIdx = new Date().getMonth();
+                                            if (month === currentMonthIdx) {
+                                                const prodName = 'Produtos (Venda Direta)';
+                                                if (!serviceBreakdown[prodName]) serviceBreakdown[prodName] = { name: prodName, realized: 0, forecast: 0, count: 0 };
+                                                serviceBreakdown[prodName].realized += saleVal;
+                                                serviceBreakdown[prodName].forecast += saleVal;
+                                                serviceBreakdown[prodName].count += (s.items?.length || 1);
+                                            }
                                         }
                                     });
 
                                     const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
-                                        const currentValue = currentData[index];
+                                        const realizedValue = currentRealizedData[index].total;
+                                        const forecastValue = currentForecastData[index];
                                         const targetValue = hist.pastValue * (1 + (predictiveTargetGrowth / 100));
                                         return {
                                             name: hist.label,
                                             ['Ano Passado']: hist.pastValue,
-                                            ['Ano Atual']: currentValue,
+                                            ['Realizado']: realizedValue,
+                                            ['Previsão Agenda']: forecastValue,
                                             ['Meta Ajustada']: targetValue,
                                             monthIndex: hist.month
                                         };
@@ -3853,9 +4300,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     const currentMonthIndex = new Date().getMonth();
                                     const currentMonthData = predictiveData[currentMonthIndex];
                                     const targetToBeat = currentMonthData['Meta Ajustada'];
-                                    const currentAchieved = currentMonthData['Ano Atual'];
-                                    const percentageAchieved = targetToBeat > 0 ? (currentAchieved / targetToBeat) * 100 : 0;
-                                    const gapToTarget = targetToBeat - currentAchieved;
+                                    const realizedValue = currentMonthData['Realizado'];
+                                    const agendaValue = currentMonthData['Previsão Agenda'];
+                                    const percentageAchieved = targetToBeat > 0 ? (realizedValue / targetToBeat) * 100 : 0;
+                                    const gapToTarget = targetToBeat - realizedValue;
 
                                     return (
                                         <div className="space-y-6">
@@ -3940,36 +4388,79 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between min-h-[180px]">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
-                                                            <Target size={12} className="text-amber-500" /> Cenário de {currentMonthData.name}
-                                                        </p>
-                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">R$ {currentAchieved.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                                                                <Target size={12} className="text-amber-500" /> Cenário de {currentMonthData.name}
+                                                            </p>
+                                                            <div className="bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg">
+                                                                <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Agenda: {formatCurrency(agendaValue)}</span>
+                                                            </div>
+                                                        </div>
+                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
+                                                            {formatCurrency(realizedValue)}
+                                                            <span className="text-xs text-slate-400 font-bold ml-2 uppercase italic">Realizado</span>
+                                                        </h3>
                                                         <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-5 mt-4 flex relative overflow-hidden shadow-inner">
-                                                            <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000 shadow-[2px_0_10px_rgba(249,115,22,0.5)]" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">{percentageAchieved.toFixed(1)}% da Meta</div>
+                                                            <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-1000 shadow-[2px_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, (realizedValue / agendaValue) * 100)}%` }}></div>
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">
+                                                                {agendaValue > 0 ? ((realizedValue / agendaValue) * 100).toFixed(1) : 0}% da Agenda Concluída
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <p className={`text-xs font-bold mt-4 px-3 py-1 rounded-lg w-fit ${gapToTarget > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                        {gapToTarget > 0 ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para atingir a meta` : 'Meta superada com excelência!'}
+                                                    <p className={`text-xs font-bold mt-4 px-3 py-1 rounded-lg w-fit ${agendaValue - realizedValue > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                                        {agendaValue - realizedValue > 0 
+                                                            ? `R$ ${(agendaValue - realizedValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em check-outs pendentes` 
+                                                            : 'Agenda 100% realizada!'}
                                                     </p>
                                                 </div>
 
                                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2"><BarChart2 size={12} className="text-indigo-500" /> Histórico</p>
-                                                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-2 uppercase italic tracking-tighter">Sazonalidade Detectada</h3>
-                                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">O fluxo de caixa apresenta forte tendência de tração no 2º semestre, com concentração expressiva de receitas entre Outubro e Dezembro.</p>
+                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
+                                                            <Target size={12} className="text-amber-500" /> Cenário de Meta
+                                                        </p>
+                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">{formatCurrency(realizedValue)}</h3>
+                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-5 mt-4 flex relative overflow-hidden shadow-inner">
+                                                            <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000 shadow-[2px_0_10px_rgba(249,115,22,0.5)]" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">
+                                                                {percentageAchieved.toFixed(1)}% da Meta de {currentMonthData.name}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-[11px] font-black mt-4 text-indigo-600 flex items-center gap-1 uppercase tracking-wider"><Zap size={14} /> Foco em retenção agora.</p>
+                                                    <p className={`text-xs font-bold mt-4 px-3 py-1 rounded-lg w-fit ${gapToTarget > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                                                        {gapToTarget > 0 ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a Meta` : 'Meta superada com excelência!'}
+                                                    </p>
                                                 </div>
 
-                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between border-l-4 border-l-rose-500">
+                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 mb-2"><AlertCircle size={12} /> Ponto Crítico</p>
-                                                        <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight mb-2 uppercase italic tracking-tighter">Recall de Março</h3>
-                                                        <p className="text-xs text-slate-600 dark:text-slate-400 font-medium leading-relaxed">Historicamente, Março apresenta uma retração de ~15% em relação a Fevereiro. É o momento de lançar pacotes de recorrência.</p>
+                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
+                                                            <BarChart3 size={12} className="text-indigo-500" /> Composição de Receita
+                                                        </p>
+                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
+                                                            {Object.keys(serviceBreakdown).length} Itens
+                                                        </h3>
+                                                        <div className="flex flex-col gap-1 mt-4">
+                                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                                <span>Serviços</span>
+                                                                <span className="text-emerald-500">{formatCurrency(realizedValue - currentRealizedData[currentMonthIndex].products)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                                <span>Produtos</span>
+                                                                <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <p className="text-[11px] font-black mt-4 text-rose-600 uppercase tracking-wider">Anticíclico: Aja hoje.</p>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setStrategistDetailTitle(`Composição ${currentMonthData.name}`);
+                                                            setStrategistDetailData(Object.values(serviceBreakdown).sort((a: any, b: any) => b.realized - a.realized));
+                                                            setIsStrategistDetailModalOpen(true);
+                                                        }}
+                                                        className="text-[11px] font-black mt-4 text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors flex items-center gap-1 group"
+                                                    >
+                                                        Ver Detalhamento <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -3990,6 +4481,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                                                             <span className="text-[10px] font-black text-slate-500 uppercase">Meta {currentYear}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-3 h-3 rounded-full border-2 border-indigo-400 border-dashed"></div>
+                                                            <span className="text-[10px] font-black text-slate-500 uppercase">Agenda {currentYear}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
@@ -4024,7 +4519,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                             <Area type="monotone" dataKey="Ano Passado" stroke="#94a3b8" strokeDasharray="6 6" strokeWidth={2} fill="none" dot={false} />
                                                             <Area type="monotone" dataKey="Meta Ajustada" stroke="#f59e0b" strokeWidth={4} fillOpacity={1} fill="url(#colorTarget)" dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
-                                                            <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['Ano Atual'] : null} name="Ano Atual" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
+                                                            <Area type="monotone" dataKey="Previsão Agenda" stroke="#818cf8" strokeDasharray="5 5" strokeWidth={2} fill="none" dot={false} />
+                                                            <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['Realizado'] : null} name="Realizado" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                                                         </AreaChart>
                                                     </ResponsiveContainer>
                                                 </div>
@@ -5630,6 +6126,61 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 transactions={transactions}
                 bankTransactions={bankTransactions}
             />
+
+            {/* Strategist Detail Modal */}
+            {isStrategistDetailModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-zinc-900 w-full md:max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="p-8 border-b dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600">
+                                    <Sparkles size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">{strategistDetailTitle}</h2>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Detalhamento por Categoria de Serviço e Produtos</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsStrategistDetailModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-400">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <div className="col-span-6">Serviço / Item</div>
+                                    <div className="col-span-3 text-right">Agendado</div>
+                                    <div className="col-span-3 text-right">Realizado</div>
+                                </div>
+                                {strategistDetailData.map((item, idx) => (
+                                    <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800 items-center hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+                                        <div className="col-span-6">
+                                            <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase">{item.name}</span>
+                                            <div className="text-[9px] font-bold text-slate-400 mt-0.5">{item.count} atendimentos concluídos</div>
+                                        </div>
+                                        <div className="col-span-3 text-right text-[10px] font-mono font-bold text-slate-500 italic">
+                                            {formatCurrency(item.forecast)}
+                                        </div>
+                                        <div className="col-span-3 text-right text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
+                                            {formatCurrency(item.realized)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-8 border-t dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex justify-end">
+                            <button
+                                onClick={() => setIsStrategistDetailModalOpen(false)}
+                                className="px-10 py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
+                            >
+                                Fechar Detalhamento
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

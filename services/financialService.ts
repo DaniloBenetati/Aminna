@@ -147,7 +147,10 @@ export const generateFinancialTransactions = (
         });
         const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
 
-        const actualTotalRevenue = (app.status === 'Concluído' && pricePaid !== undefined && pricePaid !== null)
+        // SYNCED: For revenue reporting, we use the production value (totalBooked) 
+        // to ensure DRE and Charts match the Professional Repayment screen,
+        // even if the service was a courtesy or not yet explicitly 'Concluído'.
+        const actualTotalRevenue = (app.status === 'Concluído' && pricePaid !== undefined && pricePaid !== null && (pricePaid - tipAmount) > 0)
             ? (pricePaid - tipAmount)
             : totalBooked;
 

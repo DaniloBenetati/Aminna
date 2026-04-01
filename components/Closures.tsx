@@ -752,7 +752,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     // Group services by name
     const grouped = data.details.reduce((acc: any, item: any) => {
       // Skip tips if they shouldn't be in the fiscal service description
-      if (item.serviceName.includes('Caixinha') || item.serviceName.includes('Gorjeta')) return acc;
+      if (item.serviceName.toLowerCase().includes('caixinha') || item.serviceName.toLowerCase().includes('gorjeta')) return acc;
       
       const key = item.serviceName;
       if (!acc[key]) {
@@ -767,7 +767,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     const rate = ((data.provider?.commissionRate || 0) * 100).toFixed(0);
     const fiscal = fiscalConfigs.find((f: any) => f.provider_id === data.provider?.id);
     
-    const competenceDate = new Date(startDate + 'T00:00:00');
+    // Competence date from the selected range starts
+    const competenceDate = new Date(startDate + 'T12:00:00');
     const month = String(competenceDate.getMonth() + 1).padStart(2, '0');
     const year = competenceDate.getFullYear();
     const competence = `${month}/${year}`;

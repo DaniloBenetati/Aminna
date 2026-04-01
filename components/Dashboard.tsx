@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CheckCircle } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
+import { toLocalDateStr } from '../services/financialService';
 
 const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize }: any) => (
     <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default gap-3 h-full">
@@ -82,19 +83,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // --- FILTERING HELPER FUNCTION ---
     // Improved logic to handle local date comparisons correctly
     const isDateInPeriod = (dateStr: string) => {
+        if (!dateStr) return false;
         // Handle full ISO strings by extracting only the date part (YYYY-MM-DD)
         const cleanDate = dateStr.split('T')[0];
-        // Force interpreted as noon local time for consistent component extraction
-        const d = new Date(cleanDate + 'T12:00:00');
-
+        const [y, m, d] = cleanDate.split('-').map(Number);
+        
         if (timeView === 'day') {
-            return d.getDate() === dateRef.getDate() &&
-                d.getMonth() === dateRef.getMonth() &&
-                d.getFullYear() === dateRef.getFullYear();
+            return d === dateRef.getDate() &&
+                (m - 1) === dateRef.getMonth() &&
+                y === dateRef.getFullYear();
         } else if (timeView === 'month') {
-            return d.getMonth() === dateRef.getMonth() && d.getFullYear() === dateRef.getFullYear();
+            return (m - 1) === dateRef.getMonth() && y === dateRef.getFullYear();
         } else if (timeView === 'year') {
-            return d.getFullYear() === dateRef.getFullYear();
+            return y === dateRef.getFullYear();
         } else if (timeView === 'custom') {
             return cleanDate >= customRange.start && cleanDate <= customRange.end;
         }
@@ -177,36 +178,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
     // 1. Dynamic Flow Chart (Adapts x-axis based on view)
     const flowData = useMemo(() => {
-        const calcMetrics = (apps: Appointment[]) => {
-            let total = 0;
+        const calcMetrics = (apps: Appointment[], pSales: Sale[] = []) => {
+            let serviceProduction = 0; // "Faturamento Bruto" matching Repasses Screen
+            let productSales = 0;
             let commissionTotal = 0;
 
             apps.forEach(a => {
                 const mainSvc = services.find(s => s.id === a.serviceId);
-                const mainPrice = (a.pricePaid ?? a.bookedPrice ?? mainSvc?.price ?? 0);
-                total += mainPrice;
-
-                // Commission for main service
-                const provider = providers.find(p => p.id === a.providerId);
-                const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
-
-                commissionTotal += mainPrice * mainCommRate;
-
-                // Add extra services
-                (a.additionalServices || []).forEach(extra => {
+                const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+                
+                const extrasList = (a.additionalServices || []).map(extra => {
                     const extraSvc = services.find(s => s.id === extra.serviceId);
-                    const extraPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0);
-                    total += extraPrice;
-
-                    const extraProvider = providers.find(p => p.id === extra.providerId);
-                    const extraCommRate = extra.commissionRateSnapshot ?? (extraProvider?.commissionRate || 0);
-
-                    commissionTotal += extraPrice * extraCommRate;
+                    return {
+                        ...extra,
+                        bookedPrice: (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1)
+                    };
                 });
+
+                const totalBooked = mainBooked + extrasList.reduce((sum, e) => sum + e.bookedPrice, 0);
+                const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+                
+                // For past periods (Jan/Feb), we only count Concluído to match Repasses (Closures.tsx)
+                const isPast = a.date < toLocalDateStr(new Date());
+                const effectiveStatus = isPast ? a.status === 'Concluído' : a.status !== 'Cancelado';
+
+                if (effectiveStatus && !isRemake) {
+                    serviceProduction += totalBooked;
+                    
+                    // Commission Logic matching Closures.tsx
+                    const provider = providers.find(p => p.id === a.providerId);
+                    const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
+                    commissionTotal += mainBooked * mainCommRate;
+
+                    extrasList.forEach(extra => {
+                        const extraProvider = providers.find(p => p.id === extra.providerId);
+                        const extraCommRate = extra.commissionRateSnapshot ?? (extraProvider?.commissionRate || 0);
+                        commissionTotal += extra.bookedPrice * extraCommRate;
+                    });
+                }
             });
+
+            pSales.forEach(s => {
+                productSales += Number(s.totalAmount || 0);
+            });
+
             return {
-                faturamento: total,
-                receita: total - commissionTotal
+                serviceProduction,
+                productSales,
+                faturamento: serviceProduction + productSales,
+                receita: (serviceProduction + productSales) - commissionTotal
             };
         };
 
@@ -215,7 +235,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h to 20h
             return hours.map(h => {
                 const label = `${h}h`;
-                const hourApps = filteredAppointments.filter(a => parseInt(a.time.split(':')[0]) === h);
+                const hourApps = filteredAppointments.filter(a => {
+                    if (!a.time) return false;
+                    return parseInt(a.time.split(':')[0]) === h;
+                });
                 const metrics = calcMetrics(hourApps);
                 return {
                     name: label,
@@ -243,7 +266,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             return days.map(d => {
                 const dateStr = d.toISOString().split('T')[0];
                 const dayApps = filteredAppointments.filter(a => a.date === dateStr);
-                const metrics = calcMetrics(dayApps);
+                const daySales = filteredSales.filter(s => s.date === dateStr);
+                const metrics = calcMetrics(dayApps, daySales);
                 return {
                     name: d.getDate().toString(),
                     fullDate: dateStr,
@@ -256,8 +280,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             // Monthly flow
             const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
             return months.map((m, i) => {
-                const monthApps = filteredAppointments.filter(a => new Date(a.date).getMonth() === i);
-                const metrics = calcMetrics(monthApps);
+                const monthApps = filteredAppointments.filter(a => {
+                    if (!a.date) return false;
+                    const parts = a.date.split('-');
+                    if (parts.length < 2) return false;
+                    const monthPart = parseInt(parts[1]);
+                    return (monthPart - 1) === i;
+                });
+                const monthSales = filteredSales.filter(s => {
+                    if (!s.date) return false;
+                    const parts = s.date.split('-');
+                    if (parts.length < 2) return false;
+                    const monthPart = parseInt(parts[1]);
+                    return (monthPart - 1) === i;
+                });
+                const metrics = calcMetrics(monthApps, monthSales);
                 return {
                     name: m,
                     atendimentos: monthApps.length,
@@ -272,14 +309,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const topProviders = useMemo(() => {
         const revenue: Record<string, number> = {};
         filteredAppointments.filter(a => a.status !== 'Cancelado').forEach(a => {
-            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-            revenue[a.providerId] = (revenue[a.providerId] || 0) + price;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
 
-            // Extra services for the same provider or others?
-            // Usually top providers bar shows revenue attributed to each professional
+            // Proportional attribution of revenue to main provider
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            revenue[a.providerId] = (revenue[a.providerId] || 0) + mainRevenueProportional;
+
             (a.additionalServices || []).forEach(extra => {
-                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-                revenue[extra.providerId] = (revenue[extra.providerId] || 0) + extraPrice;
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                revenue[extra.providerId] = (revenue[extra.providerId] || 0) + extraRevenueProportional;
             });
         });
         return Object.entries(revenue)
@@ -373,12 +423,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const topServices = useMemo(() => {
         const revenue: Record<string, number> = {};
         filteredAppointments.forEach(a => {
-            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-            revenue[a.serviceId] = (revenue[a.serviceId] || 0) + price;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
+
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            revenue[a.serviceId] = (revenue[a.serviceId] || 0) + mainRevenueProportional;
 
             (a.additionalServices || []).forEach(extra => {
-                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-                revenue[extra.serviceId] = (revenue[extra.serviceId] || 0) + extraPrice;
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                revenue[extra.serviceId] = (revenue[extra.serviceId] || 0) + extraRevenueProportional;
             });
         });
         return Object.entries(revenue)
@@ -588,16 +652,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         const stats: Record<string, { faturamento: number; atendimentos: number }> = {};
 
         filteredAppointments.forEach(a => {
-            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
 
             if (!stats[a.providerId]) stats[a.providerId] = { faturamento: 0, atendimentos: 0 };
-            stats[a.providerId].faturamento += mainPrice;
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            stats[a.providerId].faturamento += mainRevenueProportional;
             stats[a.providerId].atendimentos += 1;
 
             (a.additionalServices || []).forEach(extra => {
-                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
                 if (!stats[extra.providerId]) stats[extra.providerId] = { faturamento: 0, atendimentos: 0 };
-                stats[extra.providerId].faturamento += extraPrice;
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                
+                stats[extra.providerId].faturamento += extraRevenueProportional;
                 stats[extra.providerId].atendimentos += 1;
             });
         });
@@ -619,16 +697,30 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         const stats: Record<string, { faturamento: number; qtd: number }> = {};
 
         filteredAppointments.forEach(a => {
-            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
 
             if (!stats[a.serviceId]) stats[a.serviceId] = { faturamento: 0, qtd: 0 };
-            stats[a.serviceId].faturamento += mainPrice;
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            stats[a.serviceId].faturamento += mainRevenueProportional;
             stats[a.serviceId].qtd += 1;
 
             (a.additionalServices || []).forEach(extra => {
-                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
                 if (!stats[extra.serviceId]) stats[extra.serviceId] = { faturamento: 0, qtd: 0 };
-                stats[extra.serviceId].faturamento += extraPrice;
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                
+                stats[extra.serviceId].faturamento += extraRevenueProportional;
                 stats[extra.serviceId].qtd += 1;
             });
         });
@@ -663,13 +755,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
 
         const getBusinessHoursIntersection = (date: string, startTime: string, endTime: string) => {
+            if (!date || !startTime) return 0;
             const d = new Date(date + 'T12:00:00');
             const dayOfWeek = d.getDay();
             let bStart = 0; let bEnd = 0;
             if (dayOfWeek >= 1 && dayOfWeek <= 5) { bStart = 8 * 60; bEnd = 19 * 60; }
             else if (dayOfWeek === 6) { bStart = 8 * 60; bEnd = 17 * 60; }
             else return 0;
-            const [sh, sm] = startTime.split(':').map(Number);
+            const [sh, sm] = (startTime || '00:00').split(':').map(Number);
             const [eh, em] = (endTime || '00:00').split(':').map(Number);
             const blockStart = sh * 60 + sm;
             const blockEnd = eh * 60 + em;
@@ -679,7 +772,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         };
 
         const totalHours = blocks.reduce((acc, b) => acc + getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00'), 0);
-        const totalLoss = blocks.reduce((acc, b) => acc + (getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00') * (providerHourlyRates[b.providerId] || 0)), 0);
+        const totalLoss = blocks.reduce((acc, b) => {
+            const hrs = getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00');
+            return acc + (hrs * (providerHourlyRates[b.providerId] || 0));
+        }, 0);
 
         const reasonCounts: Record<string, number> = {};
         const providerRisk: Record<string, { count: number; hours: number; loss: number; name: string }> = {};
@@ -727,12 +823,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         const revenuePerProvider: Record<string, number> = {};
         
         filteredAppointments.filter(a => a.status !== 'Cancelado').forEach(a => {
-            const price = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-            revenuePerProvider[a.providerId] = (revenuePerProvider[a.providerId] || 0) + price;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
+
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            revenuePerProvider[a.providerId] = (revenuePerProvider[a.providerId] || 0) + mainRevenueProportional;
 
             (a.additionalServices || []).forEach(extra => {
-                const extraPrice = (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-                revenuePerProvider[extra.providerId] = (revenuePerProvider[extra.providerId] || 0) + extraPrice;
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                revenuePerProvider[extra.providerId] = (revenuePerProvider[extra.providerId] || 0) + extraRevenueProportional;
             });
         });
 
@@ -819,16 +929,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             const dateObj = new Date(a.date + 'T12:00:00');
             const dayStr = daysMap[dateObj.getDay()];
 
-            const mainPrice = a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0;
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
+                ? (a.pricePaid - tipAmount)
+                : totalBooked;
 
             if (!stats[dayStr]) stats[dayStr] = { faturamento: 0, atendimentos: 0 };
-            stats[dayStr].faturamento += mainPrice;
+            stats[dayStr].faturamento += actualTotalRevenue;
             stats[dayStr].atendimentos += 1;
-
-            (a.additionalServices || []).forEach(extra => {
-                const extraPrice = extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0;
-                stats[dayStr].faturamento += extraPrice;
-            });
         });
 
         return daysMap
@@ -863,18 +978,60 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
     }, [providers, currentMonthIdx, timeView, dateRef]);
 
-    // KPI Calculations
-    const totalRevenue = useMemo(() => {
-        const serviceRevenue = filteredAppointments.reduce((acc, a) => {
-            const mainPrice = (a.pricePaid ?? a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
-            const extraPrice = (a.additionalServices || []).reduce((sum, extra) => {
-                return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
-            }, 0);
-            return acc + mainPrice + extraPrice;
-        }, 0);
-        const salesRevenue = filteredSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
-        return serviceRevenue + salesRevenue;
-    }, [filteredAppointments, filteredSales, services]);
+    // Unified Financial Metrics (Aligned with Repasses/Closures)
+    const financialMetrics = useMemo(() => {
+        let serviceProduction = 0; // Gross Revenue matching Repasses screen
+        let productSales = 0;
+        let tips = 0;
+        let commissionTotal = 0;
+
+        filteredAppointments.forEach(a => {
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extrasList = (a.additionalServices || []).map(extra => {
+                const extraS = services.find(s => s.id === extra.serviceId);
+                return {
+                    ...extra,
+                    bookedPrice: (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1)
+                };
+            });
+            const totalBooked = mainBooked + extrasList.reduce((acc, e) => acc + e.bookedPrice, 0);
+
+            // History logic: For past months (Jan/Feb), count only Concluído to match Repasses
+            const isPast = a.date < toLocalDateStr(new Date());
+            const effectiveStatus = isPast ? a.status === 'Concluído' : a.status !== 'Cancelado';
+            const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+
+            if (effectiveStatus && !isRemake) {
+                serviceProduction += totalBooked;
+                tips += (a.tipAmount || 0);
+
+                // Commission calculation
+                const provider = providers.find(p => p.id === a.providerId);
+                const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
+                commissionTotal += mainBooked * mainCommRate;
+
+                extrasList.forEach(extra => {
+                    const extraProvider = providers.find(p => p.id === extra.providerId);
+                    const extraCommRate = extra.commissionRateSnapshot ?? (extraProvider?.commissionRate || 0);
+                    commissionTotal += extra.bookedPrice * extraCommRate;
+                });
+            }
+        });
+
+        filteredSales.forEach(s => {
+            productSales += Number(s.totalAmount || 0);
+        });
+
+        return {
+            serviceProduction,
+            productSales,
+            tips,
+            totalGross: serviceProduction + productSales,
+            commissionTotal,
+            netRevenue: (serviceProduction + productSales) - commissionTotal
+        };
+    }, [filteredAppointments, filteredSales, services, providers]);
 
     const activeFiltersCount = (filterProvider !== 'all' ? 1 : 0) + (filterService !== 'all' ? 1 : 0) + (filterCampaign !== 'all' ? 1 : 0) + (filterProduct !== 'all' ? 1 : 0) + (filterPartner !== 'all' ? 1 : 0) + (filterChannel !== 'all' ? 1 : 0);
 
@@ -1132,7 +1289,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <>
-                            {/* 1. KPIs Principais */}
+                            {/* Financial Reconciliation KPIs */}
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6">
+                                <KPICard
+                                    title="Faturamento Bruto (Serviços)"
+                                    value={`R$ ${financialMetrics.serviceProduction.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                    sub="Produção Profissional (Igual Repasses)"
+                                    icon={TrendingUp}
+                                    color="text-emerald-700"
+                                    lightColor="bg-emerald-50"
+                                />
+                                <KPICard
+                                    title="Venda de Produtos"
+                                    value={`R$ ${financialMetrics.productSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                    sub="Venda Direta em Caixa"
+                                    icon={Package}
+                                    color="text-blue-700"
+                                    lightColor="bg-blue-50"
+                                />
+                                <KPICard
+                                    title="Comissões Estimadas"
+                                    value={`R$ ${financialMetrics.commissionTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                    sub="A repassar aos profissionais"
+                                    icon={DollarSign}
+                                    color="text-rose-700"
+                                    lightColor="bg-rose-50"
+                                />
+                                <KPICard
+                                    title="Receita Líquida (Estimada)"
+                                    value={`R$ ${financialMetrics.netRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                                    sub="Produção - Comissões"
+                                    icon={Award}
+                                    color="text-indigo-700"
+                                    lightColor="bg-indigo-50"
+                                />
+                            </div>
+
+                            {/* 1. KPIs Operacionais */}
                             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
@@ -1159,9 +1352,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     lightColor="bg-blue-50"
                                 />
                                 <KPICard
-                                    title="Produtos Vendidos"
+                                    title="Produtos Vendidos (Qtd)"
                                     value={filteredSales.reduce((acc, s) => acc + (s.items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0), 0)}
-                                    sub="Venda direta"
+                                    sub="Unidades vendidas"
                                     icon={Package}
                                     color="text-amber-700"
                                     lightColor="bg-amber-50"
