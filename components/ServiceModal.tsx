@@ -1810,10 +1810,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const generateFiscalDetailingText = () => {
         if (!appointment) return '';
         
-        const config = fiscalConfigs.find(c => c.professional_id === appointment.providerId);
-        const razSoc = config?.razao_social || 'NÃO INFORMADO';
+        const config = fiscalConfigs.find(c => c.provider_id === appointment.providerId);
+        const razSoc = config?.social_name || 'NÃO INFORMADO';
         const cnpj = config?.cnpj || 'NÃO INFORMADO';
-        const perc = config?.contract_percentage || 0;
+        const perc = Number(config?.service_percentage) || 0;
 
         const currentMonth = appointment.date ? appointment.date.split('-')[1] : '';
         const currentYear = appointment.date ? appointment.date.split('-')[0] : '';

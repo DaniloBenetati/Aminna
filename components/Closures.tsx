@@ -165,15 +165,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       if (app.providerId === providerId) {
         // Revenue: For Production, we count the full booked price if it's a Debt or Courtesy
         // otherwise we use what was actually collected.
-        let serviceRevenue = 0;
-        if (isCourtesy) {
-          serviceRevenue = 0;
-        } else if (totalBookedNonCourtesy > 0) {
-          serviceRevenue = (mainBooked / totalBookedNonCourtesy) * actualCollectedRevenue;
-        }
-
-        if (isDebt || isCourtesy) serviceRevenue = mainBooked;
-        if (isRemake) serviceRevenue = 0;
+        // Use production value (booked price) for professional report
+        let serviceRevenue = isRemake ? 0 : mainBooked;
 
         // Commission (Based on proportional revenue unless it's a remake)
         // If a coupon, debt or courtesy is applied, the commission base is the FULL booked price
@@ -217,15 +210,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           const extraIsCourtesy = extra.isCourtesy || app.paymentMethod === 'Cortesia' || (actualCollectedRevenue <= 0 && !isRemake && app.status === 'Concluído');
           
           // Revenue (Proportional)
-          let serviceRevenue = 0;
-          if (extraIsCourtesy) {
-            serviceRevenue = 0;
-          } else if (totalBookedNonCourtesy > 0) {
-            serviceRevenue = (extra.bookedPrice / totalBookedNonCourtesy) * actualCollectedRevenue;
-          }
-
-          if (isDebt || extraIsCourtesy) serviceRevenue = extra.bookedPrice;
-          if (isRemake) serviceRevenue = 0;
+          // Use production value (booked price) for professional report
+          let serviceRevenue = isRemake ? 0 : extra.bookedPrice;
 
           // Commission (Based on proportional revenue)
           const extraBookedPrice = extra.bookedPrice;
