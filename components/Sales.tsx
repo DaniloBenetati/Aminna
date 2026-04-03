@@ -110,6 +110,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         localStorage.setItem('AMINNA_PENDING_SALE', JSON.stringify(data));
     }, [cart, customerId, payments, adjustmentAmount, adjustmentReason, showAdjustmentField, saleDate]);
 
+    // Auto-switch to Month view when entering Analytics
+    useEffect(() => {
+        if (activeMainTab === 'ANALYSES') {
+            setTimeView('month');
+            setDateRef(new Date());
+        }
+    }, [activeMainTab]);
+
     // Quick Registration State
     const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
     const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
@@ -1078,34 +1086,79 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Responsive Tab Switcher */}
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
-                        {/* Desktop Version */}
-                        <div className="hidden lg:flex">
-                            {(['ACTIVITY', 'CATALOG', 'ANALYSES'] as const).map(tab => (
+                        {(['ACTIVITY', 'CATALOG', 'ANALYSES'] as const).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveMainTab(tab)}
+                                className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            >
+                                {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : 'Análises'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Global Filters Section (Shared between Activity and Analytics, Search only for Catalog) */}
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4 mb-6">
+                {/* Search */}
+                <div className="flex-1 relative">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder={activeMainTab === 'CATALOG' ? "Filtrar catálogo por nome ou referência..." : "Buscar por cliente ou produto..."}
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
+                        value={activeMainTab === 'CATALOG' ? productSearch : searchTerm}
+                        onChange={e => activeMainTab === 'CATALOG' ? setProductSearch(e.target.value) : setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                {/* Date & Payment Controls - Only for Activity and Analyses */}
+                {activeMainTab !== 'CATALOG' && (
+                    <div className="flex flex-col md:flex-row gap-3 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
+                        {/* View Switcher */}
+                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                            {(['day', 'month', 'year', 'custom'] as const).map(v => (
                                 <button
-                                    key={tab}
-                                    onClick={() => setActiveMainTab(tab)}
-                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                    key={v}
+                                    onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
-                                    {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : 'Análises'}
+                                    {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
                                 </button>
                             ))}
                         </div>
-                        {/* Mobile/iPad Collapsed Version */}
-                        <div className="lg:hidden flex w-full">
-                            <button
-                                onClick={() => {
-                                    const tabs: ('ACTIVITY' | 'CATALOG' | 'ANALYSES')[] = ['ACTIVITY', 'CATALOG', 'ANALYSES'];
-                                    const nextIdx = (tabs.indexOf(activeMainTab) + 1) % tabs.length;
-                                    setActiveMainTab(tabs[nextIdx]);
-                                }}
-                                className="w-full px-4 py-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center justify-between"
-                            >
-                                <span>{activeMainTab === 'ACTIVITY' ? 'Atividade' : activeMainTab === 'CATALOG' ? 'Catálogo' : 'Análises'}</span>
-                                <ChevronDown size={14} className="opacity-50" />
-                            </button>
-                        </div>
+
+                        {/* Date Navigator */}
+                        {timeView === 'custom' ? (
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
+                                <CalendarRange size={16} className="text-slate-400" />
+                                <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                                <span className="text-slate-300">-</span>
+                                <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                                <div className="flex flex-col items-center min-w-[120px]">
+                                    <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
+                                </div>
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+                        )}
+
+                        <select
+                            value={paymentFilter}
+                            onChange={e => setPaymentFilter(e.target.value)}
+                            className="bg-slate-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-slate-100 dark:border-zinc-700 text-[11px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-black dark:focus:border-white transition-all w-full md:w-auto"
+                        >
+                            <option value="all">Todos Pagamentos</option>
+                            <option value="Pix">Pix</option>
+                            <option value="Dinheiro">Dinheiro</option>
+                            <option value="Cartão">Cartão</option>
+                        </select>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Main Tabs Content */}
@@ -1162,65 +1215,6 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4">
-                {/* Search */}
-                <div className="flex-1 relative">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder="Buscar por cliente ou produto..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
-
-                {/* Date & Payment Controls */}
-                <div className="flex flex-col md:flex-row gap-3 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
-                    {/* View Switcher */}
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
-                        {(['day', 'month', 'year', 'custom'] as const).map(v => (
-                            <button
-                                key={v}
-                                onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                            >
-                                {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Date Navigator */}
-                    {timeView === 'custom' ? (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
-                            <CalendarRange size={16} className="text-slate-400" />
-                            <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                            <span className="text-slate-300">-</span>
-                            <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                            <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
-                            <div className="flex flex-col items-center min-w-[120px]">
-                                <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
-                            </div>
-                            <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
-                        </div>
-                    )}
-
-                    <select
-                        value={paymentFilter}
-                        onChange={e => setPaymentFilter(e.target.value)}
-                        className="bg-slate-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-slate-100 dark:border-zinc-700 text-[11px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-black dark:focus:border-white transition-all w-full md:w-auto"
-                    >
-                        <option value="all">Todos Pagamentos</option>
-                        <option value="Pix">Pix</option>
-                        <option value="Dinheiro">Dinheiro</option>
-                        <option value="Cartão">Cartão</option>
-                    </select>
-                </div>
-            </div>
 
 
                 {/* Desktop Table */}
@@ -1375,40 +1369,6 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         🛒 <span className="text-xs ml-1">({cart.length})</span>
                                     </button>
                                 )}
-                                <div className={`relative flex items-center transition-all duration-300 ease-in-out ${isSearchExpanded ? 'w-full sm:w-64 md:w-80' : 'w-10 h-10 overflow-hidden'}`}>
-                                    <button 
-                                        onClick={() => {
-                                            if (isSearchExpanded) {
-                                                setProductSearch('');
-                                                setIsSearchExpanded(false);
-                                            } else {
-                                                setIsSearchExpanded(true);
-                                            }
-                                        }}
-                                        className={`absolute ${isSearchExpanded ? 'right-4' : 'left-0 w-full h-full flex items-center justify-center'} top-1/2 -translate-y-1/2 z-10 transition-all`}
-                                    >
-                                        {isSearchExpanded ? <X size={16} className="text-slate-400 hover:text-slate-900 dark:hover:text-white" /> : <Search size={22} className="text-slate-600 dark:text-slate-400" />}
-                                    </button>
-                                    
-                                    {!isSearchExpanded && (
-                                        <button 
-                                            onClick={() => setIsSearchExpanded(true)}
-                                            className="absolute inset-0 z-0 bg-slate-50 dark:bg-zinc-800 rounded-xl hover:bg-slate-100 dark:hover:bg-zinc-700 transition-colors"
-                                        />
-                                    )}
-
-                                    <div className={`relative w-full transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100 pl-4 pr-10' : 'opacity-0 pointer-events-none'}`}>
-                                        <Search size={16} className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            autoFocus={isSearchExpanded}
-                                            placeholder="Filtrar catálogo..."
-                                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-zinc-950 dark:focus:border-white rounded-2xl text-[10px] font-black outline-none transition-all shadow-inner"
-                                            value={productSearch}
-                                            onChange={e => setProductSearch(e.target.value)}
-                                        />
-                                    </div>
-                                </div>
                             </div>
                         </div>
 

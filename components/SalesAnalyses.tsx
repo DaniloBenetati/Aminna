@@ -4,7 +4,7 @@ import {
     PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
 } from 'recharts';
 import { Sale, StockItem, Customer } from '../types';
-import { TrendingUp, Users, Package, Calendar, ArrowUpRight, ShoppingCart, AlertCircle, BarChart3 } from 'lucide-react';
+import { TrendingUp, Users, Package, Calendar, ArrowUpRight, ShoppingCart, AlertCircle, BarChart3, DollarSign, Percent } from 'lucide-react';
 
 interface SalesAnalysesProps {
     sales?: Sale[];
@@ -38,25 +38,62 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
             .slice(0, 5);
     }, [filteredSales, customerMap]);
 
-    // 2. Best Selling Products (Volume)
+    // 2. Best Selling Subcategories (Revenue)
     const bestSellersData = useMemo(() => {
-        const volume: Record<string, number> = {};
+        const revenue: Record<string, number> = {};
         filteredSales.forEach(s => {
             s.items?.forEach((item: any) => {
                 const id = item.productId;
-                if (stockMap.has(id)) {
-                    volume[id] = (volume[id] || 0) + (item.quantity || 1);
-                }
+                const product = stockMap.get(id);
+                const subCategory = product?.subGroup || 'Outros';
+                const itemRevenue = (item.quantity || 1) * (item.unitPrice || item.price || 0);
+                revenue[subCategory] = (revenue[subCategory] || 0) + itemRevenue;
             });
         });
 
-        return Object.entries(volume)
-            .map(([id, value]) => ({
-                name: stockMap.get(id)?.name || 'Produto',
+        return Object.entries(revenue)
+            .map(([name, value]) => ({
+                name,
                 value
             }))
             .sort((a, b) => b.value - a.value)
             .slice(0, 8);
+    }, [filteredSales, stockMap]);
+
+    // KPI Stats (Replicated from Sales.tsx)
+    const stats = useMemo(() => {
+        let totalRevenue = 0;
+        let totalItems = 0;
+        let totalCost = 0;
+        let productSalesCount = 0;
+
+        filteredSales.forEach(s => {
+            let hasProduct = false;
+            if (s.items && Array.isArray(s.items)) {
+                s.items.forEach((item: any) => {
+                    const id = item.productId || 'unknown';
+                    const pInStock = stockMap.get(id);
+                    
+                    if (pInStock) {
+                        hasProduct = true;
+                        const qty = Number(item.quantity || 1);
+                        const price = Number(item.unitPrice || item.price || 0);
+                        const cost = Number(pInStock.costPrice || 0);
+
+                        totalRevenue += (qty * price);
+                        totalCost += (qty * cost);
+                        totalItems += qty;
+                    }
+                });
+            }
+            if (hasProduct) productSalesCount++;
+        });
+
+        const netRevenue = totalRevenue - totalCost;
+        const avgTicket = productSalesCount > 0 ? totalRevenue / productSalesCount : 0;
+        const profitMargin = totalRevenue > 0 ? (netRevenue / totalRevenue) * 100 : 0;
+        
+        return { totalRevenue, totalItems, avgTicket, netRevenue, profitMargin };
     }, [filteredSales, stockMap]);
 
     // 3. Daily Sales Volume (Timeline)
@@ -149,56 +186,67 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-            {/* Header Analytics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
-                            <TrendingUp size={24} />
+            {/* Header Analytics Cards - KPIs from Sales view */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl">
+                            <DollarSign size={20} />
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ritmo Diário</p>
-                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                                R$ { (dailyTrendData.reduce((acc, d) => acc + d.revenue, 0) / (dailyTrendData.length || 1)).toFixed(2) }
-                            </h4>
-                        </div>
+                        <TrendingUp size={16} className="text-emerald-500" />
                     </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Faturamento</p>
+                    <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.totalRevenue.toFixed(2)}</p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl">
-                            <Users size={24} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clientes Únicos</p>
-                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                                {new Set(filteredSales.map(s => s.customerId)).size}
-                            </h4>
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl">
+                            <TrendingUp size={20} />
                         </div>
                     </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Receita Líquida</p>
+                    <p className="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {stats.netRevenue.toFixed(2)}</p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
-                            <Package size={24} />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giro de Produtos</p>
-                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
-                                {filteredSales.reduce((acc, s) => acc + (s.items?.length || 0), 0)} itens
-                            </h4>
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-xl`}>
+                            <Percent size={20} />
                         </div>
                     </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Margem de Lucro</p>
+                    <p className={`text-lg md:text-xl font-black ${stats.profitMargin >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        {stats.profitMargin >= 0 ? '+' : ''}{stats.profitMargin.toFixed(1)}%
+                    </p>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl">
+                            <Package size={20} />
+                        </div>
+                    </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Itens Vendidos</p>
+                    <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">{stats.totalItems} un</p>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-xl">
+                            <BarChart3 size={20} />
+                        </div>
+                    </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Ticket Médio</p>
+                    <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.avgTicket.toFixed(2)}</p>
                 </div>
             </div>
 
             {/* Main Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 
                 {/* 1. Daily Performance Area Chart */}
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Performance Diária</h3>
@@ -229,11 +277,11 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 2. Top Products Bar Chart */}
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
-                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Produtos Mais Vendidos</h3>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1">Ranking por volume de unidades</p>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Faturamento por Subcategoria</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Ranking por faturamento total agrupado por subcategoria</p>
                         </div>
                         <Package size={20} className="text-slate-300" />
                     </div>
@@ -242,48 +290,48 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                             <BarChart data={bestSellersData} layout="vertical" margin={{ left: 20 }}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
                                 <XAxis type="number" hide />
-                                <YAxis dataKey="name" type="category" fontSize={9} fontWeight="900" width={100} tickLine={false} axisLine={false} />
-                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                <YAxis dataKey="name" type="category" fontSize={window.innerWidth < 768 ? 7 : 9} fontWeight="900" width={window.innerWidth < 768 ? 60 : 100} tickLine={false} axisLine={false} />
+                                <Tooltip 
+                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                    formatter={(v: number) => `R$ ${v.toFixed(2)}`}
+                                />
                                 <Bar dataKey="value" fill="#6366f1" radius={[0, 10, 10, 0]} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* 3. Top Spending Customers */}
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                {/* 3. Top Spending Customers (Converted from Pie to Bar) */}
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Maiores Compradores</h3>
-                            <p className="text-[10px] font-bold text-slate-400 mt-1">Quem mais investe na loja</p>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Ranking por valor total investido na loja</p>
                         </div>
                         <Users size={20} className="text-slate-300" />
                     </div>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={topCustomersData}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                >
+                            <BarChart data={topCustomersData} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" fontSize={window.innerWidth < 768 ? 7 : 9} fontStyle="italic" fontWeight="900" width={window.innerWidth < 768 ? 70 : 120} tickLine={false} axisLine={false} />
+                                <Tooltip 
+                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                                    formatter={(v: number) => `R$ ${v.toFixed(2)}`}
+                                />
+                                <Bar dataKey="value" fill="#10b981" radius={[0, 10, 10, 0]} barSize={24}>
                                     {topCustomersData.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
-                                </Pie>
-                                <Tooltip formatter={(v: number) => `R$ ${v.toFixed(2)}`} />
-                                <Legend />
-                            </PieChart>
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
                 {/* 4. Sales by Day of Week */}
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Faturamento por Dia da Semana</h3>
@@ -309,7 +357,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* 5. Linear Projection Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Projeção de Vendas</h3>
@@ -342,7 +390,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 6. Smart Buy Suggestions */}
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">O que comprar?</h3>
                         <AlertCircle size={18} className="text-amber-500" />
