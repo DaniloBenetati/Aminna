@@ -74,7 +74,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: ViewState.FECHAMENTOS, label: 'Fechamentos', icon: DollarSign },
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
     { id: ViewState.RECURSOS_HUMANOS, label: 'Recursos Humanos', icon: Users },
-    { id: ViewState.TRAFEGO_PAGO, label: 'Tráfego Pago', icon: Megaphone },
+    { id: ViewState.TRAFEGO_PAGO, label: 'Marketing', icon: Megaphone },
   ].filter(item => {
     if (!userProfile) return true;
     if (userProfile.role === 'admin') return true;

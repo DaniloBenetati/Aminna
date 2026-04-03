@@ -7,6 +7,8 @@ import {
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers
 } from 'lucide-react';
 
+import { InstagramOrganic } from './InstagramOrganic';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface MetaCampaign {
@@ -183,12 +185,15 @@ const SectionTitle = ({ children, sub }: { children: React.ReactNode; sub?: stri
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 const TOKEN_STORAGE_KEY = 'meta_ads_token';
+const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
-export const MetaAds: React.FC = () => {
+export const Marketing: React.FC = () => {
+  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic'>('paid');
+
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [adSets, setAdSets] = useState<AdSet[]>([]);
   const [ads, setAds] = useState<AdInsight[]>([]);
-  const [adAccountId, setAdAccountId] = useState<string>('');
+  const [adAccountId, setAdAccountId] = useState<string>(() => localStorage.getItem(ACCOUNT_STORAGE_KEY) || '');
   const [adAccounts, setAdAccounts] = useState<{ id: string; name: string; account_id: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -216,6 +221,7 @@ export const MetaAds: React.FC = () => {
 
   const clearToken = () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(ACCOUNT_STORAGE_KEY);
     setToken('');
     setAdAccounts([]);
     setAdAccountId('');
@@ -231,13 +237,20 @@ export const MetaAds: React.FC = () => {
     if (token) fetchAdAccounts();
   }, [token]);
 
+
   const fetchAdAccounts = async () => {
     if (!token) return;
     try {
       const data = await fetchFromMeta(token, 'me/adaccounts', { fields: 'id,name,account_id,account_status' });
       if (data.data && data.data.length > 0) {
         setAdAccounts(data.data);
-        setAdAccountId(data.data[0].id);
+        if (!adAccountId || !data.data.find((a: any) => a.id === adAccountId)) {
+          const firstId = data.data[0].id;
+          setAdAccountId(firstId);
+          localStorage.setItem(ACCOUNT_STORAGE_KEY, firstId);
+        }
+      } else {
+        setError('Nenhuma conta de anúncio encontrada vinculada a este token.');
       }
     } catch (e: any) {
       setError(`Erro ao buscar contas de anúncio: ${e.message}`);
@@ -315,6 +328,14 @@ export const MetaAds: React.FC = () => {
       setLoading(false);
     }
   }, [adAccountId, token]);
+
+  // Auto-fetch data if account is already selected (persistence)
+  useEffect(() => {
+    if (token && adAccountId && !hasFetched && !loading) {
+      fetchAll();
+    }
+  }, [token, adAccountId, fetchAll, hasFetched, loading]);
+
 
   // ── Derived Totals ──
   const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE');
@@ -783,8 +804,29 @@ export const MetaAds: React.FC = () => {
   // ── Main render ──
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-zinc-950 min-h-0">
-      {/* Header */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-6 py-4 flex-shrink-0">
+      {/* Sub-Tabs Header */}
+      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-6 py-2 flex gap-4 overflow-x-auto shadow-sm">
+        <button
+          onClick={() => setActiveMarketingTab('paid')}
+          className={`px-4 py-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Tráfego Pago
+        </button>
+        <button
+          onClick={() => setActiveMarketingTab('organic')}
+          className={`px-4 py-2 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'organic' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Orgânico (Instagram)
+        </button>
+      </div>
+
+      {activeMarketingTab === 'organic' ? (
+        <InstagramOrganic token={token} />
+      ) : (
+        <>
+          {/* Header (Original MetaAds Header) */}
+          <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-6 py-4 flex-shrink-0">
+
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30">
@@ -800,7 +842,10 @@ export const MetaAds: React.FC = () => {
             {adAccounts.length > 0 && (
               <select
                 value={adAccountId}
-                onChange={e => setAdAccountId(e.target.value)}
+                onChange={e => {
+                  setAdAccountId(e.target.value);
+                  localStorage.setItem(ACCOUNT_STORAGE_KEY, e.target.value);
+                }}
                 className="text-xs font-bold px-3 py-2 border border-slate-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 {adAccounts.map(acc => (
@@ -940,6 +985,8 @@ export const MetaAds: React.FC = () => {
           </>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 };
