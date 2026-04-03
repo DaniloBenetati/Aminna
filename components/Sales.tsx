@@ -194,6 +194,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     // Computed Data
     const filteredSales = useMemo(() => {
         return sales.filter(s => {
+            const hasProduct = s.items?.some((item: any) => stock.find(p => p.id === (item.productId || 'unknown')));
+            if (!hasProduct) return false;
+
             const dateMatch = isDateInPeriod(s.date);
             const customerMatch = getCustomerName(s.customerId).toLowerCase().includes(searchTerm.toLowerCase());
             const productMatch = s.items?.some((item: any) => 
@@ -206,25 +209,44 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     }, [sales, timeView, dateRef, customRange, searchTerm, paymentFilter, stock]);
 
     const stats = useMemo(() => {
-        const totalRevenue = filteredSales.reduce((acc, s) => acc + (s.totalAmount || 0), 0);
+        let totalRevenue = 0;
         let totalItems = 0;
+        let totalCost = 0;
         const productCounts: Record<string, number> = {};
+        let productSalesCount = 0;
+
+        // Optimization: Pre-map stock for O(1) lookups during iteration
+        const stockMap = new Map(stock.map(p => [p.id, p]));
 
         filteredSales.forEach(s => {
+            let hasProduct = false;
             if (s.items && Array.isArray(s.items)) {
                 s.items.forEach((item: any) => {
-                    totalItems += (item.quantity || 0);
                     const id = item.productId || 'unknown';
-                    productCounts[id] = (productCounts[id] || 0) + (item.quantity || 0);
+                    const pInStock = stockMap.get(id);
+                    
+                    if (pInStock) {
+                        hasProduct = true;
+                        const qty = Number(item.quantity || 1);
+                        const price = Number(item.unitPrice || item.price || 0);
+                        const cost = Number(pInStock.costPrice || 0);
+
+                        totalRevenue += (qty * price);
+                        totalCost += (qty * cost);
+                        totalItems += qty;
+                        productCounts[id] = (productCounts[id] || 0) + qty;
+                    }
                 });
             }
+            if (hasProduct) productSalesCount++;
         });
 
-        const avgTicket = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
+        const netRevenue = totalRevenue - totalCost;
+        const avgTicket = productSalesCount > 0 ? totalRevenue / productSalesCount : 0;
         const topProductId = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-        const topProduct = stock.find(p => p.id === topProductId)?.name || '-';
+        const topProduct = stockMap.get(topProductId || '')?.name || '-';
 
-        return { totalRevenue, totalItems, avgTicket, topProduct };
+        return { totalRevenue, totalItems, avgTicket, topProduct, netRevenue };
     }, [filteredSales, stock]);
 
     const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda' && (item.quantity ?? 0) > 0), [stock]);
@@ -1081,14 +1103,21 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {activeMainTab === 'ACTIVITY' ? (
                 <>
                     {/* KPI Section */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-6">
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl"><DollarSign size={20} /></div>
                         <TrendingUp size={16} className="text-emerald-500" />
                     </div>
-                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Receita Total</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Faturamento</p>
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.totalRevenue.toFixed(2)}</p>
+                </div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><TrendingUp size={20} /></div>
+                    </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Receita Líquida</p>
+                    <p className="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {stats.netRevenue.toFixed(2)}</p>
                 </div>
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
@@ -1099,12 +1128,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><BarChart3 size={20} /></div>
+                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-xl"><BarChart3 size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Ticket Médio</p>
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.avgTicket.toFixed(2)}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm whitespace-nowrap overflow-hidden">
                     <div className="flex justify-between items-start mb-2">
                         <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><ArrowUpRight size={20} /></div>
                     </div>
