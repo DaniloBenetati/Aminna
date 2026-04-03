@@ -8,6 +8,7 @@ import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
 import { formatDateBR, parseDateSafe, toLocalDateStr } from '../services/financialService';
 import { sanitizeImageUrl, normalizeSearch } from '../services/utils';
+import { SalesAnalyses } from './SalesAnalyses';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
@@ -61,7 +62,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
     const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
-    const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG'>('CATALOG');
+    const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG' | 'ANALYSES'>('ACTIVITY');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
@@ -1079,23 +1080,27 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
                         {/* Desktop Version */}
                         <div className="hidden lg:flex">
-                            {(['ACTIVITY', 'CATALOG'] as const).map(tab => (
+                            {(['ACTIVITY', 'CATALOG', 'ANALYSES'] as const).map(tab => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveMainTab(tab)}
                                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
-                                    {tab === 'ACTIVITY' ? 'Atividade' : 'Catálogo'}
+                                    {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : 'Análises'}
                                 </button>
                             ))}
                         </div>
                         {/* Mobile/iPad Collapsed Version */}
                         <div className="lg:hidden flex w-full">
                             <button
-                                onClick={() => setActiveMainTab(activeMainTab === 'ACTIVITY' ? 'CATALOG' : 'ACTIVITY')}
+                                onClick={() => {
+                                    const tabs: ('ACTIVITY' | 'CATALOG' | 'ANALYSES')[] = ['ACTIVITY', 'CATALOG', 'ANALYSES'];
+                                    const nextIdx = (tabs.indexOf(activeMainTab) + 1) % tabs.length;
+                                    setActiveMainTab(tabs[nextIdx]);
+                                }}
                                 className="w-full px-4 py-2 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center justify-between"
                             >
-                                <span>{activeMainTab === 'ACTIVITY' ? 'Atividade' : 'Catálogo'}</span>
+                                <span>{activeMainTab === 'ACTIVITY' ? 'Atividade' : activeMainTab === 'CATALOG' ? 'Catálogo' : 'Análises'}</span>
                                 <ChevronDown size={14} className="opacity-50" />
                             </button>
                         </div>
@@ -1217,8 +1222,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
             </div>
 
-            {/* Desktop Table */}
-            <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+
+                {/* Desktop Table */}
+                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-[10px] text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
@@ -1325,15 +1331,17 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
                     </div>
                 ))}
-                {filteredSales.length === 0 && (
+            </div>
+            {filteredSales.length === 0 && (
                     <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-100 dark:border-zinc-800">
                         <ShoppingCart size={48} className="mx-auto text-slate-100 dark:text-zinc-800 mb-2" />
                         <p className="text-sm font-black text-slate-300 dark:text-zinc-600 uppercase">Nenhuma venda encontrada</p>
                     </div>
                 )}
-            </div>
+            
                 </>
-            ) : (
+            ) : activeMainTab === 'CATALOG' ? (
+
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -1493,6 +1501,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         )}
                     </div>
                 </div>
+            ) : (
+                <SalesAnalyses sales={filteredSales} stock={stock} customers={customers} />
             )}
 
             {/* New Sale Modal (Updated for Cart) */}

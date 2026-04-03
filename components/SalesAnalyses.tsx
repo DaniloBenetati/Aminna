@@ -1,0 +1,372 @@
+import React, { useMemo } from 'react';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+    PieChart, Pie, Cell, AreaChart, Area, LineChart, Line
+} from 'recharts';
+import { Sale, StockItem, Customer } from '../types';
+import { TrendingUp, Users, Package, Calendar, ArrowUpRight, ShoppingCart, AlertCircle, BarChart3 } from 'lucide-react';
+
+interface SalesAnalysesProps {
+    sales?: Sale[];
+    stock?: StockItem[];
+    customers?: Customer[];
+}
+
+const COLORS = ['#10b981', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#f43f5e', '#f97316', '#eab308'];
+
+export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, stock: propStock, customers: propCustomers }) => {
+    const filteredSales = propSales || [];
+    const stock = propStock || [];
+    const customers = propCustomers || [];
+
+    const stockMap = useMemo(() => new Map(stock.map(p => [p.id, p])), [stock]);
+    const customerMap = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers]);
+
+    // 1. Top Customers by Spending
+    const topCustomersData = useMemo(() => {
+        const spending: Record<string, number> = {};
+        filteredSales.forEach(s => {
+            spending[s.customerId] = (spending[s.customerId] || 0) + (s.totalAmount || 0);
+        });
+
+        return Object.entries(spending)
+            .map(([id, value]) => ({
+                name: customerMap.get(id)?.name || 'Cliente Avulso',
+                value
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+    }, [filteredSales, customerMap]);
+
+    // 2. Best Selling Products (Volume)
+    const bestSellersData = useMemo(() => {
+        const volume: Record<string, number> = {};
+        filteredSales.forEach(s => {
+            s.items?.forEach((item: any) => {
+                const id = item.productId;
+                if (stockMap.has(id)) {
+                    volume[id] = (volume[id] || 0) + (item.quantity || 1);
+                }
+            });
+        });
+
+        return Object.entries(volume)
+            .map(([id, value]) => ({
+                name: stockMap.get(id)?.name || 'Produto',
+                value
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8);
+    }, [filteredSales, stockMap]);
+
+    // 3. Daily Sales Volume (Timeline)
+    const dailyTrendData = useMemo(() => {
+        const trend: Record<string, { date: string, revenue: number, units: number }> = {};
+        filteredSales.forEach(s => {
+            const dateStr = s.date?.split('T')[0];
+            const date = dateStr && !isNaN(new Date(dateStr).getTime()) ? dateStr : 'Outros';
+            if (!trend[date]) {
+                trend[date] = { date, revenue: 0, units: 0 };
+            }
+            trend[date].revenue += (s.totalAmount || 0);
+            s.items?.forEach((i: any) => {
+                if (stockMap.has(i.productId)) {
+                    trend[date].units += (i.quantity || 1);
+                }
+            });
+        });
+
+        return Object.values(trend).sort((a, b) => a.date.localeCompare(b.date));
+    }, [filteredSales, stockMap]);
+
+    // 4. Day of Week Performance
+    const dowData = useMemo(() => {
+        const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const performance = days.map(d => ({ name: d, value: 0 }));
+        
+        filteredSales.forEach(s => {
+            if (s.date) {
+                const dateObj = new Date(s.date.includes('T') ? s.date : s.date + 'T12:00:00');
+                const d = dateObj.getDay();
+                if (!isNaN(d) && performance[d]) {
+                    performance[d].value += (s.totalAmount || 0);
+                }
+            }
+        });
+        return performance;
+    }, [filteredSales]);
+
+    // 5. Replenishment Suggestions (Smart Purchasing)
+    const buySuggestions = useMemo(() => {
+        return stock
+            .filter(p => p.category === 'Venda' && (p.quantity || 0) <= (p.minQuantity || 0))
+            .map(p => ({
+                ...p,
+                status: p.quantity === 0 ? 'Urgent' : 'Low'
+            }))
+            .sort((a, b) => (a.quantity === 0 ? -1 : 1))
+            .slice(0, 5);
+    }, [stock]);
+
+    // 6. Projection (Linear Trend)
+    const projectionData = useMemo(() => {
+        if (dailyTrendData.length < 2) return [];
+        
+        const last7Days = dailyTrendData.slice(-7);
+        const avgDaily = last7Days.length > 0 ? last7Days.reduce((acc, curr) => acc + curr.revenue, 0) / last7Days.length : 0;
+        
+        const base = dailyTrendData.map(d => ({ ...d, type: 'Real' }));
+        const lastPoint = dailyTrendData[dailyTrendData.length - 1];
+        if (!lastPoint || !lastPoint.date) return base;
+
+        const lastDate = new Date(lastPoint.date + 'T12:00:00');
+        
+        // Project 5 days
+        for (let i = 1; i <= 5; i++) {
+            const nextDate = new Date(lastDate);
+            nextDate.setDate(lastDate.getDate() + i);
+            
+            if (!isNaN(nextDate.getTime())) {
+                base.push({
+                    date: nextDate.toISOString().split('T')[0],
+                    revenue: avgDaily,
+                    units: 0,
+                    type: 'Projeção'
+                } as any);
+            }
+        }
+        return base;
+    }, [dailyTrendData]);
+
+    if (filteredSales.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-500">
+                <BarChart3 size={64} className="text-slate-200" />
+                <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Sem dados para análise no período</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+            {/* Header Analytics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+                            <TrendingUp size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ritmo Diário</p>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                                R$ { (dailyTrendData.reduce((acc, d) => acc + d.revenue, 0) / (dailyTrendData.length || 1)).toFixed(2) }
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-2xl">
+                            <Users size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clientes Únicos</p>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                                {new Set(filteredSales.map(s => s.customerId)).size}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+                            <Package size={24} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Giro de Produtos</p>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                                {filteredSales.reduce((acc, s) => acc + (s.items?.length || 0), 0)} itens
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Main Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* 1. Daily Performance Area Chart */}
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Performance Diária</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Evolução de produtos vendidos por dia</p>
+                        </div>
+                        <ShoppingCart size={20} className="text-slate-300" />
+                    </div>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={dailyTrendData}>
+                                <defs>
+                                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                <XAxis dataKey="date" hide />
+                                <YAxis axisLine={false} tickLine={false} fontSize={10} />
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                    formatter={(v: number) => `R$ ${v.toFixed(2)}`}
+                                />
+                                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 2. Top Products Bar Chart */}
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Produtos Mais Vendidos</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Ranking por volume de unidades</p>
+                        </div>
+                        <Package size={20} className="text-slate-300" />
+                    </div>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={bestSellersData} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" horizontal={false} opacity={0.1} />
+                                <XAxis type="number" hide />
+                                <YAxis dataKey="name" type="category" fontSize={9} fontWeight="900" width={100} tickLine={false} axisLine={false} />
+                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
+                                <Bar dataKey="value" fill="#6366f1" radius={[0, 10, 10, 0]} barSize={20} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 3. Top Spending Customers */}
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Maiores Compradores</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Quem mais investe na loja</p>
+                        </div>
+                        <Users size={20} className="text-slate-300" />
+                    </div>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={topCustomersData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {topCustomersData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip formatter={(v: number) => `R$ ${v.toFixed(2)}`} />
+                                <Legend />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 4. Sales by Day of Week */}
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Faturamento por Dia da Semana</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Identifique seus dias mais fortes</p>
+                        </div>
+                        <Calendar size={20} className="text-slate-300" />
+                    </div>
+                    <div className="h-[300px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dowData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                <XAxis dataKey="name" fontSize={11} fontWeight="900" tickLine={false} axisLine={false} />
+                                <YAxis hide />
+                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} formatter={(v: number) => `R$ ${v.toFixed(2)}`} />
+                                <Bar dataKey="value" fill="#f43f5e" radius={[10, 10, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Row: Projection & Buy Suggestions */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* 5. Linear Projection Chart */}
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-8">
+                        <div>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Projeção de Vendas</h3>
+                            <p className="text-[10px] font-bold text-slate-400 mt-1">Previsão baseada na média dos últimos 7 dias</p>
+                        </div>
+                        <ArrowUpRight size={20} className="text-slate-300" />
+                    </div>
+                    <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={projectionData}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
+                                <XAxis dataKey="date" hide />
+                                <YAxis hide />
+                                <Tooltip formatter={(v: number) => `R$ ${v.toFixed(2)}`} />
+                                <Line 
+                                    type="monotone" 
+                                    dataKey="revenue" 
+                                    stroke="#ec4899" 
+                                    strokeWidth={3} 
+                                    dot={(props: any) => {
+                                        if (props.payload?.type === 'Projeção') {
+                                            return <circle cx={props.cx} cy={props.cy} r={4} fill="#ec4899" />;
+                                        }
+                                        return <circle cx={props.cx} cy={props.cy} r={2} fill="#ec4899" />;
+                                    }}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* 6. Smart Buy Suggestions */}
+                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">O que comprar?</h3>
+                        <AlertCircle size={18} className="text-amber-500" />
+                    </div>
+                    <div className="space-y-4">
+                        {buySuggestions.length > 0 ? buySuggestions.map((p, idx) => (
+                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                <div className="min-w-0">
+                                    <p className="text-[11px] font-black text-slate-900 dark:text-white truncate uppercase">{p.name}</p>
+                                    <p className="text-[9px] font-bold text-slate-400 mt-0.5">Estoque: {p.quantity} {p.unit}</p>
+                                </div>
+                                <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${p.status === 'Urgent' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'}`}>
+                                    {p.status === 'Urgent' ? 'Esgotado' : 'Repor'}
+                                </span>
+                            </div>
+                        )) : (
+                            <div className="text-center py-10">
+                                <Package className="mx-auto text-slate-100 mb-2" size={32} />
+                                <p className="text-[10px] font-black text-slate-300 uppercase">Estoque em dia!</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
