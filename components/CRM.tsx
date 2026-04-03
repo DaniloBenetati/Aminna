@@ -387,6 +387,73 @@ export const CRM: React.FC<CRMProps> = ({
                 </div>
             )}
 
+            {/* === FUNNEL VIEW === */}
+            {view === 'FUNNEL' && (
+                <div className="flex-1 p-10 flex flex-col items-center justify-center text-center overflow-y-auto">
+                    <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-900/20 rounded-3xl flex items-center justify-center mb-6">
+                        <Layers size={40} className="text-indigo-600" />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Funil de Vendas Inteligente</h2>
+                    <p className="text-slate-500 dark:text-zinc-500 max-w-sm mb-12">Gerencie leads e oportunidades de forma visual. Sincronização em andamento.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl">
+                        {[1, 2, 3].map(i => (
+                            <div key={i} className="aspect-[3/4] bg-white dark:bg-zinc-900 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-zinc-800 flex flex-col p-6 animate-pulse">
+                                <div className="h-4 w-24 bg-slate-100 dark:bg-zinc-800 rounded-full mb-6" />
+                                <div className="space-y-4">
+                                    {[1, 2].map(j => (
+                                        <div key={j} className="h-24 bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-4 flex flex-col gap-2">
+                                            <div className="h-2 w-16 bg-slate-200 dark:bg-zinc-700 rounded-full" />
+                                            <div className="h-2 w-24 bg-slate-100 dark:bg-zinc-800 rounded-full" />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* === REPORTS VIEW === */}
+            {view === 'REPORTS' && (
+                <div className="flex-1 p-10 flex flex-col items-center justify-center text-center overflow-y-auto">
+                    <div className="w-24 h-24 bg-emerald-50 dark:bg-emerald-900/20 rounded-3xl flex items-center justify-center mb-6 text-emerald-600">
+                        <BarChart size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Métricas de Atendimento</h2>
+                    <p className="text-slate-500 dark:text-zinc-500 max-w-sm">Acompanhe taxas de resposta, horários de pico e conversão de WhatsApp.</p>
+                    <div className="mt-12 grid grid-cols-2 gap-6 w-full max-w-2xl">
+                        {[1, 2, 3, 4].map(i => (
+                            <div key={i} className="h-40 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 p-8 flex flex-col justify-end gap-3 relative transform hover:scale-105 transition-all">
+                                <div className="absolute top-0 right-0 w-full h-1.5 bg-emerald-500 opacity-20" />
+                                <div className="h-2 w-16 bg-slate-200 dark:bg-zinc-700 rounded-full" />
+                                <div className="h-8 w-32 bg-slate-100 dark:bg-zinc-800 rounded-lg" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* === AUTOMATIONS VIEW === */}
+            {view === 'AUTOMATIONS' && (
+                <div className="flex-1 p-10 flex flex-col items-center justify-center text-center overflow-y-auto">
+                    <div className="w-24 h-24 bg-purple-50 dark:bg-purple-900/20 rounded-3xl flex items-center justify-center mb-6 text-purple-600">
+                        <Bot size={40} />
+                    </div>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4">Chatbot & IA Tools</h2>
+                    <p className="text-slate-500 dark:text-zinc-500 max-w-md">Configure respostas automáticas e assistente virtual inteligente.</p>
+                    <div className="mt-12 bg-white dark:bg-zinc-900 p-8 rounded-[3rem] border border-slate-200 dark:border-zinc-800 max-w-md w-full shadow-2xl shadow-indigo-100 dark:shadow-none">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status do Módulo</span>
+                        </div>
+                        <div className="p-4 bg-indigo-600 rounded-2xl text-white font-bold flex items-center justify-center gap-3">
+                            <Zap size={20} className="fill-white" />
+                            <span>Em Fase Experimental</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* === SETTINGS VIEW === */}
             {view === 'SETTINGS' && (
                 <div className="flex-1 p-6 md:p-10 flex flex-col overflow-y-auto scrollbar-hide">
