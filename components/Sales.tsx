@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
@@ -243,10 +243,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
         const netRevenue = totalRevenue - totalCost;
         const avgTicket = productSalesCount > 0 ? totalRevenue / productSalesCount : 0;
-        const topProductId = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+        const profitMargin = totalRevenue > 0 ? (netRevenue / totalRevenue) * 100 : 0;
+        
+        const topProductId = Object.entries(productCounts)
+            .sort((a, b) => b[1] - a[1])[0]?.[0];
+        
         const topProduct = stockMap.get(topProductId || '')?.name || '-';
 
-        return { totalRevenue, totalItems, avgTicket, topProduct, netRevenue };
+        return { totalRevenue, totalItems, avgTicket, topProduct, netRevenue, profitMargin };
     }, [filteredSales, stock]);
 
     const saleProducts = useMemo(() => stock.filter(item => item.category === 'Venda' && (item.quantity ?? 0) > 0), [stock]);
@@ -1103,7 +1107,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {activeMainTab === 'ACTIVITY' ? (
                 <>
                     {/* KPI Section */}
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6">
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl"><DollarSign size={20} /></div>
@@ -1114,10 +1118,21 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 </div>
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><TrendingUp size={20} /></div>
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl"><TrendingUp size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Receita Líquida</p>
                     <p className="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {stats.netRevenue.toFixed(2)}</p>
+                </div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="flex justify-between items-start mb-2">
+                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-xl`}>
+                            <Percent size={20} />
+                        </div>
+                    </div>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Margem de Lucro</p>
+                    <p className={`text-lg md:text-xl font-black ${stats.profitMargin >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+                        {stats.profitMargin >= 0 ? '+' : ''}{stats.profitMargin.toFixed(1)}%
+                    </p>
                 </div>
                 <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
