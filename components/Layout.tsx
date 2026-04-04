@@ -254,7 +254,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </aside>
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-30 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
+      <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-40 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
         <div className="flex justify-start">
           <button
             onClick={toggleTheme}
@@ -279,7 +279,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
+      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0 pt-20 md:pt-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
