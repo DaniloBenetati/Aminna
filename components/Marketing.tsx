@@ -4,10 +4,14 @@ import {
   TrendingUp, TrendingDown, AlertTriangle, Zap, Target, DollarSign,
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CheckCircle, XCircle, Pause, Play, ArrowUpRight, ArrowDownRight,
-  Megaphone, Users, Activity, Info, Filter, Calendar, Layers
+  Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer 
+} from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,7 +32,9 @@ interface MetaCampaign {
   frequency: number;
   reach: number;
   date_start: string;
-  date_stop: string;
+  lpv?: number;
+  atc?: number;
+  ic?: number;
 }
 
 interface AdSet {
@@ -92,13 +98,20 @@ const fmt = {
 };
 
 function parseInsight(insight: any) {
-  const conv = (insight?.actions || []).find((a: any) => ['purchase', 'lead', 'complete_registration', 'omni_purchase'].includes(a.action_type))?.value || 0;
+  const actions = insight?.actions || [];
+  const getActionValue = (type: string) => parseFloat(String(actions.find((a: any) => a.action_type === type)?.value || 0));
+
+  const conversions = getActionValue('purchase') + getActionValue('lead') + getActionValue('complete_registration') + getActionValue('omni_purchase');
+  const landingPageViews = getActionValue('landing_page_view');
+  const addToCart = getActionValue('add_to_cart');
+  const initiateCheckout = getActionValue('initiate_checkout');
+
   const convValue = (insight?.action_values || []).find((a: any) => ['purchase', 'omni_purchase'].includes(a.action_type))?.value || 0;
   const spend = parseFloat(insight?.spend || '0');
   const impressions = parseInt(insight?.impressions || '0', 10);
   const clicks = parseInt(insight?.clicks || '0', 10);
-  const convParsed = parseFloat(String(conv));
   const roas = spend > 0 && convValue > 0 ? parseFloat(String(convValue)) / spend : 0;
+
   return {
     spend,
     impressions,
@@ -106,13 +119,16 @@ function parseInsight(insight: any) {
     ctr: parseFloat(insight?.ctr || '0'),
     cpc: parseFloat(insight?.cpc || '0'),
     cpm: parseFloat(insight?.cpm || '0'),
-    conversions: convParsed,
-    cpa: convParsed > 0 ? spend / convParsed : 0,
+    conversions,
+    cpa: conversions > 0 ? spend / conversions : 0,
     roas,
     frequency: parseFloat(insight?.frequency || '0'),
     reach: parseInt(insight?.reach || '0', 10),
     date_start: insight?.date_start || '',
     date_stop: insight?.date_stop || '',
+    lpv: landingPageViews,
+    atc: addToCart,
+    ic: initiateCheckout,
   };
 }
 
@@ -197,9 +213,15 @@ export const Marketing: React.FC = () => {
   const [adAccounts, setAdAccounts] = useState<{ id: string; name: string; account_id: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'adsets' | 'ads' | 'funil' | 'recommendations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'campaigns' | 'adsets' | 'ads' | 'funil' | 'recommendations' | 'report'>('overview');
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+
+  // Stats for reporting
+  const [dailyTimeSeries, setDailyTimeSeries] = useState<any[]>([]);
+  const [prevStats, setPrevStats] = useState<any | null>(null);
+  const [dateRange, setDateRange] = useState<{ start: string; stop: string }>({ start: '', stop: '' });
+  const [datePreset, setDatePreset] = useState<string>('last_30d');
 
   // Token management
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_STORAGE_KEY) || '');
@@ -268,6 +290,7 @@ export const Marketing: React.FC = () => {
       const campData = await fetchFromMeta(token, `${adAccountId}/campaigns`, {
         fields: CAMPAIGN_FIELDS,
         limit: '100',
+        date_preset: datePreset,
       });
 
       const parsedCampaigns: MetaCampaign[] = (campData.data || []).map((c: any) => {
@@ -322,6 +345,49 @@ export const Marketing: React.FC = () => {
         };
       });
       setAds(parsedAds);
+
+      // ── New: Fetch Daily Stats for Chart ──
+      try {
+        const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, {
+          date_preset: datePreset,
+          time_increment: '1',
+          fields: 'spend,impressions,clicks,conversions,date_start,date_stop',
+        });
+        const timeseries = (dailyData.data || []).map((d: any) => ({
+          day: d.date_start.split('-').slice(1).reverse().join('/'),
+          spend: parseFloat(d.spend || '0'),
+          impressions: parseInt(d.impressions || '0', 10),
+          clicks: parseInt(d.clicks || '0', 10),
+          conversions: (d.actions || []).find((a: any) => ['purchase', 'lead', 'complete_registration'].includes(a.action_type))?.value || 0
+        }));
+        setDailyTimeSeries(timeseries);
+        
+        if (timeseries.length > 0) {
+           setDateRange({ 
+             start: dailyData.data[0].date_start, 
+             stop: dailyData.data[dailyData.data.length - 1].date_stop 
+           });
+        }
+      } catch (e) { console.error("Error fetching daily stats", e); }
+
+      // ── New: Fetch Previous Period for Deltas ──
+      try {
+        // Calculate previous 30 days - approximate for now using date_preset offset if possible
+        // Actually simpler to just use 'last_30d' and offset from the API response's dates
+        const prevData = await fetchFromMeta(token, `${adAccountId}/insights`, {
+          time_range: JSON.stringify({
+            since: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            until: new Date(Date.now() - 31 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          }),
+          fields: 'spend,impressions,clicks,conversions,actions,action_values',
+        });
+        
+        if (prevData.data?.[0]) {
+           const p = parseInsight(prevData.data[0]);
+           setPrevStats(p);
+        }
+      } catch (e) { console.error("Error fetching previous stats", e); }
+
     } catch (e: any) {
       setError(`Erro ao buscar dados da Meta API: ${e.message}`);
     } finally {
@@ -343,6 +409,9 @@ export const Marketing: React.FC = () => {
   const totalImpressions = campaigns.reduce((s, c) => s + c.impressions, 0);
   const totalClicks = campaigns.reduce((s, c) => s + c.clicks, 0);
   const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
+  const totalLPV = campaigns.reduce((s, c) => s + (c.lpv || 0), 0);
+  const totalATC = campaigns.reduce((s, c) => s + (c.atc || 0), 0);
+  const totalIC = campaigns.reduce((s, c) => s + (c.ic || 0), 0);
   const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
   const avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
@@ -427,7 +496,6 @@ export const Marketing: React.FC = () => {
         </div>
       </div>
 
-      {/* Top performers & problems side by side */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Top Performers */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-6 shadow-sm">
@@ -470,7 +538,7 @@ export const Marketing: React.FC = () => {
                     <p className="text-[10px] text-rose-600 dark:text-rose-400">
                       {p.type === 'frequency' && `Frequência alta: ${fmt.number(p.campaign.frequency, 1)}x (fadiga de criativo)`}
                       {p.type === 'ctr' && `CTR baixo: ${fmt.percent(p.campaign.ctr)} (problema de criativo)`}
-                      {p.type === 'cpa' && `CPA muito alto: ${fmt.currency(p.campaign.cpa)} (${fmt.number(p.campaign.cpa / avgCPA, 1)}x a média)`}
+                      {p.type === 'cpa' && `CPA muito alto: ${fmt.currency(p.campaign.cpa)} (${fmt.number(p.campaign.cpa / (avgCPA || 1), 1)}x a média)`}
                       {p.type === 'conversions' && `Sem conversões | ${fmt.currency(p.campaign.spend)} desperdiçado`}
                     </p>
                   </div>
@@ -479,6 +547,90 @@ export const Marketing: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden">
+           <div className="flex justify-between items-center mb-10">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Desempenho de Investimento</h3>
+                <p className="text-[10px] text-slate-500 font-bold mt-1 uppercase">Investimento diário no período</p>
+              </div>
+              <div className="flex items-center gap-2">
+                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Investido</span>
+              </div>
+           </div>
+           
+           <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyTimeSeries}>
+                    <defs>
+                      <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold'}} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      formatter={(v: number) => [fmt.currency(v), 'Investido']}
+                    />
+                    <Area type="monotone" dataKey="spend" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorSpend)" />
+                  </AreaChart>
+              </ResponsiveContainer>
+           </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-slate-900 to-indigo-950 p-8 rounded-3xl text-white shadow-xl flex flex-col justify-between">
+           <div>
+              <Zap className="text-amber-400 mb-4" size={24} />
+              <h3 className="text-lg font-black tracking-tight mb-2">Resumo de Investimento</h3>
+              <p className="text-xs text-indigo-200 mb-6 font-medium">Controle de orçamento e performance.</p>
+              
+              <div className="space-y-6">
+                 <div>
+                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Média Diária Planejada</p>
+                    <p className="text-2xl font-black">{fmt.currency(totalSpend / 30)}</p>
+                 </div>
+                 <div className="pt-4 border-t border-white/10">
+                    <p className="text-[10px] font-black text-indigo-300 uppercase tracking-widest mb-1">Status de Entrega</p>
+                    <div className="flex items-center gap-2">
+                       <CheckCircle size={14} className="text-emerald-400" />
+                       <span className="text-xs font-bold text-emerald-400 tracking-tight">Dentro da estratégia sugerida</span>
+                    </div>
+                 </div>
+              </div>
+           </div>
+           
+           <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10">
+              <p className="text-[10px] text-slate-400 font-medium italic text-center">Análise Estratégica Aminna</p>
+           </div>
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+         <div className="flex items-center gap-3 mb-8">
+            <Info className="text-blue-500" size={20} />
+            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">Guia de Métricas Principais</h3>
+         </div>
+         
+         <div className="grid md:grid-cols-3 gap-8">
+            <div className="space-y-1">
+               <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider">CTR (Taxa de Cliques)</p>
+               <p className="text-[11px] text-slate-500 font-medium">Mede quão atraente é o anúncio. Um CTR alto indica criativos eficientes.</p>
+            </div>
+            <div className="space-y-1">
+               <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider">CPA (Custo por Aquisição)</p>
+               <p className="text-[11px] text-slate-500 font-medium">Quanto cada conversão custou. O objetivo é manter abaixo da margem de lucro.</p>
+            </div>
+            <div className="space-y-1">
+               <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider">ROAS (Retorno sobre Gasto)</p>
+               <p className="text-[11px] text-slate-500 font-medium">Faturamento gerado para cada real investido. O ideal para Aminna é acima de 2x.</p>
+            </div>
+         </div>
       </div>
     </div>
   );
@@ -821,7 +973,7 @@ export const Marketing: React.FC = () => {
       </div>
 
       {activeMarketingTab === 'organic' ? (
-        <InstagramOrganic token={token} />
+        <InstagramOrganic token={token} datePreset={datePreset} />
       ) : (
         <>
           {/* Header (Original MetaAds Header) */}
@@ -834,7 +986,9 @@ export const Marketing: React.FC = () => {
             </div>
             <div>
               <h1 className="text-base font-black text-slate-900 dark:text-white tracking-tight">Tráfego Pago — Meta Ads</h1>
-              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">Análise estratégica de performance · Últimos 30 dias</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                Análise estratégica · {datePreset === 'last_7d' ? 'Últimos 7 dias' : datePreset === 'last_30d' ? 'Últimos 30 dias' : 'Últimos 90 dias'}
+              </p>
             </div>
           </div>
 
@@ -853,6 +1007,19 @@ export const Marketing: React.FC = () => {
                 ))}
               </select>
             )}
+
+            <select
+              value={datePreset}
+              onChange={e => setDatePreset(e.target.value)}
+              className="text-xs font-bold px-3 py-2 border border-slate-200 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            >
+              <option value="last_7d">Últimos 7 dias</option>
+              <option value="last_30d">Últimos 30 dias</option>
+              <option value="last_90d">Últimos 90 dias</option>
+              <option value="this_month">Este mês</option>
+              <option value="last_month">Mês anterior</option>
+            </select>
+
             <button
               onClick={fetchAll}
               disabled={loading || !adAccountId || !token}
