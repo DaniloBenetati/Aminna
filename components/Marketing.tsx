@@ -34,9 +34,10 @@ interface MetaCampaign {
   frequency: number;
   reach: number;
   date_start: string;
-  lpv?: number;
-  atc?: number;
-  ic?: number;
+  daily_budget?: number;
+  lifetime_budget?: number;
+  results?: { count: number; name: string };
+  cost_per_result?: number;
 }
 
 interface AdSet {
@@ -76,7 +77,7 @@ interface AdInsight {
 const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
 
 const CAMPAIGN_FIELDS = [
-  'id', 'name', 'status', 'objective',
+  'id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget',
   'insights.date_preset(last_30d){spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,purchase_roas,frequency,reach,actions,action_values,date_start,date_stop}'
 ].join(',');
 
@@ -250,13 +251,22 @@ export const Marketing: React.FC = () => {
   const [ads, setAds] = useState<AdInsight[]>([]);
   const [adAccountId, setAdAccountId] = useState<string>(() => localStorage.getItem(ACCOUNT_STORAGE_KEY) || '');
   const [adAccounts, setAdAccounts] = useState<{ id: string; name: string; account_id: string }[]>([]);
+  const [selectedIgAccountId, setSelectedIgAccountId] = useState<string>(() => localStorage.getItem('selected_ig_account_id') || '');
+  const [igAccounts, setIgAccounts] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
 
-  const [dailyTimeSeries, setDailyTimeSeries] = useState<any[]>([]);
+  const [datePreset, setDatePreset] = useState('last_30d');
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return d.toISOString().split('T')[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateRange, setDateRange] = useState<{ start: string; stop: string }>({ start: '', stop: '' });
-  const [datePreset, setDatePreset] = useState<string>('last_30d');
+
+  const [dailyTimeSeries, setDailyTimeSeries] = useState<any[]>([]);
 
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_STORAGE_KEY) || '');
   const [tokenInput, setTokenInput] = useState<string>('');
@@ -290,13 +300,13 @@ export const Marketing: React.FC = () => {
   };
 
   useEffect(() => {
-    if (token) fetchAdAccounts();
+    if (token) fetchAdAccounts(token);
   }, [token]);
 
-  const fetchAdAccounts = async () => {
-    if (!token) return;
+  const fetchAdAccounts = async (accessToken: string) => {
     try {
-      const data = await fetchFromMeta(token, 'me/adaccounts', { fields: 'id,name,account_id,account_status' });
+      const resp = await fetch(`${META_GRAPH_URL}/me/adaccounts?access_token=${accessToken}&fields=name,id,account_id`);
+      const data = await resp.json();
       if (data.data && data.data.length > 0) {
         setAdAccounts(data.data);
         if (!adAccountId || !data.data.find((a: any) => a.id === adAccountId)) {
@@ -304,11 +314,46 @@ export const Marketing: React.FC = () => {
           setAdAccountId(firstId);
           localStorage.setItem(ACCOUNT_STORAGE_KEY, firstId);
         }
-      } else {
-        setError('Nenhuma conta de anúncio encontrada vinculada a este token.');
+      }
+
+      // 1. Fetch IG Accounts from Pages
+      const igResp = await fetch(`${META_GRAPH_URL}/me/accounts?access_token=${accessToken}&fields=instagram_business_account{id,name,username},name&limit=100`);
+      const igData = await igResp.json();
+      
+      const igFromPages = (igData.data || [])
+        .filter((p: any) => p.instagram_business_account)
+        .map((p: any) => ({
+          id: p.instagram_business_account.id,
+          name: p.instagram_business_account.name || p.instagram_business_account.username || p.name
+        }));
+
+      // 2. Fetch IG Accounts from Ad Accounts (often more complete)
+      const adIgResp = await fetch(`${META_GRAPH_URL}/me/adaccounts?access_token=${accessToken}&fields=instagram_accounts{id,name,username},name&limit=50`);
+      const adIgData = await adIgResp.json();
+      
+      const igFromAds: any[] = [];
+      (adIgData.data || []).forEach((ad: any) => {
+         if (ad.instagram_accounts?.data) {
+           ad.instagram_accounts.data.forEach((ig: any) => {
+              igFromAds.push({
+                id: ig.id,
+                name: ig.name || ig.username || ad.name
+              });
+           });
+         }
+      });
+      
+      const allIgs = [...igFromPages, ...igFromAds];
+      
+      // Ensure we don't have duplicates
+      const uniqueIgs = Array.from(new Map(allIgs.map(item => [item.id, item])).values());
+      setIgAccounts(uniqueIgs);
+      if (uniqueIgs.length > 0 && (!selectedIgAccountId || !uniqueIgs.find(i => i.id === selectedIgAccountId))) {
+        setSelectedIgAccountId(uniqueIgs[0].id);
+        localStorage.setItem('selected_ig_account_id', uniqueIgs[0].id);
       }
     } catch (e: any) {
-      setError(`Erro ao buscar contas de anúncio: ${e.message}`);
+      setError(`Erro ao buscar contas: ${e.message}`);
     }
   };
 
@@ -319,20 +364,57 @@ export const Marketing: React.FC = () => {
     setHasFetched(true);
 
     try {
-      const campData = await fetchFromMeta(token, `${adAccountId}/campaigns`, {
-        fields: CAMPAIGN_FIELDS,
+      const params: any = {
+        fields: 'id,name,status,objective,daily_budget,lifetime_budget,insights{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,actions,frequency,reach,roas,date_start}',
         limit: '100',
-        date_preset: datePreset,
-      });
+      };
+
+      if (datePreset === 'custom') {
+        params.time_range = JSON.stringify({ since: customStartDate, until: customEndDate });
+      } else {
+        params.date_preset = datePreset;
+      }
+
+      const campData = await fetchFromMeta(token, `${adAccountId}/campaigns`, params);
 
       const parsedCampaigns: MetaCampaign[] = (campData.data || []).map((c: any) => {
-        const insight = c.insights?.data?.[0];
+        const ins = c.insights?.data?.[0] || {};
+        const roasObj = ins.roas?.find((r: any) => r.action_type === 'purchase') || ins.roas?.[0];
+        
+        // Dynamic Results Extractor
+        const actions = ins.actions || [];
+        // Search for primary results (Lead, Message, Conversion)
+        const primaryRes = actions.find((a: any) => 
+           a.action_type === 'onsite_conversion.messaging_conversation_started_7d' || 
+           a.action_type === 'lead' || 
+           a.action_type === 'purchase' ||
+           a.action_type === 'post_engagement'
+        ) || actions[0];
+
         return {
           id: c.id,
           name: c.name,
           status: c.status,
-          objective: c.objective || '—',
-          ...parseInsight(insight),
+          objective: c.objective,
+          daily_budget: c.daily_budget ? Number(c.daily_budget) : undefined,
+          lifetime_budget: c.lifetime_budget ? Number(c.lifetime_budget) : undefined,
+          spend: Number(ins.spend || 0),
+          impressions: Number(ins.impressions || 0),
+          clicks: Number(ins.clicks || 0),
+          ctr: Number(ins.ctr || 0),
+          cpc: Number(ins.cpc || 0),
+          cpm: Number(ins.cpm || 0),
+          conversions: Number(ins.conversions || 0),
+          cpa: Number(ins.cost_per_conversion || 0),
+          roas: Number(roasObj?.value || 0),
+          frequency: Number(ins.frequency || 0),
+          reach: Number(ins.reach || 0),
+          date_start: ins.date_start,
+          results: primaryRes ? {
+            count: Number(primaryRes.value),
+            name: primaryRes.action_type.split('.').pop()?.replace(/_/g, ' ') || 'Resultado'
+          } : undefined,
+          cost_per_result: primaryRes ? Number(ins.spend) / Number(primaryRes.value) : undefined
         };
       });
       setCampaigns(parsedCampaigns);
@@ -377,11 +459,18 @@ export const Marketing: React.FC = () => {
       setAds(parsedAds);
 
       try {
-        const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, {
-          date_preset: datePreset,
+        const insightParams: any = {
           time_increment: '1',
           fields: 'spend,impressions,clicks,conversions,date_start,date_stop',
-        });
+        };
+
+        if (datePreset === 'custom') {
+          insightParams.time_range = JSON.stringify({ since: customStartDate, until: customEndDate });
+        } else {
+          insightParams.date_preset = datePreset;
+        }
+
+        const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, insightParams);
         const timeseries = (dailyData.data || []).map((d: any) => ({
           day: d.date_start.split('-').slice(1).reverse().join('/'),
           spend: parseFloat(d.spend || '0'),
@@ -403,7 +492,7 @@ export const Marketing: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [adAccountId, token, datePreset]);
+  }, [adAccountId, token, datePreset, customStartDate, customEndDate]);
 
   useEffect(() => {
     if (token && adAccountId && activeMarketingTab === 'paid') {
@@ -573,31 +662,89 @@ export const Marketing: React.FC = () => {
   );
 
   const renderCampaigns = () => (
-    <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <th className="px-4 py-3 text-left">Campanha</th>
-            <th className="px-4 py-3 text-left">Status</th>
-            <th className="px-4 py-3 text-left">Gasto</th>
-            <th className="px-4 py-3 text-left">CTR</th>
-            <th className="px-4 py-3 text-left">Conv.</th>
-            <th className="px-4 py-3 text-left">ROAS</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-          {campaigns.map(c => (
-            <tr key={c.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors">
-              <td className="px-4 py-3 font-bold text-xs truncate max-w-[200px]">{c.name}</td>
-              <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-              <td className="px-4 py-3 font-black">{fmt.currency(c.spend)}</td>
-              <td className="px-4 py-3 font-bold text-indigo-600">{fmt.percent(c.ctr)}</td>
-              <td className="px-4 py-3 font-bold">{c.conversions}</td>
-              <td className="px-4 py-3 font-black text-emerald-600">{c.roas > 0 ? `${fmt.number(c.roas, 2)}x` : '—'}</td>
+    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-xl overflow-hidden">
+      <div className="p-8 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-slate-50/50 dark:bg-zinc-800/30">
+         <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight tracking-tight">Gerenciador de Campanhas</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Visão detalhada de performance</p>
+         </div>
+         <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-800 rounded-xl border border-slate-200 dark:border-zinc-700 text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">
+            <Filter size={14} className="text-indigo-500" /> Colunas: Desempenho
+         </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[1000px]">
+          <thead>
+            <tr className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800">
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Campanha</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Veiculação</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Resultados</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Custo p/ Res.</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Orçamento</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Valor Usado</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-50 dark:divide-zinc-800/50">
+            {campaigns.map(c => {
+               const isActive = c.status === 'ACTIVE';
+               return (
+                 <tr key={c.id} className="hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-colors group">
+                   <td className="px-6 py-5">
+                      <div className="flex items-center gap-4">
+                         <div className={`w-10 h-5 rounded-full p-1 transition-colors ${isActive ? 'bg-indigo-500' : 'bg-slate-200 dark:bg-zinc-700'}`}>
+                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+                         </div>
+                         <div>
+                            <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 group-hover:underline cursor-pointer">{c.name}</p>
+                            <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{c.id}</p>
+                         </div>
+                      </div>
+                   </td>
+                   <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2.5 h-2.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-zinc-600 shadow-inner'}`} />
+                        <span className="text-[11px] font-black text-slate-700 dark:text-slate-300">
+                           {isActive ? 'Ativo' : c.status === 'PAUSED' ? 'Desativado' : c.status}
+                        </span>
+                      </div>
+                   </td>
+                   <td className="px-6 py-5">
+                      {c.results ? (
+                        <div>
+                          <p className="text-xs font-black text-slate-900 dark:text-white leading-none">{c.results.count}</p>
+                          <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">{c.results.name}</p>
+                        </div>
+                      ) : (
+                        <span className="text-slate-300 dark:text-zinc-700">—</span>
+                      )}
+                   </td>
+                   <td className="px-6 py-5 text-right">
+                      <p className="text-xs font-black text-slate-900 dark:text-white">
+                         {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
+                      </p>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">Por resultado</p>
+                   </td>
+                   <td className="px-6 py-5 text-right">
+                      <p className="text-xs font-black text-slate-900 dark:text-white">
+                         {fmt.currency((c.daily_budget || c.lifetime_budget || 0) / 100)}
+                      </p>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">
+                         {c.daily_budget ? 'Média Diária' : 'Vitalício'}
+                      </p>
+                   </td>
+                   <td className="px-6 py-5 text-right">
+                      <p className="text-xs font-black text-slate-900 dark:text-white">{fmt.currency(c.spend)}</p>
+                      <div className="w-24 bg-slate-100 dark:bg-zinc-800 h-1 rounded-full overflow-hidden mt-2 ml-auto">
+                        <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${Math.min(100, (c.spend / ((c.daily_budget || c.lifetime_budget || 1)/100)) * 100)}%` }} />
+                      </div>
+                   </td>
+                 </tr>
+               );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -722,22 +869,30 @@ export const Marketing: React.FC = () => {
                   {activeMarketingTab === 'organic' ? 'Orgânico' : 'Tráfego Pago'}
                 </h1>
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
-                  Análise estratégica · {datePreset === 'last_7d' ? 'Últimos 7 dias' : datePreset === 'last_30d' ? 'Últimos 30 dias' : 'Últimos 90 dias'}
+                  Análise estratégica · {
+                    datePreset === 'last_7d' ? 'Últimos 7 dias' : 
+                    datePreset === 'last_30d' ? 'Últimos 30 dias' : 
+                    datePreset === 'last_90d' ? 'Últimos 90 dias' :
+                    datePreset === 'this_month' ? 'Este mês' :
+                    datePreset === 'last_month' ? 'Mês anterior' :
+                    datePreset === 'this_year' ? 'Este ano' :
+                    datePreset === 'custom' ? `${customStartDate.split('-').reverse().join('/')} até ${customEndDate.split('-').reverse().join('/')}` :
+                    'Período personalizado'
+                  }
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 flex-wrap">
-              {activeMarketingTab === 'paid' && adAccounts.length > 0 && (
+            <div className="flex flex-wrap items-center gap-4">
+              {activeMarketingTab === 'paid' ? (
                 <select
                   value={adAccountId}
                   onChange={e => {
-                    const newVal = e.target.value;
-                    setAdAccountId(newVal);
-                    localStorage.setItem(ACCOUNT_STORAGE_KEY, newVal);
-                    persistToDB(undefined, newVal);
+                    setAdAccountId(e.target.value);
+                    localStorage.setItem(ACCOUNT_STORAGE_KEY, e.target.value);
+                    persistToDB(undefined, e.target.value);
                   }}
-                  className="px-4 py-2 text-xs font-black bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
+                  className="px-6 py-2.5 text-[10px] font-black bg-white dark:bg-zinc-800 border-2 border-indigo-500 rounded-full text-indigo-600 dark:text-indigo-400 outline-none shadow-sm hover:bg-indigo-50 transition-colors uppercase tracking-widest"
                 >
                   {adAccounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
@@ -745,19 +900,54 @@ export const Marketing: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              ) : (
+                <select
+                  value={selectedIgAccountId}
+                  onChange={e => {
+                    setSelectedIgAccountId(e.target.value);
+                    localStorage.setItem('selected_ig_account_id', e.target.value);
+                  }}
+                  className="px-6 py-2.5 text-[10px] font-black bg-white dark:bg-zinc-800 border-2 border-indigo-500 rounded-full text-indigo-600 dark:text-indigo-400 outline-none shadow-sm hover:bg-indigo-50 transition-colors uppercase tracking-widest"
+                >
+                  {igAccounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>{acc.name} ({acc.id})</option>
+                  ))}
+                </select>
               )}
 
-              <select
-                value={datePreset}
-                onChange={e => setDatePreset(e.target.value)}
-                className="px-4 py-2 text-xs font-black bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
-              >
-                <option value="last_7d">Últimos 7 dias</option>
-                <option value="last_30d">Últimos 30 dias</option>
-                <option value="last_90d">Últimos 90 dias</option>
-                <option value="this_month">Este mês</option>
-                <option value="last_month">Mês anterior</option>
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  value={datePreset}
+                  onChange={e => setDatePreset(e.target.value)}
+                  className="px-4 py-2 text-xs font-black bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none"
+                >
+                  <option value="last_7d">Últimos 7 dias</option>
+                  <option value="last_30d">Últimos 30 dias</option>
+                  <option value="last_90d">Últimos 90 dias</option>
+                  <option value="this_month">Este mês</option>
+                  <option value="last_month">Mês anterior</option>
+                  <option value="this_year">Este ano</option>
+                  <option value="custom">Período customizado</option>
+                </select>
+
+                {datePreset === 'custom' && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-300">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={e => setCustomStartDate(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl outline-none"
+                    />
+                    <span className="text-[10px] font-black text-slate-400 uppercase">até</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={e => setCustomEndDate(e.target.value)}
+                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl outline-none"
+                    />
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => {
@@ -806,7 +996,14 @@ export const Marketing: React.FC = () => {
 
         <div className="flex-1 p-4 md:p-8">
           {activeMarketingTab === 'organic' ? (
-            <InstagramOrganic token={token} datePreset={datePreset} refreshKey={refreshKey} />
+            <InstagramOrganic 
+              token={token} 
+              datePreset={datePreset} 
+              refreshKey={refreshKey}
+              customStartDate={customStartDate}
+              customEndDate={customEndDate}
+              targetIgAccountId={selectedIgAccountId}
+            />
           ) : (
             <div className="w-full">
               {error && (

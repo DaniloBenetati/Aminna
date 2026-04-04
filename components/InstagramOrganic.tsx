@@ -42,6 +42,10 @@ interface IGAccountInsights {
   total_followers: number;
   reach_series: { day: string; value: number }[];
   reach_growth: number;
+  follower_breakdown?: {
+    followers: number;
+    nonFollowers: number;
+  };
 }
 
 const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
@@ -173,7 +177,14 @@ const SectionTitle = ({ children, sub }: { children: React.ReactNode; sub?: stri
 
 // --- Main Component ---
 
-export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; refreshKey?: number }> = ({ token, datePreset = 'last_30d', refreshKey = 0 }) => {
+export const InstagramOrganic: React.FC<{ 
+  token: string; 
+  datePreset?: string; 
+  refreshKey?: number;
+  customStartDate?: string;
+  customEndDate?: string;
+  targetIgAccountId?: string;
+}> = ({ token, datePreset = 'last_30d', refreshKey = 0, customStartDate, customEndDate, targetIgAccountId }) => {
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<IGPost[]>([]);
   const [accInsights, setAccInsights] = useState<IGAccountInsights | null>(null);
@@ -188,7 +199,15 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
     else if (datePreset === 'last_30d') days = 30;
     else if (datePreset === 'last_90d') days = 90;
     else if (datePreset === 'this_month') days = now.getDate();
-    else if (datePreset === 'last_month') days = 30 + now.getDate(); // approx
+    else if (datePreset === 'last_month') days = 30 + now.getDate(); 
+    else if (datePreset === 'this_year') {
+      const yearStart = new Date(now.getFullYear(), 0, 1);
+      days = Math.floor((now.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+    }
+    else if (datePreset === 'custom' && customStartDate && customEndDate) {
+      const start = new Date(customStartDate);
+      days = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    }
 
     // IMPORTANT: Account Insights for 'day' period are generally limited to 30 days by Meta.
     // If the user wants 90 days, we MUST aggregate post-level data across the timeline
@@ -242,21 +261,39 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
     setError(null);
     try {
       const now = new Date();
-      let sinceDate = new Date();
-      let days = 30;
-      if (datePreset === 'last_7d') days = 7;
-      else if (datePreset === 'last_30d') days = 30;
-      else if (datePreset === 'last_90d') days = 90;
-      else if (datePreset === 'this_month') days = now.getDate();
-      else if (datePreset === 'last_month') days = 30; // approx
-      
-      sinceDate.setDate(now.getDate() - days);
-      const sinceTs = Math.floor(sinceDate.getTime() / 1000);
+      let sinceTs: number;
+      let untilTs: number = Math.floor(now.getTime() / 1000);
+
+      if (datePreset === 'custom' && customStartDate && customEndDate) {
+        sinceTs = Math.floor(new Date(customStartDate).getTime() / 1000);
+        untilTs = Math.floor(new Date(customEndDate).getTime() / 1000) + 86399; // End of day
+      } else if (datePreset === 'this_year') {
+        sinceTs = Math.floor(new Date(now.getFullYear(), 0, 1).getTime() / 1000);
+      } else if (datePreset === 'this_month') {
+        sinceTs = Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
+      } else if (datePreset === 'last_month') {
+        const firstOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        sinceTs = Math.floor(firstOfLastMonth.getTime() / 1000);
+        untilTs = Math.floor(lastOfLastMonth.getTime() / 1000) + 86399;
+      } else {
+        let days = 30;
+        if (datePreset === 'last_7d') days = 7;
+        else if (datePreset === 'last_30d') days = 30;
+        else if (datePreset === 'last_90d') days = 90;
+        const sinceDate = new Date();
+        sinceDate.setDate(now.getDate() - days);
+        sinceTs = Math.floor(sinceDate.getTime() / 1000);
+      }
 
       // 1. Get Accounts
-      const pagesRes = await fetch(`${META_GRAPH_URL}/me/accounts?access_token=${token}&fields=instagram_business_account,name`);
-      const pagesData = await pagesRes.json();
-      const igAccId = pagesData.data?.find((p: any) => p.instagram_business_account)?.instagram_business_account?.id;
+      let igAccId = targetIgAccountId;
+
+      if (!igAccId) {
+        const pagesRes = await fetch(`${META_GRAPH_URL}/me/accounts?access_token=${token}&fields=instagram_business_account,name`);
+        const pagesData = await pagesRes.json();
+        igAccId = pagesData.data?.find((p: any) => p.instagram_business_account)?.instagram_business_account?.id;
+      }
       
       if (!igAccId) {
           setError("Conta Business não encontrada.");
@@ -266,7 +303,7 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
 
       const mediaFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,video_views,plays)';
       try {
-        const mediaRes = await fetch(`${META_GRAPH_URL}/${igAccId}/media?access_token=${token}&fields=${mediaFields}&since=${sinceTs}&limit=100`);
+        const mediaRes = await fetch(`${META_GRAPH_URL}/${igAccId}/media?access_token=${token}&fields=${mediaFields}&since=${sinceTs}&until=${untilTs}&limit=100`);
         const mediaData = await mediaRes.json();
 
         if (mediaData.error) {
@@ -281,7 +318,7 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
         }
 
         if (mediaData && mediaData.data) {
-          setPosts(mediaData.data.map((m: any) => {
+          const processedPosts = await Promise.all(mediaData.data.map(async (m: any) => {
             const findInsight = (name: string) => m.insights?.data?.find((i: any) => i.name === name)?.values?.[0]?.value || 0;
             
             return {
@@ -298,15 +335,21 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
               }
             };
           }));
+          setPosts(processedPosts);
         }
       } catch (err) {
         console.error("Media Fetch Exception:", err);
       }
 
       try {
-        const insightsRes = await fetch(`${META_GRAPH_URL}/${igAccId}/insights?metric=reach,impressions,profile_views&period=day&since=${sinceTs}&access_token=${token}`);
+        // Account level Reach and Impressions
+        const insightsRes = await fetch(`${META_GRAPH_URL}/${igAccId}/insights?metric=reach,impressions,profile_views&period=day&since=${sinceTs}&until=${untilTs}&access_token=${token}`);
         const insData = await insightsRes.json();
         
+        // Detailed reach by follower type (Followers vs Non-Followers)
+        const followerRes = await fetch(`${META_GRAPH_URL}/${igAccId}/insights?metric=reach&period=day&since=${sinceTs}&until=${untilTs}&breakdown=follower_type&access_token=${token}`);
+        const followerData = await followerRes.json();
+
         const accInfoRes = await fetch(`${META_GRAPH_URL}/${igAccId}?fields=followers_count&access_token=${token}`);
         const accInfo = await accInfoRes.json();
 
@@ -315,11 +358,23 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
           const imprList = insData.data.find((d: any) => d.name === 'impressions')?.values || [];
           const profileList = insData.data.find((d: any) => d.name === 'profile_views')?.values || [];
 
+          // Parse breakdown
+          let followerReach = 0;
+          let nonFollowerReach = 0;
+          const followerMetrics = followerData.data?.find((d: any) => d.name === 'reach')?.values || [];
+          followerMetrics.forEach((v: any) => {
+             const followerVal = v.breakdowns?.[0]?.results?.find((r: any) => r.dimension_values?.[0] === 'follower')?.value || 0;
+             const nonFollowerVal = v.breakdowns?.[0]?.results?.find((r: any) => r.dimension_values?.[0] === 'non_follower')?.value || 0;
+             followerReach += followerVal;
+             nonFollowerReach += nonFollowerVal;
+          });
+
           const totalReach = reachList.reduce((s: number, v: any) => s + v.value, 0);
-          
+          const totalImpressions = imprList.reduce((s: number, v: any) => s + v.value, 0);
+
           setAccInsights({
             reach: totalReach,
-            impressions: imprList.reduce((s: number, v: any) => s + v.value, 0),
+            impressions: totalImpressions,
             profile_views: profileList.reduce((s: number, v: any) => s + v.value, 0),
             total_followers: accInfo.followers_count || 0,
             follower_count: accInfo.followers_count || 0,
@@ -327,7 +382,11 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
                 day: new Date(v.end_time).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
                 value: v.value
             })),
-            reach_growth: 13.1,
+            follower_breakdown: {
+               followers: followerReach,
+               nonFollowers: nonFollowerReach
+            },
+            reach_growth: 0,
             follower_growth: 0
           });
         }
@@ -339,7 +398,7 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
     } finally {
       setLoading(false);
     }
-  }, [token, datePreset]);
+  }, [token, datePreset, customStartDate, customEndDate, targetIgAccountId]);
 
   useEffect(() => {
     if (token) fetchIGData();
@@ -349,16 +408,40 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
     const postStats = posts.reduce((acc, post) => ({
       totalReach: acc.totalReach + post.insights.reach,
       totalInteractions: acc.totalInteractions + post.insights.likes + post.insights.comments + post.insights.shares + post.insights.saves,
-      contentCount: acc.contentCount + 1
-    }), { totalReach: 0, totalInteractions: 0, contentCount: 0 });
+      contentCount: acc.contentCount + 1,
+      storiesCount: acc.storiesCount + (post.media_type === 'IMAGE' && post.permalink.includes('/stories/') ? 1 : 0), // heuristics
+      reelsCount: acc.reelsCount + (post.media_type === 'VIDEO' ? 1 : 0), // heuristics
+    }), { totalReach: 0, totalInteractions: 0, contentCount: 0, storiesCount: 0, reelsCount: 0 });
 
-    // Combine with Account Insights if available
+    const totalFollowersAndNon = (accInsights?.follower_breakdown?.followers || 0) + (accInsights?.follower_breakdown?.nonFollowers || 0);
+    
+    const contentBreakdown = posts.reduce((acc, post) => {
+       const type = post.permalink.includes('/stories/') ? 'Stories' : post.media_type === 'VIDEO' ? 'Reels' : 'Posts';
+       if (!acc[type]) acc[type] = { reach: 0, count: 0 };
+       acc[type].reach += post.insights.reach;
+       acc[type].count += 1;
+       return acc;
+    }, {} as Record<string, { reach: number; count: number }>);
+
+    const totalCalculatedReach = Object.values(contentBreakdown).reduce((s, v) => s + v.reach, 0) || 1;
+
     return {
-      totalReach: accInsights?.reach || postStats.totalReach || PRINT_DATA.accountsReached,
-      totalInteractions: postStats.totalInteractions || PRINT_DATA.interactions,
+      totalImpressions: accInsights?.impressions || 0,
+      totalReach: accInsights?.reach || postStats.totalReach || 0,
+      totalInteractions: postStats.totalInteractions || 0,
       contentCount: postStats.contentCount,
-      profileVisits: accInsights?.profile_views || PRINT_DATA.profileVisits,
-      totalFollowers: accInsights?.total_followers || PRINT_DATA.totalFollowers,
+      profileVisits: accInsights?.profile_views || 0,
+      totalFollowers: accInsights?.total_followers || 0,
+      followerBreakdown: [
+         { name: 'Seguidores', value: accInsights?.follower_breakdown?.followers || 0, color: '#f43f5e' },
+         { name: 'Não seguidores', value: accInsights?.follower_breakdown?.nonFollowers || 0, color: '#8b5cf6' }
+      ],
+      followerPct: totalFollowersAndNon > 0 ? (accInsights!.follower_breakdown!.followers / totalFollowersAndNon) * 100 : 0,
+      types: Object.entries(contentBreakdown).map(([name, data]) => ({
+         name,
+         value: (data.reach / totalCalculatedReach) * 100,
+         color: name === 'Stories' ? '#f43f5e' : name === 'Reels' ? '#8b5cf6' : '#ec4899'
+      })).sort((a, b) => b.value - a.value)
     };
   }, [posts, accInsights]);
 
@@ -368,16 +451,16 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <PremiumCard>
-          <StatBadge label="Alcance Total" value={fmt.compact(dynamicStats.totalReach)} trend={accInsights?.reach_growth || 13.1} icon={Eye} color="indigo" />
+          <StatBadge label="Visualizações" value={fmt.compact(dynamicStats.totalImpressions)} trend={0} icon={Eye} color="indigo" />
         </PremiumCard>
         <PremiumCard>
-          <StatBadge label="Interações" value={fmt.compact(dynamicStats.totalInteractions)} trend={8.7} icon={Heart} color="pink" />
+          <StatBadge label="Alcance Total" value={fmt.compact(dynamicStats.totalReach)} trend={0} icon={Target} color="sky" />
         </PremiumCard>
         <PremiumCard>
-          <StatBadge label="Seguidores Totais" value={fmt.compact(dynamicStats.totalFollowers)} trend={PRINT_DATA.totalFollowersGrowth} icon={Users} color="emerald" />
+          <StatBadge label="Interações" value={fmt.compact(dynamicStats.totalInteractions)} trend={0} icon={Heart} color="rose" />
         </PremiumCard>
         <PremiumCard>
-          <StatBadge label="Publicações" value={dynamicStats.contentCount} icon={Share2} color="amber" />
+          <StatBadge label="Seguidores" value={fmt.compact(dynamicStats.totalFollowers)} trend={0} icon={Users} color="emerald" />
         </PremiumCard>
       </div>
 
@@ -394,7 +477,7 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
                      <h2 className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Destaques do Período</h2>
                   </div>
                    <p className="text-base md:text-lg font-medium text-slate-600 dark:text-indigo-100 leading-relaxed mb-8">
-                      Aminna continua consolidando seu posicionamento de luxo. O crescimento orgânico de <span className="text-emerald-600 dark:text-emerald-400 font-black">+{accInsights?.reach_growth || PRINT_DATA.accountsReachedGrowth}% em alcance</span> reflete uma audiência fiel e em expansão qualificada.
+                      Análise real dos dados da sua conta. O alcance total foi de <span className="text-emerald-600 dark:text-emerald-400 font-black">{fmt.compact(dynamicStats.totalReach)} contas</span> no período selecionado.
                    </p>
                    <div className="flex flex-wrap gap-4 mb-10 md:mb-0">
                      <div className="px-6 py-4 bg-indigo-50/50 dark:bg-zinc-800 rounded-[2rem] border border-indigo-100 dark:border-zinc-700 shadow-sm">
@@ -479,19 +562,26 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
 
         <PremiumCard className="p-8">
            <SectionTitle sub="Interações por formato">Mix de Engajamento</SectionTitle>
-           <div className="space-y-6 mt-8">
-              {PRINT_DATA.interactionBreakdown.map((item, i) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase">
-                    <span className="text-slate-500">{item.name}</span>
-                    <span className="text-slate-900 dark:text-white">{item.value}%</span>
-                  </div>
-                  <div className="h-2 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${item.value}%`, backgroundColor: item.color }} />
-                  </div>
-                </div>
-              ))}
+           <div className="space-y-8">
+         {dynamicStats.types.map((item, i) => (
+           <div key={i} className="space-y-2">
+             <div className="flex justify-between items-end">
+                <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest">{item.name}</p>
+                <p className="text-xs font-black text-indigo-600">{item.value.toFixed(1)}%</p>
+             </div>
+             <div className="h-2.5 w-full bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden flex">
+                <div 
+                  className="h-full transition-all duration-1000" 
+                  style={{ 
+                    width: `${item.value}%`, 
+                    backgroundColor: item.color,
+                    boxShadow: `0 0 10px ${item.color}40`
+                  }} 
+                />
+             </div>
            </div>
+         ))}
+       </div>
            
            <div className="grid grid-cols-2 gap-4 mt-10 pt-8 border-t border-slate-100">
               <div className="flex items-center gap-3">
@@ -662,28 +752,33 @@ export const InstagramOrganic: React.FC<{ token: string; datePreset?: string; re
             </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-6">
-          {(showAllPosts ? posts : posts.slice(0, 10)).map((post, i) => (
-            <div key={i} className="group relative aspect-[3/4] rounded-3xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1">
+        <div className="grid grid-cols-3 gap-1 md:gap-4">
+          {(showAllPosts ? posts : posts.slice(0, 12)).map((post, i) => (
+            <div key={i} className="group relative aspect-square rounded-lg md:rounded-2xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
               <img src={post.media_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent p-4 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <p className="text-white text-[10px] font-medium line-clamp-2 mb-3 leading-relaxed">{post.caption}</p>
-                <div className="flex items-center justify-between border-t border-white/20 pt-3">
-                  <div className="flex items-center gap-3">
-                     <div className="flex items-center gap-1 text-white text-[10px] font-black">
-                        <Heart size={12} fill="white" /> {fmt.compact(post.insights.likes)}
-                     </div>
-                     <div className="flex items-center gap-1 text-white text-[10px] font-black">
-                        <MessageCircle size={12} fill="white" /> {fmt.compact(post.insights.comments)}
-                     </div>
-                  </div>
+              
+              {/* Metric Overlay - Instagram Style */}
+              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 md:px-3 md:py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1 md:gap-2">
+                 <p className="text-[10px] md:text-sm font-black text-white">{fmt.compact(post.insights.reach)}</p>
+              </div>
+
+              {/* Hover Details */}
+              <div className="absolute inset-0 bg-black/60 p-2 md:p-4 flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center">
+                <p className="text-white text-[8px] md:text-[10px] font-bold line-clamp-3 mb-2 md:mb-4 uppercase tracking-tighter">{post.caption.substring(0, 50)}...</p>
+                <div className="flex items-center gap-2 md:gap-4">
+                   <div className="flex items-center gap-1 text-white text-[10px] md:text-xs font-black">
+                      <Heart size={14} fill="white" /> {fmt.compact(post.insights.likes)}
+                   </div>
+                   <div className="flex items-center gap-1 text-white text-[10px] md:text-xs font-black">
+                      <MessageCircle size={14} fill="white" /> {fmt.compact(post.insights.comments)}
+                   </div>
                 </div>
               </div>
             </div>
           ))}
-          {posts.length === 0 && !loading && [1,2,3,4,5].map(i => (
-             <div key={i} className="aspect-[3/4] rounded-3xl bg-slate-100 animate-pulse flex items-center justify-center">
-                <Instagram size={24} className="text-slate-200" />
+          {posts.length === 0 && !loading && [1,2,3,4,5,6,7,8,9].map(i => (
+             <div key={i} className="aspect-square rounded-lg md:rounded-2xl bg-slate-100 dark:bg-zinc-800/50 animate-pulse flex items-center justify-center">
+                <Instagram size={24} className="text-slate-200 dark:text-zinc-700" />
              </div>
           ))}
         </div>
