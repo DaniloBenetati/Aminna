@@ -160,13 +160,12 @@ export const CRM: React.FC<CRMProps> = ({
         setNewMessage('');
 
         try {
-            // Call the proxy function
             const { data: { session } } = await supabase.auth.getSession();
             const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/meta-send`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session?.access_token}`
+                    'Authorization': `Bearer ${session?.access_token || ''}`
                 },
                 body: JSON.stringify({
                     to: activeConv.customer?.phone,
@@ -175,11 +174,15 @@ export const CRM: React.FC<CRMProps> = ({
                 })
             });
 
-            const result = await response.json();
-            if (!result.success) throw new Error(result.error);
+            if (!response.ok) {
+              const textError = await response.text();
+              throw new Error(`Servidor retornou erro: ${response.status} - ${textError}`);
+            }
 
-            // Message will be inserted by the function and received via Realtime
-            fetchData(); // Refresh to update preview
+            const result = await response.json();
+            if (!result.success) throw new Error(result.error || 'Erro desconhecido na API da Meta');
+
+            fetchData(); 
 
         } catch (error: any) {
             console.error('Error sending message:', error);
