@@ -303,7 +303,7 @@ export const InstagramOrganic: React.FC<{
 
       const mediaFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,video_views,plays)';
       try {
-        const mediaRes = await fetch(`${META_GRAPH_URL}/${igAccId}/media?access_token=${token}&fields=${mediaFields}&since=${sinceTs}&until=${untilTs}&limit=100`);
+        const mediaRes = await fetch(`${META_GRAPH_URL}/${igAccId}/media?access_token=${token}&fields=${mediaFields}&since=${sinceTs}&until=${untilTs}&limit=200`);
         const mediaData = await mediaRes.json();
 
         if (mediaData.error) {
@@ -753,7 +753,7 @@ export const InstagramOrganic: React.FC<{
         </div>
 
         <div className="grid grid-cols-3 gap-1 md:gap-4">
-          {(showAllPosts ? posts : posts.slice(0, 12)).map((post, i) => (
+          {(showAllPosts ? posts : posts.slice(0, 18)).map((post, i) => (
             <div key={i} className="group relative aspect-square rounded-lg md:rounded-2xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
               <img src={post.media_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               
