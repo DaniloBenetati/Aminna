@@ -416,7 +416,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         const sortedApps = [...validApps].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
-        const firstName = customer.name.split(' ')[0];
+        const firstName = (customer.name || '').trim().split(' ')[0];
 
         // Dynamic greeting based on current time
         const now = new Date();

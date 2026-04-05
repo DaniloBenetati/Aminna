@@ -491,8 +491,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         e.preventDefault();
 
         const providerData = {
-            name: formData.name,
-            nickname: formData.nickname || (formData.name?.split(' ')[0] || ''),
+            name: formData.name?.trim(),
+            nickname: formData.nickname?.trim() || (formData.name?.trim().split(' ')[0] || ''),
             phone: formData.phone,
             specialty: formData.specialty,
             specialties: formData.specialties || [],

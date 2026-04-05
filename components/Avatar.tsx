@@ -42,14 +42,15 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "w-10 h-10", c
         return colors[Math.abs(hash) % colors.length];
     };
 
-    const firstLetter = name ? name.charAt(0).toUpperCase() : '?';
+    const trimmedName = (name || '').trim();
+    const firstLetter = trimmedName ? trimmedName.charAt(0).toUpperCase() : '?';
 
     if (!src || hasError) {
         return (
             <div
-                className={`${size} ${className} rounded-2xl flex items-center justify-center text-white font-bold shadow-sm ${getColorFromName(name)}`}
+                className={`${size} ${className} rounded-2xl flex items-center justify-center text-white font-bold shadow-sm ${getColorFromName(trimmedName)}`}
                 onClick={onClick}
-                title={name}
+                title={trimmedName}
             >
                 {firstLetter}
             </div>

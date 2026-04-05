@@ -2616,7 +2616,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5">
                                                             <Avatar
                                                                 src={providers.find(p => p.id === line.providerId)?.avatar}
-                                                                name={providers.find(p => p.id === line.providerId)?.name || ''}
+                                                                name={providers.find(p => p.id === line.providerId)?.name.trim() || ''}
                                                                 size="w-6 h-6"
                                                             />
                                                             <select
@@ -2638,7 +2638,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                             disabled={isOnVacation}
                                                                             className={`${isOnVacation ? 'text-slate-300 bg-slate-50' : 'text-slate-950 dark:text-white bg-white dark:bg-zinc-800'}`}
                                                                         >
-                                                                            {p.name.split(' ')[0]} {isOnVacation ? (isDayOff ? '- FOLGA' : '- EM FÉRIAS') : ''}
+                                                                            {p.name.trim().split(' ')[0]} {isOnVacation ? (isDayOff ? '- FOLGA' : '- EM FÉRIAS') : ''}
                                                                         </option>
                                                                     );
                                                                 })}
@@ -3153,7 +3153,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     <div className="flex flex-col flex-1 leading-tight">
                                                                         <div className="flex items-center gap-2 mb-0.5">
                                                                             <span className="text-slate-900 dark:text-white font-black text-[11px] uppercase">
-                                                                                {providers.find(p => p.id === app.providerId)?.name.split(' ')[0]}
+                                                                                {providers.find(p => p.id === app.providerId)?.name.trim().split(' ')[0]}
                                                                             </span>
                                                                             <span className="text-slate-400 dark:text-slate-500 font-bold text-[9px]">
                                                                                 {(app.date ? new Date(app.date.includes('T') ? app.date : app.date + 'T12:00:00') : new Date()).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} • {app.time}
