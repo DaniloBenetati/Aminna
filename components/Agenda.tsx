@@ -1692,7 +1692,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                             <span className="bg-white text-indigo-600 text-[7px] font-black px-1 rounded-sm uppercase shadow-sm">Novo</span>
                                                                                         )}
                                                                                         {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
-                                                                                            <span className="bg-slate-700 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
+                                                                                            <span className="bg-pink-600 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
                                                                                         )}
                                                                                     </div>
                                                                                     <span className={`text-[8px] font-mono ${appt.whatsappResponseNeeded ? 'text-amber-800' : 'text-white/70'}`}>{displayTime.split(':')[1]}</span>
@@ -1854,7 +1854,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                     const p = providers.find(pr => pr.id === pid);
                                                                                                     if (!p) return null;
                                                                                                     return (
-                                                                                                        <div key={pid} className="px-3 py-1 bg-slate-700 rounded-full shadow-sm" title={p.name}>
+                                                                                                        <div key={pid} className="px-3 py-1 bg-pink-600 rounded-full shadow-sm" title={p.name}>
                                                                                                             <span className="text-[9px] font-black uppercase text-white">{p.name.split(' ')[0]}</span>
                                                                                                         </div>
                                                                                                     );
