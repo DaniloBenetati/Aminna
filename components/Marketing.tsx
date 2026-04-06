@@ -163,23 +163,23 @@ const KPICard = ({
   };
   const grad = danger ? 'from-rose-500 to-rose-700' : warning ? 'from-amber-500 to-orange-600' : colorMap[color] || colorMap.indigo;
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-5 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300`}>
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-4 sm:p-5 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-6 translate-x-6 group-hover:opacity-10 transition-opacity`} />
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
-          <Icon size={18} className="text-white" />
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
+          <Icon size={16} className="text-white sm:w-[18px] sm:h-[18px]" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
-            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+          <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-1 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
+            {trend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
             {Math.abs(trend).toFixed(1)}%
           </div>
         )}
       </div>
-      <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">{value}</p>
-      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</p>
-      {sub && <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-      {trendLabel && <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
+      <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1 truncate">{value}</p>
+      <p className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
+      {sub && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
+      {trendLabel && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
     </div>
   );
 };
@@ -553,7 +553,7 @@ export const Marketing: React.FC = () => {
 
   const renderOverview = () => (
     <div className="space-y-8 pb-12">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
         <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
         <KPICard label="CTR Médio" value={fmt.percent(avgCTR)} icon={MousePointer} color="rose" danger={avgCTR < 1} />
@@ -678,18 +678,19 @@ export const Marketing: React.FC = () => {
   );
 
   const renderCampaigns = () => (
-    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-xl overflow-hidden">
-      <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1200px]">
+    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-xl overflow-hidden">
+      {/* Desktop Version */}
+      <div className="hidden lg:block overflow-x-auto">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-zinc-800/30 border-b border-slate-200 dark:border-zinc-800 text-[10px] font-bold text-slate-500 uppercase">
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">CAMPANHA <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Veiculação <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Ações <ChevronDown size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Resultados <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo por resultado <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Orçamento <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 text-right">Valor usado <ArrowUp size={10} className="inline ml-1" /></th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Veiculação</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Ações</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Resultados</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo por result.</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Orçamento</th>
+                <th className="px-6 py-4 text-right">Valor usado</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
@@ -724,8 +725,8 @@ export const Marketing: React.FC = () => {
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
                       {c.results ? (
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-slate-900 dark:text-white leading-none text-right md:text-left">{fmt.number(c.results.count, 0)}</span>
-                          <span className="text-[9px] text-slate-400 font-medium mt-0.5">{c.results.name || 'Conversas por mensa...'}</span>
+                          <span className="text-[12px] font-bold text-slate-900 dark:text-white leading-none">{fmt.number(c.results.count, 0)}</span>
+                          <span className="text-[9px] text-slate-400 font-medium mt-0.5">{c.results.name || 'Conversas'}</span>
                         </div>
                       ) : (
                         <span className="text-slate-300 dark:text-zinc-700">—</span>
@@ -737,7 +738,7 @@ export const Marketing: React.FC = () => {
                            {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
                         </span>
                         <span className="text-[9px] text-slate-400 font-medium mt-0.5">
-                           {c.result_name ? `Por ${c.result_name.toLowerCase().substring(0, 15)}...` : 'Por resultado'}
+                           Por res.
                         </span>
                       </div>
                    </td>
@@ -760,36 +761,118 @@ export const Marketing: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* Mobile/Tablet Card View */}
+      <div className="lg:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
+        {campaigns.map(c => {
+           const isActive = c.status === 'ACTIVE';
+           const hasProblem = problems.find(p => p.campaign.id === c.id);
+           return (
+             <div key={c.id} className="p-5 space-y-4">
+                <div className="flex justify-between items-start gap-4">
+                   <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 leading-tight">{c.name}</span>
+                   <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 rounded-full h-fit flex-shrink-0">
+                      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#00a400]' : 'bg-slate-400'}`} />
+                      <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">
+                         {isActive ? 'Ativo' : 'Pausado'}
+                      </span>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-0.5">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resultados</p>
+                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                         {c.results ? fmt.number(c.results.count, 0) : '—'} 
+                         <span className="text-[9px] font-medium text-slate-400 ml-1">
+                            {c.results?.name?.split(' ')[0] || 'Res.'}
+                         </span>
+                      </p>
+                   </div>
+                   <div className="space-y-0.5 text-right">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Custo p/ Res.</p>
+                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                         {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
+                      </p>
+                   </div>
+                   <div className="space-y-0.5">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Orçamento</p>
+                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                         {fmt.currency((c.daily_budget || c.lifetime_budget || 0) / 100)}
+                         <span className="text-[8px] text-slate-400 font-bold ml-1">{c.daily_budget ? 'DIA' : 'VIT.'}</span>
+                      </p>
+                   </div>
+                   <div className="space-y-0.5 text-right">
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Investido</p>
+                      <p className="text-[11px] font-black text-emerald-600">
+                         {fmt.currency(c.spend)}
+                      </p>
+                   </div>
+                </div>
+
+                {hasProblem && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                     <Zap size={10} className="text-blue-500" />
+                     <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Recomendação Disponível</span>
+                  </div>
+                )}
+             </div>
+           );
+        })}
+      </div>
       
-      <div className="p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-800 flex items-center gap-4 text-[11px] font-bold px-8">
+      <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
          <span className="text-slate-900 dark:text-white">Resultados de {campaigns.length} campanhas</span>
-         <button className="flex items-center gap-1 text-slate-600 dark:text-slate-400 hover:underline"><Info size={14} /> Ver detalhes do Gerenciador</button>
+         <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
+            <Info size={14} /> Detalhes do Gerenciador
+         </button>
       </div>
     </div>
-);
+  );
 
   const renderAdSets = () => (
-    <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-slate-50 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <th className="px-4 py-3 text-left">Conjunto</th>
-            <th className="px-4 py-3 text-left">Campanha</th>
-            <th className="px-4 py-3 text-left">Gasto</th>
-            <th className="px-4 py-3 text-left">Conv.</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-          {adSets.map(a => (
-            <tr key={a.id}>
-              <td className="px-4 py-3 font-bold truncate max-w-[200px]">{a.name}</td>
-              <td className="px-4 py-3 text-xs text-slate-500">{a.campaign_name}</td>
-              <td className="px-4 py-3 font-black">{fmt.currency(a.spend)}</td>
-              <td className="px-4 py-3 font-bold">{a.conversions}</td>
+    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
+      {/* Desktop Version */}
+      <div className="hidden sm:block overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
+              <th className="px-6 py-4 text-left">Conjunto</th>
+              <th className="px-6 py-4 text-left">Campanha</th>
+              <th className="px-6 py-4 text-left">Gasto</th>
+              <th className="px-6 py-4 text-left">Conv.</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+            {adSets.map(a => (
+              <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
+                <td className="px-6 py-4 font-bold text-xs truncate max-w-[200px]">{a.name}</td>
+                <td className="px-6 py-4 text-[11px] text-slate-500">{a.campaign_name}</td>
+                <td className="px-6 py-4 font-black text-xs">{fmt.currency(a.spend)}</td>
+                <td className="px-6 py-4 font-bold text-xs">{a.conversions}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile Card Version */}
+      <div className="sm:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
+         {adSets.map(a => (
+           <div key={a.id} className="p-4 space-y-2">
+              <div className="flex justify-between items-start gap-2">
+                 <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{a.name}</p>
+                 <span className="text-[10px] font-black text-emerald-600">{fmt.currency(a.spend)}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                 <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
+                 <p className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full">
+                    {a.conversions} Conv.
+                 </p>
+              </div>
+           </div>
+         ))}
+      </div>
     </div>
   );
 
@@ -820,18 +903,18 @@ export const Marketing: React.FC = () => {
   );
 
   const renderFunil = () => (
-    <div className="grid md:grid-cols-3 gap-6">
-      <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border-l-4 border-l-sky-500 shadow-sm">
-         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Visualizações</p>
-         <p className="text-2xl font-black">{totalImpressions.toLocaleString('pt-BR')}</p>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-sky-500 shadow-sm">
+         <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Visualizações</p>
+         <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalImpressions.toLocaleString('pt-BR')}</p>
       </div>
-      <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border-l-4 border-l-indigo-500 shadow-sm">
-         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliques Únicos</p>
-         <p className="text-2xl font-black">{totalClicks.toLocaleString('pt-BR')}</p>
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-indigo-500 shadow-sm">
+         <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliques Únicos</p>
+         <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalClicks.toLocaleString('pt-BR')}</p>
       </div>
-      <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border-l-4 border-l-emerald-500 shadow-sm">
-         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conversões</p>
-         <p className="text-2xl font-black">{totalConversions.toLocaleString('pt-BR')}</p>
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-emerald-500 shadow-sm sm:col-span-2 lg:col-span-1">
+         <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conversões</p>
+         <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalConversions.toLocaleString('pt-BR')}</p>
       </div>
     </div>
   );
