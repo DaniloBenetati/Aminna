@@ -296,7 +296,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   });
   const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateRange, setDateRange] = useState<{ start: string; stop: string }>({ start: '', stop: '' });
-  const [isFiltersVisible, setIsFiltersVisible] = useState(true);
+  const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
   const [dailyTimeSeries, setDailyTimeSeries] = useState<any[]>([]);
 
