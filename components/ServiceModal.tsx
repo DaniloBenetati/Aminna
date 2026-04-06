@@ -2509,14 +2509,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
                                 <div className="min-w-0 flex-1">
                                     <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
-                                    <div className="flex items-center flex-wrap gap-2 mt-0.5">
+                                    <div className="flex items-center gap-2 mt-0.5">
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
-                                        <button 
-                                            onClick={() => setShowHistoryPopup(true)}
-                                            className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-[9px] font-black uppercase rounded-lg border border-indigo-100 dark:border-indigo-900 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-all flex items-center gap-1 shadow-sm"
-                                        >
-                                            <History size={10} /> VER HISTÓRICO
-                                        </button>
                                         {customer.isVip && (
                                             <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                                                 <Sparkles size={10} />
