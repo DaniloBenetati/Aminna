@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CheckCircle, ChevronDown, Gift, Package, DollarSign, Share2 } from 'lucide-react';
+import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CircleCheck, ChevronDown, Gift, Package, DollarSign, Share2 } from 'lucide-react';
 import { Partner, Campaign, PartnerExchange, Appointment, Customer, Service } from '../types';
 import { PartnerProducts } from './PartnerProducts';
 
@@ -498,7 +498,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               </div>
             </div>
             <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
-              <div className="p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl shadow-inner flex-shrink-0"><CheckCircle size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+              <div className="p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl shadow-inner flex-shrink-0"><CircleCheck size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[9px] md:text-[10px] text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Atendimentos</p>
                 <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">{totalPartnerAppointments}</p>
@@ -1002,7 +1002,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 <p className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 group-hover/item:text-indigo-600 transition-colors">{c.name}</p>
                                 <p className="text-[9px] font-bold text-slate-400 font-mono">{c.phone || 'Sem celular'}</p>
                               </div>
-                              <CheckCircle size={14} className="text-emerald-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />
+                              <CircleCheck size={14} className="text-emerald-500 opacity-0 group-hover/item:opacity-100 transition-opacity" />
                             </button>
                           ))
                         }
@@ -1020,7 +1020,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                       <div className="mt-2 flex flex-col gap-2">
                         {selectedCustomerId ? (
                           <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800">
-                            <CheckCircle size={14} className="text-indigo-600" />
+                            <CircleCheck size={14} className="text-indigo-600" />
                             <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">
                               Vinculado: {customers.find(c => c.id === selectedCustomerId)?.name || 'Cliente Selecionado'}
                             </span>

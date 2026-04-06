@@ -3,9 +3,9 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Instagram, TrendingUp, TrendingDown, Eye, MousePointer, 
   BarChart3, RefreshCw, MessageCircle, Heart, Share2, 
-  Bookmark, Play, Layers, CheckCircle, Zap, AlertTriangle,
+  Bookmark, Play, Layers, CircleCheck, Zap, AlertTriangle,
   ArrowUpRight, ArrowDownRight, Users, Sparkles, MapPin, ExternalLink,
-  Target, Info, Calendar, ChevronRight, Activity, XCircle, FileText
+  Target, Info, Calendar, ChevronRight, Activity, CircleX, FileText
 } from 'lucide-react';
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, 
@@ -148,21 +148,21 @@ const StatBadge = ({ value, trend, label, icon: Icon, color = "indigo" }: any) =
   const grad = colors[color as keyof typeof colors] || colors.indigo;
 
   return (
-    <div className="p-6 flex flex-col gap-4">
+    <div className="p-3 md:p-6 flex flex-col gap-2 md:gap-4">
       <div className="flex items-start justify-between">
-        <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-lg text-white`}>
-          <Icon size={22} />
+        <div className={`w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-lg text-white`}>
+          <Icon size={18} className="md:w-[22px] md:h-[22px]" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-xs font-black px-2.5 py-1 rounded-full ${trend >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
-            {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          <div className={`flex items-center gap-1 text-[8px] md:text-xs font-black px-2 py-0.5 md:py-1 rounded-full ${trend >= 0 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'}`}>
+            {trend >= 0 ? <ArrowUpRight size={12} className="md:w-[14px] md:h-[14px]" /> : <ArrowDownRight size={12} className="md:w-[14px] md:h-[14px]" />}
             {Math.abs(trend)}%
           </div>
         )}
       </div>
       <div>
-        <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
-        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mt-1">{label}</p>
+        <p className="text-xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</p>
+        <p className="text-[8px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em] mt-0.5 md:mt-1 truncate">{label}</p>
       </div>
     </div>
   );

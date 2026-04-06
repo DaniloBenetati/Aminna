@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Sparkles, Eraser, Loader2, CheckCircle, Trash2 } from 'lucide-react';
+import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Sparkles, Eraser, Loader2, CircleCheck, Trash2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
 import Tesseract from 'tesseract.js';
@@ -1151,7 +1151,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                     referrerPolicy="no-referrer"
                                                 />
                                                 {i === 0 ? (
-                                                    <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow-sm"><CheckCircle size={10} /></div>
+                                                    <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow-sm"><CircleCheck size={10} /></div>
                                                 ) : (
                                                     <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
                                                         <span className="text-[7px] font-black text-white uppercase leading-none text-center">Definir<br/>Capa</span>

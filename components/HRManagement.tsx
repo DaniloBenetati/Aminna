@@ -13,7 +13,7 @@ import {
     ChevronRight,
     TrendingUp,
     AlertCircle,
-    CheckCircle2,
+    CircleCheck,
     Clock,
     UserCheck,
     Briefcase,

@@ -8,6 +8,13 @@ export const toLocalDateStr = (date: Date | string) => {
     return `${year}-${month}-${day}`;
 };
 
+export const isFirstAppointment = (customerId: string, date: string, appointments: Appointment[]) => {
+    const validApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído');
+    if (validApps.length === 0) return false;
+    const firstDate = validApps.reduce((min, a) => (a.date < min ? a.date : min), validApps[0].date);
+    return date === firstDate;
+};
+
 export const parseDateSafe = (dateStr: string | undefined | Date): Date => {
     if (!dateStr) return new Date();
     if (dateStr instanceof Date) return dateStr;
@@ -229,7 +236,8 @@ export const generateFinancialTransactions = (
             customerName: customer?.name || 'Desconhecido',
             serviceName: service?.name || 'Serviço',
             appointmentDate: app.date,
-            isReconciled: app.isReconciled
+            isReconciled: app.isReconciled,
+            customerId: app.customerId
         });
 
         // Extras Transactions
@@ -250,7 +258,8 @@ export const generateFinancialTransactions = (
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: extra.serviceName,
                 appointmentDate: app.date,
-                isReconciled: app.isReconciled
+                isReconciled: app.isReconciled,
+                customerId: app.customerId
             });
         });
     }
@@ -263,48 +272,11 @@ export const generateFinancialTransactions = (
         }
         */
 
-        // Card Fees
-        if (fee > 0 && actualTotalRevenue > 0) {
-            allTrans.push({
-                id: `app-fee-${app.id}`,
-                date: settlementDate,
-                type: 'DESPESA',
-                category: 'Taxas de Cartão',
-                description: `Taxa ${paymentMethodName} - Ref: ${customer?.name || 'Cliente'}`,
-                amount: actualTotalRevenue * (fee / 100),
-                status: status,
-                paymentMethod: paymentMethodName,
-                origin: 'Despesa',
-                providerName: provider?.name || 'Não atribuído',
-                customerName: customer?.name || 'Desconhecido',
-                customerOrProviderName: customer?.name || 'Desconhecido',
-                appointmentDate: app.date,
-                isReconciled: app.isReconciled
-            });
-        }
-
-        // --- ANTICIPATION FEES ---
-        // Apply anticipation for credit cards if enabled for that date
-        const isCredit = paymentMethodName.toLowerCase().includes('crédito');
-        const antRate = getAnticipationRate(app.date, financialConfigs);
-        if (isCredit && antRate > 0 && actualTotalRevenue > 0) {
-            allTrans.push({
-                id: `app-ant-fee-${app.id}`,
-                date: settlementDate,
-                type: 'DESPESA',
-                category: 'Taxas de Antecipação',
-                description: `Antecipação ${paymentMethodName} (${antRate}%) - Ref: ${customer?.name || 'Cliente'}`,
-                amount: actualTotalRevenue * (antRate / 100),
-                status: status,
-                paymentMethod: paymentMethodName,
-                origin: 'Despesa',
-                providerName: provider?.name || 'Não atribuído',
-                customerName: customer?.name || 'Desconhecido',
-                customerOrProviderName: customer?.name || 'Desconhecido',
-                appointmentDate: app.date,
-                isReconciled: app.isReconciled
-            });
-        }
+        // --- AUTO-GENERATED CARD/ANTICIPATION FEES REMOVED BY USER REQUEST ---
+        /*
+        if (fee > 0 && actualTotalRevenue > 0) { ... }
+        ...
+        */
 
         // Caixinha (Tip)
         if (app.status === 'Concluído' && tipAmount > 0) {
@@ -323,7 +295,8 @@ export const generateFinancialTransactions = (
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: 'Caixinha / Gorjeta',
                 appointmentDate: app.date,
-                isReconciled: app.isReconciled
+                isReconciled: app.isReconciled,
+                customerId: app.customerId
             });
         }
 
@@ -352,7 +325,7 @@ export const generateFinancialTransactions = (
                 date: commissionDate,
                 type: 'DESPESA',
                 category: 'Repasse Comissão',
-                description: `Repasse - ${provider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
+                description: `Repasse - ${(provider.name || 'Pró').split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                 amount: commissionAmount,
                 status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                 paymentMethod: 'Transferência',
@@ -361,7 +334,8 @@ export const generateFinancialTransactions = (
                 providerName: provider.name,
                 customerName: customer?.name || 'Desconhecido',
                 serviceName: `Comissão: ${service?.name || 'Serviço'}`,
-                appointmentDate: app.date
+                appointmentDate: app.date,
+                customerId: app.customerId
             });
         }
 
@@ -396,7 +370,7 @@ export const generateFinancialTransactions = (
                         date: commissionDate,
                         type: 'DESPESA',
                         category: 'Repasse Comissão',
-                        description: `Repasse Extra - ${extraProvider.name.split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
+                        description: `Repasse Extra - ${(extraProvider.name || 'Pró').split(' ')[0]} (${(rate * 100).toFixed(0)}%) - ${customer?.name || 'Cliente'}`,
                         amount: commissionAmount,
                         status: app.status === 'Concluído' ? (commissionDate <= todayStr ? 'Pago' : 'Pendente') : 'Previsto',
                         paymentMethod: 'Transferência',
@@ -405,7 +379,8 @@ export const generateFinancialTransactions = (
                         providerName: extraProvider.name,
                         customerName: customer?.name || 'Desconhecido',
                         serviceName: `Comissão: ${extraService?.name || 'Serviço'}`,
-                        appointmentDate: app.date
+                        appointmentDate: app.date,
+                        customerId: app.customerId
                     });
                 }
             });
@@ -436,25 +411,16 @@ export const generateFinancialTransactions = (
             customerName: 'Cliente Balcão',
             serviceName: 'Venda de Produto',
             appointmentDate: sale.date,
-            isReconciled: sale.isReconciled
+            isReconciled: sale.isReconciled,
+            customerId: sale.customerId
         });
 
-        // Automated Card Fee for Sales
+        // --- AUTO-GENERATED CARD FEE FOR SALES REMOVED BY USER REQUEST ---
+        /*
         if (fee > 0 && grossAmount > 0) {
-            allTrans.push({
-                id: `sale-fee-${sale.id}`,
-                date: settlementDate,
-                type: 'DESPESA',
-                category: 'Taxas de Cartão',
-                description: `Taxa ${paymentMethodName} - Ref: Venda de Produto`,
-                amount: grossAmount * (fee / 100),
-                status: status,
-                paymentMethod: paymentMethodName,
-                origin: 'Outro',
-                appointmentDate: sale.date,
-                isReconciled: sale.isReconciled
-            });
+            allTrans.push({ ... });
         }
+        */
     });
 
     expenses.forEach(exp => {
@@ -507,8 +473,8 @@ export const calculateDailySummary = (dailyRelTrans: FinancialTransaction[]) => 
     const totalProducts = dailyRelTrans.filter(t => t.origin === 'Produto').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalAjustes = dailyRelTrans.filter(t => t.category === 'Ajuste de Valor').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalTips = dailyRelTrans.filter(t => t.category === 'Caixinha').reduce((acc, t) => acc + t.amount, 0);
-    const totalAnticipationFees = dailyRelTrans.filter(t => t.category === 'Taxas de Antecipação').reduce((acc, t) => acc + t.amount, 0);
-    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes - totalAnticipationFees;
+    const totalAnticipationFees = 0;
+    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes;
 
     return {
         totalServices,

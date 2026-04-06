@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Download, Upload, RefreshCw, CheckCircle2, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight, Trash2, Link2 } from 'lucide-react';
+import { Download, Upload, RefreshCw, CircleCheck, AlertCircle, PlusCircle, X, Check, Search, Calendar, DollarSign, List, Filter, ChevronLeft, ChevronRight, Trash2, Link2 } from 'lucide-react';
 import { Expense, ExpenseCategory, Supplier, Sale, Appointment, Customer, PaymentSetting, FinancialConfig } from '../types';
 import { supabase } from '../services/supabase';
 import { parseDateSafe, toLocalDateStr } from '../services/financialService';
@@ -199,7 +199,7 @@ const ReconciliationRow = React.memo(({
                 )}
                 {row.status === 'CONCILIADOS' && (
                     <p className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-100 inline-flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
+                        <CircleCheck className="w-3 h-3" />
                         Match Sistêmico Efetuado
                     </p>
                 )}
@@ -1568,7 +1568,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
                                 <button onClick={() => setActiveTab('CONCILIADOS')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'CONCILIADOS' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
                                     <div className="flex items-center gap-2 text-emerald-600 mb-2">
-                                        <CheckCircle2 className="w-5 h-5" />
+                                        <CircleCheck className="w-5 h-5" />
                                         <span className="font-bold uppercase text-[10px] tracking-widest">Já Conciliados (Batem)</span>
                                     </div>
                                     <span className="text-2xl font-black text-slate-800">{stats.conciliados}</span>

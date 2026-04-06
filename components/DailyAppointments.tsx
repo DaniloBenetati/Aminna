@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon, Search, MessageCircle,
-  ChevronLeft, ChevronRight, AlertTriangle, Clock, Fingerprint, RefreshCw, CheckCircle2, Loader2, AlertCircle, Play, Check
+  ChevronLeft, ChevronRight, AlertTriangle, Clock, Fingerprint, RefreshCw, CircleCheck, Loader2, AlertCircle, Play, Check
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ViewState, Appointment, Customer, Service, Campaign, PaymentSetting, Provider, StockItem, NFSeRecord, UserProfile, Sale } from '../types';
@@ -373,7 +373,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
                   {appt.status === 'Concluído' && (
                     (() => {
                       const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                      if (record?.status === 'issued') return <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase"><CheckCircle2 size={10} /> NFSe OK</span>;
+                      if (record?.status === 'issued') return <span className="flex items-center gap-1 text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase"><CircleCheck size={10} /> NFSe OK</span>;
                       if (record?.status === 'processing') return <span className="flex items-center gap-1 text-[8px] font-black text-blue-600 dark:text-blue-400 uppercase"><Loader2 size={10} className="animate-spin" /> Emitindo</span>;
                       if (record?.status === 'error') return <span className="flex items-center gap-1 text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase"><AlertCircle size={10} /> Erro Fiscal</span>;
                       return <span className="text-[8px] font-black text-slate-400 uppercase">Sem Nota</span>;

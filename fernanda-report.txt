@@ -1,0 +1,139 @@
+--- SEARCH RESULTS FOR FERNANDA ---
+Found 103 people with 'FERNANDA' in name in CUSTOMERS table:
+  ID: ecf25802-1983-4bff-87e6-39c49d6ad520, Name: "Fernanda Rodriguez", Phone: 21980096727
+  ID: 750e471e-e253-4125-ada3-82651feaf030, Name: "Fernanda Rosaa", Phone: 11940200676
+  ID: 30dd76be-cf8c-4ff1-8269-e5bc2fb1ba05, Name: "Fernanda Gusmão", Phone: 11991896675
+  ID: aea872e5-9a8c-4eb9-94dd-606d75a7ee3e, Name: "Fernanda Johansson", Phone: 12991892648
+  ID: 77a7e027-567c-4f10-9053-4e7129690fcb, Name: "Fernanda Furusho", Phone: 11964892627
+  ID: 1d489de3-c74d-49ab-ae2d-ea789f5e6ba8, Name: "Fernanda Rimbano", Phone: 11964993025
+  ID: a7f95871-7045-47ef-b9eb-6956e52f652a, Name: "Fernanda Blando", Phone: 11981569020
+  ID: 22e08231-3603-4c91-acc2-7c0f37e6a001, Name: "FERNANDA MESQUITA LOPES", Phone: 11992933339
+  ID: 9b88eedd-9279-44b7-92d0-d9fc8e85f117, Name: "Maria Fernanda Belloni", Phone: 11983579939
+  ID: ae53b79f-afea-47fb-a38a-476fa430b3a6, Name: "Fernanda Bertini", Phone: 11980422862
+  ID: 8f58a76a-bba8-4e15-83d3-7ff73e1e5bd2, Name: "Fernanda Alves", Phone: 11952944050
+  ID: 40aba117-79e0-4898-b171-36ee5d37717c, Name: "Fernanda Alvess", Phone: 21982027716
+  ID: 86920b58-6533-403f-9c76-7c6f0650611b, Name: "Fernanda Andrade", Phone: 31983696033
+  ID: 04fa335d-7806-4c11-8b96-87112325d432, Name: "Fernanda Arias", Phone: 21991364266
+  ID: c566f478-5a8a-4bed-9545-e8282e0bc944, Name: "Fernanda Arkader", Phone: 11999796002
+  ID: 76815691-8c42-4b51-bb0b-a18d2fbb76dc, Name: "Fernanda Arruda", Phone: 4799584909
+  ID: 55c5d236-2fbd-43cc-929b-cad9180f9aab, Name: "Fernanda Azevedo", Phone: 11990243242
+  ID: a5b28b08-715f-43de-8e4a-57798b7f90e6, Name: "Fernanda Baroni", Phone: 11991457775
+  ID: 161a1943-f354-4148-bbf5-34b8787253cd, Name: "Fernanda Boaventura", Phone: 6191131790
+  ID: dc808af4-1bbf-43e8-828a-ce2066101db4, Name: "Fernanda Botter", Phone: 11982289070
+  ID: 6fba7819-2754-4cec-89f3-e35c900dd571, Name: "Fernanda Camargo", Phone: 11946628702
+  ID: 528aaccd-5433-465d-ad38-5521c44d9e67, Name: "Fernanda Capobianco", Phone: 11999414001
+  ID: 00b416b0-e6bf-41ef-b4d1-6e35cb4f94db, Name: "Fernanda Carbonari", Phone: 11996242266
+  ID: be43f65a-d200-40c0-ad49-1b73f2f2707c, Name: "Fernanda Cunha", Phone: 11991333388
+  ID: b1587fb1-8e33-4831-b35b-90eb451a98be, Name: "Fernanda do Prado", Phone: 11976792375
+  ID: 7177ac4d-0671-45f7-beab-7787cdb381cc, Name: "Fernanda Eimori", Phone: 11998107510
+  ID: 553c2242-631c-4b37-b178-f9838bb2925b, Name: "Fernanda Farias Sgarbi", Phone: 11948128401
+  ID: 40bfdd08-118e-4161-87b1-1f6c4e5b3155, Name: "Fernanda Figueiredo", Phone: 11960835110
+  ID: 500eb61a-e4e5-437e-88b5-0ca326955d6d, Name: "Fernanda Flores", Phone: 19999667583
+  ID: 4a2bd80c-33f6-425b-9da0-f60634575e9f, Name: "Fernanda Freire", Phone: 21981907620
+  ID: 7fec8658-c87c-4bd0-9d1b-cee4645de627, Name: "Fernanda Freitas", Phone: 11982640472
+  ID: e286d398-c3a0-41a7-bf9b-9b21f5b281c3, Name: "Fernanda Galvão", Phone: 21997109338
+  ID: 660d0b10-aba5-4470-9d02-3543910d8930, Name: "Fernanda Garroux", Phone: 11973919104
+  ID: b749b269-4b16-46c7-8b7d-4dfa3809d2d9, Name: "Fernanda Garvia", Phone: 11996681839
+  ID: 113f3884-46a9-4a9b-933e-5c6935c97f96, Name: "Fernanda Gomes", Phone: 11985599988
+  ID: 87cb430d-e0ce-4bb0-b242-3b63e89c1855, Name: "Fernanda Gregati", Phone: 21989890515
+  ID: bc6b167f-b4cb-4889-b5b6-e3a494c8168d, Name: "Fernanda Almeida", Phone: 55628644713
+  ID: 160729e3-6d15-417b-bd9f-ba5d51b6838e, Name: "Fernanda Jordani", Phone: 11979846504
+  ID: 15c0b44a-343b-4b3e-9f87-59da9cb27aa3, Name: "Fernanda Jordão", Phone: 11994812048
+  ID: 7c936c86-763e-41d4-bbe8-9a9c9663be25, Name: "Fernanda Kochi", Phone: 11977390539
+  ID: d51e94c7-f3c4-4c59-98ca-28eeb0a30500, Name: "Fernanda Kottwitz", Phone: 11951588350
+  ID: 5bae272b-76ee-44da-9340-ff82786fda6c, Name: "Fernanda Labate", Phone: 11966614947
+  ID: 074e9189-4245-4183-9c1b-02d31ee45771, Name: "Fernanda Lapa", Phone: 11964964178
+  ID: c0d20f3a-2351-4297-87cd-90d48d1e7b17, Name: "Fernanda Leite", Phone: 11942212809
+  ID: caa54c2f-2156-412e-b3b1-caf53f2ec3eb, Name: "Fernanda Lima", Phone: 11947396034
+  ID: 5053274a-447b-45a5-a80d-52838ca6eae2, Name: "Fernanda Machado", Phone: 11932197128
+  ID: 8eb31426-ce8d-4ef2-bf24-d22e5b5e74ff, Name: "Fernanda Machado .", Phone: 11998541012
+  ID: 685402ce-d2cf-4d47-811c-48615f6039e0, Name: "Fernanda Marotti", Phone: 11988829087
+  ID: 5d7b0a6a-200d-4af9-9472-25f0c9875039, Name: "Fernanda Marques", Phone: 11944708573
+  ID: fe30e81b-3d5e-4949-853e-22d9699df0e0, Name: "Fernanda Mayume", Phone: 18981358606
+  ID: 1b3c4dcf-8603-4b4b-ae69-179e19379ef9, Name: "Fernanda Mello", Phone: 11932038000
+  ID: cdfca355-22bc-4047-91db-9683fefdf099, Name: "Fernanda Melo", Phone: 11931500883
+  ID: 72b602fe-6de6-41e2-834c-d3d1ee3bb75a, Name: "Fernanda Mesquita", Phone: 11973242849
+  ID: 20b5f9ab-1408-4de0-a794-fc60e361cf8f, Name: "Fernanda Mesquita de Miranda", Phone: 35998425699
+  ID: 7fd4e63e-3b0a-4679-816f-63f223889480, Name: "Fernanda Morais", Phone: 11997075176
+  ID: b70cc73b-4d70-47ce-a2af-019f03d8398c, Name: "Fernanda Nascimento", Phone: 11969093042
+  ID: dd87ae01-1d86-4281-bc1f-c153f05809a1, Name: "Fernanda Negri", Phone: 11950417707
+  ID: 1d28cb57-7dd7-4839-9618-13a745688d5e, Name: "Fernanda Odim", Phone: 15996824499
+  ID: 17b94383-fddc-4dd8-a040-bf95219b16b2, Name: "Fernanda Oliveira", Phone: 21982509424
+  ID: 8a3de7fb-d5e6-4b25-85ef-bbc4edb5560d, Name: "Fernanda Oliveiraa", Phone: 11984010397
+  ID: 25470fbe-0596-4abb-b684-c91f9d874f99, Name: "Fernanda Pimenta de Oliveira", Phone: 11975791283
+  ID: ac9e651d-b6bf-4835-8ba8-3c04c7f51d87, Name: "Fernanda Prisco", Phone: 11976540598
+  ID: aee27bc5-936f-4b7f-93f2-edcce8283e61, Name: "Fernanda Purchio", Phone: 11970749777
+  ID: 871104e3-a948-4261-8241-b892015d0701, Name: "Fernanda Ribeiro", Phone: 6182101080
+  ID: 7b537137-7a6c-4bc9-bdbc-65c3a4d86cae, Name: "Fernanda Rimoli", Phone: 3492081658
+  ID: b05ba19a-ba29-4c8c-991f-96b341308e28, Name: "Fernanda Rosa", Phone: 6792940244
+  ID: a4b43903-9813-496a-b73b-732b5514b36d, Name: "Fernanda Salvanha", Phone: 11912766360
+  ID: 50ed48b5-f785-45a4-9d15-019ed13a2516, Name: "Fernanda Sepulbeda", Phone: 11994575221
+  ID: cc78b2ea-5f68-4dad-af7e-978a9f71c71a, Name: "Fernanda Reis", Phone: 11962482259
+  ID: 90d1a357-9ed5-4d43-b759-541370827518, Name: "Fernanda Soares", Phone: 11970319579
+  ID: 12101fa5-f483-45f0-8f3d-96541e5474f5, Name: "Fernanda Soller", Phone: 48998223331
+  ID: eae499f4-53dd-4f4d-99f6-a2ce8fb3db4c, Name: "Fernanda Sousa", Phone: 11995444767
+  ID: 76d71874-d426-4791-b3c9-59da3b5df507, Name: "Fernanda Spachi", Phone: 11988709092
+  ID: 3685924a-aa7f-4545-8711-26a6af9fdd22, Name: "Fernanda Suelen", Phone: 11968981702
+  ID: f1de8cc4-61e3-4f9c-b8c2-3b4db64e859c, Name: "Fernanda Teixeira", Phone: 8496409953
+  ID: e8ef1787-c68c-4dfd-b920-03ca4691bfce, Name: "Fernanda Teles", Phone: 11940488859
+  ID: 017a2079-884a-40d1-be5e-53b25226fe83, Name: "Fernanda Dias", Phone: 11960779769
+  ID: a29da939-5f66-405a-b7bc-aada9a2991a5, Name: "Fernanda Gavioli", Phone: 11998532778
+  ID: 09cf1652-93dd-4e97-b485-0ca97a037129, Name: "Fernanda Toda", Phone: 11942219559
+  ID: 4c020a06-90ad-4d04-8fb0-0bdb376a9470, Name: "Fernanda Vieira", Phone: 4896484154
+  ID: 6351336a-f1e7-420e-86fc-c33e2cd195d8, Name: "Fernanda Xavier", Phone: 11963546996
+  ID: 08ee6e17-f103-47f4-be5c-5c0309107381, Name: "Fernanda Zanini", Phone: 11989362277
+  ID: 4b726d70-8f2c-4c30-a201-5fa2e3b12bd7, Name: "Fernanda Zloccowick", Phone: 3199059759
+  ID: 74bcbcaf-f020-465c-9dd9-0ada76dd34e8, Name: "Fernanda de Jesus", Phone: 11986254470
+  ID: a2d3fb18-fd33-47e1-96f4-0c634aaf186f, Name: "Fernanda Marcondes", Phone: 4184075527
+  ID: 74dbba7d-a777-426e-acdf-ef450d033d72, Name: "Fernanda Padilha", Phone: 11999213209
+  ID: b447829b-dd32-4407-896e-7b969376a748, Name: "Fernanda Thais Carvalho", Phone: 11984828376
+  ID: 659dd580-8b18-4d69-afcc-c2f4f3dc327d, Name: "Fernanda Romancini", Phone: 11998302344
+  ID: ba705ad0-2f02-4f35-8a17-75c0af988629, Name: "Jamille Fernanda", Phone: 1194307250
+  ID: dca9d2df-e044-41c3-8481-79d3f4b77875, Name: "Maria Fernanda Shin", Phone: 11963595349
+  ID: 6bdecae4-dc75-4502-9ea9-0000d1a6f3b0, Name: "Maria Fernanda", Phone: 11941121207
+  ID: ff31db4a-f440-49cd-8aa1-e6dee13bd358, Name: "Maria Fernanda Agnelli", Phone: 13974192588
+  ID: 90ffda3d-1273-462a-a6a7-3b92ea1b4cb0, Name: "Maria Fernanda Brum", Phone: 11981618722
+  ID: 921a752d-1f2d-4548-9122-3cc02545d10c, Name: "Maria Fernanda Hanna", Phone: 11997600444
+  ID: 5def9abb-589a-41da-93e5-2e77ec82bb70, Name: "Maria Fernanda Salles", Phone: 4199162717
+  ID: 81f610ac-10d4-433f-93cb-e860ee5fdec5, Name: "Maria Fernanda Yukie", Phone: 11971320077
+  ID: 91a0ce50-c418-49e5-a7f8-940dc449c63a, Name: "Priscila Fernanda", Phone: 11910771993
+  ID: acd905db-0f9b-4022-95e1-86e7023cfb88, Name: "Fernanda Ribeiro da Silva", Phone: 21972500720
+  ID: 5edb6cea-25b2-40cf-9013-e242c2bfa4a4, Name: "Fernanda Melgarejo", Phone: 11944663233
+  ID: cdf8aaef-3e13-4eaf-9ad5-ea09b3d728fd, Name: "Fernanda Cafalli", Phone: 11954371838
+  ID: 145b4908-a434-44db-a521-ac7728736244, Name: "Fernanda Taube", Phone: 11952040253
+  ID: aba44215-ba6b-403e-bdb0-afc0c36a0473, Name: "Andressa Fernanda", Phone: 11960147462
+  ID: b08496b2-2003-40d3-8da6-2fe97c9fab66, Name: "Fernanda Soler", Phone: 11953031560
+
+Found 32 appointments on 2026-03-30:
+  AppID: c1ad56a8-5339-4586-9769-1236165d9382, Customer ID: dfc43fc1-7577-4141-98ac-2e9c461f1c89, Status: Concluído
+  AppID: 6c930684-7775-4c22-ab01-d78716610dfd, Customer ID: 872e3340-ca47-4d03-9dff-7a0ac424ab41, Status: Concluído
+  AppID: 40d048dd-d89d-4acf-aee2-19049e6249ab, Customer ID: c34026eb-ad71-45f0-91ab-f4cf01556a1d, Status: Concluído
+  AppID: 9c7b0869-e857-4ad5-98b7-ecec1432e153, Customer ID: 52ee5476-5fa0-46d9-8b54-6be593bfc4ec, Status: Concluído
+  AppID: 947a6ac9-a27c-4559-ac12-0bc0551bb79c, Customer ID: 8affceee-a067-442f-8628-5280e6df9f8b, Status: Concluído
+  AppID: f2bb2e8d-53da-43cb-a774-9285f3dae3fa, Customer ID: 7da0d797-d21a-4330-b1a3-1a3f893dcd23, Status: Concluído
+  AppID: fb42d43c-a51a-4597-88f1-92a1ba3df372, Customer ID: 810a68a1-f594-4d54-aa47-c8622308fd80, Status: Concluído
+  AppID: 81b5d845-ab41-4ba5-8d2e-4b812ced0687, Customer ID: dc480c54-4e6b-421a-b2f5-93acbd7214e3, Status: Concluído
+  AppID: e7201944-2ed3-4c3e-886c-1ae4f1ed347d, Customer ID: cc77e49b-87ab-400d-94ae-e74fbb3bbf14, Status: Concluído
+  AppID: c0bac228-5090-4ce2-9d16-a70f6061e8c9, Customer ID: cb69cab9-9872-4a2e-a387-a6e809b27a55, Status: Concluído
+  AppID: 8ebea1dc-4e6e-45c6-ba3f-dcb7c69d1528, Customer ID: 1c75c78e-3c84-4d91-ae40-4aaf68a29798, Status: Concluído
+  AppID: bd4006ea-237e-403e-a997-8bdb7e188c61, Customer ID: 5a018d85-138c-4acb-8ff3-694bb533e01f, Status: Concluído
+  AppID: 8ad80b6a-9317-439e-b7fb-6ede65f5cd96, Customer ID: 5e753b1f-7199-4fb4-a9ed-ecf689fe2b28, Status: Concluído
+  AppID: 52abe4e9-ddf0-4661-8d32-3240c50c3ada, Customer ID: f64f7a09-e31e-4fd3-9ecc-82a38e6f1079, Status: Concluído
+  AppID: 375e059c-51e7-40ec-92f8-b23948eb2c8e, Customer ID: a853605a-df72-49e2-b69d-20422472eb45, Status: Concluído
+  AppID: cc3e3b59-ee10-4cf8-948f-b0347e3aace7, Customer ID: c5c83ae6-6d50-4b69-85f6-f6a8e8d1c0a7, Status: Concluído
+  AppID: 883e4ebd-1f20-4739-af32-3fe6d310a919, Customer ID: a1872c0f-4191-4103-bcee-798061b9da89, Status: Concluído
+  AppID: 4ea89755-1783-40f5-b4d0-ae3346acedca, Customer ID: 0156c1cc-c554-4bb3-9853-07fa6ba5d00a, Status: Concluído
+  AppID: 37f8a48a-aac5-408d-a854-3131082bdb56, Customer ID: 1edef47b-0dd7-49df-8b4b-c21770fadd21, Status: Concluído
+  AppID: 8dd32407-3e88-4376-b45c-25770ec827f2, Customer ID: bdf9ef59-bda8-4854-b357-2119b75935f7, Status: Concluído
+  AppID: 6ee13775-df3b-4a10-addb-b1c531d505aa, Customer ID: 4553bddd-b582-44aa-9529-5adb24ae97b0, Status: Concluído
+  AppID: 08b6a3fe-6d7e-4b02-b83c-03a972e1db37, Customer ID: 4f1fac5e-10fa-4d32-ba95-1369c26633bb, Status: Concluído
+  AppID: 14902138-1b04-4ae8-ab83-bad27ea5d483, Customer ID: e7ad7125-de55-494c-adaf-4db1286654a9, Status: Concluído
+  AppID: 6ad80b89-3b95-4a43-a011-637c0f22cad2, Customer ID: 57a38d74-8a42-4232-9a5b-d5981e7765bb, Status: Concluído
+  AppID: 026e6d72-648e-4b98-8e49-54183c3df7a0, Customer ID: 33647542-2de8-4cb9-a9ce-f781fb5bffce, Status: Concluído
+  AppID: bf2bf5c9-60ab-4839-96ca-d96169258ee9, Customer ID: 17ba0e86-a76e-4c30-8eb5-0123d241d8f6, Status: Concluído
+  AppID: 3f02e77e-f87b-4b6f-805b-9ddfd0c341d5, Customer ID: a1f339c7-6bf8-424b-b37a-cb9ad41e0c3d, Status: Concluído
+  AppID: 50bb9ad1-e8fd-49bd-8e60-184b8b2c6df9, Customer ID: 90b83851-0b68-4804-8994-34b8183b6653, Status: Concluído
+  AppID: c6e3ef4e-6021-47b6-b82f-2cc6733dc230, Customer ID: fb5c7a94-ba58-4251-a4fc-841fbb8471ab, Status: Concluído
+  AppID: 56c9e6a2-0397-44fb-b1d2-b1654189c843, Customer ID: cdf8aaef-3e13-4eaf-9ad5-ea09b3d728fd, Status: Concluído
+  AppID: 8a819845-88c6-4590-be89-1e682e7f7a47, Customer ID: 145b4908-a434-44db-a521-ac7728736244, Status: Concluído
+  AppID: c1f783fa-e503-4069-a9d9-188e6d1c191f, Customer ID: 88d47e12-b888-4ea9-861a-8b2711debb97, Status: Concluído

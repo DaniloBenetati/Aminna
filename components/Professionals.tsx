@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, Link, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CheckCircle2, XCircle, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
+import { Search, Plus, Link, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CircleCheck, CircleX, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock } from 'lucide-react';
 
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -882,7 +882,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             <div className={`p-4 rounded-3xl border-2 transition-all flex items-center justify-between ${formData.active ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-60'}`}>
                                 <div className="flex items-center gap-3">
                                     <div className={`p-2 rounded-xl ${formData.active ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'}`}>
-                                        {formData.active ? <CheckCircle2 size={24} /> : <XCircle size={24} />}
+                                        {formData.active ? <CircleCheck size={24} /> : <CircleX size={24} />}
                                     </div>
                                     <div>
                                         <p className={`text-sm font-black uppercase ${formData.active ? 'text-emerald-900 dark:text-emerald-400' : 'text-slate-950 dark:text-white'}`}>Status: {formData.active ? 'Ativa' : 'Inativa'}</p>
@@ -1552,7 +1552,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     type="submit"
                                     className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
-                                    <CheckCircle2 size={18} /> Salvar Cadastro
+                                    <CircleCheck size={18} /> Salvar Cadastro
                                 </button>
                             </div>
                         </form>
@@ -1619,7 +1619,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 disabled={!isAllReplacementsSelected}
                                 className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                             >
-                                {isAllReplacementsSelected ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                                {isAllReplacementsSelected ? <CircleCheck size={16} /> : <AlertTriangle size={16} />}
                                 Confirmar Substituição e Inativar
                             </button>
                         </div>

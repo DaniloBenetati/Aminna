@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 import { 
   Plus, Search, Edit2, Trash2, Package, Gift, Calendar, 
-  MapPin, User, Smartphone, Info, CheckCircle, Clock, XCircle,
+  MapPin, User, Smartphone, Info, CircleCheck, Clock, CircleX,
   TrendingUp, AlertCircle, ShoppingBag, Truck
 } from 'lucide-react';
 import { Partner, PartnerExchange, Campaign } from '../types';
@@ -330,9 +330,9 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                           e.status === 'Em Negociação' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
                           'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}>
-                          {e.status === 'Concluído' && <CheckCircle size={10} />}
+                          {e.status === 'Concluído' && <CircleCheck size={10} />}
                           {e.status === 'Em Negociação' && <Clock size={10} />}
-                          {e.status === 'Cancelado' && <XCircle size={10} />}
+                          {e.status === 'Cancelado' && <CircleX size={10} />}
                           {e.status}
                         </span>
                       </td>
@@ -364,7 +364,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                 <Gift size={20} className="text-indigo-400" />
                 {editingPartner ? 'Editar Parceiro Produto' : 'Novo Parceiro Produto'}
               </h3>
-              <button onClick={() => setIsPartnerModalOpen(false)}><XCircle size={24} /></button>
+              <button onClick={() => setIsPartnerModalOpen(false)}><CircleX size={24} /></button>
             </div>
             <form onSubmit={handleSavePartner} className="p-8 space-y-5">
               <div className="grid grid-cols-2 gap-4">
@@ -430,7 +430,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                 <Package size={20} />
                 {editingExchange?.id ? 'Editar Permuta' : 'Nova Permuta'}
               </h3>
-              <button onClick={() => setIsExchangeModalOpen(false)}><XCircle size={24} /></button>
+              <button onClick={() => setIsExchangeModalOpen(false)}><CircleX size={24} /></button>
             </div>
             <form onSubmit={handleSaveExchange} className="p-8 space-y-4">
               <div className="grid grid-cols-2 gap-4">

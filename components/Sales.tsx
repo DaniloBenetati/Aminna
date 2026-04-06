@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CheckCircle2, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CircleCheck, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
@@ -2266,7 +2266,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <div className="fixed inset-0 flex items-center justify-center z-[200] bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-emerald-500 text-white p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border-4 border-emerald-400 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-500">
                         <div className="bg-white/20 p-4 rounded-3xl">
-                            <CheckCircle2 size={48} className="text-white" />
+                            <CircleCheck size={48} className="text-white" />
                         </div>
                         <div className="text-center">
                             <h3 className="text-xl font-black uppercase tracking-widest leading-none">Venda Realizada!</h3>

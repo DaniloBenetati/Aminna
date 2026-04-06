@@ -353,6 +353,7 @@ export interface FinancialTransaction {
   invoiceNumber?: string;
   providerId?: string;
   employeeId?: string;
+  customerId?: string;
 }
 
 export interface BankTransaction {

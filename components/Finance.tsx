@@ -3,14 +3,14 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
     ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X,
     DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight,
-    ChevronDown, Trash2, ShoppingBag, ArrowDownCircle, ArrowUpCircle, CheckCircle2,
+    ChevronDown, Trash2, ShoppingBag, ArrowDownCircle, ArrowUpCircle, CircleCheck,
     Clock, AlertCircle, FileText, Printer, Edit2, Users, ChevronRight, BarChart as BarChartIcon,
     PieChart, BrainCircuit, Landmark, Wallet2, Receipt, Building2, LayoutPanelLeft,
-    Calculator as CalcIcon, History, Info, ChevronLeft, CalendarDays, RefreshCw, XCircle, SearchIcon,
+    Calculator as CalcIcon, History, Info, ChevronLeft, CalendarDays, RefreshCw, CircleX,
     Download, AlertTriangle, Target, Files, Save, List, ArrowRight, Sparkles, MessageCircle, Lock,
     PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp,
     ShieldCheck, Share2, Copy, Send, Percent, Crown, BarChart2, Zap, Link2, FilePlus,
-    Calculator, Scissors, Truck
+    Scissors, Truck
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig, Employee, PayrollRecord } from '../types';
@@ -64,6 +64,124 @@ interface ManualLinkModalProps {
     bankTransactions: BankTransaction[];
 }
 
+// --- BATCH LINK MODAL COMPONENT ---
+interface BatchLinkModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    selectedExpenses: Expense[];
+    bankTransactions: BankTransaction[];
+    onLink: (bankTxId: string, expenseIds: string[]) => Promise<void>;
+    isProcessing: boolean;
+    parseDateSafe: (date: any) => Date;
+}
+
+const BatchLinkModal: React.FC<BatchLinkModalProps> = ({ 
+    isOpen, onClose, selectedExpenses, bankTransactions, onLink, isProcessing, parseDateSafe 
+}) => {
+    const [searchBank, setSearchBank] = useState('');
+    const [selectedBankTxId, setSelectedBankTxId] = useState<string | null>(null);
+
+    const filteredBankTxs = useMemo(() => {
+        return (bankTransactions || []).filter(bt => 
+            !bt.reconciled && 
+            bt.type === 'DESPESA' && // Batch linking defaults to expenses in 'Contas a Pagar'
+            (bt.description.toLowerCase().includes(searchBank.toLowerCase()) || bt.amount.toString().includes(searchBank))
+        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [bankTransactions, searchBank]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden scale-in-center duration-300">
+                <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 sticky top-0 z-10">
+                    <div>
+                        <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                           <Link2 className="text-indigo-600" /> Vincular Selecionados
+                        </h2>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                           Selecione a transação bancária correspondente
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors"><X size={20} /></button>
+                </div>
+
+                <div className="flex-1 overflow-auto p-6 space-y-6">
+                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
+                        <h3 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">Itens Selecionados ({selectedExpenses.length})</h3>
+                        <div className="space-y-2 max-h-32 overflow-auto scrollbar-hide">
+                            {selectedExpenses.map(exp => (
+                                <div key={exp.id} className="flex justify-between items-center text-xs">
+                                    <span className="font-bold text-slate-700 dark:text-slate-300 truncate max-w-[300px]">{exp.description}</span>
+                                    <span className="font-black text-rose-600">R$ {exp.amount.toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-indigo-200/50 flex justify-between text-sm font-black">
+                            <span className="text-indigo-700 dark:text-indigo-300">Total Selecionado:</span>
+                            <span className="text-indigo-700 dark:text-indigo-300">R$ {selectedExpenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input 
+                                type="text"
+                                placeholder="Buscar transação bancária (descrição ou valor)..."
+                                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[10px]"
+                                value={searchBank}
+                                onChange={e => setSearchBank(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2 max-h-[300px] overflow-auto scrollbar-hide pr-2">
+                            {filteredBankTxs.map(tx => (
+                                <button
+                                    key={tx.id}
+                                    onClick={() => setSelectedBankTxId(tx.id)}
+                                    className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all group ${selectedBankTxId === tx.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-slate-300'}`}
+                                >
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedBankTxId === tx.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-slate-100'}`}>
+                                            <Landmark size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-900 dark:text-white uppercase truncate max-w-[250px]">{tx.description}</p>
+                                            <p className="text-[10px] text-slate-500 font-bold mt-0.5">{parseDateSafe(tx.date).toLocaleDateString('pt-BR')}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-black text-rose-600">R$ {tx.amount.toFixed(2)}</p>
+                                        <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Bancário</p>
+                                    </div>
+                                </button>
+                            ))}
+                            {filteredBankTxs.length === 0 && (
+                                <div className="py-12 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-3xl">
+                                    Nenhuma transação bancária disponível
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex gap-4">
+                    <button onClick={onClose} className="flex-1 px-6 py-4 bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-xs font-black uppercase rounded-2xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 transition-all">Cancelar</button>
+                    <button 
+                        onClick={() => selectedBankTxId && onLink(selectedBankTxId, selectedExpenses.map(e => e.id))}
+                        disabled={!selectedBankTxId || isProcessing}
+                        className="flex-[2] px-6 py-4 bg-indigo-600 text-white text-xs font-black uppercase rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                        {isProcessing ? <RefreshCw size={16} className="animate-spin" /> : <Link2 size={16} />}
+                        Confirmar Vínculo
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ManualLinkModal: React.FC<ManualLinkModalProps> = ({ 
     isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories, providers, employees, transactions, bankTransactions
 }) => {
@@ -87,12 +205,9 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
             setInnerSearch('');
             setSelectedItems(bankTx.systemMatches || []);
 
-            // Auto-filter by month and year of the bank transaction
-            const txDate = new Date(bankTx.date);
-            setFilterMonth((txDate.getMonth() + 1).toString());
-            setFilterYear(txDate.getFullYear().toString());
-
-            // Auto-filter by type: BANK RECEITA matches SALE/APPOINTMENT, BANK DESPESA matches EXPENSE
+            // DEFAULT to 'all' to ensure everything is visible to the user unless they want to filter
+            setFilterMonth('all');
+            setFilterYear('all');
             setFilterType(bankTx.type === 'RECEITA' ? 'REVENUE' : 'EXPENSE');
 
             // Reset quick expense creation
@@ -456,7 +571,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         )}
                         {Math.abs(diff) < 0.01 && selectedItems.length > 0 && (
                             <div className="flex items-center gap-2 text-emerald-500">
-                                <CheckCircle2 size={14} />
+                                <CircleCheck size={14} />
                                 <p className="text-[9px] font-black uppercase">Valores conferem!</p>
                             </div>
                         )}
@@ -595,6 +710,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
     const [openingBalance, setOpeningBalance] = useState(0);
     const [bankTransactionsLoading, setBankTransactionsLoading] = useState(false);
+    const [pendingDates, setPendingDates] = useState<string[]>([]);
+    const [isPendingDatesLoading, setIsPendingDatesLoading] = useState(false);
 
     useEffect(() => {
         const fetchBankTransactions = async () => {
@@ -792,6 +909,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             employeeId?: string;
         }
     ) => {
+        setIsManualLinkingProcessing(true);
         try {
             // 1. Identify items that are being UNLINKED (present in previous matches but not in new matches)
             const prevMatches = bankTransactions.find(tx => tx.id === bankTxId)?.systemMatches || [];
@@ -906,6 +1024,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         } catch (err) {
             console.error("Error manual linking/unlinking:", err);
             alert("Erro ao atualizar vínculos.");
+        } finally {
+            setIsManualLinkingProcessing(false);
         }
     };
 
@@ -1038,6 +1158,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [payablesSearch, setPayablesSearch] = useState('');
     const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
     const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('ALL');
+    const [payablesSplitFilter, setPayablesSplitFilter] = useState<'ALL' | 'YES' | 'NO'>('ALL');
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -1046,6 +1167,31 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const datePickerRef = useRef<HTMLInputElement>(null);
     const [dateRef, setDateRef] = useState(new Date());
     const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
+    const [isBatchLinkModalOpen, setIsBatchLinkModalOpen] = useState(false);
+    const [isLinkingProcessing, setIsLinkingProcessing] = useState(false);
+    const [isManualLinkingProcessing, setIsManualLinkingProcessing] = useState(false);
+
+    const handleBatchLinkExpenses = async (bankTxId: string, expenseIds: string[]) => {
+        setIsLinkingProcessing(true);
+        try {
+            const bankTx = bankTransactions.find(bt => bt.id === bankTxId);
+            if (!bankTx) return;
+
+            const itemsToLink = expenseIds.map(id => {
+               const exp = expenses.find(e => e.id === id);
+               return { id, type: 'EXPENSE' as const, amount: exp?.amount || 0 };
+            });
+
+            await handleManualLink(bankTxId, itemsToLink);
+            setIsBatchLinkModalOpen(false);
+            setSelectedExpenseIds([]); // Clear selection after linking
+        } catch (error) {
+            console.error('Error in batch link:', error);
+            alert('Erro ao vincular despesas.');
+        } finally {
+            setIsLinkingProcessing(false);
+        }
+    };
     const [payablesIgnoreDateFilter, setPayablesIgnoreDateFilter] = useState(false);
     const [isBatchDateModalOpen, setIsBatchDateModalOpen] = useState(false);
     const [applyToFuture, setApplyToFuture] = useState(false);
@@ -1101,6 +1247,63 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         setDateRef(newDate);
     };
+
+    const navigateRedDay = (direction: 'next' | 'prev') => {
+        if (pendingDates.length === 0) return;
+
+        const current = toLocalDateStr(dateRef);
+        let nextDateStr;
+
+        if (direction === 'next') {
+            nextDateStr = pendingDates.slice().reverse().find(d => d > current);
+        } else {
+            nextDateStr = pendingDates.find(d => d < current);
+        }
+
+        if (nextDateStr) {
+            const d = new Date(nextDateStr + 'T12:00:00');
+            setDateRef(d);
+            if (timeView !== 'day') setTimeView('day');
+        }
+    };
+
+    // Fetch dates with pending reconciliation
+    useEffect(() => {
+        const fetchPendingDates = async () => {
+            setIsPendingDatesLoading(true);
+            try {
+                // Fetch from bank_transactions
+                const { data: bankData } = await supabase
+                    .from('bank_transactions')
+                    .select('date')
+                    .or('system_matches.is.null,system_matches.eq.[]')
+                    .order('date', { ascending: false });
+
+                // Fetch from expenses
+                const { data: expData } = await supabase
+                    .from('expenses')
+                    .select('date')
+                    .eq('is_reconciled', false)
+                    .order('date', { ascending: false });
+
+                const combined = [
+                    ...(bankData || []).map(d => d.date),
+                    ...(expData || []).map(d => d.date)
+                ];
+
+                const unique = Array.from(new Set(combined))
+                    .filter(Boolean)
+                    .sort((a, b) => (b as string).localeCompare(a as string));
+                setPendingDates(unique);
+            } catch (err) {
+                console.error('Error fetching pending dates:', err);
+            } finally {
+                setIsPendingDatesLoading(false);
+            }
+        };
+
+        fetchPendingDates();
+    }, [bankTransactionsLoading, isReconciliationOpen]); // Re-fetch on relevant state shifts
 
     // Update startDate and endDate when timeView or dateRef changes
     React.useEffect(() => {
@@ -1294,16 +1497,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const filteredPayables = useMemo(() => {
         // Collect IDs of transactions linked to current bank view (forced to be visible if they match other filters)
         const forcedTxIds = new Set<string>();
+        const splitTxIds = new Set<string>(); // Tracks strictly those that were split in bank reconciliation
+
         bankTransactions.forEach(t => {
             if (t.systemMatches) {
-                t.systemMatches.forEach(m => forcedTxIds.add(m.id));
+                const isSplit = t.systemMatches.length > 1;
+                t.systemMatches.forEach(m => {
+                    forcedTxIds.add(m.id);
+                    // Robust matching: strip all segments of the prefix to find the underlying ID
+                    const bareMatchId = m.id.replace(/^([a-z0-9]+-)+/, '');
+                    forcedTxIds.add(bareMatchId);
+                    
+                    if (isSplit) {
+                        splitTxIds.add(m.id);
+                        splitTxIds.add(bareMatchId);
+                    }
+                });
             }
         });
 
         // We filter ALL transactions of type DESPESA, plus those that are forced (multi-category splits etc)
         const filtered = transactions.filter(t => {
             // Must be a Despesa OR explicitly forced by bank reconciliation linkage
-            const isForced = forcedTxIds.has(t.id);
+            // Must be a Despesa OR explicitly forced by bank reconciliation linkage
+            const bareId = t.id.replace(/^([a-z0-9]+-)+/, '');
+            const isForced = forcedTxIds.has(t.id) || forcedTxIds.has(bareId);
+            
             if (t.type !== 'DESPESA' && !isForced) return false;
 
             // 1. Date Filter (Always show forced links if they match the bank view, else respect date)
@@ -1341,18 +1560,27 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             if (payablesSupplierFilter !== 'ALL') {
                 const targetId = payablesSupplierFilter;
                 const item = t as any;
+                const selectedEntity = combinedSuppliers.find(s => s.id === targetId);
                 const isMatch = item.supplierId === targetId || 
                                 (item.providerId && `prov_${item.providerId}` === targetId) ||
                                 (item.employeeId && `emp_${item.employeeId}` === targetId) ||
                                 (t.category === 'Repasse Comissão' && providers.some(p => p.name === t.providerName && `prov_${p.id}` === targetId)) ||
-                                (t.customerOrProviderName === suppliers.find(s => s.id === targetId)?.name); // Fallback for name only matches
+                                (t.customerOrProviderName?.toUpperCase() === selectedEntity?.name?.toUpperCase()); 
                 entityIdMatch = isMatch;
             }
 
-            return entityIdMatch;
+            if (!entityIdMatch) return false;
+
+            // 5. Split (Desmembrado) Filter
+            const isSplit = splitTxIds.has(t.id) || splitTxIds.has(bareId);
+            const matchesSplit = payablesSplitFilter === 'ALL' ||
+                (payablesSplitFilter === 'YES' && isSplit) ||
+                (payablesSplitFilter === 'NO' && !isSplit);
+
+            return matchesSplit;
         });
 
-        // 5. Category filter for visibility ('identifiedPayables' logic merged here)
+        // 6. Category filter for visibility ('identifiedPayables' logic merged here)
         // We only show items that have a category or are forced, to avoid showing empty placeholder records
         const identified = filtered.filter(t => {
             const category = t.category || '';
@@ -1363,7 +1591,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         const unique = Array.from(new Map(identified.map(t => [t.id, t])).values());
         return unique.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions]);
+    }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions, payablesSplitFilter]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -1386,7 +1614,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // For past periods, we treat everything that isn't cancelled as "Realized Production" 
             // to match the Repasses/Closures screen and ensure the DRE isn't empty.
             const todayStr = toLocalDateStr(new Date());
-            const realizedApps = apps.filter(a => a.status?.toUpperCase() === 'CONCLUÍDO');
+            const realizedApps = apps.filter(a => a.status?.toUpperCase() === 'CONCLUÃDO');
             const forecastApps = apps.filter(a => a.status?.toUpperCase() !== 'CANCELADO' && !a.isRemake && a.customerId !== 'INTERNAL_BLOCK');
 
             const revenueServices = calculateProductionRevenue(realizedApps, services);
@@ -1430,42 +1658,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 .filter(e => e.dreClass === 'OTHER_INCOME')
                 .reduce((acc, e) => acc + e.amount, 0);
 
-            // Automated Deductions (Fees) - Only for REALIZED in DRE
-            const calculateDeductions = (appList: Appointment[]) => {
-                let fees = 0;
-                let anticipation = 0;
-                
-                appList.forEach(a => {
-                    const method = a.paymentMethod || 'Dinheiro';
-                    const settings = paymentSettings.find(ps => ps.method === method);
-                    
-                    const mainService = services.find(s => s.id === a.serviceId);
-                    const mainBooked = (a.bookedPrice !== undefined && a.bookedPrice !== null ? a.bookedPrice : (mainService?.price || 0)) * (a.quantity || 1);
-                    const extrasTotal = (a.additionalServices || []).reduce((sum, extra) => {
-                        const extraS = services.find(s => s.id === extra.serviceId);
-                        return sum + (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
-                    }, 0);
 
-                    const totalBooked = mainBooked + extrasTotal;
-                    const tipAmount = Number(a.tipAmount || 0);
-                    const pricePaid = a.payments?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) ?? (a.pricePaid !== undefined && a.pricePaid !== null ? Number(a.pricePaid) : totalBooked);
-                    const actualValueForFees = pricePaid - tipAmount;
-
-                    if (settings && actualValueForFees > 0) {
-                        fees += (actualValueForFees * (settings.fee / 100));
-                    }
-
-                    if (method.toLowerCase().includes('crédito') && actualValueForFees > 0) {
-                        const antRate = getAnticipationRate(a.date, financialConfigs);
-                        if (antRate > 0) {
-                            anticipation += (actualValueForFees * (antRate / 100));
-                        }
-                    }
-                });
-                return { fees, anticipation };
-            };
-
-            const { fees: automatedDeductions, anticipation: anticipationFees } = calculateDeductions(realizedApps);
+            const { fees: automatedDeductions, anticipation: anticipationFees } = { fees: 0, anticipation: 0 };
 
             const latestConfig = financialConfigs[0];
             const suggestedCashReserve = grossRevenue * ((latestConfig?.cashFlowReserveRate || 0) / 100);
@@ -1515,7 +1709,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
             const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0);
-            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0) + automatedDeductions + anticipationFees;
+            const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0);
             const totalOpExpenses = amountVendas + amountAdm + amountFin;
 
             const groupByCat = (list: Expense[]) => {
@@ -1527,7 +1721,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 }, {});
             };
 
-            // otherRevenues = OTHER_INCOME (reembolsos, devoluções, aportes) — sempre na seção 6
+            // otherRevenues = OTHER_INCOME (reembolsos, devoluções, aportes) â€” sempre na seção 6
             const otherRevenues = otherIncome;
             const resultBeforeTaxes = (grossProfit + otherRevenues) - totalOpExpenses;
             const irpjCsll = exps.filter(e => e.dreClass === 'TAX').reduce((acc, e) => acc + e.amount, 0);
@@ -1614,10 +1808,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
-                // REVENUE = card service income (Receita Bruta) — only show breakdown when not isClosed
+                // REVENUE = card service income (Receita Bruta) â€” only show breakdown when not isClosed
                 // (when isClosed they're shown as aggregate Cartão/PIX sub-line in Receita Bruta)
                 breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
-                // OTHER_INCOME = reimbursements/returns — always show in section 6
+                // OTHER_INCOME = reimbursements/returns â€” always show in section 6
                 breakdownOtherIncome: groupByCat(exps.filter(e => e.dreClass === 'OTHER_INCOME')),
                 breakdownProducts,
                 breakdownServices,
@@ -1656,7 +1850,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // Skip if out of range, cancelled or internal block
             if (d < startDate || d > endDate || a.status?.toUpperCase() === 'CANCELADO' || a.customerId === 'INTERNAL_BLOCK') return;
 
-            const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+            const isConcluido = a.status?.toUpperCase() === 'CONCLUÃDO';
             const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
             const tipAmount = Number(a.tipAmount || 0);
 
@@ -2361,9 +2555,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="positive">${formatValue(dreData.grossRevenue, 0)}</td>${months.map(m => `<td>${formatValue(m.grossRevenue, 0)}</td>`).join('')}</tr>
                         <tr class="sub-row"><td>Serviços</td><td>${formatValue(dreData.revenueServices, 0)}</td>${months.map(m => `<td>${formatValue(m.revenueServices, 0)}</td>`).join('')}</tr>
 
-                        <tr><td>2. (-) DEDUÇÕES (Repasses Salão Parceiro)</td><td class="negative">-${formatValue(dreData.deductions, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.deductions, 0)}</td>`).join('')}</tr>
+                        <tr><td>2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)</td><td class="negative">-${formatValue(dreData.deductions, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.deductions, 0)}</td>`).join('')}</tr>
 
-                        <tr class="main-row"><td>3. (=) REC. LÍQUIDA</td><td>${formatValue(dreData.netRevenue, 0)}</td>${months.map(m => `<td>${formatValue(m.netRevenue, 0)}</td>`).join('')}</tr>
+                        <tr class="main-row"><td>3. (=) REC. LÃQUIDA</td><td>${formatValue(dreData.netRevenue, 0)}</td>${months.map(m => `<td>${formatValue(m.netRevenue, 0)}</td>`).join('')}</tr>
 
                         <tr><td>4. (-) CPV / CMV</td><td class="negative">-${formatValue(dreData.totalCOGS, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.totalCOGS, 0)}</td>`).join('')}</tr>
 
@@ -2372,11 +2566,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr><td>7. (-) DESP. VENDAS</td><td class="negative">-${formatValue(dreData.amountVendas, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountVendas, 0)}</td>`).join('')}</tr>
                         <tr><td>8. (-) DESP. ADM</td><td class="negative">-${formatValue(dreData.amountAdm, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountAdm, 0)}</td>`).join('')}</tr>
                         <tr><td>9. (-) DESP. FIN</td><td class="negative">-${formatValue(dreData.amountFin, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.amountFin, 0)}</td>`).join('')}</tr>
-                        <tr class="sub-row"><td>Taxas de Cartão</td><td>${formatValue(dreData.automatedDeductions, 0)}</td>${months.map(m => `<td>${formatValue(m.automatedDeductions, 0)}</td>`).join('')}</tr>
-                        <tr class="sub-row"><td>Taxas de Antecipação</td><td>${formatValue(dreData.anticipationFees, 0)}</td>${months.map(m => `<td>${formatValue(m.anticipationFees, 0)}</td>`).join('')}</tr>
+
                         <tr class="main-row"><td>10. (=) RES. ANTES IRPJ</td><td>${formatValue(dreData.resultBeforeTaxes, 0)}</td>${months.map(m => `<td>${formatValue(m.resultBeforeTaxes, 0)}</td>`).join('')}</tr>
                         <tr><td>11. (-) IRPJ/CSLL</td><td class="negative">-${formatValue(dreData.irpjCsll, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.irpjCsll, 0)}</td>`).join('')}</tr>
-                        <tr class="result-row"><td>12. (=) RES. LÍQUIDO</td><td>${formatValue(dreData.netResult, 0)}</td>${months.map(m => `<td>${formatValue(m.netResult, 0)}</td>`).join('')}</tr>
+                        <tr class="result-row"><td>12. (=) RES. LÃQUIDO</td><td>${formatValue(dreData.netResult, 0)}</td>${months.map(m => `<td>${formatValue(m.netResult, 0)}</td>`).join('')}</tr>
                     </tbody>
                 </table>
                 <script>window.onload = () => { window.print(); window.close(); }</script>
@@ -2423,9 +2616,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="amount positive">${formatCurrency(dreData.grossRevenue)}</td><td class="amount">100.0%</td></tr>
                         <tr class="sub-row"><td>Serviços</td><td class="amount">${formatCurrency(dreData.revenueServices)}</td><td class="amount">${formatPercent(dreData.revenueServices, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>2. (-) DEDUÇÕES (Repasses Salão Parceiro)</td><td class="amount negative">- ${formatCurrency(dreData.deductions)}</td><td class="amount">${formatPercent(dreData.deductions, dreData.grossRevenue)}</td></tr>
+                        <tr><td>2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)</td><td class="amount negative">- ${formatCurrency(dreData.deductions)}</td><td class="amount">${formatPercent(dreData.deductions, dreData.grossRevenue)}</td></tr>
                         
-                        <tr class="main-row"><td>3. (=) RECEITA LÍQUIDA</td><td class="amount">${formatCurrency(dreData.netRevenue)}</td><td class="amount">${formatPercent(dreData.netRevenue, dreData.grossRevenue)}</td></tr>
+                        <tr class="main-row"><td>3. (=) RECEITA LÃQUIDA</td><td class="amount">${formatCurrency(dreData.netRevenue)}</td><td class="amount">${formatPercent(dreData.netRevenue, dreData.grossRevenue)}</td></tr>
                         
                         <tr><td>4. (-) CPV / CMV</td><td class="amount negative">- ${formatCurrency(dreData.totalCOGS)}</td><td class="amount">${formatPercent(dreData.totalCOGS, dreData.grossRevenue)}</td></tr>
                         <tr class="sub-row"><td>Comissões Técnica</td><td class="amount">${formatCurrency(dreData.commissions)}</td><td class="amount">${formatPercent(dreData.commissions, dreData.grossRevenue)}</td></tr>
@@ -2434,31 +2627,30 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         
                         <tr><td>6. (+) OUTRAS RECEITAS</td><td class="amount positive">+ ${formatCurrency(dreData.otherRevenues)}</td><td class="amount">${formatPercent(dreData.otherRevenues, dreData.grossRevenue)}</td></tr>
                         ${Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
 
                         <tr><td>7. (-) DESPESAS COM VENDAS</td><td class="amount negative">- ${formatCurrency(dreData.amountVendas)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
                         ${Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
                         
                         <tr><td>8. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- ${formatCurrency(dreData.amountAdm)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
                          ${Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
 
                         <tr><td>9. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- ${formatCurrency(dreData.amountFin)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
-                        <tr class="sub-row"><td>Taxas de Cartão</td><td class="amount">${formatCurrency(dreData.automatedDeductions)}</td><td class="amount">${formatPercent(dreData.automatedDeductions, dreData.grossRevenue)}</td></tr>
-                        <tr class="sub-row"><td>Taxas de Antecipação</td><td class="amount">${formatCurrency(dreData.anticipationFees)}</td><td class="amount">${formatPercent(dreData.anticipationFees, dreData.grossRevenue)}</td></tr>
+
                          ${Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
 
                         <tr class="main-row"><td>10. (=) RESULTADO ANTES IRPJ/CSLL</td><td class="amount">${formatCurrency(dreData.resultBeforeTaxes)}</td><td class="amount">${formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>11. (-) PROVISÕES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
+                        <tr><td>11. (-) PROVISÃ•ES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
                         
-                        <tr class="result-row"><td>12. (=) RESULTADO LÍQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
+                        <tr class="result-row"><td>12. (=) RESULTADO LÃQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
                     </tbody>
                 </table>
                 <p style="margin-top: 20px; font-size: 10px; color: #94a3b8; text-align: center;">Este é um documento confidencial gerado pelo sistema Aminna.</p>
@@ -2490,19 +2682,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             headerRow,
             ['1. RECEITA BRUTA', formatValue(dreData.grossRevenue), ...(isYearView ? months.map(m => formatValue(m.grossRevenue)) : ['100.0%'])],
             ['   Serviços', formatValue(dreData.revenueServices), ...(isYearView ? months.map(m => formatValue(m.revenueServices)) : [formatPercent(dreData.revenueServices, dreData.grossRevenue)])],
-            ['2. (-) DEDUÇÕES (Repasses Salão Parceiro)', `-${formatValue(dreData.deductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.deductions)}`) : [formatPercent(dreData.deductions, dreData.grossRevenue)])],
-            ['3. (=) RECEITA LÍQUIDA', formatValue(dreData.netRevenue), ...(isYearView ? months.map(m => formatValue(m.netRevenue)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
+            ['2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)', `-${formatValue(dreData.deductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.deductions)}`) : [formatPercent(dreData.deductions, dreData.grossRevenue)])],
+            ['3. (=) RECEITA LÃQUIDA', formatValue(dreData.netRevenue), ...(isYearView ? months.map(m => formatValue(m.netRevenue)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
             ['4. (-) CPV / CMV', `-${formatValue(dreData.totalCOGS)}`, ...(isYearView ? months.map(m => `-${formatValue(m.totalCOGS)}`) : [formatPercent(dreData.totalCOGS, dreData.grossRevenue)])],
             ['5. (=) LUCRO BRUTO', formatValue(dreData.grossProfit), ...(isYearView ? months.map(m => formatValue(m.grossProfit)) : [formatPercent(dreData.grossProfit, dreData.grossRevenue)])],
             ['6. (+) OUTRAS RECEITAS', formatValue(dreData.otherRevenues), ...(isYearView ? months.map(m => formatValue(m.otherRevenues)) : [formatPercent(dreData.otherRevenues, dreData.grossRevenue)])],
             ['7. (-) DESPESAS VENDAS', `-${formatValue(dreData.amountVendas)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountVendas)}`) : [formatPercent(dreData.amountVendas, dreData.grossRevenue)])],
             ['8. (-) DESPESAS ADM', `-${formatValue(dreData.amountAdm)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountAdm)}`) : [formatPercent(dreData.amountAdm, dreData.grossRevenue)])],
             ['9. (-) DESPESAS FIN', `-${formatValue(dreData.amountFin)}`, ...(isYearView ? months.map(m => `-${formatValue(m.amountFin)}`) : [formatPercent(dreData.amountFin, dreData.grossRevenue)])],
-            ['   Taxas de Cartão', `-${formatValue(dreData.automatedDeductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.automatedDeductions)}`) : [formatPercent(dreData.automatedDeductions, dreData.grossRevenue)])],
-            ['   Taxas de Antecipação', `-${formatValue(dreData.anticipationFees)}`, ...(isYearView ? months.map(m => `-${formatValue(m.anticipationFees)}`) : [formatPercent(dreData.anticipationFees, dreData.grossRevenue)])],
+
             ['10. (=) RESULTADO ANTES IRPJ', formatValue(dreData.resultBeforeTaxes), ...(isYearView ? months.map(m => formatValue(m.resultBeforeTaxes)) : [formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)])],
             ['11. (-) IRPJ/CSLL', `-${formatValue(dreData.irpjCsll)}`, ...(isYearView ? months.map(m => `-${formatValue(m.irpjCsll)}`) : [formatPercent(dreData.irpjCsll, dreData.grossRevenue)])],
-            ['12. (=) RESULTADO LÍQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
+            ['12. (=) RESULTADO LÃQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
         ];
 
         const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(";")).join("\n");
@@ -2580,8 +2771,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         ))}
                     </div>
                     {timeView !== 'custom' ? (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between group">
-                            <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between group shadow-sm transition-all">
+                            <div className="flex items-center">
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                            </div>
+
                             <div 
                                 className="relative flex items-center justify-center cursor-pointer min-w-[140px]"
                                 onClick={() => {
@@ -2609,7 +2803,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     }}
                                 />
                             </div>
-                            <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+
+                            <div className="flex items-center">
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                            </div>
 
                             {timeView === 'month' && activeTab === 'DRE' && (
                                 <button
@@ -2619,7 +2816,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         : 'bg-white dark:bg-zinc-800 text-slate-400 border-slate-200 dark:border-zinc-700 hover:text-emerald-500 hover:border-emerald-200'
                                         }`}
                                 >
-                                    <CheckCircle2 size={12} strokeWidth={3} />
+                                    <CircleCheck size={12} strokeWidth={3} />
                                     {monthlyClosings[`${dateRef.getFullYear()}-${dateRef.getMonth()}`] ? 'Conciliação Concluída' : 'Marcar como Concluída'}
                                 </button>
                             )}
@@ -2637,12 +2834,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
-                        {/* ===== ACCOUNTS Sub-nav — always first ===== */}
+                        {/* ===== ACCOUNTS Sub-nav â€” always first ===== */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
                             <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
-                                    { id: 'CONCILIADO', label: 'Conciliados', icon: CheckCircle2 },
+                                    { id: 'CONCILIADO', label: 'Conciliados', icon: CircleCheck },
                                     { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
                                     { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
                                     { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
@@ -2740,7 +2937,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <div className="mt-1">
                                                         <div className="flex justify-between gap-2">
                                                             <p className="font-black text-slate-950 dark:text-white uppercase text-[11px] leading-tight line-clamp-2 flex-1">{t.description}</p>
-                                                            {t.isReconciled && <CheckCircle2 size={12} className="text-emerald-500 shrink-0 mt-0.5" />}
+                                                            {t.isReconciled && <CircleCheck size={12} className="text-emerald-500 shrink-0 mt-0.5" />}
                                                         </div>
                                                         {t.customerOrProviderName && <p className="text-[10px] text-slate-500 font-bold mt-0.5 italic">{t.customerOrProviderName}</p>}
                                                     </div>
@@ -2993,11 +3190,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     .tot{font-size:12px}
                                 </style></head><body>
                                 <h2>Extrato Conciliado</h2>
-                                <p>Período: ${parseDateSafe(startDate).toLocaleDateString('pt-BR')} a ${parseDateSafe(endDate).toLocaleDateString('pt-BR')} — ${filtered.length} lançamentos do banco</p>
+                                <p>Período: ${parseDateSafe(startDate).toLocaleDateString('pt-BR')} a ${parseDateSafe(endDate).toLocaleDateString('pt-BR')} â€” ${filtered.length} lançamentos do banco</p>
                                 <table><thead><tr><th>Data</th><th>Descrição Banco</th><th>Categoria Sinc.</th><th>Favorecido / Origem</th><th>Pagamento</th><th style="text-align:right">Valor (R$)</th><th style="text-align:right">Saldo (R$)</th></tr>
                                 <tr><td colspan="5" style="color:#888">Saldo Anterior</td><td></td><td style="text-align:right">${openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td></tr>
                                 </thead><tbody>${rowsHtml}</tbody></table>
-                                <div class="totals"><div class="tot">✅ Entradas: <b style="color:#059669">R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">❌ Saídas: <b style="color:#dc2626">R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">💰 Saldo Final: <b>R$ ${runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div></div>
+                                <div class="totals"><div class="tot">âœ… Entradas: <b style="color:#059669">R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">âŒ Saídas: <b style="color:#dc2626">R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">ðŸ’° Saldo Final: <b>R$ ${runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div></div>
                                 </body></html>`);
                                 w.document.close(); w.print();
                             };
@@ -3056,10 +3253,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <div className="flex-1 flex items-center justify-between">
                                                 <div>
                                                     <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
-                                                        <CheckCircle2 size={16} className="text-emerald-500" /> Extrato Conciliado
+                                                        <CircleCheck size={16} className="text-emerald-500" /> Extrato Conciliado
                                                     </h3>
                                                     <p className="text-[9px] text-slate-500 uppercase mt-0.5">
-                                                        {filtered.length} lançamentos validados pelo banco
+                                                        {bankTransactions.length} transações validadas pelo banco
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -3077,13 +3274,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {/* Totals Chips */}
                                             <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-200 text-slate-600 border border-slate-300">
-                                                    {filtered.length} lançamentos
+                                                    {bankTransactions.length} transações bancárias
                                                 </span>
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-                                                    ↑ R$ {totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    R$ {totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                                 <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
-                                                    ↓ R$ {totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    R$ {totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </span>
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-[10px] font-black px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
@@ -3171,7 +3368,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <th className="px-5 py-4 md:w-[120px]">Pagamento</th>
                                                     <th className="px-5 py-4 md:w-[130px] text-right">Valor (R$)</th>
                                                     <th className="px-5 py-4 md:w-[130px] text-right">Saldo (R$)</th>
-                                                    <th className="px-5 py-4 md:w-[80px]">Vínculo</th>
+                                                    <th className="px-5 py-4 md:w-[130px]">Vínculo</th>
                                                     <th className="px-5 py-4 w-10"></th>
                                                 </tr>
                                             </thead>
@@ -3508,7 +3705,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <tr className="block md:table-row p-4 md:p-0">
                                                         <td colSpan={10} className="block md:table-cell px-6 py-20 text-center border-t border-slate-100 dark:border-zinc-800 md:border-0">
                                                             <div className="flex flex-col items-center gap-3">
-                                                                <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-full text-slate-300"><CheckCircle2 size={32} /></div>
+                                                                <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-full text-slate-300"><CircleCheck size={32} /></div>
                                                                 <div>
                                                                     <p className="text-slate-500 font-black text-xs uppercase tracking-widest">
                                                                         {conciliadoFilter ? 'Nenhum resultado para esta busca' : 'Nenhum item conciliado'}
@@ -3578,7 +3775,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 </div>
                             );
                         })()}
-                        {/* ===== CAIXA DIÁRIO ===== */}
+                        {/* ===== CAIXA DIÃRIO ===== */}
                         {accountsSubTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
 
 
@@ -3590,7 +3787,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
                                     {[
                                         { label: 'Total no Período', value: filteredPayables.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: FileText, color: 'indigo' },
-                                        { label: 'Total Pago', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PAGO').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: CheckCircle2, color: 'emerald' },
+                                        { label: 'Total Pago', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PAGO').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: CircleCheck, color: 'emerald' },
                                         { label: 'Pendente', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: Clock, color: 'amber' },
                                         { label: 'Atrasado', value: filteredPayables.filter(p => ((p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING') && p.date && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: AlertCircle, color: 'rose' },
                                     ].map((card, idx) => (
@@ -3663,6 +3860,23 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 ))}
                                             </div>
 
+                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
+                                                <span className="self-center px-3 text-[8px] font-black uppercase text-slate-400 border-r border-slate-200 dark:border-zinc-700 mr-1">Desmembrado</span>
+                                                {[
+                                                    { id: 'ALL', label: 'Todos' },
+                                                    { id: 'YES', label: 'Sim' },
+                                                    { id: 'NO', label: 'Não' }
+                                                ].map(opt => (
+                                                    <button
+                                                        key={opt.id}
+                                                        onClick={() => setPayablesSplitFilter(opt.id as any)}
+                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesSplitFilter === opt.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+
                                             <button onClick={handlePrintPayablesReport} className="flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"><Printer size={12} /> Relatório</button>
                                         </div>
                                     </div>
@@ -3695,7 +3909,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     </div>
                                                                     <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">{exp.description}</h4>
                                                                     <div className="flex items-center gap-2 mt-1">
-                                                                        <p className="text-[10px] text-slate-500 font-bold italic line-clamp-1">{supplierName || '—'}</p>
+                                                                        <p className="text-[10px] text-slate-500 font-bold italic line-clamp-1">{supplierName || 'â€”'}</p>
                                                                         {exp.invoiceNumber && <span className="text-[9px] font-black text-slate-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-700 uppercase">NF: {exp.invoiceNumber}</span>}
                                                                     </div>
                                                                 </div>
@@ -3746,7 +3960,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </th>
                                                     <th className="px-6 py-4">Data</th>
                                                     <th className="px-6 py-4">Descrição</th>
-                                                    <th className="px-6 py-4">Nº Nota</th>
+                                                    <th className="px-6 py-4">NÂº Nota</th>
                                                     <th className="px-6 py-4 min-w-[150px]">Favorecido</th>
                                                     <th className="px-6 py-4 min-w-[150px]">Categoria</th>
                                                     <th className="px-6 py-4 text-center">Status</th>
@@ -3776,8 +3990,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 {isOverdue && <span className="ml-1 text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-[11px] text-slate-900 dark:text-white max-w-[200px] truncate">{exp.description}</td>
-                                                            <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || '—'}</td>
-                                                            <td className="px-6 py-4 text-[11px] text-slate-500 truncate max-w-[180px]">{supplierName || '—'}</td>
+                                                            <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || 'â€”'}</td>
+                                                            <td className="px-6 py-4 text-[11px] text-slate-500 truncate max-w-[180px]">{supplierName || 'â€”'}</td>
                                                             <td className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase truncate max-w-[150px]">{exp.category}</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100'}`}>
@@ -3923,7 +4137,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             <td className="px-4 py-2.5 text-[10px] font-black text-emerald-600 text-right">{formatCurrency(item.closure)}</td>
                                                                                             <td className="px-4 py-2.5 text-center">
                                                                                                 <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                                                                                                    item.status?.toUpperCase() === 'CONCLUÍDO' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                                    item.status?.toUpperCase() === 'CONCLUÃDO' ? 'bg-emerald-100 text-emerald-700' :
                                                                                                     item.status?.toUpperCase() === 'CANCELADO' ? 'bg-rose-100 text-rose-700' :
                                                                                                     'bg-amber-100 text-amber-700'
                                                                                                 }`}>
@@ -4186,7 +4400,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             
                                             // 2. UNIFIED PRODUCTION CALCULATION
                                             const prodValue = calculateAppointmentProduction(a, services);
-                                            const isConcluido = a.status?.toUpperCase() === 'CONCLUÍDO';
+                                            const isConcluido = a.status?.toUpperCase() === 'CONCLUÃDO';
                                             const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
                                             const isRemake = a.isRemake || a.is_remake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
 
@@ -4534,7 +4748,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 { key: 'EXPENSE_ADM', label: 'Despesas Administrativas', color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/20', lineRef: '7. (-) Despesas ADM' },
                                 { key: 'EXPENSE_FIN', label: 'Despesas Financeiras', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/20', lineRef: '8. (-) Despesas FIN' },
                                 { key: 'TAX', label: 'Impostos e Tributos', color: 'text-amber-700', bg: 'bg-amber-50 dark:bg-amber-950/20', lineRef: '10. (-) IRPJ / CSLL / DAS' },
-                                { key: 'DEDUCTION', label: 'Deduções (Repasses Salão Parceiro)', color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800/40', lineRef: '2. (-) DEDUÇÕES (Repasses Salão Parceiro)' },
+                                { key: 'DEDUCTION', label: 'Deduções (Repasses Salão Parceiro)', color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800/40', lineRef: '2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)' },
                             ];
                             const searchLower = categorySearch.toLowerCase();
                             const filtered = expenseCategories.filter(c => !searchLower || c.name.toLowerCase().includes(searchLower));
@@ -4563,7 +4777,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <div className={`flex items-center justify-between px-4 py-2 rounded-xl mb-2 ${cls.bg}`}>
                                                             <div>
                                                                 <p className={`text-[10px] font-black uppercase tracking-widest ${cls.color}`}>{cls.label}</p>
-                                                                <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE → {cls.lineRef}</p>
+                                                                <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE â†’ {cls.lineRef}</p>
                                                             </div>
                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${cls.bg} ${cls.color} border`}>{catList.length}</span>
                                                         </div>
@@ -4671,7 +4885,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             { label: 'Total de Saídas', value: '-' + formatCurrency(dreData.totalOutflows), color: 'rose', icon: TrendingDown },
                                             { label: 'Margem de Lucro', value: (dreData.grossRevenue > 0 ? (dreData.netResult / dreData.grossRevenue) * 100 : 0).toFixed(1) + '%', color: 'emerald', icon: Info },
                                             { label: 'Ponto de Equilíbrio', value: formatCurrency((dreData.grossProfit / dreData.grossRevenue) > 0 ? (dreData.totalOpExpenses / (dreData.grossProfit / dreData.grossRevenue)) : 0), color: 'amber', icon: FileText },
-                                            { label: 'Resultado Líquido', value: formatCurrency(dreData.netResult), color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CheckCircle2 },
+                                            { label: 'Resultado Líquido', value: formatCurrency(dreData.netResult), color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CircleCheck },
                                         ].map((card, idx) => (
                                             <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
                                                 <div className="flex justify-between items-start mb-2">
@@ -4738,7 +4952,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                                └ Serviços
+                                                                â”” Serviços
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -4759,7 +4973,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                             <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                                 <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                    └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                    â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                                 </td>
                                                                 {timeView === 'year' ? (
                                                                     <>
@@ -4784,7 +4998,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                             {expandedSections.includes('products-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                            └ Venda de Produtos
+                                                            â”” Venda de Produtos
                                                         </td>
                                                         {timeView === 'year' ? (
                                                             <>
@@ -4805,7 +5019,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('products-list') && Object.entries((dreData.breakdownProducts || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -4829,7 +5043,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-emerald-600 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('bank-revenues-list') ? <ChevronDown size={12} /> : <DollarSign size={12} />}
-                                                                └ Cartão/PIX (sem nota)
+                                                                â”” Cartão/PIX (sem nota)
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -4851,7 +5065,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('bank-revenues-list') && dreData.reconciledBankRevenues > 0 && Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-emerald-50/10 dark:bg-zinc-800/10">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase italic border-l-4 border-emerald-50 dark:border-emerald-900/10 sticky left-0 bg-emerald-50/10 dark:bg-zinc-800/10 z-10">
-                                                                └ {name} <span className="text-[9px] text-slate-300">({info.items.length}x)</span>
+                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.items.length}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -4873,11 +5087,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </>
                                             )}
 
-                                            {/* 2. DEDUÇÕES */}
+                                            {/* 2. DEDUÇÃ•ES */}
                                             <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                                    2. (-) DEDUÇÕES (Repasses Salão Parceiro)
+                                                    2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
@@ -4900,7 +5114,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                             {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <Menu size={12} />}
-                                                            └ Comissões
+                                                            â”” Comissões
                                                         </td>
                                                         {timeView === 'year' ? (
                                                             <>
@@ -4921,7 +5135,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-rose-50 dark:border-rose-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -4943,9 +5157,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </>
                                             )}
 
-                                            {/* 3. RECEITA LÍQUIDA */}
+                                            {/* 3. RECEITA LÃQUIDA */}
                                             <tr className="bg-slate-50 dark:bg-zinc-800/50">
-                                                <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÍQUIDA</td>
+                                                <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÃQUIDA</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -4986,7 +5200,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('cogs') && (
                                                 <>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Insumos e Produtos (Lançamentos Manuais)</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Insumos e Produtos (Lançamentos Manuais)</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5090,7 +5304,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5176,7 +5390,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5262,7 +5476,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5310,7 +5524,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('exp-fin') && (
                                                 <>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Antecipação</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Taxas de Antecipação</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5328,7 +5542,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         )}
                                                     </tr>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Taxas de Cartão/Débito</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5386,7 +5600,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                                 return sortedGroups.map((group, idx) => (
                                                                     <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
+                                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
                                                                         {timeView === 'year' ? (
                                                                             <>
                                                                                 {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5431,9 +5645,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 11. PROVISÕES IRPJ */}
+                                            {/* 11. PROVISÃ•ES IRPJ */}
                                             <tr>
-                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">11. (-) PROVISÕES IRPJ E CSLL</td>
+                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">11. (-) PROVISÃ•ES IRPJ E CSLL</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -5451,9 +5665,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 12. RESULTADO LÍQUIDO */}
+                                            {/* 12. RESULTADO LÃQUIDO */}
                                             <tr className="bg-black text-white dark:bg-white dark:text-black">
-                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">12. (=) RESULTADO LÍQUIDO DO PERÍODO</td>
+                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">12. (=) RESULTADO LÃQUIDO DO PERÃODO</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -5842,7 +6056,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     onClick={handleBatchStatusUpdate}
                                     className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
                                 >
-                                    <CheckCircle2 size={18} className="group-hover:scale-110 transition-transform" />
+                                    <CircleCheck size={18} className="group-hover:scale-110 transition-transform" />
                                     <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Inverter Status</span>
                                 </button>
 
@@ -6061,29 +6275,36 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
 
             {/* Manual Link Modal */}
-            <ManualLinkModal
+            <ManualLinkModal 
                 isOpen={isManualLinkModalOpen}
-                onClose={() => { setIsManualLinkModalOpen(false); setLinkingBankTx(null); }}
-                bankTx={linkingBankTx}
+                onClose={() => { 
+                    setIsManualLinkModalOpen(false); 
+                    setLinkingBankTx(null); 
+                }}
+                bankTx={linkingBankTx!}
                 expenses={expenses}
                 sales={sales}
                 appointments={appointments}
-                onLink={async (id, items, newExp) => {
-                    setIsProcessing(true);
-                    await handleManualLink(id, items, newExp);
-                    setIsProcessing(false);
-                    setIsManualLinkModalOpen(false);
-                    setLinkingBankTx(null);
-                }}
-                isProcessing={isProcessing}
+                onLink={handleManualLink}
+                isProcessing={isManualLinkingProcessing}
                 parseDateSafe={parseDateSafe}
                 suppliers={suppliers}
                 customers={customers}
                 expenseCategories={expenseCategories}
                 providers={providers}
-                employees={employees || []}
+                employees={employees}
                 transactions={transactions}
                 bankTransactions={bankTransactions}
+            />
+
+            <BatchLinkModal 
+                isOpen={isBatchLinkModalOpen}
+                onClose={() => setIsBatchLinkModalOpen(false)}
+                selectedExpenses={expenses.filter(e => selectedExpenseIds.includes(e.id))}
+                bankTransactions={bankTransactions}
+                onLink={handleBatchLinkExpenses}
+                isProcessing={isLinkingProcessing}
+                parseDateSafe={parseDateSafe}
             />
 
             {/* Strategist Detail Modal */}
@@ -6143,3 +6364,4 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         </div>
     );
 };
+

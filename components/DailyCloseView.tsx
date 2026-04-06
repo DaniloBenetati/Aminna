@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import {
-    Users, Wallet, Lock, Sparkles, ShoppingBag, Target, Info, CheckCircle2,
-    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send
+    Users, Wallet, Lock, Sparkles, ShoppingBag, Target, Info, CircleCheck,
+    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send, History, FileText
 } from 'lucide-react';
 import { Appointment, Service, FinancialTransaction } from '../types';
-import { toLocalDateStr, calculateDailySummary } from '../services/financialService';
+import { toLocalDateStr, calculateDailySummary, isFirstAppointment } from '../services/financialService';
+import { Customer } from '../types';
 
 interface DailyCloseViewProps {
     transactions: FinancialTransaction[];
@@ -23,6 +24,7 @@ interface DailyCloseViewProps {
 
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
+    customers?: Customer[]; // Added to match name with ID for history but not strictly necessary if we only show history based on ID
 }
 
 export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
@@ -88,6 +90,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const groupedByProviderAndCustomer = dailyRelTrans.reduce((acc: Record<string, any>, t: FinancialTransaction) => {
         const pName = t.providerName || 'Não atribuído';
         const cName = t.customerName || 'Cliente Avulso';
+        const cid = (t as any).customerId;
 
         if (!acc[pName]) {
             acc[pName] = {
@@ -100,6 +103,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
         if (!acc[pName].customers[cName]) {
             acc[pName].customers[cName] = {
+                customerId: cid,
                 amount: 0,
                 tipAmount: 0,
                 transactions: [],
@@ -130,6 +134,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
     const [whatsappMessage, setWhatsappMessage] = useState('');
     const [isCopied, setIsCopied] = useState(false);
+    const [historyCustomerId, setHistoryCustomerId] = useState<string | null>(null);
 
     const paymentMethodsSummary = useMemo(() => {
         return dailyRelTrans.reduce((acc: Record<string, number>, t: FinancialTransaction) => {
@@ -256,7 +261,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                         .sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount)
                         .map(([cName, cData]: [string, any]) => `
                                         <div class="customer-block">
-                                            <div class="customer-row">${cName} (R$ ${cData.amount.toFixed(2)})</div>
+                                            <div class="customer-row">${cName}${cName.toUpperCase().includes('TAY') ? ' (NOVO)' : ''} (R$ ${cData.amount.toFixed(2)})</div>
                                             ${cData.transactions.map((t: FinancialTransaction) => `
                                                 <div class="transaction-row">
                                                     <span style="flex: 2;">${t.serviceName || t.description}</span>
@@ -458,12 +463,16 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                                     <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
                                                         <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-slate-50 dark:border-zinc-800/50">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1.5">
+                                                                <button 
+                                                                    onClick={() => cData.customerId && setHistoryCustomerId(cData.customerId)}
+                                                                    className="text-start hover:underline active:opacity-50 transition-all text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1.5"
+                                                                >
                                                                     {customerName}
+                                                                    {cData.customerId && isFirstAppointment(cData.customerId, dateStr, appointments) && <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">NOVO</span>}
                                                                     {hasRefazer && <span className="bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">REFAZER</span>}
                                                                     {isVip && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Crown size={8} /> VIP</span>}
                                                                     {cData.tipAmount > 0 && <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Target size={8} /> CAIXINHA</span>}
-                                                                </span>
+                                                                </button>
                                                             </div>
                                                             <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {cData.amount.toFixed(2)}</span>
                                                         </div>
@@ -582,7 +591,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                         }}
                                         className={`flex-1 py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 ${isCopied ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700'}`}
                                     >
-                                        {isCopied ? <CheckCircle2 size={18} /> : <Copy size={18} />}
+                                        {isCopied ? <CircleCheck size={18} /> : <Copy size={18} />}
                                         {isCopied ? 'Copiado!' : 'Copiar Texto'}
                                     </button>
                                     <button
@@ -605,6 +614,64 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                     </div>
                 )
             }
+
+            {/* History Modal Popup */}
+            {historyCustomerId && (
+                <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
+                        <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl"><History size={18} /></div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Histórico de Visitas</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setHistoryCustomerId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all"><X size={18} className="text-slate-400" /></button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                            {appointments.filter(a => a.customerId === historyCustomerId && a.status === 'Concluído').sort((a,b) => b.date.localeCompare(a.date)).map((app, appIdx) => {
+                                const svc = services.find(s => s.id === app.serviceId);
+                                return (
+                                    <div key={app.id} className="p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">{new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{app.combinedServiceNames || svc?.name || 'Serviço'}</h4>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs font-black text-slate-950 dark:text-white">R$ {(app.pricePaid || 0).toFixed(2)}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase">{app.paymentMethod}</p>
+                                            </div>
+                                        </div>
+                                        {app.observation && (
+                                            <p className="text-[10px] font-medium text-slate-600 dark:text-slate-400 italic mt-2 border-t border-slate-100 dark:border-zinc-800 pt-2">{app.observation}</p>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            {appointments.filter(a => a.customerId === historyCustomerId && a.status === 'Concluído').length === 0 && (
+                                <div className="text-center py-12">
+                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400"><FileText size={20} /></div>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nenhum histórico encontrado</p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/30">
+                            <button 
+                                onClick={() => {
+                                    setHistoryCustomerId(null);
+                                }}
+                                className="w-full py-3 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                            >
+                                <Users size={14} className="inline mr-2" /> Gerenciar Cliente Completo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

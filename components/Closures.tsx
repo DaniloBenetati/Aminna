@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
-import { Filter, Files, Calendar, MessageCircle, FileText, Download, ChevronDown, CheckCircle2, AlertCircle, Search, Copy, Send, X, Printer, Scissors, FileSpreadsheet, FileCode, Heart } from 'lucide-react';
+import { Filter, Files, Calendar, MessageCircle, FileText, Download, ChevronDown, CircleCheck, AlertCircle, Search, Copy, Send, X, Printer, Scissors, FileSpreadsheet, FileCode, Heart } from 'lucide-react';
 import { Service, Appointment, Provider, Customer } from '../types';
 
 interface ClosuresProps {
@@ -803,7 +803,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         </div>
         <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-[1.5rem] border border-emerald-100 shadow-sm flex items-center justify-between">
           <div><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total a Repassar</p><p className="text-xl font-black text-emerald-700">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl text-emerald-600"><CheckCircle2 size={20} /></div>
+          <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl text-emerald-600"><CircleCheck size={20} /></div>
         </div>
       </div>
 

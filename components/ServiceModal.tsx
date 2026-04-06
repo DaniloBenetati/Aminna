@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, XCircle, ArrowRight, ArrowLeft, CheckCircle2, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, CircleX, ArrowRight, ArrowLeft, CircleCheck, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState, Sale } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -2851,7 +2851,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 {appliedCampaign ? (
                                                     <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
                                                         <div className="flex items-center gap-2">
-                                                            <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                                                            <CircleCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
                                                             <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
                                                         </div>
                                                         <button type="button" onClick={handleRemoveCoupon} className="p-1 text-rose-400 hover:text-rose-600 transition-colors">
@@ -3069,7 +3069,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 className="py-4 px-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700"
                                                                 title="Cancelar Agendamento (Fica no Histórico)"
                                                             >
-                                                                <XCircle size={16} />
+                                                                <CircleX size={16} />
                                                             </button>
                                                             <button
                                                                 type="button"
@@ -3090,7 +3090,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 }}
                                                                 className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                                                             >
-                                                                {appointment.status === 'Concluído' ? <CreditCard size={16} /> : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? <CreditCard size={16} /> : <CheckCircle2 size={16} />)}
+                                                                {appointment.status === 'Concluído' ? <CreditCard size={16} /> : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? <CreditCard size={16} /> : <CircleCheck size={16} />)}
                                                                 {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? 'PAGAR / CHECKOUT' : 'REALIZAR CHECK-IN')}
                                                             </button>
                                                             <button
@@ -3113,7 +3113,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
                                                         className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
-                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <CheckCircle2 size={16} />)}
+                                                        {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <CircleCheck size={16} />)}
                                                         {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'REALIZAR CHECK-IN')}
                                                     </button>
                                                 ) : (
@@ -3729,7 +3729,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CheckCircle2 size={20} /></div>
+                                    <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CircleCheck size={20} /></div>
                                     <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
                                 </div>
                                 <span className="text-2xl font-black text-emerald-900 dark:text-emerald-300 tracking-tighter">R$ {((appointment.pricePaid === 0 && totalValue > 0) ? totalValue : (appointment.pricePaid || totalValue)).toFixed(2)}</span>
@@ -3839,7 +3839,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 }`}>
                                                 <p className={`text-xs font-black flex items-center justify-center gap-2 ${nfseData?.status === 'issued' ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
                                                     }`}>
-                                                    {nfseData?.status === 'issued' ? <><CheckCircle2 size={16} /> NFSe Emitida!</> : <><Sparkles size={16} className="animate-spin" /> Em Processamento...</>}
+                                                    {nfseData?.status === 'issued' ? <><CircleCheck size={16} /> NFSe Emitida!</> : <><Sparkles size={16} className="animate-spin" /> Em Processamento...</>}
                                                 </p>
                                                 {nfseData?.nfse_number && <p className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold mt-1">Número: {nfseData.nfse_number}</p>}
                                             </div>

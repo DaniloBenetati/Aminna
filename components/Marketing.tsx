@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Zap, Target, DollarSign,
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, Pause, Play, ArrowUpRight, ArrowDownRight,
+  CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
   Instagram, Plus, Edit2, ArrowUp
 } from 'lucide-react';
@@ -217,13 +217,14 @@ export const Marketing: React.FC = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const { data } = await supabase.from('marketing_config').select('*').single();
+        const { data, error } = await supabase.from('marketing_config').select('*').maybeSingle();
+        if (error) throw error;
         if (data) {
-          if (data.meta_token && !token) {
+          if (data.meta_token) {
             setToken(data.meta_token);
             localStorage.setItem(TOKEN_STORAGE_KEY, data.meta_token);
           }
-          if (data.ad_account_id && !adAccountId) {
+          if (data.ad_account_id) {
             setAdAccountId(data.ad_account_id);
             localStorage.setItem(ACCOUNT_STORAGE_KEY, data.ad_account_id);
           }
@@ -235,11 +236,12 @@ export const Marketing: React.FC = () => {
 
   const persistToDB = async (newToken?: string, newAccountId?: string) => {
     try {
-      await supabase.from('marketing_config').update({
+      await supabase.from('marketing_config').upsert({
+        id: '00000000-0000-0000-0000-000000000001',
         meta_token: newToken || token,
         ad_account_id: newAccountId || adAccountId,
         updated_at: new Date().toISOString()
-      }).eq('id', '00000000-0000-0000-0000-000000000001');
+      }, { onConflict: 'id' });
     } catch (e) { console.error("Error persisting to DB", e); }
   };
 
@@ -266,6 +268,7 @@ export const Marketing: React.FC = () => {
   });
   const [customEndDate, setCustomEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateRange, setDateRange] = useState<{ start: string; stop: string }>({ start: '', stop: '' });
+  const [isFiltersVisible, setIsFiltersVisible] = useState(true);
 
   const [dailyTimeSeries, setDailyTimeSeries] = useState<any[]>([]);
 
@@ -591,7 +594,7 @@ export const Marketing: React.FC = () => {
                      </div>
                    )) : (
                      <div className="flex items-center gap-2 text-emerald-600">
-                        <CheckCircle size={14} />
+                        <CircleCheck size={14} />
                         <span className="text-xs font-bold">Nenhum problema crítico detectado!</span>
                      </div>
                    )}
@@ -849,7 +852,7 @@ export const Marketing: React.FC = () => {
         </div>
       )) : (
         <div className="bg-emerald-50 p-12 rounded-3xl text-center">
-           <CheckCircle size={40} className="text-emerald-500 mx-auto mb-4" />
+           <CircleCheck size={40} className="text-emerald-500 mx-auto mb-4" />
            <p className="font-black text-emerald-900">Performance Saudável!</p>
            <p className="text-sm text-emerald-700 mt-2">Suas métricas principais estão dentro dos benchmarks.</p>
         </div>
@@ -900,9 +903,20 @@ export const Marketing: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setIsFiltersVisible(!isFiltersVisible)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
+              >
+                <Filter size={14} />
+                {isFiltersVisible ? 'Ocultar Filtros' : 'Filtrar'}
+              </button>
+            </div>
+          </div>
+
+          {isFiltersVisible && (
+            <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in slide-in-from-top-2 duration-300">
               <div className="flex flex-col md:flex-row gap-4 items-center">
-                {/* Ad Account Selector (Visible in Paid Tab) */}
                 {activeMarketingTab === 'paid' && (
                   <div className="flex flex-col">
                     <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Conta de Anúncios</span>
@@ -924,7 +938,6 @@ export const Marketing: React.FC = () => {
                   </div>
                 )}
 
-                {/* IG Account Selector (Visible in Both for clarity) */}
                 <div className="flex flex-col">
                   <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Perfil do Instagram</span>
                   <select
@@ -944,7 +957,7 @@ export const Marketing: React.FC = () => {
 
               <div className="flex items-center gap-2">
                 <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Período de Análise</span>
+                  <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Período</span>
                   <select
                     value={datePreset}
                     onChange={e => setDatePreset(e.target.value)}
@@ -991,6 +1004,7 @@ export const Marketing: React.FC = () => {
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                 {loading ? 'Buscando...' : 'Atualizar Dados'}
               </button>
+
               <button
                 onClick={() => setShowTokenPanel(!showTokenPanel)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black border transition-all ${
@@ -1002,25 +1016,25 @@ export const Marketing: React.FC = () => {
                 <Info size={13} />
                 {token ? '🔑 Token OK' : '⚠️ Sem Token'}
               </button>
-            </div>
-          </div>
 
-          {showTokenPanel && (
-            <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl animate-in slide-in-from-top-2 duration-300">
-              <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-1">🔑 Token de Acesso — Meta API</p>
-              <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">Insira seu Access Token com as permissões necessárias.</p>
-              <div className="flex gap-2">
-                <input
-                  type="password"
-                  value={tokenInput}
-                  onChange={e => setTokenInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && saveToken()}
-                  placeholder="Access Token..."
-                  className="flex-1 text-xs px-3 py-2 border border-amber-200 dark:border-amber-700 rounded-xl bg-white dark:bg-zinc-800"
-                />
-                <button onClick={saveToken} className="px-4 py-2 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 transition-colors">Salvar</button>
-                {token && <button onClick={clearToken} className="px-4 py-2 text-rose-500 text-xs font-black hover:text-rose-600 transition-colors">Remover</button>}
-              </div>
+              {showTokenPanel && (
+                <div className="w-full mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl animate-in slide-in-from-top-2 duration-300">
+                  <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-1">🔑 Token de Acesso — Meta API</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">Insira seu Access Token com as permissões necessárias.</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={tokenInput}
+                      onChange={e => setTokenInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && saveToken()}
+                      placeholder="Access Token..."
+                      className="flex-1 text-xs px-3 py-2 border border-amber-200 dark:border-amber-700 rounded-xl bg-white dark:bg-zinc-800"
+                    />
+                    <button onClick={saveToken} className="px-4 py-2 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 transition-colors">Salvar</button>
+                    {token && <button onClick={clearToken} className="px-4 py-2 text-rose-500 text-xs font-black hover:text-rose-600 transition-colors">Remover</button>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

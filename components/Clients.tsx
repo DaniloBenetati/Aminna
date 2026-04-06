@@ -55,13 +55,29 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     const avgSpent = customers.length > 0 ? totalSpent / customers.length : 0;
     const vips = customers.filter(c => c.status === 'VIP').length;
     const churnRisk = customers.filter(c => c.status === 'Risco de Churn').length;
+    
     const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
     const newThisMonth = customers.filter(c => {
-      const regDate = new Date(c.registrationDate);
-      return regDate.getMonth() === now.getMonth() && regDate.getFullYear() === now.getFullYear();
+      // Find the first completed appointment for this customer
+      const customerApps = (appointments || []).filter(a => a.customerId === c.id && a.status === 'Concluído');
+      if (customerApps.length === 0) {
+        // If no finished appointments, check registration date as fallback for leads
+        const regDate = new Date(c.registrationDate);
+        return regDate.getMonth() === currentMonth && regDate.getFullYear() === currentYear;
+      }
+      
+      // Sort to find the very first one
+      const firstApp = customerApps.reduce((min, a) => (a.date < min.date ? a : min), customerApps[0]);
+      const firstAppDate = new Date(firstApp.date);
+      
+      return firstAppDate.getMonth() === currentMonth && firstAppDate.getFullYear() === currentYear;
     }).length;
+
     return { avgSpent, vips, churnRisk, newThisMonth };
-  }, [customers]);
+  }, [customers, appointments]);
 
   const filteredCustomers = customers.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -501,7 +517,12 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                     <p className="font-black text-slate-950 dark:text-white truncate leading-tight uppercase text-sm md:text-sm tracking-tight">{customer.name}</p>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${customer.status === 'VIP' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>
-                        {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0 || appointments.some(a => a.customerId === customer.id && a.status === 'Concluído')) ? 'Regular' : customer.status}
+                        {(() => {
+                          const completedCount = (appointments || []).filter(a => a.customerId === customer.id && a.status === 'Concluído').length;
+                          if (completedCount === 0) return 'LEAD';
+                          if (completedCount === 1) return 'NOVO';
+                          return 'REGULAR';
+                        })()}
                       </span>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">{customer.phone}</p>
                       {customer.creditBalance !== undefined && customer.creditBalance > 0 && (
@@ -569,7 +590,12 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                     )}
                     <div className="mt-1 flex items-center gap-2">
                       <span className="text-[9px] font-black text-slate-400 uppercase border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-zinc-800">
-                        {formData.status === 'Novo' && (Number(formData.totalSpent || 0) > 0 || (formData.history || []).length > 0 || appointments.some(a => a.customerId === formData.id && a.status === 'Concluído')) ? 'Regular' : formData.status}
+                        {(() => {
+                          const completedCount = (appointments || []).filter(a => a.customerId === formData.id && a.status === 'Concluído').length;
+                          if (completedCount === 0) return 'LEAD';
+                          if (completedCount === 1) return 'NOVO';
+                          return 'REGULAR';
+                        })()}
                       </span>
                       {!isEditing && formData.acquisitionChannel && (
                         <span className="text-[9px] font-black text-indigo-500 dark:text-indigo-400 uppercase border border-indigo-100 dark:border-indigo-900 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20">

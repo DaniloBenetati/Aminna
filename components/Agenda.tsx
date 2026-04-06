@@ -15,8 +15,8 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
 };
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
-    Clock, CheckCircle2, AlertCircle, MessageCircle, Filter, X,
-    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, XCircle, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert,
+    Clock, CircleCheck, AlertCircle, MessageSquare, MessageCircle, Filter, X,
+    User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, CircleX, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert,
     Wallet, Sparkles
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
@@ -41,7 +41,8 @@ import {
     toLocalDateStr,
     parseDateSafe,
     generateFinancialTransactions,
-    calculateDailySummary
+    calculateDailySummary,
+    isFirstAppointment
 } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
 import { normalizeSearch } from '../services/utils';
@@ -180,7 +181,8 @@ export const Agenda: React.FC<AgendaProps> = ({
             services,
             customers,
             providers,
-            [] as any, // Missing suppliers in Agenda.tsx for now, can be added to props if needed
+            [] as any, // suppliers
+            [] as any, // employees
             commissionSettings || [],
             paymentSettings,
             financialConfigs
@@ -1438,6 +1440,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2">
                                                                     <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
+                                                                    {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                        <span className="bg-emerald-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                    )}
                                                                     {customer?.isVip && <Sparkles size={10} className="text-amber-500 flex-shrink-0" />}
                                                                 </div>
                                                                 <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase truncate mt-0.5">{serviceName}</p>
@@ -1684,8 +1689,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <p className="text-[10px] font-black text-white uppercase leading-none truncate">
                                                                                             {customer?.name || 'Cliente'}
                                                                                         </p>
-                                                                                        {customer?.status === 'Novo' && (
-                                                                                            <span className="bg-indigo-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
+                                                                                        {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                                            <span className="bg-white text-indigo-600 text-[7px] font-black px-1 rounded-sm uppercase shadow-sm">Novo</span>
                                                                                         )}
                                                                                         {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
                                                                                             <span className="bg-slate-700 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
@@ -1710,7 +1715,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
                                                                                                 const record = nfseRecords.find(r => r.appointmentId === appt.id);
-                                                                                                if (record?.status === 'issued') return <CheckCircle2 size={10} className="text-emerald-500" />;
+                                                                                                if (record?.status === 'issued') return <CircleCheck size={10} className="text-emerald-500" />;
                                                                                                 return null;
                                                                                             })()
                                                                                         )}
@@ -2221,7 +2226,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {c.isBlocked && <p className="text-[9px] font-black text-rose-500 uppercase mt-0.5">BLOQUEADA: {c.blockReason || 'SEM MOTIVO'}</p>}
                                             </div>
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${c.isBlocked ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-300' : 'bg-slate-100 dark:bg-zinc-800 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 text-slate-400 dark:text-slate-500 group-hover:text-indigo-700 dark:group-hover:text-white'}`}>
-                                                {c.isBlocked ? <XCircle size={16} /> : <Plus size={16} />}
+                                                {c.isBlocked ? <CircleX size={16} /> : <Plus size={16} />}
                                             </div>
                                         </button>
                                     ))
@@ -2303,7 +2308,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     );
                                 }) : (
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
-                                        <CheckCircle2 size={48} className="mx-auto mb-2 opacity-20" />
+                                        <CircleCheck size={48} className="mx-auto mb-2 opacity-20" />
                                         <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per�odo</p>
                                     </div>
                                 )}
@@ -2342,9 +2347,37 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
                         <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
-                                <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
-                                    <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
-                                </h3>
+                                <div className="flex items-center gap-6">
+                                    <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
+                                        <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
+                                    </h3>
+
+                                    <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/10 ml-4">
+                                        <button
+                                            onClick={() => {
+                                                const newDate = new Date(dateRef);
+                                                newDate.setDate(dateRef.getDate() - 1);
+                                                setDateRef(newDate);
+                                            }}
+                                            className="p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            title="Dia Anterior"
+                                        >
+                                            <ChevronLeft size={18} />
+                                        </button>
+                                        <div className="w-px h-4 bg-white/10 mx-1" />
+                                        <button
+                                            onClick={() => {
+                                                const newDate = new Date(dateRef);
+                                                newDate.setDate(dateRef.getDate() + 1);
+                                                setDateRef(newDate);
+                                            }}
+                                            className="p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            title="Próximo Dia"
+                                        >
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </div>
+                                </div>
                                 <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
                             </div>
                             <div className="p-0 max-h-[90vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
@@ -2449,7 +2482,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     disabled={isSubmittingBlock}
                                     className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                                 >
-                                    {isSubmittingBlock ? <Loader2 className="animate-spin" size={18} /> : <CheckCircle2 size={18} />}
+                                    {isSubmittingBlock ? <Loader2 className="animate-spin" size={18} /> : <CircleCheck size={18} />}
                                     {isSubmittingBlock ? 'Salvando...' : 'Confirmar Bloqueio'}
                                 </button>
                             </div>

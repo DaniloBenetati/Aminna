@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Coffee, Plus, Search, Minus, X, Edit2, History, Package, Clock, DollarSign, TrendingUp, Filter, AlertTriangle, CheckCircle2, ChevronRight, Tag, Save, Info, ChevronDown, ChevronUp, ClipboardList, CalendarRange, ChevronLeft, User } from 'lucide-react';
+import { Coffee, Plus, Search, Minus, X, Edit2, History, Package, Clock, DollarSign, TrendingUp, Filter, AlertTriangle, CircleCheck, ChevronRight, Tag, Save, Info, ChevronDown, ChevronUp, ClipboardList, CalendarRange, ChevronLeft, User } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
 import { PantryItem, PantryLog, Appointment, Customer, Provider } from '../types';
 import { supabase } from '../services/supabase';
@@ -558,7 +558,7 @@ export const Copa: React.FC<CopaProps> = ({
                                                 className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === 'all' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
                                             >
                                                 <span>Todas Clientes</span>
-                                                {filterCustomerId === 'all' && <CheckCircle2 size={14} />}
+                                                {filterCustomerId === 'all' && <CircleCheck size={14} />}
                                             </button>
                                             {customers
                                                 .filter(c => c.name.toLowerCase().includes(customerSearchTerm.toLowerCase()))
@@ -569,7 +569,7 @@ export const Copa: React.FC<CopaProps> = ({
                                                         className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === c.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
                                                     >
                                                         <span className="truncate">{c.name}</span>
-                                                        {filterCustomerId === c.id && <CheckCircle2 size={14} />}
+                                                        {filterCustomerId === c.id && <CircleCheck size={14} />}
                                                     </button>
                                                 ))}
                                             {customers.filter(c => c.name.toLowerCase().includes(customerSearchTerm.toLowerCase())).length === 0 && (
@@ -916,7 +916,7 @@ export const Copa: React.FC<CopaProps> = ({
                                             return (
                                                 <div key={log.id} className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-slate-100 dark:border-zinc-700">
                                                     <span className="font-bold flex items-center gap-2">
-                                                        <CheckCircle2 size={12} className="text-emerald-500" />
+                                                        <CircleCheck size={12} className="text-emerald-500" />
                                                         {item?.name} <span className="opacity-50 text-[10px] bg-slate-100 dark:bg-zinc-700 px-1.5 rounded">x{log.quantity}</span>
                                                     </span>
                                                     <span className="font-mono text-[10px] opacity-70">{log.time}</span>

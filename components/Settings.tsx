@@ -5,8 +5,8 @@ import { DOCUMENTATION_DATA } from './DocumentationData';
 import {
     Settings, BookOpen, LayoutDashboard, Calendar, Users, DollarSign,
     Package, ShoppingCart, Briefcase, Sparkles, Handshake, BarChart3,
-    Clock, Contact, CreditCard, ChevronRight, Info, CheckCircle2, User, Search,
-    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, CheckCircle, AlertTriangle
+    Clock, Contact, CreditCard, ChevronRight, Info, CircleCheck, User, Search,
+    X, ArrowRight, ExternalLink, Percent, Landmark, Wallet, Smartphone, ShieldCheck, Save, Plus, Trash2, Edit3, ChevronDown, Tag, Coffee, Printer, Building2, Globe, FileKey, AlertTriangle
 } from 'lucide-react';
 import { ViewState, ExpenseCategory, PaymentSetting, CommissionSetting, UserProfile, FiscalConfig, FinancialConfig } from '../types';
 import { getFiscalConfig, focusNfeService } from '../services/focusNfeService';
@@ -1052,7 +1052,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                 disabled={isRegisteringCompany || !fiscalConfig?.focusNfeToken}
                                                                 className="px-6 py-3 bg-emerald-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all shadow-sm flex items-center gap-2"
                                                             >
-                                                                {isRegisteringCompany ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CheckCircle size={16} />}
+                                                                {isRegisteringCompany ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CircleCheck size={16} />}
                                                                 Autorizar CNPJ (Habilitar Emissão)
                                                             </button>
                                                         </div>
@@ -1091,7 +1091,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             <div className="text-xs text-indigo-800 dark:text-indigo-300 font-medium">
                                                                 {fiscalConfig?.certificateExpiresAt ? (
                                                                     <p className="font-bold flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                                                                        <CheckCircle2 size={14} /> Certificado Válido até: {new Date(fiscalConfig.certificateExpiresAt).toLocaleDateString()}
+                                                                        <CircleCheck size={14} /> Certificado Válido até: {new Date(fiscalConfig.certificateExpiresAt).toLocaleDateString()}
                                                                     </p>
                                                                 ) : (
                                                                     <p className="font-bold flex items-center gap-1 text-amber-600 dark:text-amber-400">
@@ -1384,7 +1384,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${editingUser.permissions.tabs.includes(tab) ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400' : 'border-slate-100 dark:border-zinc-800 text-slate-400'}`}
                                         >
                                             <div className={`w-4 h-4 rounded flex items-center justify-center border ${editingUser.permissions.tabs.includes(tab) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
-                                                {editingUser.permissions.tabs.includes(tab) && <CheckCircle2 size={10} />}
+                                                {editingUser.permissions.tabs.includes(tab) && <CircleCheck size={10} />}
                                             </div>
                                             <span className="text-[10px] font-black uppercase tracking-tight">{tab}</span>
                                         </button>

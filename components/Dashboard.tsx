@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
-import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CheckCircle } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
@@ -161,18 +161,141 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
     }, [sales, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, customers]);
 
-    const newCustomersCount = useMemo(() => {
-        const customersInPeriod = new Set(filteredAppointments.map(a => a.customerId));
-        let count = 0;
-        customersInPeriod.forEach(cid => {
-            const customer = customers.find(c => c.id === cid);
-            if (customer && customer.status === 'Novo') {
-                if (filterChannel !== 'all' && customer.acquisitionChannel !== filterChannel) return;
-                count++;
+    const firstVisits = useMemo(() => {
+        const visits: Record<string, { date: string, revenue: number, servicesCount: number }> = {};
+        
+        customers.forEach(c => {
+            const customerApps = appointments.filter(a => a.customerId === c.id && a.status === 'Concluído');
+            if (customerApps.length > 0) {
+                const sorted = [...customerApps].sort((a, b) => {
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    return (a.time || '').localeCompare(b.time || '');
+                });
+                const first = sorted[0];
+                const sameDayApps = customerApps.filter(a => a.date === first.date);
+                
+                let revenue = 0;
+                let servicesCount = 0;
+                
+                sameDayApps.forEach(a => {
+                    const mainSvc = services.find(s => s.id === a.serviceId);
+                    const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+                    const extras = (a.additionalServices || []).reduce((sum, extra) => {
+                        const extraSvc = services.find(s => s.id === extra.serviceId);
+                        return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                    }, 0);
+                    
+                    revenue += mainBooked + extras;
+                    servicesCount += 1 + (a.additionalServices || []).length;
+                });
+                
+                visits[c.id] = { date: first.date, revenue, servicesCount };
             }
         });
-        return count;
-    }, [filteredAppointments, customers, filterChannel]);
+        return visits;
+    }, [customers, appointments, services]);
+
+    const newCustomersCount = useMemo(() => {
+        return Object.values(firstVisits).filter(v => isDateInPeriod(v.date)).length;
+    }, [firstVisits, timeView, dateRef, customRange]);
+
+    const newCustomersTrafficData = useMemo(() => {
+        const dailyData: Record<string, { count: number, recurring: number, revenue: number, services: number, recurringRevenue: number, recurringServices: number }> = {};
+        
+        Object.values(firstVisits).forEach(v => {
+            if (isDateInPeriod(v.date)) {
+                dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+                dailyData[v.date].count++;
+                dailyData[v.date].revenue += v.revenue;
+                dailyData[v.date].services += v.servicesCount;
+            }
+        });
+
+        filteredAppointments.filter(a => a.status === 'Concluído').forEach(a => {
+            const fv = firstVisits[a.customerId];
+            // If the appointment is NOT the first visit, it's a recurring customer
+            if (fv && fv.date !== a.date) {
+                dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+                dailyData[a.date].recurring++;
+
+                // Calculate Revenue and Services for recurring appointments
+                const mainSvc = services.find(s => s.id === a.serviceId);
+                const mainRev = (a.pricePaid ?? a.bookedPrice ?? mainSvc?.price ?? 0);
+                const extrasRev = (a.additionalServices || []).reduce((sum, extra) => {
+                    const extraSvc = services.find(s => s.id === extra.serviceId);
+                    return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0);
+                }, 0);
+                
+                dailyData[a.date].recurringRevenue += (mainRev + extrasRev);
+                dailyData[a.date].recurringServices += (1 + (a.additionalServices || []).length);
+            }
+        });
+
+        if (timeView === 'day') {
+             const dateStr = toLocalDateStr(dateRef);
+             const d = dailyData[dateStr] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+             return [{ 
+                name: dateRef.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), 
+                value: d.count,
+                recurring: d.recurring,
+                revenue: d.revenue,
+                services: d.services,
+                recurringRevenue: d.recurringRevenue,
+                recurringServices: d.recurringServices
+             }];
+        }
+
+        if (timeView === 'month' || timeView === 'custom') {
+            const start = timeView === 'month' ? new Date(dateRef.getFullYear(), dateRef.getMonth(), 1) : new Date(customRange.start + 'T12:00:00');
+            const end = timeView === 'month' ? new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0) : new Date(customRange.end + 'T12:00:00');
+            
+            const data = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dateStr = toLocalDateStr(d);
+                const dayData = dailyData[dateStr] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+                data.push({
+                    name: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+                    value: dayData.count,
+                    recurring: dayData.recurring,
+                    revenue: dayData.revenue,
+                    services: dayData.services,
+                    recurringRevenue: dayData.recurringRevenue,
+                    recurringServices: dayData.recurringServices
+                });
+            }
+            return data;
+        }
+
+        if (timeView === 'year') {
+            const data = [];
+            for (let m = 0; m < 12; m++) {
+                const monthName = new Date(dateRef.getFullYear(), m, 1).toLocaleDateString('pt-BR', { month: 'short' });
+                let mCount = 0, mRec = 0, mRev = 0, mServ = 0, mRecRev = 0, mRecServ = 0;
+                Object.entries(dailyData).forEach(([date, val]) => {
+                    const [y, mm] = date.split('-').map(Number);
+                    if (y === dateRef.getFullYear() && (mm - 1) === m) {
+                        mCount += val.count;
+                        mRec += val.recurring;
+                        mRev += val.revenue;
+                        mServ += val.services;
+                        mRecRev += val.recurringRevenue;
+                        mRecServ += val.recurringServices;
+                    }
+                });
+                data.push({ 
+                    name: monthName, 
+                    value: mCount, 
+                    recurring: mRec, 
+                    revenue: mRev, 
+                    services: mServ,
+                    recurringRevenue: mRecRev,
+                    recurringServices: mRecServ
+                });
+            }
+            return data;
+        }
+        return [];
+    }, [firstVisits, filteredAppointments, timeView, dateRef, customRange, services]);
 
     // --- CHART DATA GENERATION ---
 
@@ -334,7 +457,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
         return Object.entries(revenue)
             .map(([id, val]) => ({
-                name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
+                name: (providers.find(p => p.id === id)?.name || 'Desc.').split(' ')[0],
                 full: providers.find(p => p.id === id)?.name,
                 value: val,
                 avatar: providers.find(p => p.id === id)?.avatar
@@ -370,13 +493,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
 
         return Object.entries(counts)
-            .map(([id, val]) => ({
-                name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
-                value: val
-            }))
+            .map(([id, val]) => {
+                const customer = customers.find(c => c.id === id);
+                return {
+                    name: (customer?.name || 'Desconhecido').split(' ')[0],
+                    value: val
+                };
+            })
             .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers]);
+    
+
+    // Tráfego de Novos Clientes (Diário/Mensal/Anual)
+    const newCustomersByTraffic = useMemo(() => {
+        const dailyData: Record<string, number> = {};
+        
+        Object.values(firstVisits).forEach(v => {
+            if (isDateInPeriod(v.date)) {
+                dailyData[v.date] = (dailyData[v.date] || 0) + 1;
+            }
+        });
+
+        if (timeView === 'day') {
+             const dateStr = toLocalDateStr(dateRef);
+             return [{ name: dateRef.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), value: dailyData[dateStr] || 0 }];
+        }
+
+        if (timeView === 'month' || timeView === 'custom') {
+            const start = timeView === 'month' ? new Date(dateRef.getFullYear(), dateRef.getMonth(), 1) : new Date(customRange.start + 'T12:00:00');
+            const end = timeView === 'month' ? new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0) : new Date(customRange.end + 'T12:00:00');
+            
+            const data = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                const dateStr = toLocalDateStr(d);
+                data.push({
+                    name: d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+                    value: dailyData[dateStr] || 0
+                });
+            }
+            return data;
+        }
+
+        if (timeView === 'year') {
+            const data = [];
+            for (let m = 0; m < 12; m++) {
+                const monthName = new Date(dateRef.getFullYear(), m, 1).toLocaleDateString('pt-BR', { month: 'short' });
+                let mCount = 0;
+                Object.entries(dailyData).forEach(([date, val]) => {
+                    const [y, mm] = date.split('-').map(Number);
+                    if (y === dateRef.getFullYear() && (mm - 1) === m) mCount += val;
+                });
+                data.push({ name: monthName, value: mCount });
+            }
+            return data;
+        }
+        return [];
+    }, [firstVisits, timeView, dateRef, customRange, isDateInPeriod]);
 
     // Ticket Médio Clientes
     const customerAvgTicket = useMemo(() => {
@@ -397,7 +570,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers, services]);
 
-    // 4. Top Partners - Already Revenue
+    // 4. Recorrência e Churn
+    const recurringStats = useMemo(() => {
+        const stats = {
+            totalClients: customers.length,
+            recurringClients: 0,
+            recurringRevenue: 0,
+            recurringAppointments: 0,
+            churnRiskCount: 0,
+            avgFrequency: 0,
+            secondVisitConversion: 0
+        };
+
+        const now = new Date();
+        const churnThreshold = 45 * 24 * 60 * 60 * 1000; // 45 dias
+
+        customers.forEach(c => {
+            const customerApps = appointments.filter(a => a.customerId === c.id && a.status === 'Concluído');
+            const appCount = customerApps.length;
+            
+            if (appCount > 1) {
+                stats.recurringClients++;
+                customerApps.forEach(a => {
+                    stats.recurringRevenue += (a.pricePaid ?? a.bookedPrice ?? 0);
+                });
+                stats.recurringAppointments += appCount;
+            }
+
+            // Churn Risk: Não voltou há mais de 45 dias
+            const lastApp = [...customerApps].sort((a, b) => b.date.localeCompare(a.date))[0];
+            if (lastApp) {
+                const lastDate = new Date(lastApp.date);
+                if (now.getTime() - lastDate.getTime() > churnThreshold) {
+                    stats.churnRiskCount++;
+                }
+            }
+        });
+
+        stats.avgFrequency = stats.recurringClients > 0 ? stats.recurringAppointments / stats.recurringClients : 0;
+        stats.secondVisitConversion = stats.totalClients > 0 ? (stats.recurringClients / stats.totalClients) * 100 : 0;
+
+        return stats;
+    }, [customers, appointments]);
+
+    // 5. Top Partners - Already Revenue
     const topPartners = useMemo(() => {
         const partnerRevenue: Record<string, number> = {};
         filteredAppointments.forEach(a => {
@@ -621,7 +837,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
         return Object.entries(counts)
             .map(([id, val]) => ({
-                name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
+                name: (providers.find(p => p.id === id)?.name || 'Desc.').split(' ')[0],
                 value: val
             }))
             .filter(item => item.value > 0)
@@ -1037,6 +1253,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     <p className="text-emerald-700 dark:text-emerald-400 font-bold text-sm">
                         R$ {payload[0].value.toFixed(2)}
                     </p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const NewClientTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const data = payload[0].payload;
+            return (
+                <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+                    <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
+                    
+                    <div className="space-y-3">
+                        {/* Novos block */}
+                        <div className="space-y-1">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Novos Clientes</p>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Qtd:</span>
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-emerald-600 uppercase">Valor:</span>
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                            </div>
+                        </div>
+
+                        {/* Recorrentes block */}
+                        <div className="space-y-1 border-t border-slate-50 dark:border-zinc-700/50 pt-2">
+                            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Recorrentes</p>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-indigo-600 uppercase">Qtd:</span>
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurring}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-indigo-600 uppercase">Valor:</span>
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {data.recurringRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             );
         }
@@ -2080,7 +2336,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Professional Insight 3: Treinamento */}
                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                     <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                        <CheckCircle size={24} />
+                                        <CircleCheck size={24} />
                                     </div>
                                     <div>
                                         <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Desenvolvimento</h4>
@@ -2336,7 +2592,42 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pt-2 px-1">
+                                <KPICard
+                                    title="Clientes Recorrentes"
+                                    value={recurringStats.recurringClients}
+                                    sub={`${recurringStats.secondVisitConversion.toFixed(1)}% da base total`}
+                                    icon={Users}
+                                    color="text-indigo-700"
+                                    lightColor="bg-indigo-50"
+                                />
+                                <KPICard
+                                    title="Faturamento Recorrente"
+                                    value={`R$ ${recurringStats.recurringRevenue.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
+                                    sub="Receita de fidelidade"
+                                    icon={DollarSign}
+                                    color="text-emerald-700"
+                                    lightColor="bg-emerald-50"
+                                />
+                                <KPICard
+                                    title="Frequência Média"
+                                    value={recurringStats.avgFrequency.toFixed(1)}
+                                    sub="Visitas por cliente"
+                                    icon={Activity}
+                                    color="text-amber-700"
+                                    lightColor="bg-amber-50"
+                                />
+                                <KPICard
+                                    title="Em Risco de Churn"
+                                    value={recurringStats.churnRiskCount}
+                                    sub="Inativos há +45 dias"
+                                    icon={AlertTriangle}
+                                    color="text-rose-700"
+                                    lightColor="bg-rose-50"
+                                />
+                            </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Frequência Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2394,6 +2685,85 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
+                            {/* Tráfego de Novos Clientes */}
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                                    <div>
+                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                            <TrendingUp size={16} className="text-emerald-500" /> Tráfego e Performance de Período
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Análise de conversão e fidelidade no período selecionado</p>
+                                    </div>
+                                    <div className="flex flex-wrap gap-4">
+                                        {/* Unified Novos Clientes Card */}
+                                        <div className="bg-slate-900 dark:bg-white p-1 rounded-3xl shadow-xl flex items-center overflow-hidden border border-slate-800 dark:border-slate-200">
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Base de Novos</p>
+                                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                                    {newCustomersTrafficData.reduce((sum, d) => sum + (d.value || 0), 0)}
+                                                </p>
+                                            </div>
+                                            <div className="w-px h-8 bg-slate-800 dark:bg-slate-100" />
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                                    R$ {newCustomersTrafficData.reduce((sum, d) => sum + (d.revenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                </p>
+                                            </div>
+                                            <div className="w-px h-8 bg-slate-800 dark:bg-slate-100" />
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Serviços</p>
+                                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                                    {newCustomersTrafficData.reduce((sum, d) => sum + (d.services || 0), 0)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Unified Recorrentes Card */}
+                                        <div className="bg-white dark:bg-zinc-800 p-1 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center overflow-hidden">
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                    {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurring || 0), 0)}
+                                                </p>
+                                            </div>
+                                            <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                    R$ {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurringRevenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                                                </p>
+                                            </div>
+                                            <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços</p>
+                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                    {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurringServices || 0), 0)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="h-80 mt-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={newCustomersTrafficData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="colorRec" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                            <Area type="monotone" dataKey="recurring" name="Recorrentes" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRec)" dot={{ fill: '#4f46e5', r: 3 }} activeDot={{ r: 5 }} />
+                                            <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNew)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
                             {/* Ticket Médio Dia Semana */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2410,6 +2780,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>
+                            </div>
                             </div>
                         </div>
                     ) : (
@@ -2433,7 +2804,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
                                         <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Risco de Churn</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            A taxa de abandono após a 1ª visita é de 42%. Focar em garantir o agendamento do retorno antes do cliente sair da loja.
+                                            Identificamos <span className="text-rose-900 dark:text-rose-400 font-black">{recurringStats.churnRiskCount} clientes</span> que não retornam há mais de 45 dias. Isso representa uma perda potencial de R$ {(recurringStats.churnRiskCount * (customerAvgTicket[0]?.value || 150)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês.
                                         </p>
                                     </div>
                                 </div>
