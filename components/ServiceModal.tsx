@@ -4325,6 +4325,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     .filter(a => a.customerId === customer.id && a.status === 'Concluído')
                                     .map(a => {
                                         const svc = services.find(s => s.id === a.serviceId);
+                                        const prov = providers.find(p => p.id === a.providerId);
                                         return {
                                             id: a.id,
                                             date: a.date,
@@ -4333,7 +4334,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             type: 'VISIT' as const,
                                             price: a.pricePaid || a.amount || 0,
                                             method: a.paymentMethod || 'Não informado',
-                                            feedback: a.feedback
+                                            feedback: a.feedback,
+                                            providerName: prov?.name || a.providerName || 'Não informado'
                                         };
                                     });
 
@@ -4360,27 +4362,47 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     return <div className="text-center py-20 text-slate-400 font-black animate-pulse uppercase text-[10px]">Carregando histórico...</div>;
                                 }
 
-                                return combined.map((item: any, idx) => (
-                                    <div key={idx} className="p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group">
-                                        <div className="flex justify-between items-start">
-                                            <div className="space-y-1.5 flex-1 pr-4">
-                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{new Date(item.date + (item.date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                                <h4 className="text-sm font-black text-slate-950 dark:text-white uppercase leading-tight group-hover:text-indigo-600 transition-colors">{item.description}</h4>
-                                                {(item.feedback || item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400">"{item.feedback || item.feedback}"</p>}
+                                return (
+                                    <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-zinc-800 before:to-transparent">
+                                        {combined.map((item: any, idx) => (
+                                            <div key={idx} className="relative flex items-start gap-6 group">
+                                                {/* Timeline Circle Overlay */}
+                                                <div className="absolute left-0 mt-1.5 w-10 flex items-center justify-center">
+                                                    <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-950 border-2 border-indigo-500 flex items-center justify-center shadow-md animate-in zoom-in duration-300">
+                                                        <CircleCheck size={18} className="text-indigo-500" />
+                                                    </div>
+                                                </div>
+
+                                                {/* Card Content */}
+                                                <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="space-y-1.5 flex-1 pr-4">
+                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{new Date(item.date + (item.date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                            <h4 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight group-hover:text-indigo-600 transition-colors">{item.description}</h4>
+                                                            
+                                                            {(item.providerName || item.provider) && (
+                                                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                                                                    PROFISSIONAL: <span className="text-indigo-600 dark:text-indigo-400">{item.providerName || item.provider}</span>
+                                                                </p>
+                                                            )}
+
+                                                            <p className="text-[10px] font-bold text-slate-500 mt-2">
+                                                                Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
+                                                            </p>
+
+                                                            {(item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">"{item.feedback}"</p>}
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase truncate max-w-[80px] inline-block shadow-sm">
+                                                                {item.isDb ? 'REGISTRO' : 'SISTEMA'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-right">
-                                                {item.price !== undefined ? (
-                                                    <>
-                                                        <p className="text-sm font-black text-slate-950 dark:text-white">R$ {item.price.toFixed(2)}</p>
-                                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mt-1">{item.method}</p>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full uppercase truncate max-w-[80px] inline-block">{item.type}</span>
-                                                )}
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
-                                ));
+                                );
                             })()}
                         </div>
 
