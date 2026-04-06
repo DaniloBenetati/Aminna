@@ -236,6 +236,7 @@ export interface Appointment {
   isReconciled?: boolean;
   adjustmentAmount?: number;
   adjustmentReason?: string;
+  whatsappResponseNeeded?: boolean;
 }
 
 export interface ChatMessage {

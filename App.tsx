@@ -671,7 +671,8 @@ const App: React.FC = () => {
           updatedAt: a.updated_at,
           isReconciled: a.is_reconciled,
           adjustmentAmount: a.adjustment_amount,
-          adjustmentReason: a.adjustment_reason
+          adjustmentReason: a.adjustment_reason,
+          whatsappResponseNeeded: a.whatsapp_response_needed
         }));
 
         // Frontend Deduplication

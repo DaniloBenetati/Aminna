@@ -130,6 +130,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
+    const [whatsappResponseNeeded, setWhatsappResponseNeeded] = useState(appointment?.whatsappResponseNeeded || false);
     const [includeDebt, setIncludeDebt] = useState(false);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
 
@@ -230,7 +231,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             isReconciled: data.is_reconciled,
                             adjustmentAmount: data.adjustment_amount,
                             adjustmentReason: data.adjustment_reason,
-                            observation: data.observation
+                            observation: data.observation,
+                            whatsappResponseNeeded: data.whatsapp_response_needed
                         };
                         setLatestAppointment(mapped);
                     }
@@ -249,6 +251,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setStatus(apptToUse.status);
         setAppointmentTime(apptToUse.time);
         setAppointmentDate(apptToUse.date);
+        setWhatsappResponseNeeded(apptToUse.whatsappResponseNeeded || false);
         setCouponCode(apptToUse.appliedCoupon || '');
         setAppliedCampaign(campaigns.find(c => c.couponCode === apptToUse.appliedCoupon) || null);
         setIsCancelling(false);
@@ -415,7 +418,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
         };
         fetchNFSe();
-    }, [appointment, services, campaigns, source]);
+    }, [appointment, latestAppointment, services, campaigns, source]);
 
     const totalPaid = useMemo(() => {
         return payments.reduce((acc, p) => acc + p.amount, 0);
@@ -1386,7 +1389,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             tip_amount: linesToUseForSave.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             recurrence_id: recId,
             quantity: linesToUseForSave[0].quantity || 1,
-            start_time_actual: linesToUse[0].startTimeActual
+            start_time_actual: linesToUse[0].startTimeActual,
+            whatsapp_response_needed: whatsappResponseNeeded
         };
 
         try {
@@ -1475,7 +1479,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     recurrenceId: s.recurrence_id,
                     endTime: s.end_time,
                     quantity: s.quantity || 1,
-                    startTimeActual: s.start_time_actual
+                    startTimeActual: s.start_time_actual,
+                    whatsappResponseNeeded: s.whatsapp_response_needed
                 } as Appointment));
 
                 if (exists) {
@@ -2443,9 +2448,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         <>
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
                                 <div className="min-w-0 flex-1 w-full">
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
-                                    </div>
+                                    <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
                                         {customer.isVip && (
@@ -2457,13 +2460,43 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         {isAgendaMode && (
                                             <button
                                                 onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                                className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                                                className={`ml-2 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${(status === 'Confirmado' || status === 'Aguardando') ? 'bg-indigo-100 text-[#01A4C6] border-indigo-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
                                             >
-                                                {status}
+                                                {status === 'Aguardando' ? 'Aguardando Recepção' : status}
                                             </button>
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Resposta Whatsapp Button in Middle Space */}
+                                <div className="hidden sm:flex flex-1 items-center justify-center px-4">
+                                    <button
+                                        onClick={() => setWhatsappResponseNeeded(prev => !prev)}
+                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
+                                            whatsappResponseNeeded 
+                                            ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-amber-200' 
+                                            : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-slate-300 dark:hover:border-zinc-600'
+                                        }`}
+                                    >
+                                        <Smartphone size={10} className={whatsappResponseNeeded ? 'animate-pulse' : ''} />
+                                        Resposta WhatsApp
+                                    </button>
+                                </div>
+
+                                <div className="flex sm:hidden w-full justify-center -mt-2 mb-2">
+                                    <button
+                                        onClick={() => setWhatsappResponseNeeded(prev => !prev)}
+                                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
+                                            whatsappResponseNeeded 
+                                            ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-amber-200' 
+                                            : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-slate-300 dark:hover:border-zinc-600'
+                                        }`}
+                                    >
+                                        <Smartphone size={10} className={whatsappResponseNeeded ? 'animate-pulse' : ''} />
+                                        Resposta WhatsApp
+                                    </button>
+                                </div>
+
                                 {mode !== 'HISTORY' && (
                                     <div className="flex items-center justify-end gap-6 w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-200 dark:border-zinc-700 pt-3 md:pt-0 md:pl-6">
                                         <div className="flex flex-col items-end">
@@ -2736,15 +2769,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         </div>
                                                     </div>
 
-                                                    <div className="flex flex-col">
-                                                        <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Status</label>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${line.status === 'Em Andamento' ? 'bg-emerald-100 text-emerald-700' :
-                                                                line.status === 'Concluído' ? 'bg-blue-100 text-blue-700' :
-                                                                    'bg-slate-100 text-slate-600'
-                                                                }`}>
-                                                                {line.status || 'Pendente'}
-                                                            </span>
+                                                    <div className="flex flex-col items-center">
+                                                        <label className="text-[8px] font-black text-slate-400 uppercase">Status</label>
+                                                        <div className="flex items-center justify-center flex-wrap gap-1 mt-1">
+                                                            <span className={`text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase ${line.status === 'Em Andamento' ? 'bg-emerald-100 text-emerald-700' :
+    (line.status === 'Concluído' || line.status === 'Aguardando') ? 'bg-blue-100 text-blue-700' :
+        'bg-slate-100 text-slate-600'
+    }`}>
+    {line.status === 'Aguardando' ? 'Aguardando Recepção' : (line.status || 'Pendente')}
+</span>
                                                             {(line.status === 'Aguardando' || line.status === 'Pendente') && (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento') && (
                                                                 <button
                                                                     type="button"
