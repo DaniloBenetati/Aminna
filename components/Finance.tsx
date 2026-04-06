@@ -1292,47 +1292,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const filteredPayables = useMemo(() => {
-        // 1. Base Payables from Transactions (includes Expenses, Commissions, Fees)
-        const basePayables = transactions.filter(t => {
-            // We only want Outgoing items that are not Revenue
-            if (t.type !== 'DESPESA') return false;
-            
-            const matchesDate = payablesIgnoreDateFilter
-                ? (t.status === 'Pendente' || (t.date >= startDate && t.date <= endDate))
-                : (t.date >= startDate && t.date <= endDate);
-
-            const searchLower = payablesSearch.toLowerCase();
-            const matchesSearch = (t.description || '').toLowerCase().includes(searchLower) ||
-                (t.customerOrProviderName || '').toLowerCase().includes(searchLower) ||
-                (t.providerName || '').toLowerCase().includes(searchLower);
-
-            const statusLabel = (t.status || '').toUpperCase();
-            const isAtrasado = (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') && new Date(t.date) < new Date(new Date().setHours(0, 0, 0, 0));
-
-            const matchesStatus = payablesStatusFilter === 'ALL' ||
-                (payablesStatusFilter === 'Atrasado' ? isAtrasado :
-                    payablesStatusFilter === 'Pago' ? statusLabel === 'PAGO' :
-                        payablesStatusFilter === 'Pendente' ? (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') :
-                            false);
-
-            // Supplier Filter Logic
-            // For derived transactions, we check against their calculated professional/supplier IDs or names
-            let entityIdMatch = true;
-            if (payablesSupplierFilter !== 'ALL') {
-                const targetId = payablesSupplierFilter; // e.g. "SUP_ID" or "emp_ID" or "prov_ID"
-                const item = t as any;
-                const isMatch = item.supplierId === targetId || 
-                                (item.providerId && `prov_${item.providerId}` === targetId) ||
-                                (item.employeeId && `emp_${item.employeeId}` === targetId) ||
-                                // Special case for aggregated commissions where we might only have names
-                                (t.category === 'Repasse Comissão' && providers.some(p => p.name === t.providerName && `prov_${p.id}` === targetId));
-                entityIdMatch = isMatch;
-            }
-
-            return matchesDate && matchesSearch && matchesStatus && entityIdMatch;
-        });
-
-        // 2. FORCED SPLITS: Also include anything linked in current bank transactions view
+        // Collect IDs of transactions linked to current bank view (forced to be visible if they match other filters)
         const forcedTxIds = new Set<string>();
         bankTransactions.forEach(t => {
             if (t.systemMatches) {
@@ -1340,39 +1300,68 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
         });
 
-        const forcedTxs = transactions.filter(t => forcedTxIds.has(t.id));
-        const combined = [...basePayables, ...forcedTxs];
-
-        // 4. Filter out items without identified Favorecido (removing UUIDs)
-        const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-        
-        const identifiedPayables = combined.filter(t => {
-            const rawName = t.customerOrProviderName || t.providerName || '';
-            const category = t.category || '';
+        // We filter ALL transactions of type DESPESA, plus those that are forced (multi-category splits etc)
+        const filtered = transactions.filter(t => {
+            // Must be a Despesa OR explicitly forced by bank reconciliation linkage
             const isForced = forcedTxIds.has(t.id);
-            
-            // Robust Name Identification (fallback for when state mapping missed it)
-            const name = (isUUID(rawName) || !rawName)
-                ? (suppliers.find(s => s.id === (t as any).supplierId)?.name || 
-                   providers.find(p => p.id === (t as any).providerId)?.name || 
-                   employees.find(e => e.id === (t as any).employeeId)?.name || 
-                   '')
-                : rawName;
+            if (t.type !== 'DESPESA' && !isForced) return false;
 
-            // If it's a "Forced Split" (linked item), we WANT it regardless of current display name logic
-            // This ensures that once the user starts working on a transaction, it doesn't disappear
-            if (isForced) return true;
+            // 1. Date Filter (Always show forced links if they match the bank view, else respect date)
+            const txDate = (t.date || '').substring(0, 10);
+            const matchesDate = payablesIgnoreDateFilter
+                ? (t.status === 'Pendente' || (txDate >= startDate && txDate <= endDate))
+                : (txDate >= startDate && txDate <= endDate) || isForced;
+
+            if (!matchesDate) return false;
+
+            // 2. Search Filter
+            const searchLower = payablesSearch.toLowerCase().trim();
+            const matchesSearch = !searchLower || 
+                (t.description || '').toLowerCase().includes(searchLower) ||
+                (t.customerOrProviderName || '').toLowerCase().includes(searchLower) ||
+                (t.providerName || '').toLowerCase().includes(searchLower) ||
+                (t.category || '').toLowerCase().includes(searchLower);
+
+            if (!matchesSearch) return false;
+
+            // 3. Status Filter (Now applies to everything including forced links)
+            const statusLabel = (t.status || '').toUpperCase();
+            const isAtrasado = (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') && txDate < new Date().toISOString().split('T')[0];
             
-            // For others, only show if BOTH Favorecido AND Category are present
-            const hasFavorecido = name.trim() !== '' && !isUUID(name);
-            const hasCategory = category.trim() !== '' && category !== 'Sem Categoria';
-            
-            return hasFavorecido && hasCategory;
+            const matchesStatus = payablesStatusFilter === 'ALL' ||
+                (payablesStatusFilter === 'Atrasado' ? isAtrasado :
+                    payablesStatusFilter === 'Pago' ? statusLabel === 'PAGO' :
+                        payablesStatusFilter === 'Pendente' ? (statusLabel === 'PENDENTE' || statusLabel === 'PENDING') :
+                            false);
+
+            if (!matchesStatus) return false;
+
+            // 4. Supplier/Favorecido Filter
+            let entityIdMatch = true;
+            if (payablesSupplierFilter !== 'ALL') {
+                const targetId = payablesSupplierFilter;
+                const item = t as any;
+                const isMatch = item.supplierId === targetId || 
+                                (item.providerId && `prov_${item.providerId}` === targetId) ||
+                                (item.employeeId && `emp_${item.employeeId}` === targetId) ||
+                                (t.category === 'Repasse Comissão' && providers.some(p => p.name === t.providerName && `prov_${p.id}` === targetId)) ||
+                                (t.customerOrProviderName === suppliers.find(s => s.id === targetId)?.name); // Fallback for name only matches
+                entityIdMatch = isMatch;
+            }
+
+            return entityIdMatch;
         });
 
-        // 5. Unique results and sort
-        const unique = Array.from(new Map(identifiedPayables.map(t => [t.id, t])).values());
+        // 5. Category filter for visibility ('identifiedPayables' logic merged here)
+        // We only show items that have a category or are forced, to avoid showing empty placeholder records
+        const identified = filtered.filter(t => {
+            const category = t.category || '';
+            const isForced = forcedTxIds.has(t.id);
+            const hasCategory = category.trim() !== '' && category !== 'Sem Categoria';
+            return hasCategory || isForced;
+        });
 
+        const unique = Array.from(new Map(identified.map(t => [t.id, t])).values());
         return unique.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions]);
 
