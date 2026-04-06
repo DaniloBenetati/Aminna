@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   TrendingUp, TrendingDown, AlertTriangle, Zap, Target, DollarSign,
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
@@ -202,12 +202,40 @@ const SectionTitle = ({ children, sub }: { children: React.ReactNode; sub?: stri
   </div>
 );
 
+const NewClientTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+        <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Novos Clientes</p>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase">Qtd:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value}</span>
+            </div>
+          </div>
+          <div className="space-y-1 border-t border-slate-50 dark:border-zinc-700/50 pt-2">
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Recorrentes</p>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase">Qtd:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurring}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
-export const Marketing: React.FC = () => {
+export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[] }> = ({ appointments = [], customers = [], services = [] }) => {
   const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic'>(() => 
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'organic') || 'paid'
   );
@@ -360,6 +388,79 @@ export const Marketing: React.FC = () => {
       setError(`Erro ao buscar contas: ${e.message}`);
     }
   };
+
+  const isAppointmentInMarketingPeriod = useCallback((dateStr: string) => {
+    if (!dateStr) return false;
+    const cleanDate = dateStr.split('T')[0];
+    if (datePreset === 'lifetime') return true;
+    if (datePreset === 'custom') {
+      return cleanDate >= customStartDate && cleanDate <= customEndDate;
+    }
+    if (dateRange.start && dateRange.stop) {
+      return cleanDate >= dateRange.start && cleanDate <= dateRange.stop;
+    }
+    return true;
+  }, [datePreset, customStartDate, customEndDate, dateRange]);
+
+  const firstVisits = useMemo(() => {
+    const visits: Record<string, { date: string }> = {};
+    customers.forEach(c => {
+      const customerApps = appointments.filter(a => a.customerId === c.id && a.status === 'Concluído');
+      if (customerApps.length > 0) {
+        const sorted = [...customerApps].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+        visits[c.id] = { date: sorted[0].date };
+      }
+    });
+    return visits;
+  }, [customers, appointments]);
+
+  const trafficChartData = useMemo(() => {
+    const dailyData: Record<string, { count: number, recurring: number, services: number, recurringServices: number }> = {};
+    
+    Object.values(firstVisits).forEach((v: any) => {
+      if (isAppointmentInMarketingPeriod(v.date)) {
+        dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[v.date].count++;
+      }
+    });
+
+    appointments.filter(a => a.status === 'Concluído' && isAppointmentInMarketingPeriod(a.date)).forEach(a => {
+      const fv = firstVisits[a.customerId];
+      if (fv && fv.date !== a.date) {
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[a.date].recurring++;
+        dailyData[a.date].recurringServices += (1 + (a.additionalServices || []).length);
+      } else if (fv && fv.date === a.date) {
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[a.date].services += (1 + (a.additionalServices || []).length);
+      }
+    });
+
+    const start = dateRange.start || customStartDate;
+    const end = dateRange.stop || customEndDate;
+    if (!start || !end) return [];
+
+    const data = [];
+    let curr = new Date(start + 'T12:00:00');
+    const last = new Date(end + 'T12:00:00');
+    
+    while (curr <= last) {
+      const dStr = curr.toISOString().split('T')[0];
+      const day = dailyData[dStr] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+      data.push({
+        name: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+        value: day.count,
+        recurring: day.recurring,
+        services: day.services,
+        recurringServices: day.recurringServices
+      });
+      curr.setDate(curr.getDate() + 1);
+    }
+    return data;
+  }, [firstVisits, appointments, isAppointmentInMarketingPeriod, customStartDate, customEndDate, dateRange]);
 
   const fetchAll = useCallback(async () => {
     if (!adAccountId || !token) return;
@@ -1173,6 +1274,75 @@ export const Marketing: React.FC = () => {
                     <section id="detalhamento-campanhas" className="scroll-mt-32">
                       <SectionTitle sub="Visão macro de performance por objetivo de campanha">📣 DETALHAMENTO DE CAMPANHAS</SectionTitle>
                       {renderCampaigns()}
+                    </section>
+
+                    {/* Novo Gráfico: Conversão e Performance de Clientes */}
+                    <section id="conversao-clientes" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                              <TrendingUp size={16} className="text-indigo-600" /> Conversão e Performance de Clientes
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Análise de novos clientes e serviços no período</p>
+                          </div>
+                          <div className="flex flex-wrap gap-4">
+                            <div className="bg-slate-900 dark:bg-white p-1 rounded-3xl shadow-xl flex items-center overflow-hidden border border-slate-800 dark:border-slate-200">
+                              <div className="px-5 py-2">
+                                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Base de Novos</p>
+                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.value || 0), 0)}
+                                </p>
+                              </div>
+                              <div className="w-px h-8 bg-slate-800 dark:bg-slate-100" />
+                              <div className="px-5 py-2">
+                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Serviços</p>
+                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.services || 0), 0)}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="bg-white dark:bg-zinc-800 p-1 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center overflow-hidden">
+                              <div className="px-5 py-2">
+                                <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.recurring || 0), 0)}
+                                </p>
+                              </div>
+                              <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
+                              <div className="px-5 py-2">
+                                <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços Recorr.</p>
+                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.recurringServices || 0), 0)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-80 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trafficChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorRecMkt" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorNewMkt" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <Area type="monotone" dataKey="recurring" name="Recorrentes" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRecMkt)" dot={{ fill: '#4f46e5', r: 3 }} activeDot={{ r: 5 }} />
+                              <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMkt)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </section>
 
                     <section id="conjuntos-anuncios" className="scroll-mt-32">

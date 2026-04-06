@@ -2627,64 +2627,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     lightColor="bg-rose-50"
                                 />
                             </div>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {/* Frequência Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" /> Frequência
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerFrequency.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={customerFrequency.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
-                                            <Bar dataKey="value" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Top Clientes Gasto */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Gasto Total (R$)
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCustomers.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={topCustomers.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                            <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Ticket Médio Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerAvgTicket.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={customerAvgTicket.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                            <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
                             {/* Tráfego de Novos Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
@@ -2763,6 +2705,66 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </ResponsiveContainer>
                                 </div>
                             </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {/* Frequência Clientes */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" /> Frequência
+                                </h3>
+                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerFrequency.slice(0, 10).length * 32)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={customerFrequency.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
+                                            <Bar dataKey="value" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={16}>
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Top Clientes Gasto */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Gasto Total (R$)
+                                </h3>
+                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCustomers.slice(0, 10).length * 32)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={topCustomers.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                            <Bar dataKey="value" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Ticket Médio Clientes */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                                </h3>
+                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerAvgTicket.slice(0, 10).length * 32)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={customerAvgTicket.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                            <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+
 
                             {/* Ticket Médio Dia Semana */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
