@@ -143,6 +143,21 @@ export const Agenda: React.FC<AgendaProps> = ({
         return getLocalMidnight();
     });
 
+    const [isReloading, setIsReloading] = useState(false);
+
+    const handleRefresh = (date?: Date) => {
+        setIsReloading(true);
+        if (date) {
+            localStorage.setItem('agenda_selected_date', toLocalDateStr(date));
+        } else {
+            localStorage.setItem('agenda_selected_date', toLocalDateStr(dateRef));
+        }
+        // Brief delay to show the "Updating" state
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
+    };
+
     // Save dateRef to persistence
     React.useEffect(() => {
         if (dateRef) {
@@ -988,11 +1003,14 @@ export const Agenda: React.FC<AgendaProps> = ({
             days.push(
                 <button
                     key={d}
-                    onDoubleClick={() => { 
-                        setDateRef(current); 
-                        setTimeView('day'); 
-                        // Trigger reload to ensure fresh data, persistence will handle the date
-                        setTimeout(() => window.location.reload(), 100);
+                    onClick={(e) => {
+                        // Manual double-click detection to avoid collision with view changes
+                        if (e.detail === 2) {
+                            handleRefresh(current);
+                        } else {
+                            setDateRef(current);
+                            setTimeView('day');
+                        }
                     }}
                     className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
                 >
@@ -1221,6 +1239,15 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     return (
         <div className="flex h-full gap-4 p-4 pb-20 md:pb-0 font-sans">
+            {isReloading && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[1000] flex items-center justify-center animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 px-8 py-6 rounded-[2.5rem] shadow-2xl border-2 border-indigo-500 flex flex-col items-center gap-4">
+                        <Loader2 size={40} className="text-indigo-600 animate-spin" />
+                        <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest">Atualizando...</h2>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Sincronizando com o banco de dados</p>
+                    </div>
+                </div>
+            )}
             {/* Sidebar (Left) */}
             <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
@@ -1253,7 +1280,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 {(['day', 'month', 'year', 'custom'] as const).map(v => (
                                     <button
                                         key={v}
-                                        onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
+                                        onClick={(e) => { 
+                                            if (e.detail === 2) {
+                                                handleRefresh();
+                                            } else {
+                                                setTimeView(v); 
+                                                if (v !== 'custom') setDateRef(new Date()); 
+                                            }
+                                        }}
                                         className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                     >
                                         {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
@@ -1279,7 +1313,15 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         </button>
                                         <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
                                     </div>
-                                    <div className="flex flex-col items-center min-w-[140px]">
+                                    <div 
+                                        className="flex flex-col items-center min-w-[140px] cursor-pointer"
+                                        onClick={(e) => {
+                                            if (e.detail === 2) {
+                                                handleRefresh();
+                                            }
+                                        }}
+                                        title="Clique duplo para atualizar"
+                                    >
                                         <span className="text-[10px] sm:text-xs font-black uppercase text-slate-900 dark:text-white tracking-widest leading-tight">{getDateLabel()}</span>
                                     </div>
                                     <button onClick={() => navigateDate('next')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
@@ -1940,11 +1982,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             days.push(
                                                 <div
                                                     key={day}
-                                                    onDoubleClick={() => {
-                                                        setDateRef(new Date(year, month, day));
-                                                        setTimeView('day');
-                                                        // Trigger reload as requested per 'clicar no dia'
-                                                        setTimeout(() => window.location.reload(), 100);
+                                                    onClick={(e) => {
+                                                        if (e.detail === 2) {
+                                                            handleRefresh(new Date(year, month, day));
+                                                        } else {
+                                                            setDateRef(new Date(year, month, day));
+                                                            setTimeView('day');
+                                                        }
                                                     }}
                                                     className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-lg md:rounded-2xl p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
                                                 >

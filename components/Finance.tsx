@@ -1613,12 +1613,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // SYNCED LOGIC: Realized vs Forecast
             // For past periods, we treat everything that isn't cancelled as "Realized Production" 
             // to match the Repasses/Closures screen and ensure the DRE isn't empty.
-            const todayStr = toLocalDateStr(new Date());
-            const realizedApps = apps.filter(a => a.status?.toUpperCase() === 'CONCLUÃDO');
+            const realizedApps = apps.filter(a => a.status?.toUpperCase() === 'CONCLUÍDO');
             const forecastApps = apps.filter(a => a.status?.toUpperCase() !== 'CANCELADO' && !a.isRemake && a.customerId !== 'INTERNAL_BLOCK');
 
             const revenueServices = calculateProductionRevenue(realizedApps, services);
             const revenueForecast = calculateProductionRevenue(forecastApps, services);
+
+            // Sync with Daily Close: Include Tips and Adjustments in Gross Revenue
+            const revenueTips = realizedApps.reduce((acc, a) => acc + Number(a.tipAmount || 0) + 
+                                (a.additionalServices || []).reduce((sum, s) => sum + Number(s.tipAmount || 0), 0), 0);
+            
+            const revenueAdjustments = exps
+                .filter(e => e.category === 'Ajuste de Valor')
+                .reduce((acc, e) => acc + (e.dreClass === 'REVENUE' ? e.amount : -e.amount), 0);
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
@@ -1631,8 +1638,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + (Number(productTotal) || 0);
             }, 0);
 
-            const grossRevenue = revenueServices + revenueProducts;
-            const grossForecast = revenueForecast + revenueProducts;
+            const grossRevenue = revenueServices + revenueProducts + revenueTips + revenueAdjustments;
+            const grossForecast = revenueForecast + revenueProducts + revenueTips + revenueAdjustments;
 
             const breakdownProducts = sls.reduce((acc, s) => {
                 (s.items || []).forEach(item => {
@@ -1692,7 +1699,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // Substitution logic: AGORA sempre segue o teórico (forecast) baseado na agenda, independente de fechamento.
             const commissions = theoreticalCommissions;
 
-            const deductions = otherDeductions + commissions;
+            // Sync with Daily Close: Include Tips in Deductions since they are paid out to professionals
+            const deductions = otherDeductions + commissions + revenueTips;
             const netRevenue = grossRevenue - deductions;
 
             const manualCosts = exps.filter(e => e.dreClass === 'COSTS').reduce((acc, e) => acc + e.amount, 0);
