@@ -988,7 +988,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             days.push(
                 <button
                     key={d}
-                    onClick={() => { 
+                    onDoubleClick={() => { 
                         setDateRef(current); 
                         setTimeView('day'); 
                         // Trigger reload to ensure fresh data, persistence will handle the date
@@ -1940,7 +1940,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             days.push(
                                                 <div
                                                     key={day}
-                                                    onClick={() => {
+                                                    onDoubleClick={() => {
                                                         setDateRef(new Date(year, month, day));
                                                         setTimeView('day');
                                                         // Trigger reload as requested per 'clicar no dia'
