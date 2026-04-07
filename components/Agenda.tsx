@@ -137,7 +137,19 @@ export const Agenda: React.FC<AgendaProps> = ({
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
-    const [dateRef, setDateRef] = useState(getLocalMidnight());
+    const [dateRef, setDateRef] = useState<Date>(() => {
+        const saved = localStorage.getItem('agenda_selected_date');
+        if (saved) return parseDateSafe(saved);
+        return getLocalMidnight();
+    });
+
+    // Save dateRef to persistence
+    React.useEffect(() => {
+        if (dateRef) {
+            localStorage.setItem('agenda_selected_date', toLocalDateStr(dateRef));
+        }
+    }, [dateRef]);
+
     const [customRange, setCustomRange] = useState({
         start: getLocalDateString(),
         end: getLocalDateString()
@@ -976,7 +988,12 @@ export const Agenda: React.FC<AgendaProps> = ({
             days.push(
                 <button
                     key={d}
-                    onClick={() => { setDateRef(current); setTimeView('day'); }}
+                    onClick={() => { 
+                        setDateRef(current); 
+                        setTimeView('day'); 
+                        // Trigger reload to ensure fresh data, persistence will handle the date
+                        setTimeout(() => window.location.reload(), 100);
+                    }}
                     className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
                 >
                     {d}
@@ -1926,6 +1943,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     onClick={() => {
                                                         setDateRef(new Date(year, month, day));
                                                         setTimeView('day');
+                                                        // Trigger reload as requested per 'clicar no dia'
+                                                        setTimeout(() => window.location.reload(), 100);
                                                     }}
                                                     className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-lg md:rounded-2xl p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
                                                 >
