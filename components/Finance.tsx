@@ -1624,7 +1624,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 (a.additionalServices || []).reduce((sum, s) => sum + Number(s.tipAmount || 0), 0), 0);
             
             const revenueAdjustments = exps
-                .filter(e => e.category === 'Ajuste de Valor')
+                .filter(e => e.category === 'Ajuste de Valor' || e.category === 'Desconto Concedido')
                 .reduce((acc, e) => acc + (e.dreClass === 'REVENUE' ? e.amount : -e.amount), 0);
 
             const revenueProducts = sls.reduce((acc, s) => {
@@ -4981,7 +4981,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         {expandedSections.includes('services-list') && Object.entries(dreData.breakdownServices as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                             <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                                 <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                    â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                    └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                                 </td>
                                                                 {timeView === 'year' ? (
                                                                     <>
@@ -5006,7 +5006,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <tr onClick={() => toggleSection('products-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                             {expandedSections.includes('products-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                            â”” Venda de Produtos
+                                                            └ Venda de Produtos
                                                         </td>
                                                         {timeView === 'year' ? (
                                                             <>
@@ -5027,7 +5027,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('products-list') && Object.entries((dreData.breakdownProducts || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-indigo-50 dark:border-indigo-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -5051,7 +5051,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <tr onClick={() => toggleSection('bank-revenues-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-emerald-600 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('bank-revenues-list') ? <ChevronDown size={12} /> : <DollarSign size={12} />}
-                                                                â”” Cartão/PIX (sem nota)
+                                                                └ Cartão/PIX (sem nota)
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -5073,7 +5073,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('bank-revenues-list') && dreData.reconciledBankRevenues > 0 && Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-emerald-50/10 dark:bg-zinc-800/10">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-emerald-600 dark:text-emerald-500 uppercase italic border-l-4 border-emerald-50 dark:border-emerald-900/10 sticky left-0 bg-emerald-50/10 dark:bg-zinc-800/10 z-10">
-                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.items.length}x)</span>
+                                                                └ {name} <span className="text-[9px] text-slate-300">({info.items.length}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -5099,7 +5099,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                                    2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)
+                                                    2. (-) DEDUÇÕES (Repasses Salão Parceiro)
                                                 </td>
                                                 {timeView === 'year' ? (
                                                     <>
@@ -5122,7 +5122,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <tr onClick={() => toggleSection('commissions-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                         <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                             {expandedSections.includes('commissions-list') ? <ChevronDown size={12} /> : <Menu size={12} />}
-                                                            â”” Comissões
+                                                            └ Comissões
                                                         </td>
                                                         {timeView === 'year' ? (
                                                             <>
@@ -5143,7 +5143,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     {expandedSections.includes('commissions-list') && Object.entries(dreData.breakdownCommissions as Record<string, any>).sort((a, b) => b[1].total - a[1].total).map(([name, info]) => (
                                                         <tr key={name} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
                                                             <td className="px-20 py-2 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase italic border-l-4 border-rose-50 dark:border-rose-900/10 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">
-                                                                â”” {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
+                                                                └ {name} <span className="text-[9px] text-slate-300">({info.count}x)</span>
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
@@ -5208,7 +5208,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('cogs') && (
                                                 <>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Insumos e Produtos (Lançamentos Manuais)</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-slate-500 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Insumos e Produtos (Lançamentos Manuais)</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5312,7 +5312,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5398,7 +5398,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5484,7 +5484,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                         return sortedGroups.map((group, idx) => (
                                                             <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
+                                                                <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
                                                                 {timeView === 'year' ? (
                                                                     <>
                                                                         {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5532,7 +5532,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {expandedSections.includes('exp-fin') && (
                                                 <>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Taxas de Antecipação</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Antecipação</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5550,7 +5550,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         )}
                                                     </tr>
                                                     <tr className="animate-in slide-in-from-top-1 duration-200">
-                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">â”” Taxas de Cartão/Débito</td>
+                                                        <td className="px-14 py-3 text-xs font-bold text-rose-500 opacity-80 uppercase italic sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">└ Taxas de Cartão/Débito</td>
                                                         {timeView === 'year' ? (
                                                             <>
                                                                 {dreData.monthlySnapshots?.map((m: any) => {
@@ -5608,7 +5608,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 const sortedGroups = Object.values(groupedItems).sort((a, b) => b.total - a.total);
                                                                 return sortedGroups.map((group, idx) => (
                                                                     <tr key={idx} className="animate-in slide-in-from-top-1 duration-200 bg-slate-50/30 dark:bg-zinc-800/20">
-                                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">â”” {group.description}</td>
+                                                                        <td className="px-20 py-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase italic border-l-4 border-indigo-100 dark:border-indigo-900/30 sticky left-0 bg-slate-50/30 dark:bg-zinc-800/20 z-10">└ {group.description}</td>
                                                                         {timeView === 'year' ? (
                                                                             <>
                                                                                 {dreData.monthlySnapshots?.map((m: any, mIdx: number) => {
@@ -5655,7 +5655,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                             {/* 11. PROVISÃ•ES IRPJ */}
                                             <tr>
-                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">11. (-) PROVISÃ•ES IRPJ E CSLL</td>
+                                                <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase pl-12 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">11. (-) PROVISÕES IRPJ E CSLL</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (
@@ -5673,9 +5673,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 )}
                                             </tr>
 
-                                            {/* 12. RESULTADO LÃQUIDO */}
+                                            {/* 12. RESULTADO LÍQUIDO */}
                                             <tr className="bg-black text-white dark:bg-white dark:text-black">
-                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">12. (=) RESULTADO LÃQUIDO DO PERÃODO</td>
+                                                <td className="px-8 py-6 font-black text-sm uppercase sticky left-0 bg-black dark:bg-white z-10 shadow-[4px_0_10px_rgba(0,0,0,0.3)]">12. (=) RESULTADO LÍQUIDO DO PERÍODO</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (

@@ -174,7 +174,9 @@ export const generateFinancialTransactions = (
         const pricePaid = Number(app.pricePaid ?? rawApp.price_paid ?? 0);
         const bookedPrice = Number(app.bookedPrice ?? rawApp.booked_price ?? 0);
         const quantity = Number(app.quantity ?? rawApp.quantity ?? 1);
-        const tipAmount = Number(app.tipAmount ?? rawApp.tip_amount ?? 0);
+        const mainTip = Number(app.tipAmount ?? rawApp.tip_amount ?? 0);
+        const extrasTip = (app.additionalServices || rawApp.additional_services || []).reduce((sum: number, s: any) => sum + Number(s.tipAmount || s.tip_amount || 0), 0);
+        const tipAmount = mainTip + extrasTip;
 
         let paymentMethodName = app.paymentMethod || rawApp.payment_method || 'Pix';
         const { fee, days } = getPaymentDetails(paymentMethodName);

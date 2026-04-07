@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 
 const formatLocalDate = (date: Date) => {
     const year = date.getFullYear();
@@ -155,7 +155,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         // Brief delay to show the "Updating" state
         setTimeout(() => {
             window.location.reload();
-        }, 500);
+        }, 1000);
     };
 
     // Save dateRef to persistence
@@ -1712,9 +1712,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
                                                                     let localStatus = myServices[0]?.status || appt.status;
-                                                                    if ((appt.status === 'Em Andamento' || appt.status === 'Em atendimento') && !myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
-                                                                        localStatus = 'Aguardando';
-                                                                    } else if (myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
+                                                                    if (appt.status === 'Em Andamento' || appt.status === 'Em atendimento') {
                                                                         localStatus = 'Em Andamento';
                                                                     }
 
