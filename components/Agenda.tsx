@@ -457,7 +457,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         let message = `${greeting}, ${firstName}! 👋\n\n`;
         message += `Sua visita está agendada para:\n\n`;
-        message += `*${customer.name.toUpperCase()}*\n`;
+        message += `*${customer.name}*\n`;
 
         sortedApps.forEach(a => {
             const dateObj = new Date(a.date + 'T12:00:00');
@@ -466,11 +466,24 @@ export const Agenda: React.FC<AgendaProps> = ({
             const month = dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
 
             const srv = services.find(s => s.id === a.serviceId);
-            const displayTime = a.time.endsWith(':00') ? a.time.split(':')[0] + 'h' : a.time.replace(':', 'h');
+            const [h, m] = a.time.split(':');
+            const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
             const serviceName = a.combinedServiceNames || srv?.name || 'Serviço';
 
             message += `${dayOfWeek} ${day} ${month}\n`;
-            message += `${displayTime} | ${serviceName}\n\n`;
+            message += `${displayTime} | ${serviceName}\n`;
+            
+            let preferenceName = 'Equipe';
+            const prefIds = customer.assignedProviderIds || [];
+            if (prefIds.length > 0) {
+                const preferred = providers.find(p => p.id === prefIds[0]);
+                if (preferred) preferenceName = preferred.nickname || preferred.name;
+            } else if (customer.assignedProviderId) {
+                const preferred = providers.find(p => p.id === customer.assignedProviderId);
+                if (preferred) preferenceName = preferred.nickname || preferred.name;
+            }
+            
+            message += `*Agendamento com preferência | ${preferenceName}*\n\n`;
         });
 
         message += `Confirma ?\n\n`;

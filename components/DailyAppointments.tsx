@@ -160,7 +160,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     if (!customer || !service) return;
 
     const provider = providers.find(p => String(p.id).trim().toLowerCase() === String(appt.providerId).trim().toLowerCase());
-    const providerName = provider ? provider.name.split(' ')[0] : 'Equipe';
+    const providerName = provider ? (provider.nickname || provider.name.split(' ')[0]) : 'Equipe';
 
     const getClockEmoji = (time: string) => {
       try {
@@ -181,8 +181,9 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
     const appDateBr = new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR');
     const firstName = (customer?.name || 'CLIENTE AVULSA').split(' ')[0];
 
-    // Clean time display (e.g., 18:00 -> 18h)
-    const displayTime = appt.time.endsWith(':00') ? appt.time.split(':')[0] + 'h' : appt.time.replace(':', 'h');
+    // Clean time display (e.g., 18:00:00 -> 18h, 18:30:00 -> 18h30)
+    const [h, m] = appt.time.split(':');
+    const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
 
     const hasMultipleServices = appt.combinedServiceNames?.includes(',') || appt.combinedServiceNames?.includes(' e ');
 
