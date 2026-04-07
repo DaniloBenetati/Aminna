@@ -1425,8 +1425,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
                                                             localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
                                                                 (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
-                                                                    (localStatus === 'Confirmado' || localStatus === 'Aguardando') ? 'bg-[#01A4C6]' :
-                                                                        'bg-[#008877]';
+                                                                    localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                        localStatus === 'Aguardando' ? 'bg-[#F7E8C9]' :
+                                                                            'bg-[#008877]';
 
 
                                                     return (
@@ -1448,7 +1449,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             </div>
                                                             <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                                                 <span className="text-[12px] font-black text-slate-900 dark:text-white">{appt.time}</span>
-                                                                <span className={`text-[8px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-tighter ${statusColor}`}>
+                                                                <span className={`text-[8px] font-black text-white px-2 py-0.5 rounded-full uppercase tracking-tighter ${statusColor} ${localStatus === 'Aguardando' ? '!text-amber-950' : ''}`}>
                                                                     {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : (localStatus === 'Aguardando' ? 'Aguardando Recepção' : localStatus)}
                                                                 </span>
                                                             </div>
@@ -1679,13 +1680,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
                                                                                         localStatus === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
                                                                                             (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e] border-[#22c55e] text-white' :
-                                                                                                (localStatus === 'Confirmado' || localStatus === 'Aguardando') ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
-                                                                                                    'bg-[#008877] border-[#008877] text-white'
+                                                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6] border-[#01A4C6] text-white' :
+                                                                                                    localStatus === 'Aguardando' ? 'bg-[#F7E8C9] border-amber-200 text-amber-950 shadow-amber-100/50' :
+                                                                                                        'bg-[#008877] border-[#008877] text-white'
                                                                                     }`}
                                                                             >
                                                                                 <div className="flex justify-between items-start">
                                                                                     <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                                        <p className={`text-[10px] font-black uppercase leading-none truncate ${appt.whatsappResponseNeeded ? 'text-amber-950' : 'text-white'}`}>
+                                                                                        <p className={`text-[10px] font-black uppercase leading-none truncate ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
                                                                                             {customer?.name || 'Cliente'}
                                                                                         </p>
                                                                                         {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
@@ -1697,19 +1699,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     </div>
                                                                                     <span className={`text-[8px] font-mono ${appt.whatsappResponseNeeded ? 'text-amber-800' : 'text-white/70'}`}>{displayTime.split(':')[1]}</span>
                                                                                 </div>
-                                                                                <div className={`text-[8.5px] font-bold truncate mt-0.5 ${appt.whatsappResponseNeeded ? 'text-amber-900' : 'text-white/90'}`}>{displayServiceName}</div>
+                                                                                 <div className={`text-[8.5px] font-bold truncate mt-0.5 ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>{displayServiceName}</div>
 
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
                                                                                         <div className="flex items-center gap-1">
-                                                                                            <span className={`w-2 h-2 rounded-full ${appt.whatsappResponseNeeded ? 'bg-amber-950' : (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
+                                                                                             <span className={`w-2 h-2 rounded-full ${appt.whatsappResponseNeeded ? 'bg-amber-950' : (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
                                                                                                 localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
                                                                                                     (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
-                                                                                                        localStatus === 'Aguardando' ? 'bg-[#01A4C6]' :
+                                                                                                        localStatus === 'Aguardando' ? 'bg-amber-400' :
                                                                                                             localStatus === 'Concluído' ? 'bg-slate-400' :
                                                                                                                 'bg-amber-400'
                                                                                                 }`}></span>
-                                                                                            <span className={`text-[7.5px] font-black uppercase ${appt.whatsappResponseNeeded ? 'text-amber-950/80' : 'text-white/80'}`}>{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : (localStatus === 'Aguardando' ? 'Aguardando Recepção' : localStatus)}</span>
+                                                                                             <span className={`text-[7.5px] font-black uppercase ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950/80' : 'text-white/80'}`}>{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : (localStatus === 'Aguardando' ? 'Aguardando Recepção' : localStatus)}</span>
                                                                                         </div>
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
@@ -1790,7 +1792,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 (item.ca.isRemake || item.ca.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 text-white' :
                                                                                 item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
                                                                                 item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#22c55e] text-white' :
-                                                                                item.status === 'Aguardando' ? 'bg-[#01A4C6] text-white' :
+                                                                                item.status === 'Aguardando' ? 'bg-[#F7E8C9] text-amber-950 border border-amber-200' :
                                                                                 item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
                                                                                 'bg-[#008877] text-white'
                                                                             }`}>
@@ -1931,7 +1933,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                     <div className="flex-1 flex flex-col gap-0.5">
                                                         {dayApps.slice(0, 3).map(app => (
-                                                            <div key={app.id} className={`w-full h-1 md:h-1.5 rounded-full ${(app.status === 'Confirmado' || app.status === 'Aguardando') ? 'bg-[#01A4C6]' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                            <div key={app.id} className={`w-full h-1 md:h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-[#01A4C6]' : app.status === 'Aguardando' ? 'bg-[#F7E8C9]' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
                                                         ))}
                                                         {dayApps.length > 3 && (
                                                             <span className="text-[8px] md:text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
@@ -1974,7 +1976,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             <div className="flex justify-between items-center">
                                                                                 <span className="text-[10px] font-black text-indigo-400 uppercase tracking-tighter">{app.time}</span>
                                                                                 <span className="text-[9px] font-black text-emerald-400">R$ {price.toFixed(0)}</span>
-                                                                                <span className={`w-2 h-2 rounded-full ${(app.status === 'Confirmado' || app.status === 'Aguardando') ? 'bg-[#01A4C6]' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
+                                                                                <span className={`w-2 h-2 rounded-full ${app.status === 'Confirmado' ? 'bg-[#01A4C6]' : app.status === 'Aguardando' ? 'bg-[#F7E8C9]' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></span>
                                                                             </div>
                                                                             <p className="text-[11px] font-black text-white uppercase truncate">{cust?.name.split(' ')[0]}</p>
                                                                             <div className="space-y-0.5">

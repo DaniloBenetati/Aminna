@@ -206,6 +206,8 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
         return 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-400 border-blue-200 dark:border-blue-800';
       case 'Confirmado':
         return 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800';
+      case 'Aguardando':
+        return 'bg-[#F7E8C9] text-amber-950 border-amber-200';
       default:
         return 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800';
     }

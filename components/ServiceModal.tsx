@@ -2520,7 +2520,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         {isAgendaMode && (
                                             <button
                                                 onClick={() => setStatus(prev => prev === 'Confirmado' ? 'Pendente' : 'Confirmado')}
-                                                className={`ml-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${(status === 'Confirmado' || status === 'Aguardando') ? 'bg-indigo-100 text-[#01A4C6] border-indigo-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
+                                                className={`ml-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase border transition-colors ${status === 'Confirmado' ? 'bg-indigo-100 text-[#01A4C6] border-indigo-200' : status === 'Aguardando' ? 'bg-[#F7E8C9] text-amber-950 border-amber-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}
                                             >
                                                 {status === 'Aguardando' ? 'Aguardando Recepção' : status}
                                             </button>
@@ -2833,7 +2833,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <label className="text-[8px] font-black text-slate-400 uppercase">Status</label>
                                                         <div className="flex items-center justify-center flex-wrap gap-1 mt-1">
                                                             <span className={`text-[8.5px] font-black px-2 py-0.5 rounded-full uppercase ${line.status === 'Em Andamento' ? 'bg-emerald-100 text-emerald-700' :
-    (line.status === 'Concluído' || line.status === 'Aguardando') ? 'bg-blue-100 text-blue-700' :
+    line.status === 'Concluído' ? 'bg-blue-100 text-blue-700' :
+    line.status === 'Aguardando' ? 'bg-[#F7E8C9] text-amber-950 border border-amber-200' :
         'bg-slate-100 text-slate-600'
     }`}>
     {line.status === 'Aguardando' ? 'Aguardando Recepção' : (line.status || 'Pendente')}
