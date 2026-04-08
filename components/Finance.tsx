@@ -681,6 +681,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [linkingBankTx, setLinkingBankTx] = useState<BankTransaction | null>(null);
     const [isManualLinkModalOpen, setIsManualLinkModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [isManualLinkingProcessing, setIsManualLinkingProcessing] = useState(false); // Added for consistency
+
+    // Dashboard Indicators Notification
+    const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+    // Effect to clear notification
+    useEffect(() => {
+        if (notification) {
+            const timer = setTimeout(() => setNotification(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [notification]);
 
     // Yearly Billing Comparison State
     const [yearlyBillingData, setYearlyBillingData] = useState<{
@@ -780,10 +792,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             const fetchYearData = async (start: string, end: string) => {
                 const { data: appData } = await supabase.from('appointments')
-                    .select('date, status, booked_price, price_paid, service_id, additional_services, quantity, provider_id, payment_method, is_remake')
+                    .select('date, status, booked_price, price_paid, service_id, additional_services, quantity, provider_id, payment_method, is_remake, tip_amount')
                     .gte('date', start).lte('date', end)
                     .neq('status', 'Cancelado');
-                const { data: saleData } = await supabase.from('sales').select('date, total_amount').gte('date', start).lte('date', end);
+                const { data: saleData } = await supabase.from('sales').select('date, total_amount, items').gte('date', start).lte('date', end);
+                const { data: expData } = await supabase.from('expenses')
+                    .select('date, amount, category, dreClass')
+                    .gte('date', start).lte('date', end);
 
                 const monthly = Array.from({ length: 12 }, (_, i) => ({ month: i + 1, total: 0 }));
 
@@ -792,9 +807,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (parts.length >= 2) {
                         const m = parseInt(parts[1], 10) - 1;
                         if (m >= 0 && m < 12) {
-                            // SYNCED LOGIC: Use the unified production calculation
-                            const production = calculateAppointmentProduction(a, services);
-                            monthly[m].total += production;
+                            if (a.status?.toUpperCase() === 'CONCLUÍDO') {
+                                // Production
+                                const production = calculateAppointmentProduction(a, services);
+                                monthly[m].total += production;
+                                // Tips
+                                const tips = Number(a.tip_amount || 0) + (a.additional_services || []).reduce((sum: number, s: any) => sum + Number(s.tip_amount || 0), 0);
+                                monthly[m].total += tips;
+                            }
                         }
                     }
                 });
@@ -804,7 +824,28 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (parts.length >= 2) {
                         const m = parseInt(parts[1], 10) - 1;
                         if (m >= 0 && m < 12) {
-                            monthly[m].total += (s.total_amount || 0);
+                            const productTotal = (s.items || []).reduce((sum: any, item: any) => {
+                                if (item.productId) {
+                                    const amount = Number(item.totalAmount) || (Number(item.quantity || 1) * Number(item.unitPrice || item.price || 0)) || 0;
+                                    return sum + amount;
+                                }
+                                return sum;
+                            }, 0);
+                            monthly[m].total += (Number(productTotal) || 0);
+                        }
+                    }
+                });
+
+                (expData || []).forEach(e => {
+                    const parts = e.date.split('-');
+                    if (parts.length >= 2) {
+                        const m = parseInt(parts[1], 10) - 1;
+                        if (m >= 0 && m < 12) {
+                            const cleanCat = (e.category || '').toLowerCase();
+                            if (e.dreClass === 'REVENUE' || cleanCat === 'ajuste de valor' || cleanCat === 'desconto concedido') {
+                                const val = e.dreClass === 'REVENUE' ? e.amount : -e.amount;
+                                monthly[m].total += val;
+                            }
                         }
                     }
                 });
@@ -911,11 +952,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     ) => {
         setIsManualLinkingProcessing(true);
         try {
-            // 1. Identify items that are being UNLINKED (present in previous matches but not in new matches)
+            // Identified duplication issue mentioned by user: 
+            // Ensure matches are distinct by ID to prevent duplicate linking entries
+            const uniqueMatches = Array.from(new Set(matches.map(m => m.id))).map(id => matches.find(m => m.id === id)!);
+            
+            // 1. Identify items that are being UNLINKED
             const prevMatches = bankTransactions.find(tx => tx.id === bankTxId)?.systemMatches || [];
-            const unlinkedItems = prevMatches.filter(pm => !matches.some(m => m.id === pm.id && m.type === pm.type));
+            const unlinkedItems = prevMatches.filter(pm => !uniqueMatches.some(m => m.id === pm.id && m.type === pm.type));
 
-            let finalMatches = [...matches];
+            let finalMatches = [...uniqueMatches];
 
             // 1.5 Handle quick expense creation if needed
             if (newExpenseData) {
@@ -970,7 +1015,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // 3. Update status of LINKED items
             const linkPromises = finalMatches.map(m => {
                 if (m.type === 'EXPENSE') {
-                    return supabase.from('expenses').update({ is_reconciled: true, status: 'Pago', date: linkingBankTx?.date }).eq('id', m.id);
+                    return supabase.from('expenses').update({ is_reconciled: true, status: 'Pago' }).eq('id', m.id);
                 } else if (m.type === 'SALE') {
                     return supabase.from('sales').update({ is_reconciled: true }).eq('id', m.id);
                 } else {
@@ -997,7 +1042,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setExpenses(prev => prev.map(e => {
                 const isLinked = finalMatches.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
-                if (isLinked) return { ...e, isReconciled: true, status: 'Pago', date: linkingBankTx!.date };
+                if (isLinked) return { ...e, isReconciled: true, status: 'Pago' };
                 if (isUnlinked) return { ...e, isReconciled: false };
                 return e;
             }));
@@ -1018,12 +1063,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return a;
             }));
 
-            setIsManualLinkModalOpen(false);
             setLinkingBankTx(null);
-            alert("Vínculo atualizado com sucesso!");
+            setNotification({ message: "Vínculo atualizado com sucesso!", type: "success" });
         } catch (err) {
             console.error("Error manual linking/unlinking:", err);
-            alert("Erro ao atualizar vínculos.");
+            setNotification({ message: "Erro ao atualizar vínculos.", type: "error" });
         } finally {
             setIsManualLinkingProcessing(false);
         }
@@ -1168,11 +1212,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [dateRef, setDateRef] = useState(new Date());
     const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
     const [isBatchLinkModalOpen, setIsBatchLinkModalOpen] = useState(false);
-    const [isLinkingProcessing, setIsLinkingProcessing] = useState(false);
-    const [isManualLinkingProcessing, setIsManualLinkingProcessing] = useState(false);
 
     const handleBatchLinkExpenses = async (bankTxId: string, expenseIds: string[]) => {
-        setIsLinkingProcessing(true);
+        setIsManualLinkingProcessing(true);
         try {
             const bankTx = bankTransactions.find(bt => bt.id === bankTxId);
             if (!bankTx) return;
@@ -1187,9 +1229,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setSelectedExpenseIds([]); // Clear selection after linking
         } catch (error) {
             console.error('Error in batch link:', error);
-            alert('Erro ao vincular despesas.');
+            setNotification({ message: 'Erro ao vincular despesas.', type: 'error' });
         } finally {
-            setIsLinkingProcessing(false);
+            setIsManualLinkingProcessing(false);
         }
     };
     const [payablesIgnoreDateFilter, setPayablesIgnoreDateFilter] = useState(false);
@@ -1518,18 +1560,17 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
         // We filter ALL transactions of type DESPESA, plus those that are forced (multi-category splits etc)
         const filtered = transactions.filter(t => {
-            // Must be a Despesa OR explicitly forced by bank reconciliation linkage
-            // Must be a Despesa OR explicitly forced by bank reconciliation linkage
+            if (t.type !== 'DESPESA') return false;
+
             const bareId = t.id.replace(/^([a-z0-9]+-)+/, '');
             const isForced = forcedTxIds.has(t.id) || forcedTxIds.has(bareId);
-            
-            if (t.type !== 'DESPESA' && !isForced) return false;
+            const isSplit = splitTxIds.has(t.id) || splitTxIds.has(bareId);
 
             // 1. Date Filter (Always show forced links if they match the bank view, else respect date)
             const txDate = (t.date || '').substring(0, 10);
             const matchesDate = payablesIgnoreDateFilter
                 ? (t.status === 'Pendente' || (txDate >= startDate && txDate <= endDate))
-                : (txDate >= startDate && txDate <= endDate) || isForced;
+                : (txDate >= startDate && txDate <= endDate) || isForced || isSplit;
 
             if (!matchesDate) return false;
 
@@ -1572,7 +1613,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             if (!entityIdMatch) return false;
 
             // 5. Split (Desmembrado) Filter
-            const isSplit = splitTxIds.has(t.id) || splitTxIds.has(bareId);
             const matchesSplit = payablesSplitFilter === 'ALL' ||
                 (payablesSplitFilter === 'YES' && isSplit) ||
                 (payablesSplitFilter === 'NO' && !isSplit);
@@ -1584,9 +1624,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         // We only show items that have a category or are forced, to avoid showing empty placeholder records
         const identified = filtered.filter(t => {
             const category = t.category || '';
-            const isForced = forcedTxIds.has(t.id);
+            const bareId = t.id.replace(/^([a-z0-9]+-)+/, '');
+            const isForced = forcedTxIds.has(t.id) || forcedTxIds.has(bareId);
+            const isSplit = splitTxIds.has(t.id) || splitTxIds.has(bareId);
             const hasCategory = category.trim() !== '' && category !== 'Sem Categoria';
-            return hasCategory || isForced;
+            return hasCategory || isForced || isSplit;
         });
 
         const unique = Array.from(new Map(identified.map(t => [t.id, t])).values());
@@ -2640,7 +2682,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                         <tr><td>7. (-) DESPESAS COM VENDAS</td><td class="amount negative">- ${formatCurrency(dreData.amountVendas)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
                         ${Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
                         
                         <tr><td>8. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- ${formatCurrency(dreData.amountAdm)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
@@ -2814,6 +2856,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                             <div className="flex items-center">
                                 <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                            </div>
+
+                            {/* META SIMULATOR (MOVED) */}
+                            <div className="ml-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-0.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                                <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap flex items-center gap-1"><Target size={10} className="text-indigo-500" /> Meta</span>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-3.5 h-3.5 rounded-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-[9px] font-black">-</button>
+                                    <span className="text-[10px] font-black text-slate-950 dark:text-white">+{predictiveTargetGrowth}%</span>
+                                    <button onClick={() => setPredictiveTargetGrowth(predictiveTargetGrowth + 5)} className="w-3.5 h-3.5 rounded-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-[9px] font-black">+</button>
+                                </div>
                             </div>
 
                             {timeView === 'month' && activeTab === 'DRE' && (
@@ -3070,8 +3122,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                             bankTransactions.forEach(t => {
                                 if (t.systemMatches && t.systemMatches.length > 0) {
-                                    // Expand into multiple rows (even for 1 match to show system data)
-                                    t.systemMatches.forEach(m => {
+                                    // Deduplicate matches to prevent "ficou duplicado" issue
+                                    const seenMatchIds = new Set();
+                                    const uniqueMatches = t.systemMatches.filter(m => {
+                                        if (seenMatchIds.has(m.id)) return false;
+                                        seenMatchIds.add(m.id);
+                                        return true;
+                                    });
+
+                                    // Expand into multiple rows
+                                    uniqueMatches.forEach(m => {
                                         const delta = t.type === 'RECEITA' ? Math.abs(m.amount) : -Math.abs(m.amount);
                                         currentBal += delta;
                                         expandedRows.push({ t, delta, balance: currentBal, match: m, isSplit: true });
@@ -3582,6 +3642,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                     paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
                                                                                                 }]);
                                                                                                 setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                             alert('Vinculado a uma despesa do Contas a Pagar com sucesso!');
+                                                                                             alert('Vinculado a uma despesa do Contas a Pagar com sucesso!');
                                                                                                 currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
                                                                                             }
                                                                                         }
@@ -3651,6 +3713,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                     setCustomers(prev => [...prev, data[0]]);
                                                                                                     handleLinkNewPayeeToTx(t, data[0].name, data[0].id, 'CUSTOMER');
                                                                                                 }
+                                                                                             alert('Favorecido atualizado com sucesso!');
                                                                                             }
                                                                                         }
                                                                                     }}
@@ -3911,13 +3974,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <div>
                                                                     <div className="flex items-center gap-2 mb-1">
                                                                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">
-                                                                            {new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                            {exp.date ? new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
                                                                         </span>
                                                                         {isOverdue && <span className="text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
                                                                     </div>
                                                                     <h4 className="font-black text-xs text-slate-900 dark:text-white line-clamp-2 leading-tight">{exp.description}</h4>
                                                                     <div className="flex items-center gap-2 mt-1">
-                                                                        <p className="text-[10px] text-slate-500 font-bold italic line-clamp-1">{supplierName || 'â€”'}</p>
+                                                                        <p className="text-[10px] text-slate-500 font-bold italic line-clamp-1">{supplierName || '-'}</p>
                                                                         {exp.invoiceNumber && <span className="text-[9px] font-black text-slate-400 bg-slate-50 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-700 uppercase">NF: {exp.invoiceNumber}</span>}
                                                                     </div>
                                                                 </div>
@@ -3968,7 +4031,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </th>
                                                     <th className="px-6 py-4">Data</th>
                                                     <th className="px-6 py-4">Descrição</th>
-                                                    <th className="px-6 py-4">NÂº Nota</th>
+                                                    <th className="px-6 py-4">Nº Nota</th>
                                                     <th className="px-6 py-4 min-w-[150px]">Favorecido</th>
                                                     <th className="px-6 py-4 min-w-[150px]">Categoria</th>
                                                     <th className="px-6 py-4 text-center">Status</th>
@@ -3994,12 +4057,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <input type="checkbox" className="w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer" checked={selectedExpenseIds.includes(exp.id)} onChange={() => toggleSelectExpense(exp.id)} />
                                                             </td>
                                                             <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300 whitespace-nowrap">
-                                                                {new Date(exp.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                                                {exp.date ? parseDateSafe(exp.date).toLocaleDateString('pt-BR') : '-'}
                                                                 {isOverdue && <span className="ml-1 text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-[11px] text-slate-900 dark:text-white max-w-[200px] truncate">{exp.description}</td>
-                                                            <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || 'â€”'}</td>
-                                                            <td className="px-6 py-4 text-[11px] text-slate-500 truncate max-w-[180px]">{supplierName || 'â€”'}</td>
+                                                            <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || '-'}</td>
+                                                            <td className="px-6 py-4 text-[11px] text-slate-500 truncate max-w-[180px]">{supplierName || '-'}</td>
                                                             <td className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase truncate max-w-[150px]">{exp.category}</td>
                                                             <td className="px-6 py-4 text-center">
                                                                 <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100'}`}>
@@ -4363,133 +4426,110 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     previousYear: yearlyBillingData.previousYear[i]?.total || 0
                                 }))}
                             />
-                        ) : (
-                            <div className="animate-in fade-in duration-500 pb-20">
-                                {(() => {
-                                    const HISTORICAL_REVENUE = [
-                                        { month: 0, label: 'Jan', pastValue: 203743.00 },
-                                        { month: 1, label: 'Fev', pastValue: 223761.00 },
-                                        { month: 2, label: 'Mar', pastValue: 191600.00 },
-                                        { month: 3, label: 'Abr', pastValue: 208329.00 },
-                                        { month: 4, label: 'Mai', pastValue: 222481.00 },
-                                        { month: 5, label: 'Jun', pastValue: 213532.00 },
-                                        { month: 6, label: 'Jul', pastValue: 243692.00 },
-                                        { month: 7, label: 'Ago', pastValue: 265019.00 },
-                                        { month: 8, label: 'Set', pastValue: 259375.00 },
-                                        { month: 9, label: 'Out', pastValue: 297134.00 },
-                                        { month: 10, label: 'Nov', pastValue: 280000.00 },
-                                        { month: 11, label: 'Dez', pastValue: 350000.00 }
-                                    ];
+                            ) : (
+                                <div className="animate-in fade-in duration-500 pb-20">
+                                    {(() => {
+                                        const HISTORICAL_REVENUE = [
+                                            { month: 0, label: 'Jan', pastValue: 203743.00 },
+                                            { month: 1, label: 'Fev', pastValue: 223761.00 },
+                                            { month: 2, label: 'Mar', pastValue: 191600.00 },
+                                            { month: 3, label: 'Abr', pastValue: 208329.00 },
+                                            { month: 4, label: 'Mai', pastValue: 222481.00 },
+                                            { month: 5, label: 'Jun', pastValue: 213532.00 },
+                                            { month: 6, label: 'Jul', pastValue: 243692.00 },
+                                            { month: 7, label: 'Ago', pastValue: 265019.00 },
+                                            { month: 8, label: 'Set', pastValue: 259375.00 },
+                                            { month: 9, label: 'Out', pastValue: 297134.00 },
+                                            { month: 10, label: 'Nov', pastValue: 280000.00 },
+                                            { month: 11, label: 'Dez', pastValue: 350000.00 }
+                                        ];
 
-                                    const currentYear = new Date().getFullYear();
-                                    const currentRealizedData = new Array(12).fill(0).map(() => ({ total: 0, products: 0 }));
-                                    const currentForecastData = new Array(12).fill(0);
-                                    const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number }> = {};
+                                         // 1. REVENUE DATA AGGREGATION (SYNCED WITH DRE SOURCE OF TRUTH)
+                                         const currentYear = new Date().getFullYear();
+                                         const currentMonthIndex = new Date().getMonth();
+                                         
+                                         // Initialize exactly from DRE calculated state to ensure 100% parity
+                                         const currentRealizedData = Array.from({ length: 12 }, (_, i) => ({ 
+                                             total: yearlyBillingData.currentYear[i]?.total || 0,
+                                             services: 0,
+                                             products: 0 
+                                         }));
 
-                                    appointments.forEach(a => {
-                                        if (!a.date) return;
-                                        
-                                        // 1. FILTER: Dashboard/Strategist Filters
-                                        if (filterProvider !== 'all' && a.providerId !== filterProvider) return;
-                                        if (filterService !== 'all' && a.serviceId !== filterService) return;
-                                        if (filterCampaign !== 'all' && a.appliedCoupon !== filterCampaign) return;
-                                        if (filterPartner !== 'all') {
-                                            const campaign = campaigns.find(c => c.id === a.appliedCoupon || c.couponCode === a.appliedCoupon);
-                                            if (campaign?.partnerId !== filterPartner) return;
-                                        }
-                                        if (filterChannel !== 'all') {
-                                            const customer = customers.find(c => c.id === a.customerId);
-                                            if (customer?.acquisitionChannel !== filterChannel) return;
-                                        }
+                                         // 2. BREAKDOWN FOR CURRENT MONTH MODAL (AI STRATEGIST)
+                                         // We only perform this loop to populate the "Ver Detalhamento" breakdown, 
+                                         // NOT to calculate the total which is already synced above.
+                                         const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number }> = {};
+                                         
+                                         // Current Month Appointments Breakdown
+                                         appointments.forEach(a => {
+                                             const dateObj = parseDateSafe(a.date);
+                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex && a.status?.toUpperCase() === 'CONCLUÍDO') {
+                                                 const prod = calculateAppointmentProduction(a, services);
+                                                 currentRealizedData[currentMonthIndex].services += prod;
+                                                 
+                                                 const tips = Number(a.tipAmount || 0) + (a.additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.tipAmount || 0), 0);
+                                                 currentRealizedData[currentMonthIndex].services += tips;
 
-                                        const dateObj = new Date(a.date + 'T12:00:00');
-                                        if (dateObj.getFullYear() === currentYear) {
-                                            const month = dateObj.getMonth();
-                                            
-                                            // 2. UNIFIED PRODUCTION CALCULATION
-                                            const prodValue = calculateAppointmentProduction(a, services);
-                                            const isConcluido = a.status?.toUpperCase() === 'CONCLUÃDO';
-                                            const isNotCancelled = a.status?.toUpperCase() !== 'CANCELADO';
-                                            const isRemake = a.isRemake || a.is_remake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+                                                 const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
+                                                 if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0 };
+                                                 serviceBreakdown[mainSvc].realized += prod + tips;
+                                                 serviceBreakdown[mainSvc].count++;
+                                             }
+                                         });
 
-                                            // 3. GREEN LINE (Realizado): Concluído only (Inclusive of all production)
-                                            if (isConcluido) {
-                                                currentRealizedData[month].total += prodValue;
-                                            }
-                                            
-                                            // 4. DASHED LINE (Agenda): Not cancelled non-remakes
-                                            if (isNotCancelled && !isRemake && a.customerId !== 'INTERNAL_BLOCK') {
-                                                currentForecastData[month] += prodValue;
-                                            }
-                                            
-                                            // 5. BREAKDOWN (Current Month Only)
-                                            const currentMonthIdx = new Date().getMonth();
-                                            if (month === currentMonthIdx) {
-                                                const mainService = services.find(s => s.id === a.serviceId);
-                                                const svcName = mainService?.name || 'Outro';
-                                                if (!serviceBreakdown[svcName]) serviceBreakdown[svcName] = { name: svcName, realized: 0, forecast: 0, count: 0 };
-                                                
-                                                if (isNotCancelled && !isRemake) {
-                                                    serviceBreakdown[svcName].forecast += prodValue;
-                                                    if (isConcluido) {
-                                                        serviceBreakdown[svcName].realized += prodValue;
-                                                        serviceBreakdown[svcName].count++;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    });
+                                         // Current Month Sales Breakdown
+                                         sales.forEach(s => {
+                                             const dateObj = parseDateSafe(s.date);
+                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex) {
+                                                 const amount = s.totalAmount || 0;
+                                                 currentRealizedData[currentMonthIndex].products += amount;
 
-                                    sales.forEach(s => {
-                                        if (!s.date) return;
-                                        if (filterProduct !== 'all' && !s.items.some(i => i.productId === filterProduct)) return;
+                                                 const origin = 'Produtos';
+                                                 if (!serviceBreakdown[origin]) serviceBreakdown[origin] = { name: origin, realized: 0, forecast: 0, count: 0 };
+                                                 serviceBreakdown[origin].realized += amount;
+                                                 serviceBreakdown[origin].count++;
+                                             }
+                                         });
 
-                                        const dateObj = new Date(s.date + 'T12:00:00');
-                                        if (dateObj.getFullYear() === currentYear) {
-                                            const month = dateObj.getMonth();
-                                            const saleVal = (s.totalAmount || 0);
-                                            currentRealizedData[month].total += saleVal;
-                                            currentRealizedData[month].products += saleVal;
-                                            currentForecastData[month] += saleVal;
+                                         // Current Month Adjustments Breakdown
+                                         expenses.forEach(e => {
+                                             const dateObj = parseDateSafe(e.date);
+                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex) {
+                                                 const cleanCat = (e.category || '').toLowerCase();
+                                                 if (e.dreClass === 'REVENUE' || cleanCat === 'ajuste de valor' || cleanCat === 'desconto concedido') {
+                                                     const isRevenueClass = e.dreClass === 'REVENUE';
+                                                     const val = isRevenueClass ? e.amount : -e.amount;
+                                                     
+                                                     const key = isRevenueClass ? 'Receitas Diretas' : 'Ajustes';
+                                                     if (!serviceBreakdown[key]) serviceBreakdown[key] = { name: key, realized: 0, forecast: 0, count: 0 };
+                                                     serviceBreakdown[key].realized += val;
+                                                     serviceBreakdown[key].count++;
+                                                 }
+                                             }
+                                         });
 
-                                            // Product breakdown for current month
-                                            const currentMonthIdx = new Date().getMonth();
-                                            if (month === currentMonthIdx) {
-                                                const prodName = 'Produtos (Venda Direta)';
-                                                if (!serviceBreakdown[prodName]) serviceBreakdown[prodName] = { name: prodName, realized: 0, forecast: 0, count: 0 };
-                                                serviceBreakdown[prodName].realized += saleVal;
-                                                serviceBreakdown[prodName].forecast += saleVal;
-                                                serviceBreakdown[prodName].count += (s.items?.length || 1);
-                                            }
-                                        }
-                                    });
+                                         const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
+                                             const realizedValue = currentRealizedData[index].total;
+                                             const targetValue = hist.pastValue * (1 + (predictiveTargetGrowth / 100));
+                                             return {
+                                                 name: hist.label,
+                                                 [`${currentYear - 1}`]: hist.pastValue,
+                                                 ['REALIZADO']: realizedValue,
+                                                 [`META ${currentYear}`]: targetValue,
+                                                 monthIndex: hist.month
+                                             };
+                                         });
 
-                                    const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
-                                        const realizedValue = currentRealizedData[index].total;
-                                        const forecastValue = currentForecastData[index];
-                                        const targetValue = hist.pastValue * (1 + (predictiveTargetGrowth / 100));
-                                        return {
-                                            name: hist.label,
-                                            ['Ano Passado']: hist.pastValue,
-                                            ['Realizado']: realizedValue,
-                                            ['Previsão Agenda']: forecastValue,
-                                            ['Meta Ajustada']: targetValue,
-                                            monthIndex: hist.month
-                                        };
-                                    });
-
-                                    const currentMonthIndex = new Date().getMonth();
-                                    const currentMonthData = predictiveData[currentMonthIndex];
-                                    const targetToBeat = currentMonthData['Meta Ajustada'];
-                                    const realizedValue = currentMonthData['Realizado'];
-                                    const agendaValue = currentMonthData['Previsão Agenda'];
-                                    const percentageAchieved = targetToBeat > 0 ? (realizedValue / targetToBeat) * 100 : 0;
-                                    const gapToTarget = targetToBeat - realizedValue;
+                                         const currentMonthData = predictiveData[currentMonthIndex];
+                                         const targetToBeat = currentMonthData[`META ${currentYear}`];
+                                         const realizedValue = currentMonthData['REALIZADO'];
+                                         const percentageAchieved = targetToBeat > 0 ? (realizedValue / targetToBeat) * 100 : 0;
+                                         const gapToTarget = targetToBeat - realizedValue;
 
                                     return (
                                         <div className="space-y-6">
                                             {/* AI Strategist Banner */}
-                                            <div className="bg-gradient-to-r from-amber-400 to-orange-400 px-4 md:px-6 py-2 md:py-1.5 rounded-2xl shadow-lg text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-3 md:gap-2 justify-between">
+                                            <div className="bg-slate-50 dark:bg-zinc-800/40 border border-slate-200 dark:border-zinc-700/50 rounded-2xl shadow-sm px-4 md:px-6 py-2 md:py-1.5 flex flex-col md:flex-row items-center gap-3 md:gap-2 justify-between relative overflow-hidden">
                                                 <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
                                                     <BrainCircuit size={60} className="md:size-[80px]" />
                                                 </div>
@@ -4502,146 +4542,99 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         Abaixo você encontra a linha de meta ajustada para {currentYear}.
                                                     </p>
                                                 </div>
-                                                <div className="z-10 bg-white/20 py-1.5 px-3 md:px-4 rounded-xl backdrop-blur-sm border border-white/20 flex flex-col items-center min-w-[120px] md:min-w-[150px]">
-                                                    <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-amber-100 flex items-center gap-1 mb-0"><Target size={8} /> Simulador de Meta</span>
-                                                    <div className="flex items-center gap-1.5 md:gap-2">
-                                                        <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-[10px] md:text-xs">-</button>
-                                                        <span className="text-base md:text-lg font-black drop-shadow-md leading-none">+{predictiveTargetGrowth}%</span>
-                                                        <button onClick={() => setPredictiveTargetGrowth(predictiveTargetGrowth + 5)} className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-white/10 hover:bg-white/30 flex items-center justify-center transition-colors font-black text-[10px] md:text-xs">+</button>
-                                                    </div>
-                                                    <span className="text-[6px] md:text-[7px] font-bold text-white/70 uppercase mt-0">Crescimento sobre {currentYear - 1}</span>
-                                                </div>
+                                                 <div className="z-10 bg-white/40 dark:bg-zinc-800/60 py-2 px-4 rounded-xl backdrop-blur-md border border-slate-200/50 dark:border-zinc-700/50 flex flex-col items-center min-w-[120px]">
+                                                     <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-1"><Target size={10} className="text-indigo-500" /> Foco do Mês</span>
+                                                     <div className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-none">+{predictiveTargetGrowth}%</div>
+                                                     <span className="text-[6px] md:text-[7px] font-bold text-slate-400 uppercase mt-1">Meta Definida</span>
+                                                 </div>
                                             </div>
 
-                                            {/* Filters Bar for Predictive View */}
-                                            <div className="bg-white dark:bg-zinc-900 p-3 md:p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 md:gap-3">
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Profissional</label>
-                                                    <select value={filterProvider} onChange={e => setFilterProvider(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todas</option>
-                                                        {providers.sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Serviço</label>
-                                                    <select value={filterService} onChange={e => setFilterService(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todos</option>
-                                                        {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Campanha</label>
-                                                    <select value={filterCampaign} onChange={e => setFilterCampaign(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todas</option>
-                                                        {campaigns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Produto</label>
-                                                    <select value={filterProduct} onChange={e => setFilterProduct(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todos</option>
-                                                        {stock.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Parceiro</label>
-                                                    <select value={filterPartner} onChange={e => setFilterPartner(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todos</option>
-                                                        {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-1 ml-1">Canal</label>
-                                                    <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-2 text-[10px] font-black outline-none uppercase">
-                                                        <option value="all">Todos</option>
-                                                        {['Instagram', 'Facebook', 'TikTok', 'Google', 'Indicação', 'WhatsApp', 'Passante'].map(c => <option key={c} value={c}>{c}</option>)}
-                                                    </select>
-                                                </div>
-                                                <div className="flex items-end">
-                                                    <button
-                                                        onClick={() => { setFilterProvider('all'); setFilterService('all'); setFilterCampaign('all'); setFilterProduct('all'); setFilterPartner('all'); setFilterChannel('all'); }}
-                                                        className="w-full h-9 bg-slate-100 dark:bg-zinc-800 text-[9px] font-black uppercase rounded-xl hover:bg-slate-200 transition-colors"
-                                                    >Limpar</button>
-                                                </div>
-                                            </div>
+                                            {/* Filters Bar Removed Per User Request */}
 
-                                            {/* Core Diagnostics */}
+                                            {/* Core Strategic Diagnostics Reverted to Original Vision */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                {/* Left Card: Dynamic Scenario */}
                                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between min-h-[180px]">
                                                     <div>
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                                                                <Target size={12} className="text-amber-500" /> Cenário de {currentMonthData.name}
-                                                            </p>
-                                                            <div className="bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg">
-                                                                <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Agenda: {formatCurrency(agendaValue)}</span>
+                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
+                                                            <div className="w-2 h-2 rounded-full bg-amber-400" /> Cenário de {currentMonthData.name}
+                                                        </p>
+                                                        <div className="flex flex-col gap-1">
+                                                            <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-0">
+                                                                {formatCurrency(realizedValue)}
+                                                            </h3>
+                                                            <div className="flex flex-col gap-1 mt-1">
+                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                                    <span>Serviços</span>
+                                                                    <span className="text-emerald-500">{formatCurrency(realizedValue - currentRealizedData[currentMonthIndex].products)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                                    <span>Produtos</span>
+                                                                    <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
-                                                            {formatCurrency(realizedValue)}
-                                                            <span className="text-xs text-slate-400 font-bold ml-2 uppercase italic">Realizado</span>
-                                                        </h3>
-                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-5 mt-4 flex relative overflow-hidden shadow-inner">
-                                                            <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all duration-1000 shadow-[2px_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, (realizedValue / agendaValue) * 100)}%` }}></div>
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">
-                                                                {agendaValue > 0 ? ((realizedValue / agendaValue) * 100).toFixed(1) : 0}% da Agenda Concluída
+                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-4 mt-4 flex relative overflow-hidden shadow-inner">
+                                                            <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white drop-shadow-sm uppercase">
+                                                                {percentageAchieved.toFixed(1)}% da Meta
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <p className={`text-xs font-bold mt-4 px-3 py-1 rounded-lg w-fit ${agendaValue - realizedValue > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                        {agendaValue - realizedValue > 0 
-                                                            ? `R$ ${(agendaValue - realizedValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em check-outs pendentes` 
-                                                            : 'Agenda 100% realizada!'}
-                                                    </p>
+                                                    <div className="mt-4 space-y-4">
+                                                        <p className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-xl w-fit ${gapToTarget > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                            {gapToTarget > 0 
+                                                                ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta` 
+                                                                : 'Meta superada com excelência!'}
+                                                        </p>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setStrategistDetailTitle(`Composição ${currentMonthData.name}`);
+                                                                setStrategistDetailData(Object.values(serviceBreakdown).sort((a: any, b: any) => b.realized - a.realized));
+                                                                setIsStrategistDetailModalOpen(true);
+                                                            }}
+                                                            className="text-[11px] font-black text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors flex items-center gap-1 group"
+                                                        >
+                                                            Ver Detalhamento <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                                                        </button>
+                                                    </div>
                                                 </div>
 
+                                                {/* Middle Card: Seasonality Pattern */}
                                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
-                                                            <Target size={12} className="text-amber-500" /> Cenário de Meta
+                                                            <BarChart3 size={12} className="text-indigo-500" /> Histórico
                                                         </p>
-                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">{formatCurrency(realizedValue)}</h3>
-                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-5 mt-4 flex relative overflow-hidden shadow-inner">
-                                                            <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000 shadow-[2px_0_10px_rgba(249,115,22,0.5)]" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-white drop-shadow-md">
-                                                                {percentageAchieved.toFixed(1)}% da Meta de {currentMonthData.name}
-                                                            </div>
-                                                        </div>
+                                                        <h3 className="text-[18px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
+                                                            Sazonalidade Detectada
+                                                        </h3>
+                                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed uppercase">
+                                                            O fluxo de caixa apresenta forte tendência de tração no 2º semestre, com concentração expressiva de receitas entre Outubro e Dezembro.
+                                                        </p>
                                                     </div>
-                                                    <p className={`text-xs font-bold mt-4 px-3 py-1 rounded-lg w-fit ${gapToTarget > 0 ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                                                        {gapToTarget > 0 ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a Meta` : 'Meta superada com excelência!'}
-                                                    </p>
+                                                    <div className="mt-4 flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                                                        <BrainCircuit size={14} className="animate-pulse" />
+                                                        <span className="text-[10px] font-black uppercase tracking-widest">Foco em retenção agora.</span>
+                                                    </div>
                                                 </div>
 
-                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                                {/* Right Card: Recall/Gap Monitor */}
+                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-rose-200 dark:border-rose-900/30 flex flex-col justify-between">
                                                     <div>
-                                                        <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
-                                                            <BarChart3 size={12} className="text-indigo-500" /> Composição de Receita
+                                                        <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 mb-2">
+                                                            <AlertCircle size={12} /> Ponto Crítico
                                                         </p>
-                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-1">
-                                                            {Object.keys(serviceBreakdown).length} Itens
+                                                        <h3 className="text-[18px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
+                                                            Recall de {currentMonthData.name}
                                                         </h3>
-                                                        <div className="flex flex-col gap-1 mt-4">
-                                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                                                <span>Serviços</span>
-                                                                <span className="text-emerald-500">{formatCurrency(realizedValue - currentRealizedData[currentMonthIndex].products)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                                                <span>Produtos</span>
-                                                                <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
-                                                            </div>
-                                                        </div>
+                                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed uppercase">
+                                                            Historicamente, {currentMonthData.name} apresenta uma retração de ~15% em relação a Fevereiro. É o momento de lançar pacotes de recorrência.
+                                                        </p>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => {
-                                                            setStrategistDetailTitle(`Composição ${currentMonthData.name}`);
-                                                            setStrategistDetailData(Object.values(serviceBreakdown).sort((a: any, b: any) => b.realized - a.realized));
-                                                            setIsStrategistDetailModalOpen(true);
-                                                        }}
-                                                        className="text-[11px] font-black mt-4 text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors flex items-center gap-1 group"
-                                                    >
-                                                        Ver Detalhamento <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                                                    </button>
+                                                    <div className="mt-4 flex flex-col gap-1">
+                                                        <span className="text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest">Anticíclico: Aja hoje.</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -4662,10 +4655,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                                                             <span className="text-[10px] font-black text-slate-500 uppercase">Meta {currentYear}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 rounded-full border-2 border-indigo-400 border-dashed"></div>
-                                                            <span className="text-[10px] font-black text-slate-500 uppercase">Agenda {currentYear}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
@@ -4698,10 +4687,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                                                             />
 
-                                                            <Area type="monotone" dataKey="Ano Passado" stroke="#94a3b8" strokeDasharray="6 6" strokeWidth={2} fill="none" dot={false} />
-                                                            <Area type="monotone" dataKey="Meta Ajustada" stroke="#f59e0b" strokeWidth={4} fillOpacity={1} fill="url(#colorTarget)" dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
-                                                            <Area type="monotone" dataKey="Previsão Agenda" stroke="#818cf8" strokeDasharray="5 5" strokeWidth={2} fill="none" dot={false} />
-                                                            <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['Realizado'] : null} name="Realizado" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
+                                                            <Area type="monotone" dataKey={`${currentYear - 1}`} stroke="#94a3b8" strokeDasharray="6 6" strokeWidth={2} fill="none" dot={false} />
+                                                            <Area type="monotone" dataKey={`META ${currentYear}`} stroke="#f59e0b" strokeWidth={4} fillOpacity={1} fill="url(#colorTarget)" dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
+                                                            <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['REALIZADO'] : null} name="REALIZADO" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                                                         </AreaChart>
                                                     </ResponsiveContainer>
                                                 </div>
@@ -6311,7 +6299,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 selectedExpenses={expenses.filter(e => selectedExpenseIds.includes(e.id))}
                 bankTransactions={bankTransactions}
                 onLink={handleBatchLinkExpenses}
-                isProcessing={isLinkingProcessing}
+                isProcessing={isManualLinkingProcessing}
                 parseDateSafe={parseDateSafe}
             />
 

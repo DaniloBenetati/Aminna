@@ -102,45 +102,6 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ transactions, expe
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-            {/* New Row: Annual Comparison Chart (if data exists) */}
-            {yearlyBillingData && yearlyBillingData.length > 0 && (
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-                        <div>
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Comparativo de Faturamento Anual</h3>
-                            <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Análise de performance vs Ano Anterior</p>
-                        </div>
-                        <div className="flex items-center gap-6">
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-xl bg-slate-200 dark:bg-zinc-700"></div>
-                                <span className="text-[10px] font-black text-slate-500 uppercase">{new Date().getFullYear() - 1}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <div className="w-4 h-4 rounded-xl bg-indigo-600"></div>
-                                <span className="text-[10px] font-black text-slate-500 uppercase">{new Date().getFullYear()}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="h-[350px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={yearlyBillingData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.1} />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }} tickFormatter={(v) => `R$${v / 1000}k`} />
-                                <Tooltip
-                                    cursor={{ fill: 'rgba(0,0,0,0.02)' }}
-                                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', padding: '15px' }}
-                                    itemStyle={{ fontSize: '12px', fontWeight: '900', textTransform: 'uppercase' }}
-                                    formatter={(value: number) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
-                                />
-                                <Bar dataKey="previousYear" name="Ano Passado" fill="#e2e8f0" radius={[6, 6, 0, 0]} barSize={25} />
-                                <Bar dataKey="currentYear" name="Ano Atual" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={25} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            )}
-
             {/* Row 1: Trend & Revenue Split */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Trend Chart */}
