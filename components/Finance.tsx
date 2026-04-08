@@ -1667,23 +1667,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const revenueTips = realizedApps.reduce((acc, a) => acc + Number(a.tipAmount || 0) + 
                                 (a.additionalServices || []).reduce((sum, s) => sum + Number(s.tipAmount || 0), 0), 0);
             
-            const revenueAdjustments = expenses
-                .filter(e => {
-                    const d = parseDateSafe(e.date);
-                    const inP = d >= startDay && d <= endDay;
-                    const cat = (e.category || '').toLowerCase();
-                    return inP && (cat === 'ajuste de valor' || cat === 'desconto concedido' || e.dreClass === 'REVENUE');
-                })
-                .reduce((acc, e) => acc + (e.dreClass === 'REVENUE' ? e.amount : -e.amount), 0);
-
-            // Outras receitas (dreClass=OTHER_INCOME) = reembolsos, devoluções, aportes
-            const otherIncome = expenses
-                .filter(e => {
-                    const d = parseDateSafe(e.date);
-                    const inP = d >= startDay && d <= endDay;
-                    return inP && e.dreClass === 'OTHER_INCOME';
-                })
-                .reduce((acc, e) => acc + e.amount, 0);
 
             const revenueProducts = sls.reduce((acc, s) => {
                 const productTotal = (s.items || []).reduce((sum, item) => {
@@ -1696,8 +1679,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 return acc + (Number(productTotal) || 0);
             }, 0);
 
-            const grossRevenue = revenueServices + revenueProducts + revenueTips + revenueAdjustments + otherIncome;
-            const grossForecast = revenueForecast + revenueProducts + revenueTips + revenueAdjustments + otherIncome;
+            const grossRevenue = revenueServices + revenueProducts + revenueTips;
+            const grossForecast = revenueForecast + revenueProducts + revenueTips;
 
             const breakdownProducts = sls.reduce((acc, s) => {
                 (s.items || []).forEach(item => {
