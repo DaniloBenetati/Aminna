@@ -824,7 +824,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     if (parts.length >= 2) {
                         const m = parseInt(parts[1], 10) - 1;
                         if (m >= 0 && m < 12) {
-                            const productTotal = (s.items || []).reduce((sum: any, item: any) => {
+                            const productTotal = (s.items || []).reduce((sum: number, item: any) => {
                                 if (item.productId) {
                                     const amount = Number(item.totalAmount) || (Number(item.quantity || 1) * Number(item.unitPrice || item.price || 0)) || 0;
                                     return sum + amount;
@@ -861,7 +861,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setYearlyBillingData({ currentYear: current, previousYear: previous });
         };
 
-        if (activeTab === 'CHARTS' && services.length > 0 && providers.length > 0) {
+        const allowedTabs = ['FINANCEIRO', 'CHARTS', 'DRE', 'ANALYTICS'];
+        if (allowedTabs.includes(activeTab) && services.length > 0 && providers.length > 0) {
             fetchYearlyBilling();
         }
     }, [activeTab, services, providers]);
@@ -4444,16 +4445,35 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             { month: 11, label: 'Dez', pastValue: 350000.00 }
                                         ];
 
-                                         // 1. REVENUE DATA AGGREGATION (SYNCED WITH DRE SOURCE OF TRUTH)
-                                         const currentYear = new Date().getFullYear();
-                                         const currentMonthIndex = new Date().getMonth();
+                                         // 1. REVENUE DATA AGGREGATION (ABSOLUTE SYNC WITH DRE)
+                                         // We use the EXACT same data used to render the DRE table rows.
+                                         const viewingDate = parseDateSafe(startDate);
+                                         const currentYear = viewingDate.getFullYear();
+                                         const currentMonthIndex = viewingDate.getMonth();
                                          
-                                         // Initialize exactly from DRE calculated state to ensure 100% parity
-                                         const currentRealizedData = Array.from({ length: 12 }, (_, i) => ({ 
-                                             total: yearlyBillingData.currentYear[i]?.total || 0,
-                                             services: 0,
-                                             products: 0 
-                                         }));
+                                         const currentRealizedData = Array.from({ length: 12 }, (_, i) => {
+                                             // If viewing the whole year, the DRE already has the perfect aggregation for each month
+                                             if (timeView === 'year' && dreData?.monthlySnapshots && dreData.monthlySnapshots[i]) {
+                                                 const snapshot = dreData.monthlySnapshots[i];
+                                                 return { 
+                                                     total: snapshot.grossRevenue,
+                                                     services: snapshot.revenueServices + snapshot.revenueTips + snapshot.revenueAdjustments,
+                                                     products: snapshot.revenueProducts
+                                                 };
+                                             }
+                                             
+                                             // Fallback for single month view: the active month matches DRE, others use fetched yearly data
+                                             const selDate = parseDateSafe(startDate);
+                                             let val = (yearlyBillingData?.currentYear && yearlyBillingData?.currentYear[i]) 
+                                                 ? yearlyBillingData.currentYear[i].total 
+                                                 : 0;
+                                             
+                                             if (i === selDate.getMonth()) {
+                                                 val = dreData.grossRevenue;
+                                             }
+                                             
+                                             return { total: val, services: 0, products: 0 };
+                                         });
 
                                          // 2. BREAKDOWN FOR CURRENT MONTH MODAL (AI STRATEGIST)
                                          // We only perform this loop to populate the "Ver Detalhamento" breakdown, 
@@ -4744,7 +4764,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 { key: 'EXPENSE_ADM', label: 'Despesas Administrativas', color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/20', lineRef: '7. (-) Despesas ADM' },
                                 { key: 'EXPENSE_FIN', label: 'Despesas Financeiras', color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/20', lineRef: '8. (-) Despesas FIN' },
                                 { key: 'TAX', label: 'Impostos e Tributos', color: 'text-amber-700', bg: 'bg-amber-50 dark:bg-amber-950/20', lineRef: '10. (-) IRPJ / CSLL / DAS' },
-                                { key: 'DEDUCTION', label: 'Deduções (Repasses Salão Parceiro)', color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800/40', lineRef: '2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)' },
+                                { key: 'DEDUCTION', label: 'Deduções (Repasses Salão Parceiro)', color: 'text-slate-600', bg: 'bg-slate-100 dark:bg-slate-800/40', lineRef: '2. (-) DEDUÇÕES (Repasses Salão Parceiro)' },
                             ];
                             const searchLower = categorySearch.toLowerCase();
                             const filtered = expenseCategories.filter(c => !searchLower || c.name.toLowerCase().includes(searchLower));
@@ -4773,7 +4793,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <div className={`flex items-center justify-between px-4 py-2 rounded-xl mb-2 ${cls.bg}`}>
                                                             <div>
                                                                 <p className={`text-[10px] font-black uppercase tracking-widest ${cls.color}`}>{cls.label}</p>
-                                                                <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE â†’ {cls.lineRef}</p>
+                                                                <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE → {cls.lineRef}</p>
                                                             </div>
                                                             <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${cls.bg} ${cls.color} border`}>{catList.length}</span>
                                                         </div>
@@ -4948,7 +4968,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <tr onClick={() => toggleSection('services-list')} className="cursor-pointer hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 animate-in slide-in-from-top-1 duration-200">
                                                             <td className="px-12 py-3 text-xs font-bold text-slate-500 uppercase italic flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                                 {expandedSections.includes('services-list') ? <ChevronDown size={12} /> : <TrendingUp size={12} />}
-                                                                â”” Serviços
+                                                                └ Serviços
                                                             </td>
                                                             {timeView === 'year' ? (
                                                                 <>
