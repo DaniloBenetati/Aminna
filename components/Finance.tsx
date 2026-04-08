@@ -4401,7 +4401,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-700 w-fit">
                             {[
                                 { id: 'GENERAL', label: 'Dashboard Financeiro', icon: BarChart3 },
-                                { id: 'PREDICTIVE', label: 'Estudos Preditivos / IA', icon: BrainCircuit }
+                                { id: 'PREDICTIVE', label: 'Gráfico de Projeção', icon: BrainCircuit }
                             ].map(st => (
                                 <button
                                     key={st.id}
@@ -4449,7 +4449,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                          // We use the EXACT same data used to render the DRE table rows.
                                          const viewingDate = parseDateSafe(startDate);
                                          const currentYear = viewingDate.getFullYear();
-                                         const currentMonthIndex = viewingDate.getMonth();
+                                         const today = new Date();
+                                         const currentMonthIndex = timeView === 'year' 
+                                            ? (currentYear < today.getFullYear() ? 11 : (currentYear === today.getFullYear() ? today.getMonth() : viewingDate.getMonth()))
+                                            : viewingDate.getMonth();
                                          
                                          const currentRealizedData = Array.from({ length: 12 }, (_, i) => {
                                              // If viewing the whole year, the DRE already has the perfect aggregation for each month
@@ -4548,39 +4551,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                     return (
                                         <div className="space-y-6">
-                                            {/* AI Strategist Banner */}
-                                            <div className="bg-slate-50 dark:bg-zinc-800/40 border border-slate-200 dark:border-zinc-700/50 rounded-2xl shadow-sm px-4 md:px-6 py-2 md:py-1.5 flex flex-col md:flex-row items-center gap-3 md:gap-2 justify-between relative overflow-hidden">
-                                                <div className="absolute top-0 right-0 -mr-8 -mt-8 opacity-10">
-                                                    <BrainCircuit size={60} className="md:size-[80px]" />
-                                                </div>
-                                                <div className="z-10 flex-1 text-center md:text-left">
-                                                    <h2 className="text-sm md:text-base font-black uppercase tracking-tighter flex items-center justify-center md:justify-start gap-1.5 md:gap-2 drop-shadow-sm">
-                                                        <BrainCircuit size={12} className="md:size-[14px]" /> O Estrategista Aminna
-                                                    </h2>
-                                                    <p className="text-white/80 font-bold text-[9px] md:text-[10px] leading-tight max-w-4xl drop-shadow-sm mt-0.5 md:mt-0">
-                                                        Analisei o histórico de faturamento de {currentYear - 1} e tracei a sazonalidade detalhada do seu negócio.
-                                                        Abaixo você encontra a linha de meta ajustada para {currentYear}.
-                                                    </p>
-                                                </div>
-                                                 <div className="z-10 bg-white/40 dark:bg-zinc-800/60 py-2 px-4 rounded-xl backdrop-blur-md border border-slate-200/50 dark:border-zinc-700/50 flex flex-col items-center min-w-[120px]">
-                                                     <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1 mb-1"><Target size={10} className="text-indigo-500" /> Foco do Mês</span>
-                                                     <div className="text-sm md:text-base font-black text-slate-900 dark:text-white leading-none">+{predictiveTargetGrowth}%</div>
-                                                     <span className="text-[6px] md:text-[7px] font-bold text-slate-400 uppercase mt-1">Meta Definida</span>
-                                                 </div>
-                                            </div>
 
                                             {/* Filters Bar Removed Per User Request */}
 
                                             {/* Core Strategic Diagnostics Reverted to Original Vision */}
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                                 {/* Left Card: Dynamic Scenario */}
-                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between min-h-[180px]">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <div className="w-2 h-2 rounded-full bg-amber-400" /> Cenário de {currentMonthData.name}
                                                         </p>
                                                         <div className="flex flex-col gap-1">
-                                                            <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-0">
+                                                            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter mb-0">
                                                                 {formatCurrency(realizedValue)}
                                                             </h3>
                                                             <div className="flex flex-col gap-1 mt-1">
@@ -4594,15 +4577,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-4 mt-4 flex relative overflow-hidden shadow-inner">
+                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-3 mt-3 flex relative overflow-hidden shadow-inner">
                                                             <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white drop-shadow-sm uppercase">
-                                                                {percentageAchieved.toFixed(1)}% da Meta
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white drop-shadow-sm uppercase">
+                                                                {percentageAchieved.toFixed(1)}%
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="mt-4 space-y-4">
-                                                        <p className={`text-[10px] font-black uppercase px-3 py-1.5 rounded-xl w-fit ${gapToTarget > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                                    <div className="mt-3 space-y-3">
+                                                        <p className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit ${gapToTarget > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                                             {gapToTarget > 0 
                                                                 ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta` 
                                                                 : 'Meta superada com excelência!'}
@@ -4613,7 +4596,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 setStrategistDetailData(Object.values(serviceBreakdown).sort((a: any, b: any) => b.realized - a.realized));
                                                                 setIsStrategistDetailModalOpen(true);
                                                             }}
-                                                            className="text-[11px] font-black text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors flex items-center gap-1 group"
+                                                            className="text-[10px] font-black text-indigo-600 uppercase tracking-wider hover:text-indigo-800 transition-colors flex items-center gap-1 group"
                                                         >
                                                             Ver Detalhamento <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
                                                         </button>
@@ -4621,12 +4604,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </div>
 
                                                 {/* Middle Card: Seasonality Pattern */}
-                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <BarChart3 size={12} className="text-indigo-500" /> Histórico
                                                         </p>
-                                                        <h3 className="text-[18px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
+                                                        <h3 className="text-[13px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
                                                             Sazonalidade Detectada
                                                         </h3>
                                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed uppercase">
@@ -4640,12 +4623,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </div>
 
                                                 {/* Right Card: Recall/Gap Monitor */}
-                                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-rose-200 dark:border-rose-900/30 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-rose-200 dark:border-rose-900/30 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <AlertCircle size={12} /> Ponto Crítico
                                                         </p>
-                                                        <h3 className="text-[18px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
+                                                        <h3 className="text-[13px] font-black text-slate-950 dark:text-white uppercase tracking-tighter leading-tight italic">
                                                             Recall de {currentMonthData.name}
                                                         </h3>
                                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 mt-2 leading-relaxed uppercase">
@@ -4659,31 +4642,31 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </div>
 
                                             {/* Predictive Chart */}
-                                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[3rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800">
                                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
                                                     <div>
-                                                        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-2">
-                                                            Modelagem de Curva Financeira {currentYear}
+                                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-2">
+                                                            Gráfico de Projeção {currentYear}
                                                         </h3>
-                                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mt-1">Baseline {currentYear - 1} vs Tração Atual vs Target (+{predictiveTargetGrowth}%)</p>
+                                                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] mt-1">Baseline {currentYear - 1} vs Tração Atual vs Target (+{predictiveTargetGrowth}%)</p>
                                                     </div>
-                                                    <div className="flex items-center gap-6">
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 rounded-full border-2 border-slate-400 border-dashed"></div>
-                                                            <span className="text-[10px] font-black text-slate-500 uppercase">{currentYear - 1}</span>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-2.5 h-2.5 rounded-full border-2 border-slate-400 border-dashed"></div>
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase">{currentYear - 1}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-                                                            <span className="text-[10px] font-black text-slate-500 uppercase">Meta {currentYear}</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase">Meta {currentYear}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                                                            <span className="text-[10px] font-black text-slate-500 uppercase">Realizado</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase">Realizado</span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="h-[400px] w-full">
+                                                <div className="h-[320px] w-full">
                                                     <ResponsiveContainer width="100%" height="100%">
                                                         <AreaChart data={predictiveData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                                                             <defs>
