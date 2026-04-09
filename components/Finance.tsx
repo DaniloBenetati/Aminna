@@ -1053,7 +1053,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // 4. Update status of UNLINKED items
             const unlinkPromises = unlinkedItems.map(m => {
                 if (m.type === 'EXPENSE') {
-                    return supabase.from('expenses').update({ is_reconciled: false }).eq('id', m.id);
+                    return supabase.from('expenses').update({ is_reconciled: false, status: 'Pendente' }).eq('id', m.id);
                 } else if (m.type === 'SALE') {
                     return supabase.from('sales').update({ is_reconciled: false }).eq('id', m.id);
                 } else {
@@ -1070,7 +1070,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 const isLinked = finalMatches.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 if (isLinked) return { ...e, isReconciled: true, status: 'Pago' };
-                if (isUnlinked) return { ...e, isReconciled: false };
+                if (isUnlinked) return { ...e, isReconciled: false, status: 'Pendente' };
                 return e;
             }));
 
@@ -2426,6 +2426,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const toggleExpenseStatus = async (id: string) => {
+        // Check if it's a grouped virtual record
+        if (typeof id === 'string' && id.startsWith('comm-grouped-')) {
+            alert("Este é um registro agrupado de comissões previstas. Para alterar o status, você deve 'Baixar o Repasse' na tela de Fechamento de Profissionais.");
+            return;
+        }
+
         const expense = transactions.find(t => t.id === id);
         if (!expense) return;
 
@@ -3695,8 +3701,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         if (!match) {
                                                                                             const candidate = expenses.find(exp =>
                                                                                                 Math.abs(exp.amount - t.amount) < 0.01 &&
-                                                                                                Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
-                                                                                                !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
+                                                                                                Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 7 * 24 * 60 * 60 * 1000 &&
+                                                                                                !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id)) &&
+                                                                                                (
+                                                                                                    (exp.description || '').toLowerCase().includes((newName || '').toLowerCase()) ||
+                                                                                                    (newName || '').toLowerCase().includes((exp.description || '').toLowerCase())
+                                                                                                )
                                                                                             );
 
                                                                                             if (candidate) {
@@ -4547,9 +4557,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                              if (timeView === 'year' && dreData?.monthlySnapshots && dreData.monthlySnapshots[i]) {
                                                  const snapshot = dreData.monthlySnapshots[i];
                                                  return { 
-                                                     total: snapshot.grossRevenue,
-                                                     services: snapshot.revenueServices + snapshot.revenueTips + snapshot.revenueAdjustments,
-                                                     products: snapshot.revenueProducts
+                                                     total: snapshot.grossRevenue || 0,
+                                                     services: (snapshot.revenueServices || 0) + (snapshot.revenueTips || 0) + (snapshot.revenueAdjustments || 0),
+                                                     products: snapshot.revenueProducts || 0,
+                                                     projectedServices: 0
                                                  };
                                              }
                                              
@@ -4563,28 +4574,46 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                  val = dreData.grossRevenue;
                                              }
                                              
-                                             return { total: val, services: 0, products: 0 };
+                                             return { total: val, services: 0, products: 0, projectedServices: 0 };
                                          });
 
                                          // 2. BREAKDOWN FOR CURRENT MONTH MODAL (AI STRATEGIST)
-                                         // We only perform this loop to populate the "Ver Detalhamento" breakdown, 
-                                         // NOT to calculate the total which is already synced above.
-                                         const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number }> = {};
+                                         const serviceBreakdown: Record<string, { name: string, realized: number, forecast: number, count: number, projected: number, projectedCount: number }> = {};
                                          
-                                         // Current Month Appointments Breakdown
+                                         // Appointments Processing (Realized + Projected)
                                          appointments.forEach(a => {
                                              const dateObj = parseDateSafe(a.date);
-                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex && a.status?.toUpperCase() === 'CONCLUÍDO') {
-                                                 const prod = calculateAppointmentProduction(a, services);
-                                                 currentRealizedData[currentMonthIndex].services += prod;
+                                             if (dateObj.getFullYear() === currentYear) {
+                                                 const mIdx = dateObj.getMonth();
+                                                 const status = (a.status || '').toUpperCase();
+                                                 const isConcluido = status === 'CONCLUÍDO';
+                                                 const isProjected = ['PENDENTE', 'CONFIRMADO', 'EM ANDAMENTO', 'EM ATENDIMENTO', 'AGUARDANDO'].includes(status);
                                                  
-                                                 const tips = Number(a.tipAmount || 0) + (a.additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.tipAmount || 0), 0);
-                                                 currentRealizedData[currentMonthIndex].services += tips;
+                                                 if (isConcluido || isProjected) {
+                                                     const prod = calculateAppointmentProduction(a, services) || 0;
+                                                     const tips = Number(a.tipAmount || 0) + (a.additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.tipAmount || s.tip_amount || 0), 0);
+                                                     const totalVal = (prod + tips) || 0;
 
-                                                 const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
-                                                 if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0 };
-                                                 serviceBreakdown[mainSvc].realized += prod + tips;
-                                                 serviceBreakdown[mainSvc].count++;
+                                                     if (isConcluido) {
+                                                         currentRealizedData[mIdx].services += totalVal;
+                                                     } else {
+                                                         currentRealizedData[mIdx].projectedServices += totalVal;
+                                                     }
+
+                                                     // Breakdown only for the specific selected month
+                                                     if (mIdx === currentMonthIndex) {
+                                                         const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
+                                                         if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
+                                                         
+                                                         if (isConcluido) {
+                                                             serviceBreakdown[mainSvc].realized += totalVal;
+                                                             serviceBreakdown[mainSvc].count++;
+                                                         } else {
+                                                             serviceBreakdown[mainSvc].projected += totalVal;
+                                                             serviceBreakdown[mainSvc].projectedCount++;
+                                                         }
+                                                     }
+                                                 }
                                              }
                                          });
 
@@ -4596,7 +4625,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                  currentRealizedData[currentMonthIndex].products += amount;
 
                                                  const origin = 'Produtos';
-                                                 if (!serviceBreakdown[origin]) serviceBreakdown[origin] = { name: origin, realized: 0, forecast: 0, count: 0 };
+                                                 if (!serviceBreakdown[origin]) serviceBreakdown[origin] = { name: origin, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
                                                  serviceBreakdown[origin].realized += amount;
                                                  serviceBreakdown[origin].count++;
                                              }
@@ -4621,11 +4650,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                          const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
                                              const realizedValue = currentRealizedData[index].total;
+                                             const projectedValue = currentRealizedData[index].projectedServices;
                                              const targetValue = hist.pastValue * (1 + (predictiveTargetGrowth / 100));
                                              return {
                                                  name: hist.label,
                                                  [`${currentYear - 1}`]: hist.pastValue,
                                                  ['REALIZADO']: realizedValue,
+                                                 ['PROJETADO']: projectedValue,
                                                  [`META ${currentYear}`]: targetValue,
                                                  monthIndex: hist.month
                                              };
@@ -4634,8 +4665,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                          const currentMonthData = predictiveData[currentMonthIndex];
                                          const targetToBeat = currentMonthData[`META ${currentYear}`];
                                          const realizedValue = currentMonthData['REALIZADO'];
-                                         const percentageAchieved = targetToBeat > 0 ? (realizedValue / targetToBeat) * 100 : 0;
-                                         const gapToTarget = targetToBeat - realizedValue;
+                                         const percentageAchieved = (targetToBeat > 0 && !isNaN(realizedValue)) ? (realizedValue / targetToBeat) * 100 : 0;
+                                         const gapToTarget = Math.max(0, targetToBeat - (realizedValue || 0));
 
                                     return (
                                         <div className="space-y-6">
@@ -4651,33 +4682,64 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <div className="w-2 h-2 rounded-full bg-amber-400" /> Cenário de {currentMonthData.name}
                                                         </p>
                                                         <div className="flex flex-col gap-1">
-                                                            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter mb-0">
+                                                            <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter mb-0 flex items-baseline gap-2">
                                                                 {formatCurrency(realizedValue)}
+                                                                {currentMonthData['PROJETADO'] > 0 && (
+                                                                    <span className="text-[10px] text-emerald-500 font-bold">+ {formatCurrency(currentMonthData['PROJETADO'])} proj.</span>
+                                                                )}
                                                             </h3>
                                                             <div className="flex flex-col gap-1 mt-1">
-                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                                                    <span>Serviços</span>
-                                                                    <span className="text-emerald-500">{formatCurrency(realizedValue - currentRealizedData[currentMonthIndex].products)}</span>
+                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-zinc-800/50 pb-1">
+                                                                    <span>Serviços (Realizado)</span>
+                                                                    <span className="text-emerald-500">{formatCurrency(currentRealizedData[currentMonthIndex].services)}</span>
                                                                 </div>
-                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-zinc-800/50 pb-1">
                                                                     <span>Produtos</span>
                                                                     <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
                                                                 </div>
+                                                                {currentMonthData['PROJETADO'] > 0 && (
+                                                                    <div className="flex justify-between text-[10px] font-black uppercase text-indigo-500 pt-1">
+                                                                        <span>Projetado (Futuro)</span>
+                                                                        <span>{formatCurrency(currentMonthData['PROJETADO'])}</span>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
+                                                        
                                                         <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-3 mt-3 flex relative overflow-hidden shadow-inner">
-                                                            <div className="bg-gradient-to-r from-orange-400 to-orange-600 h-full rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, percentageAchieved)}%` }}></div>
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white drop-shadow-sm uppercase">
-                                                                {percentageAchieved.toFixed(1)}%
+                                                            {/* Realized Progress */}
+                                                            <div 
+                                                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-1000 relative z-10" 
+                                                                style={{ width: `${Math.min(100, (realizedValue / targetToBeat) * 100)}%` }}
+                                                            ></div>
+                                                            {/* Projected Progress (Shadow) */}
+                                                            <div 
+                                                                className="bg-indigo-400/30 h-full absolute top-0 left-0 transition-all duration-1000" 
+                                                                style={{ width: `${Math.min(100, ((realizedValue + currentMonthData['PROJETADO']) / targetToBeat) * 100)}%` }}
+                                                            ></div>
+                                                            
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white drop-shadow-sm uppercase z-20">
+                                                                {percentageAchieved.toFixed(1)}% Realizado
                                                             </div>
                                                         </div>
                                                     </div>
                                                     <div className="mt-3 space-y-3">
-                                                        <p className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit ${gapToTarget > 0 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                                                            {gapToTarget > 0 
-                                                                ? `Faltam R$ ${gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta` 
-                                                                : 'Meta superada com excelência!'}
-                                                        </p>
+                                                        {gapToTarget > 0 ? (
+                                                            <div className="space-y-1">
+                                                                <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-amber-100 text-amber-700">
+                                                                    Faltam R$ {gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta
+                                                                </p>
+                                                                {currentMonthData['PROJETADO'] > 0 && (
+                                                                    <p className="text-[8px] font-black text-slate-400 uppercase px-2">
+                                                                        Com projeção: R$ {Math.max(0, gapToTarget - currentMonthData['PROJETADO']).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} restante
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-emerald-100 text-emerald-700">
+                                                                Meta superada com excelência!
+                                                            </p>
+                                                        )}
                                                         <button 
                                                             onClick={() => {
                                                                 setStrategistDetailTitle(`Composição ${currentMonthData.name}`);
@@ -4744,12 +4806,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <span className="text-[9px] font-black text-slate-500 uppercase">{currentYear - 1}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5">
-                                                            <div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div>
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/20"></div>
                                                             <span className="text-[9px] font-black text-slate-500 uppercase">Meta {currentYear}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1.5">
-                                                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20"></div>
                                                             <span className="text-[9px] font-black text-slate-500 uppercase">Realizado</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/20 opacity-50 border border-indigo-500 border-dashed"></div>
+                                                            <span className="text-[9px] font-black text-slate-500 uppercase">Projetado</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -4766,6 +4832,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
                                                                     <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                                                 </linearGradient>
+                                                                <linearGradient id="colorProjected" x1="0" y1="0" x2="0" y2="1">
+                                                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                                                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                                                </linearGradient>
                                                             </defs>
                                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }} />
                                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#64748b' }} tickFormatter={(v) => `R$ ${(v / 1000)}k`} />
@@ -4780,6 +4850,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                             <Area type="monotone" dataKey={`${currentYear - 1}`} stroke="#94a3b8" strokeDasharray="6 6" strokeWidth={2} fill="none" dot={false} />
                                                             <Area type="monotone" dataKey={`META ${currentYear}`} stroke="#f59e0b" strokeWidth={4} fillOpacity={1} fill="url(#colorTarget)" dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
+                                                            
+                                                            {/* Line for Realized + Projected (ghost line) */}
+                                                            <Area 
+                                                                type="monotone" 
+                                                                dataKey={(d) => d.monthIndex === currentMonthIndex ? (d['REALIZADO'] + d['PROJETADO']) : null} 
+                                                                name="PROJETADO" 
+                                                                stroke="#6366f1" 
+                                                                strokeWidth={3} 
+                                                                strokeDasharray="4 4" 
+                                                                fillOpacity={1} 
+                                                                fill="url(#colorProjected)" 
+                                                                dot={{ r: 4, fill: '#6366f1', strokeWidth: 0, opacity: 0.5 }} 
+                                                            />
+
                                                             <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['REALIZADO'] : null} name="REALIZADO" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                                                         </AreaChart>
                                                     </ResponsiveContainer>
@@ -6339,17 +6423,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <div className="space-y-3">
                                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                     <div className="col-span-6">Serviço / Item</div>
-                                    <div className="col-span-3 text-right">Agendado</div>
+                                    <div className="col-span-3 text-right">Projetado</div>
                                     <div className="col-span-3 text-right">Realizado</div>
                                 </div>
                                 {strategistDetailData.map((item, idx) => (
                                     <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800 items-center hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                                         <div className="col-span-6">
                                             <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase">{item.name}</span>
-                                            <div className="text-[9px] font-bold text-slate-400 mt-0.5">{item.count} atendimentos concluídos</div>
+                                            <div className="text-[9px] font-bold text-slate-400 mt-0.5">
+                                                {item.count > 0 && <span>{item.count} concluídos</span>}
+                                                {item.count > 0 && item.projectedCount > 0 && <span> • </span>}
+                                                {item.projectedCount > 0 && <span>{item.projectedCount} agendados</span>}
+                                            </div>
                                         </div>
-                                        <div className="col-span-3 text-right text-[10px] font-mono font-bold text-slate-500 italic">
-                                            {formatCurrency(item.forecast)}
+                                        <div className="col-span-3 text-right text-[10px] font-mono font-bold text-indigo-500 italic">
+                                            {item.projected > 0 ? formatCurrency(item.projected) : '-'}
                                         </div>
                                         <div className="col-span-3 text-right text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
                                             {formatCurrency(item.realized)}

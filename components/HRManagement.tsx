@@ -43,6 +43,7 @@ interface HRManagementProps {
     loans: EmployeeLoan[];
     onUpdateLoans: React.Dispatch<React.SetStateAction<EmployeeLoan[]>>;
     expenses: any[]; // New: receive global expenses to filter
+    onUpdateExpenses: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export const HRManagement: React.FC<HRManagementProps> = ({
@@ -52,7 +53,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
     onUpdatePayroll,
     loans,
     onUpdateLoans,
-    expenses
+    expenses,
+    onUpdateExpenses
 }) => {
     const [activeTab, setActiveTab] = useState<'employees' | 'payroll' | 'taxes' | 'loans' | 'history'>('employees');
     const [searchTerm, setSearchTerm] = useState('');
@@ -155,8 +157,14 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         // Enforce January 2026 onwards constraint as per user requirement
         if (targetYear < 2026) return [];
         
+        const lastDayOfMonth = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0];
+
         // Return a unified list for the current month
-        return employees.filter(e => e.active).map(emp => {
+        return employees.filter(e => {
+            const isActive = e.active;
+            const isAdmitted = !e.admissionDate || e.admissionDate <= lastDayOfMonth;
+            return isActive && isAdmitted;
+        }).map(emp => {
             const existing = payroll.find(p => p.employeeId === emp.id && p.month === targetMonth && p.year === targetYear);
             
             // Calculate active loans for this month that aren't already PAGO in the schedule
@@ -336,6 +344,25 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         });
         setIsEmployeeModalOpen(true);
     };
+    const mapExpenseToCamelCase = (e: any) => ({
+        id: e.id,
+        description: e.description,
+        category: e.category,
+        subcategory: e.subcategory,
+        dreClass: e.dre_class,
+        amount: Number(e.amount) || 0,
+        date: e.date,
+        status: e.status,
+        paymentMethod: e.payment_method,
+        supplierId: e.supplier_id,
+        providerId: e.provider_id,
+        employeeId: e.employee_id,
+        recurringId: e.recurring_id,
+        isReconciled: e.is_reconciled,
+        payroll_id: e.payroll_id,
+        invoiceNumber: e.document_number // Also map document_number to invoiceNumber
+    });
+
     const syncPayrollToExpense = async (payrollRec: PayrollRecord) => {
         const employee = employees.find(emp => emp.id === payrollRec.employeeId);
         const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -358,23 +385,26 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                 .eq('payroll_id', payrollRec.id)
                 .maybeSingle();
 
+            let resultData;
             if (existing) {
                 // Update
-                await supabase
+                const { data } = await supabase
                     .from('expenses')
                     .update({
                         description,
                         amount: payrollRec.netSalary,
                         status: expenseStatus,
                         date: lastDay,
-                        employee_id: payrollRec.employeeId, // Ensure link is updated/set
+                        employee_id: payrollRec.employeeId, 
                         category: 'Salários CLT',
                         dre_class: 'EXPENSE_ADM'
                     })
-                    .eq('id', existing.id);
+                    .eq('id', existing.id)
+                    .select();
+                resultData = data?.[0];
             } else {
                 // Insert
-                await supabase
+                const { data } = await supabase
                     .from('expenses')
                     .insert([{
                         payroll_id: payrollRec.id,
@@ -385,7 +415,20 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         date: lastDay,
                         category: 'Salários CLT',
                         dre_class: 'EXPENSE_ADM'
-                    }]);
+                    }])
+                    .select();
+                resultData = data?.[0];
+            }
+
+            if (resultData) {
+                const mapped = mapExpenseToCamelCase(resultData);
+                onUpdateExpenses(prev => {
+                    const exists = prev.some(e => e.id === mapped.id);
+                    if (exists) {
+                        return prev.map(e => e.id === mapped.id ? { ...e, ...mapped } : e);
+                    }
+                    return [mapped, ...prev];
+                });
             }
         } catch (err) {
             console.error("Erro ao sincronizar folha com financeiro:", err);
@@ -435,6 +478,67 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         }
     };
 
+
+    const handleClearMonth = async () => {
+        const targetMonth = dateRef.getMonth() + 1;
+        const targetYear = dateRef.getFullYear();
+        const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const refMonth = monthNames[targetMonth];
+
+        if (!confirm(`Tem certeza que deseja LIMPAR todos os lançamentos de ${refMonth}/${targetYear}? Isso removerá a folha e os encargos vinculados no financeiro.`)) return;
+
+        try {
+            // 1. Get all payroll IDs for this month
+            const { data: monthPayrolls, error: fetchErr } = await supabase
+                .from('payroll')
+                .select('id')
+                .eq('month', targetMonth)
+                .eq('year', targetYear);
+
+            if (fetchErr) throw fetchErr;
+            const ids = (monthPayrolls || []).map(p => p.id);
+
+            if (ids.length > 0) {
+                // 2. Delete linked expenses by payroll_id
+                const { error: expErr } = await supabase
+                    .from('expenses')
+                    .delete()
+                    .in('payroll_id', ids);
+                if (expErr) console.error("Erro ao limpar despesas de salários:", expErr);
+            }
+
+            // 3. Delete consolidated taxes for this month
+            const { error: taxErr } = await supabase
+                .from('expenses')
+                .delete()
+                .eq('category', 'ENCARGOS SOCIAIS')
+                .ilike('description', `%REF ${refMonth}/${targetYear}%`);
+            if (taxErr) console.error("Erro ao limpar encargos:", taxErr);
+
+            // 4. Delete payroll records
+            const { error: payErr } = await supabase
+                .from('payroll')
+                .delete()
+                .eq('month', targetMonth)
+                .eq('year', targetYear);
+            if (payErr) throw payErr;
+
+            // 5. Update local states
+            onUpdatePayroll(prev => prev.filter(p => !(p.month === targetMonth && p.year === targetYear)));
+            onUpdateExpenses(prev => prev.filter(e => {
+                const isSalaryLink = e.payroll_id && ids.includes(e.payroll_id);
+                const isConsolidatedTax = e.category === 'ENCARGOS SOCIAIS' && (e.description || '').includes(`REF ${refMonth}/${targetYear}`);
+                const isDraft = !e.id; // Keep local drafts if any
+                return !isSalaryLink && !isConsolidatedTax;
+            }));
+
+            setFeedback({ message: "Período limpo com sucesso.", type: 'success' });
+        } catch (err) {
+            console.error("Erro ao limpar período:", err);
+            setFeedback({ message: "Erro ao limpar lançamentos.", type: 'error' });
+        }
+    };
+
     const handleProcessPayroll = async () => {
         const targetMonth = dateRef.getMonth() + 1;
         const targetYear = dateRef.getFullYear();
@@ -447,8 +551,14 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             return;
         }
 
-        // Get list of active employees
-        const activeEmployees = employees.filter(e => e.active);
+        // Get list of active employees that were already admitted by this month
+        const lastDayOfMonth = new Date(targetYear, targetMonth, 0);
+        const activeEmployees = employees.filter(e => {
+            if (!e.active) return false;
+            if (!e.admissionDate) return true; // Fallback if no date
+            const admDate = new Date(e.admissionDate + "T12:00:00");
+            return admDate <= lastDayOfMonth;
+        });
         
         try {
             // Check for existing records in DB for this month/year to prevent duplication even if local state is filtered
@@ -659,6 +769,10 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             }
             
             setFeedback({ message: `Processamento de ${refMonth}/${targetYear} concluído!`, type: 'success' });
+            
+            // AUTOMATICALLY GENERATE TAXES (Social Charges)
+            await handleGenerateTaxes();
+            
         } catch (err) {
             console.error("Erro ao processar folha:", err);
             setFeedback({ message: "Erro ao processar folha de pagamento.", type: 'error' });
@@ -692,17 +806,20 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                 { 
                     description: `FGTS DIGITAL - REF ${refMonth}/${targetYear}`, 
                     amount: Number((totalBase * 0.08).toFixed(2)),
-                    category: 'ENCARGOS SOCIAIS'
+                    category: 'ENCARGOS SOCIAIS',
+                    supplierId: '0600b1f8-87cd-48fe-bac6-fdf87039e7ab'
                 },
                 { 
                     description: `INSS PATRONAL - REF ${refMonth}/${targetYear}`, 
                     amount: Number((totalBase * 0.278).toFixed(2)),
-                    category: 'ENCARGOS SOCIAIS'
+                    category: 'ENCARGOS SOCIAIS',
+                    supplierId: 'b5109d51-0250-467a-96e2-cbb6a6eff1a9'
                 },
                 { 
                     description: `PROVISÃO 13º/FÉRIAS - REF ${refMonth}/${targetYear}`, 
                     amount: Number((totalBase * 0.222).toFixed(2)),
-                    category: 'ENCARGOS SOCIAIS'
+                    category: 'ENCARGOS SOCIAIS',
+                    supplierId: null
                 }
             ];
 
@@ -718,17 +835,24 @@ export const HRManagement: React.FC<HRManagementProps> = ({
 
                 if (existing) {
                     // Update
-                    await supabase.from('expenses')
+                    const { data: updated } = await supabase.from('expenses')
                         .update({
                             amount: item.amount,
                             date: lastDay,
                             category: item.category,
-                            dre_class: 'EXPENSE_ADM'
+                            dre_class: 'EXPENSE_ADM',
+                            supplier_id: item.supplierId
                         })
-                        .eq('id', existing.id);
+                        .eq('id', existing.id)
+                        .select();
+                    
+                    if (updated && updated[0]) {
+                        const mapped = mapExpenseToCamelCase(updated[0]);
+                        onUpdateExpenses(prev => prev.map(e => e.id === mapped.id ? mapped : e));
+                    }
                 } else {
                     // Insert
-                    await supabase.from('expenses')
+                    const { data: inserted } = await supabase.from('expenses')
                         .insert([{
                             description: item.description,
                             amount: item.amount,
@@ -736,8 +860,15 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                             category: item.category,
                             status: 'Pendente',
                             payment_method: 'Boleto',
-                            dre_class: 'EXPENSE_ADM'
-                        }]);
+                            dre_class: 'EXPENSE_ADM',
+                            supplier_id: item.supplierId
+                        }])
+                        .select();
+                    
+                    if (inserted && inserted[0]) {
+                        const mapped = mapExpenseToCamelCase(inserted[0]);
+                        onUpdateExpenses(prev => [mapped, ...prev]);
+                    }
                 }
             }
 
@@ -934,19 +1065,33 @@ export const HRManagement: React.FC<HRManagementProps> = ({
     };
 
     const handleDeletePayroll = async (payrollId: string) => {
-        if (!confirm("Tem certeza que deseja remover este registro da folha?")) return;
+        if (!confirm("Tem certeza que deseja remover este registro da folha? Isso também removerá o lançamento correspondente no financeiro.")) return;
         
         try {
+            // 1. Delete linked expense first
+            const { error: expError } = await supabase
+                .from('expenses')
+                .delete()
+                .eq('payroll_id', payrollId);
+
+            if (expError) console.error("Erro ao excluir despesa vinculada:", expError);
+
+            // 2. Delete payroll record
             const { error } = await supabase
                 .from('payroll')
                 .delete()
                 .eq('id', payrollId);
 
             if (error) throw error;
+
+            // 3. Update local states
             onUpdatePayroll(prev => prev.filter(p => p.id !== payrollId));
+            onUpdateExpenses(prev => prev.filter(e => e.payroll_id !== payrollId));
+
+            setFeedback({ message: "Registro removido com sucesso.", type: 'success' });
         } catch (err) {
             console.error("Erro ao excluir registro de folha:", err);
-            alert("Erro ao excluir registro.");
+            setFeedback({ message: "Erro ao excluir registro.", type: 'error' });
         }
     };
 
@@ -1285,6 +1430,12 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         </div>
                         <div className="flex items-center gap-4">
                             <button 
+                                onClick={handleClearMonth}
+                                className="bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 transition-all"
+                            >
+                                Limpar Lançamentos
+                            </button>
+                            <button 
                                 onClick={handleProcessPayroll}
                                 className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
                             >
@@ -1361,14 +1512,12 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                                                 Editar
                                                             </button>
                                                         )}
-                                                        {rec.status === 'PENDENTE' && (
-                                                            <button 
-                                                                onClick={() => handleDeletePayroll(rec.id)}
-                                                                className="text-rose-500 font-black text-[10px] uppercase hover:underline"
-                                                            >
-                                                                Limpar
-                                                            </button>
-                                                        )}
+                                                        <button 
+                                                            onClick={() => handleDeletePayroll(rec.id)}
+                                                            className="text-rose-500 font-black text-[10px] uppercase hover:underline"
+                                                        >
+                                                            Limpar
+                                                        </button>
                                                         <button 
                                                             onClick={rec.status !== 'PAGO' ? () => handlePayPayroll(rec.id) : undefined}
                                                             className={`font-black text-[10px] uppercase hover:underline ${rec.status === 'PAGO' ? 'text-slate-300 cursor-not-allowed' : 'text-zinc-950 dark:text-zinc-400'}`}

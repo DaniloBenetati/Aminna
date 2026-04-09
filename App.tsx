@@ -129,10 +129,15 @@ const App: React.FC = () => {
         }
       }
 
-      // Optimization: Filter logs and records by date (last 3 months) to prevent slow loading
+      // Optimization: Filter logs and records by date (last 3 months or start of current year) to prevent slow loading
+      const now = new Date();
       const threeMonthsAgo = new Date();
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      const minDate = threeMonthsAgo.getFullYear() + '-' + String(threeMonthsAgo.getMonth() + 1).padStart(2, '0') + '-' + String(threeMonthsAgo.getDate()).padStart(2, '0');
+      
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const referenceDate = threeMonthsAgo < startOfYear ? threeMonthsAgo : startOfYear;
+      
+      const minDate = referenceDate.getFullYear() + '-' + String(referenceDate.getMonth() + 1).padStart(2, '0') + '-' + String(referenceDate.getDate()).padStart(2, '0');
 
       // Helper function to fetch customers in parallel batches
       const fetchCustomers = async () => {
@@ -860,6 +865,7 @@ const App: React.FC = () => {
             loans={employeeLoans}
             onUpdateLoans={setEmployeeLoans}
             expenses={expenses}
+            onUpdateExpenses={setExpenses}
           />
         );
       case ViewState.TRAFEGO_PAGO:

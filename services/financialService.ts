@@ -457,6 +457,15 @@ export const generateFinancialTransactions = (
     const commissions = allTrans.filter(t => t.category === 'Repasse Comissão');
 
     const groupedCommissions = commissions.reduce((acc, curr) => {
+        // If it's a real expense from DB (has a UUID-like ID), DO NOT group it.
+        // This ensures the ID remains valid for DB operations (edit/delete).
+        const isRealExpense = curr.id && curr.id.length > 20 && !curr.id.startsWith('comm-');
+        
+        if (isRealExpense) {
+            acc[curr.id] = curr;
+            return acc;
+        }
+
         const key = `${curr.providerName}_${curr.date}`;
         if (!acc[key]) {
             acc[key] = { ...curr, amount: 0, id: `comm-grouped-${curr.providerName}-${curr.date}` };
