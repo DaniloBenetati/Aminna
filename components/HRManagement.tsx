@@ -141,6 +141,9 @@ export const HRManagement: React.FC<HRManagementProps> = ({
     const payrollViewData = useMemo(() => {
         const targetMonth = dateRef.getMonth() + 1;
         const targetYear = dateRef.getFullYear();
+
+        // Enforce January 2026 onwards constraint as per user requirement
+        if (targetYear < 2026) return [];
         
         // Return a unified list for the current month
         return employees.filter(e => e.active).map(emp => {
@@ -220,9 +223,10 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         
         // Filter by the selected period (startDate/endDate)
         const periodPayroll = payroll.filter(p => {
-            const dateStr = `${p.year}-${String(p.month).padStart(1, '0')}-01`;
+            const padM = String(p.month).padStart(2, '0');
+            const dateStr = `${p.year}-${padM}-01`;
             const Jan2026 = "2026-01-01";
-            const currentPeriodMatch = `${p.year}-${String(p.month).padStart(2, '0')}-01` >= startDate && `${p.year}-${String(p.month).padStart(2, '0')}-01` <= endDate;
+            const currentPeriodMatch = `${p.year}-${padM}-01` >= startDate && `${p.year}-${padM}-01` <= endDate;
             return currentPeriodMatch && dateStr >= Jan2026;
         });
 

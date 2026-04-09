@@ -62,6 +62,14 @@ interface ManualLinkModalProps {
     employees: Employee[];
     transactions: FinancialTransaction[];
     bankTransactions: BankTransaction[];
+    setReconcileConfirm: React.Dispatch<React.SetStateAction<{
+        isOpen: boolean;
+        type: 'LINK' | 'CREATE';
+        message: string;
+        candidate?: any;
+        entityName?: string;
+        onConfirm: () => void;
+    }>>;
 }
 
 // --- BATCH LINK MODAL COMPONENT ---
@@ -183,7 +191,7 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
 };
 
 const ManualLinkModal: React.FC<ManualLinkModalProps> = ({ 
-    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories, providers, employees, transactions, bankTransactions
+    isOpen, onClose, bankTx, expenses, sales, appointments, onLink, isProcessing, parseDateSafe, suppliers, customers, expenseCategories, providers, employees, transactions, bankTransactions, setReconcileConfirm
 }) => {
     const [innerSearch, setInnerSearch] = useState('');
     const [selectedItems, setSelectedItems] = useState<{ id: string, type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', amount: number }[]>([]);
@@ -595,7 +603,15 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                         employeeId: quickEmployeeId
                                     };
                                 } else if (Math.abs(diff) > 0.01) {
-                                    if (!window.confirm(`Valores não batem. Deseja vincular assim mesmo?`)) return;
+                                    setReconcileConfirm({
+                                        isOpen: true,
+                                        type: 'LINK',
+                                        message: `Os valores selecionados (R$ ${selectedItems.reduce((s, e) => s + e.amount, 0).toFixed(2)}) não batem com o valor da transação bancária (R$ ${bankTx.amount.toFixed(2)}). Deseja vincular assim mesmo?`,
+                                        onConfirm: async () => {
+                                            await onLink(bankTx.id, selectedItems, newExpense);
+                                        }
+                                    });
+                                    return;
                                 }
                                 await onLink(bankTx.id, selectedItems, newExpense);
                             }}
@@ -682,6 +698,16 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [isManualLinkModalOpen, setIsManualLinkModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isManualLinkingProcessing, setIsManualLinkingProcessing] = useState(false); // Added for consistency
+
+    // New Reconcile Confirmation State
+    const [reconcileConfirm, setReconcileConfirm] = useState<{
+        isOpen: boolean;
+        type: 'LINK' | 'CREATE';
+        message: string;
+        candidate?: any;
+        entityName?: string;
+        onConfirm: () => void;
+    }>({ isOpen: false, type: 'LINK', message: '', onConfirm: () => {} });
 
     // Dashboard Indicators Notification
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
@@ -3600,69 +3626,106 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         const isEmployee = (selectedEntity as any).isEmployee || false;
                                                                                         const realId = (isProfessional || isEmployee) ? combinedId.split('_')[1] : combinedId;
 
-                                                                                        // 2. Logic for Syncing / Linking / Creating
-                                                                                        let currentMatch = match;
+                                                                                        const openCreateDial = () => {
+                                                                                            setReconcileConfirm({
+                                                                                                isOpen: true,
+                                                                                                type: 'CREATE',
+                                                                                                message: `Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`,
+                                                                                                onConfirm: async () => {
+                                                                                                    try {
+                                                                                                        const isProfitDist = (newName?.toLowerCase().includes('lucro') || newName?.toLowerCase().includes('distribuição') || t.description?.toLowerCase().includes('lucro') || t.description?.toLowerCase().includes('distribuição'));
+                                                                                                        const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
+                                                                                                            description: newName,
+                                                                                                            amount: t.amount,
+                                                                                                            date: t.date,
+                                                                                                            category: isProfitDist ? 'Distribuição de Lucros' : (t.systemCategory || 'Despesas Diversas'),
+                                                                                                            provider_id: isProfessional ? realId : null,
+                                                                                                            employee_id: isEmployee ? realId : null,
+                                                                                                            supplier_id: (!isProfessional && !isEmployee) ? realId : null,
+                                                                                                            status: 'Pago',
+                                                                                                            payment_method: 'Transferência',
+                                                                                                            is_reconciled: true,
+                                                                                                            dre_class: 'EXPENSE_ADM'
+                                                                                                        }).select().single();
 
-                                                                                        if (!currentMatch) {
-                                                                                            // Search for candidates (already has identification logic)
+                                                                                                        if (expErr) throw expErr;
+
+                                                                                                        const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                                                                                                        setExpenses((prev: Expense[]) => [...prev, {
+                                                                                                            id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
+                                                                                                            category: newExp.category, status: newExp.status, isReconciled: true,
+                                                                                                            providerId: newExp.provider_id || undefined, employeeId: newExp.employee_id || undefined, supplierId: newExp.supplier_id || undefined,
+                                                                                                            paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
+                                                                                                        }]);
+                                                                                                        setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                                        setNotification({ message: 'Lançamento criado e vinculado com sucesso!', type: 'success' });
+                                                                                                    } catch (err) {
+                                                                                                        console.error('Error creating auto expense:', err);
+                                                                                                        setNotification({ message: 'Erro ao criar lançamento.', type: 'error' });
+                                                                                                    }
+                                                                                                }
+                                                                                            });
+                                                                                        };
+
+                                                                                        if (!match) {
                                                                                             const candidate = expenses.find(exp =>
                                                                                                 Math.abs(exp.amount - t.amount) < 0.01 &&
                                                                                                 Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 3 * 24 * 60 * 60 * 1000 &&
                                                                                                 !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id))
                                                                                             );
 
-                                                                                        if (candidate && window.confirm(`Encontramos um lançamento de R$ ${candidate.amount.toFixed(2)} (${candidate.description}) no sistema. Deseja vincular a este registro?`)) {
-                                                                                            const newMatches = [{ id: candidate.id, type: 'EXPENSE' as const, amount: candidate.amount }];
-                                                                                            await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
-                                                                                            setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
-                                                                                            currentMatch = { id: candidate.id, type: 'EXPENSE', amount: candidate.amount };
-                                                                                        } else if (window.confirm(`Deseja criar um novo lançamento de Contas a Pagar para ${newName}?`)) {
-                                                                                            const isProfitDist = (newName?.toLowerCase().includes('lucro') || newName?.toLowerCase().includes('distribuição') || t.description?.toLowerCase().includes('lucro') || t.description?.toLowerCase().includes('distribuição'));
-                                                                                            const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
-                                                                                                description: newName, // Use the entity name for a cleaner description
-                                                                                                amount: t.amount,
-                                                                                                date: t.date,
-                                                                                                category: isProfitDist ? 'Distribuição de Lucros' : (t.systemCategory || 'Despesas Diversas'),
-                                                                                                provider_id: isProfessional ? realId : null,
-                                                                                                employee_id: isEmployee ? realId : null,
-                                                                                                supplier_id: (!isProfessional && !isEmployee) ? realId : null,
-                                                                                                status: 'Pago',
-                                                                                                payment_method: 'Transferência',
-                                                                                                is_reconciled: true,
-                                                                                                dre_class: 'EXPENSE_ADM'
-                                                                                            }).select().single();
-
-
-                                                                                                if (expErr) throw expErr;
-
-                                                                                                const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
-                                                                                                setExpenses((prev: Expense[]) => [...prev, {
-                                                                                                    id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
-                                                                                                    category: newExp.category, status: newExp.status, isReconciled: true,
-                                                                                                    providerId: newExp.provider_id || undefined, employeeId: newExp.employee_id || undefined, supplierId: newExp.supplier_id || undefined,
-                                                                                                    paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
-                                                                                                }]);
-                                                                                                setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
-                                                                                             alert('Vinculado a uma despesa do Contas a Pagar com sucesso!');
-                                                                                             alert('Vinculado a uma despesa do Contas a Pagar com sucesso!');
-                                                                                                currentMatch = { id: newExp.id, type: 'EXPENSE', amount: newExp.amount };
+                                                                                            if (candidate) {
+                                                                                                setReconcileConfirm({
+                                                                                                    isOpen: true,
+                                                                                                    type: 'LINK',
+                                                                                                    message: `Encontramos um lançamento compatível no sistema. Deseja vincular a este registro?`,
+                                                                                                    candidate: candidate,
+                                                                                                    onConfirm: async () => {
+                                                                                                        try {
+                                                                                                            const newMatches = [{ id: candidate.id, type: 'EXPENSE' as const, amount: candidate.amount }];
+                                                                                                            await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
+                                                                                                            setBankTransactions((prev: BankTransaction[]) => prev.map(tx => tx.id === t.id ? { ...tx, systemMatches: newMatches } : tx));
+                                                                                                            
+                                                                                                            const updatePayload = {
+                                                                                                                description: newName,
+                                                                                                                date: t.date,
+                                                                                                                ...(isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
+                                                                                                                    isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
+                                                                                                                        { supplier_id: realId, provider_id: null, employee_id: null })
+                                                                                                            };
+                                                                                                            await supabase.from('expenses').update(updatePayload).eq('id', candidate.id);
+                                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === candidate.id ? {
+                                                                                                                ...exp,
+                                                                                                                description: newName,
+                                                                                                                date: t.date,
+                                                                                                                providerId: isProfessional ? realId : undefined,
+                                                                                                                employeeId: isEmployee ? realId : undefined,
+                                                                                                                supplierId: (!isProfessional && !isEmployee) ? realId : undefined
+                                                                                                            } : exp));
+                                                                                                            setNotification({ message: 'Vínculo realizado com sucesso!', type: 'success' });
+                                                                                                        } catch (err) {
+                                                                                                            console.error('Error auto-linking:', err);
+                                                                                                        }
+                                                                                                    }
+                                                                                                });
+                                                                                            } else {
+                                                                                                openCreateDial();
                                                                                             }
-                                                                                        }
-
-                                                                                        if (currentMatch && currentMatch.type === 'EXPENSE') {
+                                                                                        } else {
+                                                                                            // If already matched, update the entity/date of the matched expense
                                                                                             const updatePayload = {
-                                                                                                description: newName, // Update description to cleaner name
-                                                                                                date: t.date,         // Sync date with bank transaction
+                                                                                                description: newName,
+                                                                                                date: t.date,
                                                                                                 ...(isProfessional ? { provider_id: realId, employee_id: null, supplier_id: null } :
                                                                                                     isEmployee ? { employee_id: realId, provider_id: null, supplier_id: null } :
                                                                                                         { supplier_id: realId, provider_id: null, employee_id: null })
                                                                                             };
 
-                                                                                            await supabase.from('expenses').update(updatePayload).eq('id', currentMatch.id);
-                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === currentMatch!.id ? {
+                                                                                            await supabase.from('expenses').update(updatePayload).eq('id', match.id);
+                                                                                            setExpenses((prev: Expense[]) => prev.map(exp => exp.id === match.id ? {
                                                                                                 ...exp,
                                                                                                 description: newName,
-                                                                                                date: t.date, // Sync date in state
+                                                                                                date: t.date,
                                                                                                 providerId: isProfessional ? realId : undefined,
                                                                                                 employeeId: isEmployee ? realId : undefined,
                                                                                                 supplierId: (!isProfessional && !isEmployee) ? realId : undefined
@@ -6166,6 +6229,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 employees={employees}
                 transactions={transactions}
                 bankTransactions={bankTransactions}
+                setReconcileConfirm={setReconcileConfirm}
             />
 
             <BatchLinkModal 
@@ -6177,6 +6241,55 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 isProcessing={isManualLinkingProcessing}
                 parseDateSafe={parseDateSafe}
             />
+
+            {/* Custom Reconcile Confirmation Modal */}
+            {reconcileConfirm.isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-zinc-900 rounded-[2.5rem] w-full max-w-md border border-zinc-800 shadow-2xl overflow-hidden scale-in-center duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-indigo-600/20 rounded-3xl flex items-center justify-center mx-auto text-indigo-500">
+                                {reconcileConfirm.type === 'LINK' ? <Link2 size={40} /> : <FilePlus size={40} />}
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight">Confirmar Ação</h3>
+                                <p className="text-sm font-medium text-zinc-400 leading-relaxed">
+                                    {reconcileConfirm.message}
+                                </p>
+                            </div>
+
+                            {reconcileConfirm.candidate && (
+                                <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50 text-left">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Sugestão Encontrada</span>
+                                        <span className="text-[10px] font-black text-zinc-500">{new Date(reconcileConfirm.candidate.date).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-sm font-bold text-white truncate">{reconcileConfirm.candidate.description}</p>
+                                    <p className="text-lg font-black text-indigo-500 mt-1">R$ {reconcileConfirm.candidate.amount.toFixed(2)}</p>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 pt-2">
+                                <button 
+                                    onClick={() => setReconcileConfirm(prev => ({ ...prev, isOpen: false }))}
+                                    className="flex-1 py-4 bg-zinc-800 text-zinc-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-zinc-700 transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        reconcileConfirm.onConfirm();
+                                        setReconcileConfirm(prev => ({ ...prev, isOpen: false }));
+                                    }}
+                                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Strategist Detail Modal */}
             {isStrategistDetailModalOpen && (
