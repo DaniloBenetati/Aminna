@@ -28,7 +28,8 @@ import {
     FileText,
     Receipt,
     Printer,
-    Pencil
+    Pencil,
+    X
 } from 'lucide-react';
 import { Employee, PayrollRecord, EmployeeLoan, ViewState } from '../types';
 import { Avatar } from './Avatar';
@@ -61,6 +62,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
     const [editingPayroll, setEditingPayroll] = useState<PayrollRecord | null>(null);
     const [isLoanModalOpen, setIsLoanModalOpen] = useState(false);
     const [editingLoan, setEditingLoan] = useState<EmployeeLoan | null>(null);
+    const [feedback, setFeedback] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [loanForm, setLoanForm] = useState({
         employeeId: '',
         totalAmount: 0,
@@ -110,6 +112,14 @@ export const HRManagement: React.FC<HRManagementProps> = ({
 
         setDateRef(newDate);
     };
+
+    // Auto-clear feedback
+    useEffect(() => {
+        if (feedback) {
+            const timer = setTimeout(() => setFeedback(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [feedback]);
 
     // Update startDate and endDate when timeView or dateRef changes
     useEffect(() => {
@@ -302,7 +312,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             setEditingEmployee(null);
         } catch (error) {
             console.error('Error saving employee:', error);
-            alert('Erro ao salvar funcionário.');
+            setFeedback({ message: 'Erro ao salvar funcionário.', type: 'error' });
         }
     };
 
@@ -421,7 +431,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             setEditingPayroll(null);
         } catch (err) {
             console.error("Erro ao atualizar folha:", err);
-            alert("Erro ao salvar alterações na folha.");
+            setFeedback({ message: "Erro ao salvar alterações na folha.", type: 'error' });
         }
     };
 
@@ -431,14 +441,34 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
         const refMonth = monthNames[targetMonth];
 
+        // Restriction: Only Jan 2026 onwards
+        if (targetYear < 2026 || (targetYear === 2026 && targetMonth < 1)) {
+            setFeedback({ message: "O processamento de folha só é permitido a partir de Janeiro de 2026.", type: 'error' });
+            return;
+        }
+
         // Get list of active employees
         const activeEmployees = employees.filter(e => e.active);
         
         try {
+            // Check for existing records in DB for this month/year to prevent duplication even if local state is filtered
+            const { data: existingPayrolls, error: checkError } = await supabase
+                .from('payroll')
+                .select('employee_id')
+                .eq('month', targetMonth)
+                .eq('year', targetYear);
+
+            if (checkError) throw checkError;
+
+            const existingEmployeeIds = new Set((existingPayrolls || []).map(p => p.employee_id));
+
             const updatedPayroll: PayrollRecord[] = [];
             
             for (const emp of activeEmployees) {
-                // 1. Check for existing record
+                // 1. Check for existing record in the fetched list
+                const alreadyExists = existingEmployeeIds.has(emp.id);
+                if (alreadyExists) continue; 
+
                 const existing = payroll.find(p => p.employeeId === emp.id && p.month === targetMonth && p.year === targetYear);
                 
                 // 2. Identify active loans for this employee
@@ -628,10 +658,93 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                 });
             }
             
-            alert(`Processamento de ${refMonth}/${targetYear} concluído com sucesso!`);
+            setFeedback({ message: `Processamento de ${refMonth}/${targetYear} concluído!`, type: 'success' });
         } catch (err) {
             console.error("Erro ao processar folha:", err);
-            alert("Erro ao processar folha de pagamento.");
+            setFeedback({ message: "Erro ao processar folha de pagamento.", type: 'error' });
+        }
+    };
+
+    const handleGenerateTaxes = async () => {
+        const targetMonth = dateRef.getMonth() + 1;
+        const targetYear = dateRef.getFullYear();
+        const monthNames = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const refMonth = monthNames[targetMonth];
+
+        // Restriction: Only Jan 2026 onwards
+        if (targetYear < 2026) {
+            setFeedback({ message: "Geração de lançamentos só é permitida para 2026 em diante.", type: 'error' });
+            return;
+        }
+
+        try {
+            // 1. Calculate totals for current month
+            const currentMonthPayroll = payroll.filter(p => p.month === targetMonth && p.year === targetYear);
+            const totalBase = currentMonthPayroll.reduce((acc, p) => acc + (Number(p.baseSalary) || 0), 0);
+
+            if (totalBase === 0) {
+                setFeedback({ message: "Não há registros de folha para este mês. Processe a folha primeiro.", type: 'error' });
+                return;
+            }
+
+            // 2. Define tax items
+            const taxItems = [
+                { 
+                    description: `FGTS DIGITAL - REF ${refMonth}/${targetYear}`, 
+                    amount: Number((totalBase * 0.08).toFixed(2)),
+                    category: 'ENCARGOS SOCIAIS'
+                },
+                { 
+                    description: `INSS PATRONAL - REF ${refMonth}/${targetYear}`, 
+                    amount: Number((totalBase * 0.278).toFixed(2)),
+                    category: 'ENCARGOS SOCIAIS'
+                },
+                { 
+                    description: `PROVISÃO 13º/FÉRIAS - REF ${refMonth}/${targetYear}`, 
+                    amount: Number((totalBase * 0.222).toFixed(2)),
+                    category: 'ENCARGOS SOCIAIS'
+                }
+            ];
+
+            const lastDay = new Date(targetYear, targetMonth, 0).toISOString().split('T')[0];
+
+            for (const item of taxItems) {
+                // Check if already exists for this month/description
+                const { data: existing } = await supabase
+                    .from('expenses')
+                    .select('id')
+                    .eq('description', item.description)
+                    .maybeSingle();
+
+                if (existing) {
+                    // Update
+                    await supabase.from('expenses')
+                        .update({
+                            amount: item.amount,
+                            date: lastDay,
+                            category: item.category,
+                            dre_class: 'EXPENSE_ADM'
+                        })
+                        .eq('id', existing.id);
+                } else {
+                    // Insert
+                    await supabase.from('expenses')
+                        .insert([{
+                            description: item.description,
+                            amount: item.amount,
+                            date: lastDay,
+                            category: item.category,
+                            status: 'Pendente',
+                            payment_method: 'Boleto',
+                            dre_class: 'EXPENSE_ADM'
+                        }]);
+                }
+            }
+
+            setFeedback({ message: `Lançamentos de ${refMonth}/${targetYear} gerados com sucesso!`, type: 'success' });
+        } catch (err) {
+            console.error("Erro ao gerar encargos:", err);
+            setFeedback({ message: "Erro ao gerar encargos sociais.", type: 'error' });
         }
     };
 
@@ -1456,7 +1569,10 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                             <h2 className="text-2xl font-black text-slate-950 dark:text-white tracking-tighter uppercase">Encargos e Impostos</h2>
                             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest leading-loose">Provisão e pagamentos de impostos sobre folha (FGTS, INSS, etc)</p>
                         </div>
-                        <button className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
+                        <button 
+                            onClick={handleGenerateTaxes}
+                            className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
+                        >
                             Gerar Lançamentos 2026
                         </button>
                     </div>
@@ -1983,6 +2099,32 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                 Fechar
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Feedback Toast */}
+            {feedback && (
+                <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
+                    <div className={`flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl backdrop-blur-xl border ${
+                        feedback.type === 'success' 
+                            ? 'bg-zinc-900/90 border-zinc-800 text-white' 
+                            : 'bg-rose-500 border-rose-400 text-white'
+                    }`}>
+                        <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
+                            feedback.type === 'success' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/20 text-white'
+                        }`}>
+                            {feedback.type === 'success' ? <CircleCheck size={18} /> : <AlertCircle size={18} />}
+                        </div>
+                        <div className="flex flex-col">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-0.5">Notificação</p>
+                            <p className="text-xs font-bold">{feedback.message}</p>
+                        </div>
+                        <button 
+                            onClick={() => setFeedback(null)}
+                            className="ml-4 p-1 rounded-lg hover:bg-white/10 transition-colors"
+                        >
+                            <X size={14} className="opacity-50" />
+                        </button>
                     </div>
                 </div>
             )}

@@ -2426,20 +2426,45 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const toggleExpenseStatus = async (id: string) => {
-        const expense = expenses.find(e => e.id === id);
+        const expense = transactions.find(t => t.id === id);
         if (!expense) return;
 
         const newStatus = expense.status === 'Pago' ? 'Pendente' : 'Pago';
-        const newDate = newStatus === 'Pago' ? toLocalDateStr(new Date()) : expense.date;
+        const payrollStatus = newStatus === 'Pago' ? 'PAGO' : 'PENDENTE';
+        // Use current date if paying, otherwise keep same date
+        const newDate = newStatus === 'Pago' ? new Date().toISOString().split('T')[0] : expense.date;
 
         try {
-            const { error } = await supabase.from('expenses').update({ status: newStatus, date: newDate }).eq('id', id);
+            const { error } = await supabase
+                .from('expenses')
+                .update({ 
+                    status: newStatus,
+                    date: newDate
+                })
+                .eq('id', id);
+
             if (error) throw error;
 
-            // Optimistic update or refresh
-            setExpenses(prev => prev.map(exp => exp.id === id ? { ...exp, status: newStatus, date: newDate } : exp));
-        } catch (error) {
-            console.error('Error updating status:', error);
+            // Bidirectional Sync: If linked to payroll, update payroll status too
+            if (expense.payroll_id) {
+                await supabase
+                    .from('payroll')
+                    .update({ 
+                        status: payrollStatus,
+                        payment_date: newStatus === 'Pago' ? newDate : null
+                    })
+                    .eq('id', expense.payroll_id);
+            }
+
+            // Update local state
+            setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: newStatus, date: newDate } : t));
+            // Also update expenses state if it exists separately
+            if (typeof setExpenses === 'function') {
+                setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus, date: newDate } : e));
+            }
+        } catch (err) {
+            console.error("Erro ao alterar status da despesa:", err);
+            alert("Erro ao alterar status.");
         }
     };
 
