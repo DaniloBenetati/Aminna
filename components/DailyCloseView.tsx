@@ -145,6 +145,40 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         }, {} as Record<string, number>);
     }, [dailyRelTrans]);
 
+    const cardBreakdown = useMemo(() => {
+        const dailyApps = appointments.filter(app => {
+            const appDate = app.date?.substring(0, 10);
+            const payDate = app.paymentDate?.substring(0, 10);
+            return (appDate === dateStr || payDate === dateStr) && app.status === 'Concluído';
+        });
+
+        const breakdown: Record<string, { count: number, total: number }> = {};
+
+        dailyApps.forEach(app => {
+            if (app.payments && app.payments.length > 0) {
+                app.payments.forEach(p => {
+                    const method = p.method || 'Outros';
+                    if (method.toLowerCase().includes('cartão')) {
+                        const brand = p.cardBrand || 'Outros';
+                        const key = `${method} - ${brand}`;
+                        if (!breakdown[key]) breakdown[key] = { count: 0, total: 0 };
+                        breakdown[key].count += 1;
+                        breakdown[key].total += p.amount;
+                    }
+                });
+            } else {
+                const method = app.paymentMethod || 'Outros';
+                if (method.toLowerCase().includes('cartão')) {
+                    const key = `${method} - Outros`;
+                    if (!breakdown[key]) breakdown[key] = { count: 0, total: 0 };
+                    breakdown[key].count += 1;
+                    breakdown[key].total += (app.pricePaid || 0);
+                }
+            }
+        });
+        return breakdown;
+    }, [appointments, dateStr]);
+
     const handlePrint = () => {
         const printContent = `
             <html>
@@ -232,12 +266,32 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             acc[method].count += 1;
             acc[method].total += (t.type === 'RECEITA' ? t.amount : -t.amount);
             return acc;
-        }, {})).map(([method, data]: [string, any]) => `
-                    <div class="row">
-                        <span>${method.toUpperCase()} (${data.count}x):</span>
-                        <span>R$ ${data.total.toFixed(2)}</span>
-                    </div>
-                `).join('')}
+        }, {})).map(([method, data]: [string, any]) => {
+            const isCard = method.toLowerCase().includes('cartão');
+            let methodHtml = `
+                <div class="row">
+                    <span>${method.toUpperCase()} (${data.count}x):</span>
+                    <span>R$ ${data.total.toFixed(2)}</span>
+                </div>
+            `;
+            
+            if (isCard) {
+                const subItems = Object.entries(cardBreakdown)
+                    .filter(([key]) => key.startsWith(method))
+                    .map(([key, subData]) => {
+                        const brand = key.split(' - ')[1] || 'Outros';
+                        return `
+                            <div class="row" style="padding-left: 15px; font-size: 9px; opacity: 0.8;">
+                                <span>• ${brand.toUpperCase()} (${subData.count}x):</span>
+                                <span>R$ ${subData.total.toFixed(2)}</span>
+                            </div>
+                        `;
+                    }).join('');
+                if (subItems) methodHtml += subItems;
+            }
+            
+            return methodHtml;
+        }).join('')}
 
                 <div class="divider"></div>
 
@@ -334,6 +388,15 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
         Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
             message += `\uD83D\uDD39 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+            
+            if (method.toLowerCase().includes('cartão')) {
+                Object.entries(cardBreakdown)
+                    .filter(([key]) => key.startsWith(method))
+                    .forEach(([key, subData]) => {
+                        const brand = key.split(' - ')[1] || 'Outros';
+                        message += `     \u25AB\uFE0F ${brand} (${subData.count}x): R$ ${subData.total.toFixed(2)}\n`;
+                    });
+            }
         });
         message += `\n`;
 
@@ -511,9 +574,23 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 <h5 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Wallet size={10} /> Totais por Método</h5>
                                 <div className="space-y-1.5">
                                     {Object.entries(paymentMethodsSummary).map(([method, amount]: [string, any]) => (
-                                        <div key={method} className="flex justify-between items-center text-[10px]">
-                                            <span className="font-bold uppercase text-slate-700 dark:text-slate-300">{method}</span>
-                                            <span className="font-black text-slate-950 dark:text-white">R$ {amount.toFixed(2)}</span>
+                                        <div key={method} className="space-y-1">
+                                            <div className="flex justify-between items-center text-[10px]">
+                                                <span className="font-bold uppercase text-slate-700 dark:text-slate-300">{method}</span>
+                                                <span className="font-black text-slate-950 dark:text-white">R$ {amount.toFixed(2)}</span>
+                                            </div>
+                                            {method.toLowerCase().includes('cartão') && Object.entries(cardBreakdown)
+                                                .filter(([key]) => key.startsWith(method))
+                                                .map(([key, subData]) => {
+                                                    const brand = key.split(' - ')[1] || 'Outros';
+                                                    return (
+                                                        <div key={key} className="flex justify-between items-center text-[8px] pl-3 opacity-70">
+                                                            <span className="font-bold uppercase text-slate-500 dark:text-slate-400">• {brand}</span>
+                                                            <span className="font-black text-slate-700 dark:text-slate-300">R$ {subData.total.toFixed(2)}</span>
+                                                        </div>
+                                                    );
+                                                })
+                                            }
                                         </div>
                                     ))}
                                     <div className="border-t border-slate-200 dark:border-zinc-700 my-1 pt-1 flex justify-between items-center text-[10px]">
@@ -544,9 +621,12 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     <Printer size={12} /> Relatório
                                 </button>
                                 <button
-                                    onClick={onCloseRegister}
+                                    onClick={() => {
+                                        handlePrint();
+                                        onCloseRegister && onCloseRegister();
+                                    }}
                                     disabled={!physicalCash}
-                                    className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors"
                                 >
                                     <Lock size={12} /> Fechar
                                 </button>
