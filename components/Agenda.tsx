@@ -45,11 +45,8 @@ const getEffectiveStatus = (a: Appointment, providerId?: string) => {
         return anyWaiting ? 'Aguardando' : 'Em Andamento';
     }
 
-    // Prioritize "Aguardando" (Check-in done)
-    if (activeStatuses.includes('Aguardando')) return 'Aguardando';
-
-    // Default to the first active status (e.g. Confirmado)
-    return activeStatuses[0];
+    // Default to the first active status (usually the main appointment status)
+    return activeStatuses[0] || 'Pendente';
 };
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,

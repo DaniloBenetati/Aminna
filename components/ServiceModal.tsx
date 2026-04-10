@@ -608,6 +608,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return (h || 0) * 60 + (m || 0);
         };
 
+        const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
         const modalDate = appointmentDate;
 
         // CHECK EACH LINE INDIVIDUALLY FOR ITS SPECIFIC PROVIDER
@@ -695,7 +697,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 bookedPrice: l.unitPrice,
                 products: l.products,
                 startTime: l.startTime,
-                endTime: l.endTime
+                endTime: l.endTime,
+                status: l.status || 'Pendente',
+                startTimeActual: l.startTimeActual
             }));
 
             // 2. Combine and Deduplicate with target's existing extras
@@ -727,7 +731,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             // 4. Delete current appointment if it exists (not new)
             // Identify if current appointment is persisted
-            const isPersisted = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointment.id);
+            const isPersisted = isUUID(appointment.id);
             if (isPersisted) {
                 const { error: delError } = await supabase.from('appointments').delete().eq('id', appointment.id);
                 if (delError) throw delError;
@@ -798,7 +802,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const currentTimeMinutes = toMinutes(appointmentTime.slice(0, 5));
             const diff = Math.abs(apptTimeMinutes - currentTimeMinutes);
 
-            if (a.date !== appointmentDate || diff > 15) return false;
+            if (a.date !== appointmentDate) return false;
+            
+            // Catch exact duplicates (same date, same time) or overlaps
+            if (diff > 15) return false;
+            
             if (a.status === 'Cancelado') return false;
             // If it's already finished, we should probably warn or allow merging to fix duplication
 
@@ -1315,145 +1323,149 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true) => {
         if (isSaving) return;
 
-        if (restrictionData.isRestricted) {
-            alert(`⚠️ Agendamento Bloqueado\n\nMotivo: ${restrictionData.reason}`);
-            return;
-        }
-
-        const linesToUse = manualLines || lines;
-
-        // --- VALIDATE SELECTION ---
-        for (const line of linesToUse) {
-            if (!line.serviceId) {
-                alert('⚠️ OPS! SELECIONE O SERVIÇO\n\nPor favor, escolha o serviço desejado para cada procedimento antes de salvar.');
+        try {
+            if (restrictionData.isRestricted) {
+                alert(`⚠️ Agendamento Bloqueado\n\nMotivo: ${restrictionData.reason}`);
                 return;
             }
-        }
 
-        // --- VALIDATE SERVICES VS PROFESSIONALS ---
-        for (const line of linesToUse) {
-            if (!isServiceAllowed(line.serviceId, line.providerId)) {
-                const srv = services.find(s => s.id === line.serviceId);
-                const pro = providers.find(p => p.id === line.providerId);
-                alert(`⚠️ SERVIÇO INVÁLIDO\n\nO serviço "${srv?.name || 'Selecionado'}" não está habilitado para o(a) profissional "${pro?.name || 'Selecionado'}".\n\nPor favor, verifique as especialidades da profissional ou altere o serviço.`);
-                setIsSaving(false);
-                return;
-            }
-        }
+            const linesToUse = manualLines || lines;
 
-        if (customer.isBlocked) {
-            alert('⚠️ Cliente Bloqueada\n\nEsta cliente possui um bloqueio administrativo.');
-            return;
-        }
-
-        if (handleCheckConflict()) {
-            console.log('Conflict detected in handleSave');
-            return;
-        }
-
-        setIsSaving(true);
-        // Check for merge
-        if (await checkForCustomerConflictAndMerge()) {
-            console.log('Merge conflict detected or handled');
-            return;
-        }
-
-        const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
-
-        // --- HARD BLOCK DUPLICATED SLOTS ---
-        // Check for any non-cancelled appointment for the SAME CUSTOMER at the SAME TIME on the SAME DATE
-        // regardless of provider, because usually one client shouldn't have two overlapping records.
-        // If they do, they should be merged.
-        const existingRecord = allAppointments.find(a =>
-            a.id !== appointment.id &&
-            normalizeString(a.customerId) === normalizeString(customer.id) &&
-            a.date === appointmentDate &&
-            a.time.slice(0, 5) === appointmentTime.slice(0, 5) &&
-            a.status !== 'Cancelado'
-        );
-
-        if (existingRecord && isNew) {
-            // If it's the SAME provider, it's a hard duplicate
-            if (String(existingRecord.providerId) === String(lines[0].providerId)) {
-                alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.');
-                if (onSelectAppointment) onSelectAppointment(existingRecord);
-                setIsSaving(false);
-                return;
-            } else {
-                // If it's a DIFFERENT provider but SAME time, offer to merge instead of allowing a duplicate record
-                const confirmMerge = window.confirm(`⚠️ CONFLITO DE HORÁRIO\n\n${customer.name} já possui um agendamento às ${existingRecord.time} com outro(a) profissional nesta data.\n\nDeseja MESCLAR este novo serviço no agendamento existente? (Recomendado)`);
-                if (confirmMerge) {
-                    performMerge(existingRecord);
+            // --- VALIDATE SELECTION ---
+            for (const line of linesToUse) {
+                if (!line.serviceId) {
+                    alert('⚠️ OPS! SELECIONE O SERVIÇO\n\nPor favor, escolha o serviço desejado para cada procedimento antes de salvar.');
                     return;
                 }
             }
-        }
 
-        const linesToUseForSave = manualLines || lines;
-        const serviceNamesArray = linesToUseForSave.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
-        const uniqueNames = Array.from(new Set(serviceNamesArray));
-        const combinedNames = uniqueNames.join(' + ');
-        const extrasUnprocessed = linesToUseForSave.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
-            isCourtesy: l.isCourtesy,
-            discount: l.discount,
-            bookedPrice: l.unitPrice,
-            products: l.products,
-            startTime: l.startTime,
-            endTime: l.endTime,
-            clientName: l.clientName,
-            clientPhone: l.clientPhone,
-            quantity: l.quantity || 1,
-            status: l.status || 'Pendente',
-            startTimeActual: l.startTimeActual,
-            tipAmount: l.tipAmount
-        }));
+            // --- VALIDATE SERVICES VS PROFESSIONALS ---
+            for (const line of linesToUse) {
+                if (!isServiceAllowed(line.serviceId, line.providerId)) {
+                    const srv = services.find(s => s.id === line.serviceId);
+                    const pro = providers.find(p => p.id === line.providerId);
+                    alert(`⚠️ SERVIÇO INVÁLIDO\n\nO serviço "${srv?.name || 'Selecionado'}" não está habilitado para o(a) profissional "${pro?.name || 'Selecionado'}".\n\nPor favor, verifique as especialidades da profissional ou altere o serviço.`);
+                    return;
+                }
+            }
 
-        const extras = extrasUnprocessed;
+            if (customer.isBlocked) {
+                alert('⚠️ Cliente Bloqueada\n\nEsta cliente possui um bloqueio administrativo.');
+                return;
+            }
 
-        const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
+            if (handleCheckConflict()) {
+                console.log('Conflict detected in handleSave');
+                alert('⚠️ CONFLITO DE HORÁRIO\n\nEste(a) profissional já possui um agendamento no mesmo horário. Por favor, ajuste o horário ou escolha outro(a) profissional.');
+                return;
+            }
 
-        // Overall status optimization: if at least one is "Em Andamento", and global is "Em atendimento", keep "Em Andamento" or similar.
-        // But for now, let's keep the global status as the user sets it or as it was.
-        let finalGlobalStatus = status;
-        if (linesToUseForSave.some(l => l.status === 'Em Andamento') && (status === 'Aguardando' || status === 'Em atendimento' || status === 'Confirmado' || status === 'Pendente')) {
-            finalGlobalStatus = 'Em Andamento';
-        }
+            // --- START SAVING ---
+            setIsSaving(true);
 
-        const dataToSave = {
-            time: linesToUseForSave[0].startTime,
-            date: appointmentDate,
-            status: finalGlobalStatus,
-            combined_service_names: combinedNames,
-            service_id: linesToUseForSave[0].serviceId,
-            provider_id: linesToUseForSave[0].providerId,
-            booked_price: linesToUseForSave[0].unitPrice,
-            main_service_products: linesToUseForSave[0].products,
-            additional_services: extras,
-            applied_coupon: appliedCampaign?.couponCode,
-            discount_amount: couponDiscountAmount,
-            adjustment_amount: adjustmentAmount,
-            adjustment_reason: adjustmentReason,
-            customer_id: customer.id,
-            payments: payments,
-            end_time: linesToUseForSave[0].endTime,
-            tip_amount: linesToUseForSave.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
-            recurrence_id: recId,
-            quantity: linesToUseForSave[0].quantity || 1,
-            start_time_actual: linesToUse[0].startTimeActual,
-            whatsapp_response_needed: whatsappResponseNeeded
-        };
+            // Check for merge
+            if (await checkForCustomerConflictAndMerge()) {
+                console.log('Merge conflict detected or handled');
+                return;
+            }
 
-        try {
+            const isNew = !isUUID(appointment.id);
+
+            // --- HARD BLOCK DUPLICATED SLOTS ---
+            // Check for any non-cancelled appointment for the SAME CUSTOMER at the SAME TIME on the SAME DATE
+            const existingRecord = allAppointments.find(a =>
+                a.id !== appointment.id &&
+                normalizeString(a.customerId) === normalizeString(customer.id) &&
+                a.date === appointmentDate &&
+                a.time.substring(0, 5) === appointmentTime.substring(0, 5) &&
+                a.status !== 'Cancelado'
+            );
+
+            if (existingRecord && isNew) {
+                // If it's the SAME provider, it's a hard duplicate
+                if (String(existingRecord.providerId) === String(lines[0].providerId)) {
+                    alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.');
+                    if (onSelectAppointment) onSelectAppointment(existingRecord);
+                    return;
+                } else {
+                    // If it's a DIFFERENT provider but SAME time, offer to merge instead of allowing a duplicate record
+                    const confirmMerge = window.confirm(`⚠️ CONFLITO DE HORÁRIO\n\n${customer.name} já possui um agendamento às ${existingRecord.time} com outro(a) profissional nesta data.\n\nDeseja MESCLAR este novo serviço no agendamento existente? (Recomendado)`);
+                    if (confirmMerge) {
+                        await performMerge(existingRecord);
+                        return;
+                    }
+                }
+            }
+
+            const linesToUseForSave = manualLines || lines;
+            const serviceNamesArray = linesToUseForSave.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
+            const uniqueNames = Array.from(new Set(serviceNamesArray));
+            const combinedNames = uniqueNames.join(' + ');
+            const extrasUnprocessed = linesToUseForSave.slice(1).map(l => ({
+                serviceId: l.serviceId,
+                providerId: l.providerId,
+                isCourtesy: l.isCourtesy,
+                discount: l.discount,
+                bookedPrice: l.unitPrice,
+                products: l.products,
+                startTime: l.startTime,
+                endTime: l.endTime,
+                clientName: l.clientName,
+                clientPhone: l.clientPhone,
+                quantity: l.quantity || 1,
+                status: l.status || 'Pendente',
+                startTimeActual: l.startTimeActual,
+                tipAmount: l.tipAmount
+            }));
+
+            const extras = extrasUnprocessed;
+            const recId = isRecurring ? `rec-${Date.now()}` : appointment.recurrenceId;
+
+            let finalGlobalStatus = status;
+            
+            // If any line is in progress, the whole appointment should be "Em Andamento"
+            if (linesToUseForSave.some(l => l.status === 'Em Andamento') && 
+                (status === 'Aguardando' || status === 'Em atendimento' || status === 'Confirmado' || status === 'Pendente')) {
+                finalGlobalStatus = 'Em Andamento';
+            }
+
+            // IMPORTANT: If global status is "Confirmado" or "Pendente", ensure no active line is "Aguardando"
+            if (finalGlobalStatus === 'Confirmado' || finalGlobalStatus === 'Pendente') {
+                extras.forEach(ex => {
+                    if (ex.status === 'Aguardando') ex.status = 'Pendente';
+                });
+            }
+
+            const dataToSave = {
+                time: linesToUseForSave[0].startTime,
+                date: appointmentDate,
+                status: finalGlobalStatus,
+                combined_service_names: combinedNames,
+                service_id: linesToUseForSave[0].serviceId,
+                provider_id: linesToUseForSave[0].providerId,
+                booked_price: linesToUseForSave[0].unitPrice,
+                main_service_products: linesToUseForSave[0].products,
+                additional_services: extras,
+                applied_coupon: appliedCampaign?.couponCode,
+                discount_amount: couponDiscountAmount,
+                adjustment_amount: adjustmentAmount,
+                adjustment_reason: adjustmentReason,
+                customer_id: customer.id,
+                payments: payments,
+                end_time: linesToUseForSave[0].endTime,
+                tip_amount: linesToUseForSave.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+                recurrence_id: recId,
+                quantity: linesToUseForSave[0].quantity || 1,
+                start_time_actual: linesToUseForSave[0].startTimeActual,
+                whatsapp_response_needed: whatsappResponseNeeded
+            };
+
             // 0. Identify secondary appointments to "cancel/merge"
             const secondaryAppointmentIds = Array.from(new Set(
                 linesToUseForSave
                     .map(l => l.appointmentId)
-                    .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+                    .filter(id => id && id !== appointment.id && isUUID(id))
             ));
-
-
 
             let result;
             if (isNew) {
@@ -1497,7 +1509,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const bulkData = futureDates.map(d => ({
                     ...dataToSave,
                     date: d,
-                    status: 'Pendente' // Recurring future ones are usually pending
+                    status: 'Pendente'
                 }));
 
                 const { data: bulkSaved, error: bulkError } = await supabase.from('appointments').insert(bulkData).select();
@@ -1507,9 +1519,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             onUpdateAppointments(prev => {
                 const exists = prev.find(a => a.id === appointment.id);
-
-                // Map all saved records to local state format
-                // If we're doing an in-place save, keep additional_services with updated statuses
                 let newLocalAppts = allSaved.map(s => ({
                     ...appointment,
                     id: s.id,
@@ -1558,9 +1567,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     alert(`Agendamento e ${allSaved.length - 1} repetições criados com sucesso!`);
                 }
             }
-        } catch (error) {
-            console.error('Error saving appointment:', error);
-            alert('Erro ao salvar no banco de dados.');
+        } catch (error: any) {
+            console.error('Error in handleSave:', error);
+            if (error.code === '23505') {
+                alert('⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe nesta data.\n\nPor favor, unifique os agendamentos ou use horários diferentes.');
+            } else if (error.message?.includes('uuid')) {
+                alert('🔴 Erro de Identificador Inválido.\n\nO sistema tentou salvar um registro com ID temporário. Por favor, feche e abra o card de novo e tente salvar novamente.');
+            } else {
+                alert('Erro ao salvar no banco de dados. Verifique a console para mais detalhes.');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -2270,7 +2285,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             isCompanion: false,
             quantity: 1,
             tipAmount: 0,
-            status: (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento') ? 'Aguardando' : 'Pendente'
+            status: (appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento') ? 'Aguardando' : 'Pendente'
         }]);
     };
 
