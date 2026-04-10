@@ -13,6 +13,19 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
     const [endH, endM] = end.split(':').map(Number);
     return (endH * 60 + endM) - (startH * 60 + startM);
 };
+
+const getEffectiveStatus = (a: Appointment) => {
+    const statuses = [
+        a.status,
+        ...(a.additionalServices || []).map(s => s.status || 'Pendente')
+    ].filter(s => s !== 'Cancelado' && s !== 'Concluído');
+
+    if (statuses.length === 0) return a.status;
+    const anyInProgress = statuses.some(s => s === 'Em Andamento' || s === 'Em atendimento');
+    if (!anyInProgress) return statuses.includes('Aguardando') ? 'Aguardando' : a.status;
+    const anyWaiting = statuses.some(s => s === 'Aguardando' || s === 'Pendente' || s === 'Confirmado');
+    return anyWaiting ? 'Aguardando' : 'Em Andamento';
+};
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
     Clock, CircleCheck, AlertCircle, MessageSquare, MessageCircle, Filter, X,
@@ -1480,27 +1493,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {provAppts.map(appt => {
                                                     const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
                                                     const serviceName = appt.combinedServiceNames || services.find(s => s.id === appt.serviceId)?.name || 'Serviço';
-                                                    const myServices = [
-                                                        ...(String(appt.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase() ? [{ status: appt.status }] : []),
-                                                        ...(appt.additionalServices || [])
-                                                            .filter((s: any) => String(s.providerId).trim().toLowerCase() === String(p.id).trim().toLowerCase())
-                                                            .map((s: any) => ({ status: s.status }))
-                                                    ];
-                                                    let localStatus = myServices[0]?.status || appt.status;
-                                                    if ((appt.status === 'Em Andamento' || appt.status === 'Em atendimento') && !myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
-                                                        localStatus = 'Aguardando';
-                                                    } else if (myServices.some(ms => ms.status === 'Em Andamento' || ms.status === 'Em atendimento')) {
-                                                        localStatus = 'Em Andamento';
-                                                    }
-
-                                                    const statusColor =
-                                                        (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
-                                                            localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
-                                                                (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
-                                                                    localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
-                                                                        localStatus === 'Aguardando' ? 'bg-[#F7E8C9]' :
-                                                                            'bg-[#008877]';
-
+                                                    let localStatus = getEffectiveStatus(appt);
+                                                    const statusColor = (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
+                                                        localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
+                                                            (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
+                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                    localStatus === 'Aguardando' ? 'bg-[#F7E8C9]' :
+                                                                        'bg-[#008877]';
 
                                                     return (
                                                         <button
@@ -1724,10 +1723,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     // Overlap handling
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
-                                                                    let localStatus = myServices[0]?.status || appt.status;
-                                                                    if (appt.status === 'Em Andamento' || appt.status === 'Em atendimento') {
-                                                                        localStatus = 'Em Andamento';
-                                                                    }
+                                                                    let localStatus = getEffectiveStatus(appt);
+                                                                    const statusColor = (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
+                                                                        localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
+                                                                            (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
+                                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                                    localStatus === 'Aguardando' ? 'bg-[#F7E8C9]' :
+                                                                                        'bg-[#008877]';
 
                                                                     return (
                                                                         <DraggableAppointment
@@ -1861,7 +1863,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 item.ca.whatsappResponseNeeded ? 'bg-amber-400 text-amber-950 border border-amber-500' :
                                                                                 (item.ca.isRemake || item.ca.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 text-white' :
                                                                                 item.status === 'Confirmado' ? 'bg-[#01A4C6] text-white' :
-                                                                                item.status === 'Em Andamento' || item.status === 'Em atendimento' ? 'bg-[#22c55e] text-white' :
+                                                                                (item.status === 'Em Andamento' || item.status === 'Em atendimento') ? (getEffectiveStatus(item.ca) === 'Em Andamento' ? 'bg-[#22c55e] text-white' : 'bg-[#F7E8C9] text-amber-950 border border-amber-200') :
                                                                                 item.status === 'Aguardando' ? 'bg-[#F7E8C9] text-amber-950 border border-amber-200' :
                                                                                 item.status === 'Concluído' ? 'bg-[#E66A6E] text-white' :
                                                                                 'bg-[#008877] text-white'
