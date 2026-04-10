@@ -8,6 +8,8 @@ import { focusNfeService } from '../services/focusNfeService';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 const calculateEndTime = (startTime: string, durationMinutes: number, provider?: Provider, serviceName?: string) => {
     if (!startTime) return '';
 
@@ -243,8 +245,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     // --- REFRESH DATA ON OPEN TO PREVENT STALE STATE REGRESSIONS ---
     useEffect(() => {
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(appointment.id);
-        if (isUUID && mode !== 'CHECKOUT' && mode !== 'HISTORY' && !isRefreshing) {
+        const isAptPersisted = isUUID(appointment.id);
+        if (isAptPersisted && mode !== 'CHECKOUT' && mode !== 'HISTORY' && !isRefreshing) {
             const refreshData = async () => {
                 setIsRefreshing(true);
                 try {
@@ -1574,7 +1576,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             } else if (error.message?.includes('uuid')) {
                 alert('🔴 Erro de Identificador Inválido.\n\nO sistema tentou salvar um registro com ID temporário. Por favor, feche e abra o card de novo e tente salvar novamente.');
             } else {
-                alert('Erro ao salvar no banco de dados. Verifique a console para mais detalhes.');
+                alert(`Erro ao salvar no banco de dados.\n\nDetalhes: ${error.message || 'Erro desconhecido'}`);
             }
         } finally {
             setIsSaving(false);
