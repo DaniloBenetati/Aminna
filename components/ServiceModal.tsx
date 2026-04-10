@@ -890,7 +890,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             clientName: l.clientName,
             clientPhone: l.clientPhone,
             quantity: l.quantity || 1,
-            status: l.status,
+            status: l.status || 'Pendente',
             startTimeActual: l.startTimeActual
         }));
 

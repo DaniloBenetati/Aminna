@@ -15,6 +15,9 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
 };
 
 const getEffectiveStatus = (a: Appointment, providerId?: string) => {
+    // If the overall appointment is finished or canceled, that status should prevail for everyone
+    if (a.status === 'Concluído' || a.status === 'Cancelado') return a.status;
+
     // If providerId is specified, we filter to only consider services belonging to that professional.
     const relevantServices = [
         ...(a.providerId === providerId || !providerId ? [{ status: a.status }] : []),
