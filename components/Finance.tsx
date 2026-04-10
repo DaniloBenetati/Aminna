@@ -4553,28 +4553,26 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             : viewingDate.getMonth();
                                          
                                          const currentRealizedData = Array.from({ length: 12 }, (_, i) => {
-                                             // If viewing the whole year, the DRE already has the perfect aggregation for each month
+                                             let total = 0;
                                              if (timeView === 'year' && dreData?.monthlySnapshots && dreData.monthlySnapshots[i]) {
-                                                 const snapshot = dreData.monthlySnapshots[i];
-                                                 return { 
-                                                     total: snapshot.grossRevenue || 0,
-                                                     services: (snapshot.revenueServices || 0) + (snapshot.revenueTips || 0) + (snapshot.revenueAdjustments || 0),
-                                                     products: snapshot.revenueProducts || 0,
-                                                     projectedServices: 0
-                                                 };
+                                                 total = dreData.monthlySnapshots[i].grossRevenue || 0;
+                                             } else {
+                                                 const selDate = parseDateSafe(startDate);
+                                                 total = (yearlyBillingData?.currentYear && yearlyBillingData?.currentYear[i]) 
+                                                     ? yearlyBillingData.currentYear[i].total 
+                                                     : 0;
+                                                 
+                                                 if (i === selDate.getMonth()) {
+                                                     total = dreData.grossRevenue;
+                                                 }
                                              }
-                                             
-                                             // Fallback for single month view: the active month matches DRE, others use fetched yearly data
-                                             const selDate = parseDateSafe(startDate);
-                                             let val = (yearlyBillingData?.currentYear && yearlyBillingData?.currentYear[i]) 
-                                                 ? yearlyBillingData.currentYear[i].total 
-                                                 : 0;
-                                             
-                                             if (i === selDate.getMonth()) {
-                                                 val = dreData.grossRevenue;
-                                             }
-                                             
-                                             return { total: val, services: 0, products: 0, projectedServices: 0 };
+
+                                             return { 
+                                                 total,
+                                                 services: 0,
+                                                 products: 0,
+                                                 projectedServices: 0
+                                             };
                                          });
 
                                          // 2. BREAKDOWN FOR CURRENT MONTH MODAL (AI STRATEGIST)
@@ -4590,26 +4588,34 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                  const isProjected = ['PENDENTE', 'CONFIRMADO', 'EM ANDAMENTO', 'EM ATENDIMENTO', 'AGUARDANDO'].includes(status);
                                                  
                                                  if (isConcluido || isProjected) {
-                                                     const prod = calculateAppointmentProduction(a, services) || 0;
                                                      const tips = Number(a.tipAmount || 0) + (a.additionalServices || []).reduce((sum: number, s: any) => sum + Number(s.tipAmount || s.tip_amount || 0), 0);
-                                                     const totalVal = (prod + tips) || 0;
-
+                                                     
                                                      if (isConcluido) {
+                                                         const prod = calculateAppointmentProduction(a, services) || 0;
+                                                         const totalVal = (prod + tips) || 0;
                                                          currentRealizedData[mIdx].services += totalVal;
-                                                     } else {
-                                                         currentRealizedData[mIdx].projectedServices += totalVal;
-                                                     }
 
-                                                     // Breakdown only for the specific selected month
-                                                     if (mIdx === currentMonthIndex) {
-                                                         const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
-                                                         if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
-                                                         
-                                                         if (isConcluido) {
+                                                         if (mIdx === currentMonthIndex) {
+                                                             const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
+                                                             if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
                                                              serviceBreakdown[mainSvc].realized += totalVal;
                                                              serviceBreakdown[mainSvc].count++;
-                                                         } else {
-                                                             serviceBreakdown[mainSvc].projected += totalVal;
+                                                         }
+                                                     } else {
+                                                         const mainPrice = Number(a.bookedPrice ?? services.find(s => s.id === a.serviceId)?.price ?? 0);
+                                                         const mainQty = Number(a.quantity ?? 1);
+                                                         const extrasPrice = (a.additionalServices || []).reduce((sum: number, extra: any) => {
+                                                             const extraS = services.find(s => s.id === extra.serviceId);
+                                                             return sum + (Number(extra.bookedPrice ?? extraS?.price ?? 0) * Number(extra.quantity ?? 1));
+                                                         }, 0);
+                                                         const totalPotential = (mainPrice * mainQty) + extrasPrice + tips;
+
+                                                         currentRealizedData[mIdx].projectedServices += totalPotential;
+
+                                                         if (mIdx === currentMonthIndex) {
+                                                             const mainSvc = services.find(s => s.id === a.serviceId)?.name || 'Serviço';
+                                                             if (!serviceBreakdown[mainSvc]) serviceBreakdown[mainSvc] = { name: mainSvc, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
+                                                             serviceBreakdown[mainSvc].projected += totalPotential;
                                                              serviceBreakdown[mainSvc].projectedCount++;
                                                          }
                                                      }
@@ -4620,33 +4626,45 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                          // Current Month Sales Breakdown
                                          sales.forEach(s => {
                                              const dateObj = parseDateSafe(s.date);
-                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex) {
+                                             if (dateObj.getFullYear() === currentYear) {
+                                                 const mIdx = dateObj.getMonth();
                                                  const amount = s.totalAmount || 0;
-                                                 currentRealizedData[currentMonthIndex].products += amount;
+                                                 currentRealizedData[mIdx].products += amount;
 
-                                                 const origin = 'Produtos';
-                                                 if (!serviceBreakdown[origin]) serviceBreakdown[origin] = { name: origin, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
-                                                 serviceBreakdown[origin].realized += amount;
-                                                 serviceBreakdown[origin].count++;
+                                                 if (mIdx === currentMonthIndex) {
+                                                     const origin = 'Produtos';
+                                                     if (!serviceBreakdown[origin]) serviceBreakdown[origin] = { name: origin, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
+                                                     serviceBreakdown[origin].realized += amount;
+                                                     serviceBreakdown[origin].count++;
+                                                 }
                                              }
                                          });
 
                                          // Current Month Adjustments Breakdown
                                          expenses.forEach(e => {
                                              const dateObj = parseDateSafe(e.date);
-                                             if (dateObj.getFullYear() === currentYear && dateObj.getMonth() === currentMonthIndex) {
+                                             if (dateObj.getFullYear() === currentYear) {
+                                                 const mIdx = dateObj.getMonth();
                                                  const cleanCat = (e.category || '').toLowerCase();
+                                                 
                                                  if (e.dreClass === 'REVENUE' || cleanCat === 'ajuste de valor' || cleanCat === 'desconto concedido') {
                                                      const isRevenueClass = e.dreClass === 'REVENUE';
                                                      const val = isRevenueClass ? e.amount : -e.amount;
                                                      
-                                                     const key = isRevenueClass ? 'Receitas Diretas' : 'Ajustes';
-                                                     if (!serviceBreakdown[key]) serviceBreakdown[key] = { name: key, realized: 0, forecast: 0, count: 0 };
-                                                     serviceBreakdown[key].realized += val;
-                                                     serviceBreakdown[key].count++;
+                                                                                                           // Excluded from summary to match DRE Gross Revenue
+
+                                                     if (mIdx === currentMonthIndex) {
+                                                         const key = isRevenueClass ? 'Receitas Diretas' : 'Ajustes';
+                                                         if (!serviceBreakdown[key]) serviceBreakdown[key] = { name: key, realized: 0, forecast: 0, count: 0, projected: 0, projectedCount: 0 };
+                                                         serviceBreakdown[key].realized += val;
+                                                         serviceBreakdown[key].count++;
+                                                     }
                                                  }
                                              }
                                          });
+
+                                         // Finalize totals - Removed to match DRE
+                                         // currentRealizedData.forEach(d => d.total = d.services + d.products);
 
                                          const predictiveData = HISTORICAL_REVENUE.map((hist, index) => {
                                              const realizedValue = currentRealizedData[index].total;
@@ -4684,9 +4702,6 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <div className="flex flex-col gap-1">
                                                             <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter mb-0 flex items-baseline gap-2">
                                                                 {formatCurrency(realizedValue)}
-                                                                {currentMonthData['PROJETADO'] > 0 && (
-                                                                    <span className="text-[10px] text-emerald-500 font-bold">+ {formatCurrency(currentMonthData['PROJETADO'])} proj.</span>
-                                                                )}
                                                             </h3>
                                                             <div className="flex flex-col gap-1 mt-1">
                                                                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-zinc-800/50 pb-1">
@@ -4697,12 +4712,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     <span>Produtos</span>
                                                                     <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
                                                                 </div>
-                                                                {currentMonthData['PROJETADO'] > 0 && (
-                                                                    <div className="flex justify-between text-[10px] font-black uppercase text-indigo-500 pt-1">
-                                                                        <span>Projetado (Futuro)</span>
-                                                                        <span>{formatCurrency(currentMonthData['PROJETADO'])}</span>
-                                                                    </div>
-                                                                )}
+
                                                             </div>
                                                         </div>
                                                         
@@ -4712,11 +4722,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-1000 relative z-10" 
                                                                 style={{ width: `${Math.min(100, (realizedValue / targetToBeat) * 100)}%` }}
                                                             ></div>
-                                                            {/* Projected Progress (Shadow) */}
-                                                            <div 
-                                                                className="bg-indigo-400/30 h-full absolute top-0 left-0 transition-all duration-1000" 
-                                                                style={{ width: `${Math.min(100, ((realizedValue + currentMonthData['PROJETADO']) / targetToBeat) * 100)}%` }}
-                                                            ></div>
+
                                                             
                                                             <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white drop-shadow-sm uppercase z-20">
                                                                 {percentageAchieved.toFixed(1)}% Realizado
@@ -4729,11 +4735,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-amber-100 text-amber-700">
                                                                     Faltam R$ {gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta
                                                                 </p>
-                                                                {currentMonthData['PROJETADO'] > 0 && (
-                                                                    <p className="text-[8px] font-black text-slate-400 uppercase px-2">
-                                                                        Com projeção: R$ {Math.max(0, gapToTarget - currentMonthData['PROJETADO']).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} restante
-                                                                    </p>
-                                                                )}
+
                                                             </div>
                                                         ) : (
                                                             <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-emerald-100 text-emerald-700">
@@ -4813,10 +4815,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20"></div>
                                                             <span className="text-[9px] font-black text-slate-500 uppercase">Realizado</span>
                                                         </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/20 opacity-50 border border-indigo-500 border-dashed"></div>
-                                                            <span className="text-[9px] font-black text-slate-500 uppercase">Projetado</span>
-                                                        </div>
+
                                                     </div>
                                                 </div>
 
@@ -4851,18 +4850,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <Area type="monotone" dataKey={`${currentYear - 1}`} stroke="#94a3b8" strokeDasharray="6 6" strokeWidth={2} fill="none" dot={false} />
                                                             <Area type="monotone" dataKey={`META ${currentYear}`} stroke="#f59e0b" strokeWidth={4} fillOpacity={1} fill="url(#colorTarget)" dot={{ r: 4, fill: '#f59e0b', strokeWidth: 0 }} />
                                                             
-                                                            {/* Line for Realized + Projected (ghost line) */}
-                                                            <Area 
-                                                                type="monotone" 
-                                                                dataKey={(d) => d.monthIndex === currentMonthIndex ? (d['REALIZADO'] + d['PROJETADO']) : null} 
-                                                                name="PROJETADO" 
-                                                                stroke="#6366f1" 
-                                                                strokeWidth={3} 
-                                                                strokeDasharray="4 4" 
-                                                                fillOpacity={1} 
-                                                                fill="url(#colorProjected)" 
-                                                                dot={{ r: 4, fill: '#6366f1', strokeWidth: 0, opacity: 0.5 }} 
-                                                            />
+
 
                                                             <Area type="monotone" dataKey={(d) => d.monthIndex <= currentMonthIndex ? d['REALIZADO'] : null} name="REALIZADO" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorAchieved)" activeDot={{ r: 8, strokeWidth: 0 }} dot={{ r: 5, fill: '#10b981', strokeWidth: 0 }} />
                                                         </AreaChart>
@@ -6422,24 +6410,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <div className="flex-1 overflow-y-auto p-4 md:p-8">
                             <div className="space-y-3">
                                 <div className="grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <div className="col-span-6">Serviço / Item</div>
-                                    <div className="col-span-3 text-right">Projetado</div>
-                                    <div className="col-span-3 text-right">Realizado</div>
+                                    <div className="col-span-8">Serviço / Item</div>
+                                    <div className="col-span-4 text-right">Realizado</div>
                                 </div>
                                 {strategistDetailData.map((item, idx) => (
                                     <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800 items-center hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
-                                        <div className="col-span-6">
+                                        <div className="col-span-8">
                                             <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase">{item.name}</span>
                                             <div className="text-[9px] font-bold text-slate-400 mt-0.5">
                                                 {item.count > 0 && <span>{item.count} concluídos</span>}
-                                                {item.count > 0 && item.projectedCount > 0 && <span> • </span>}
-                                                {item.projectedCount > 0 && <span>{item.projectedCount} agendados</span>}
                                             </div>
                                         </div>
-                                        <div className="col-span-3 text-right text-[10px] font-mono font-bold text-indigo-500 italic">
-                                            {item.projected > 0 ? formatCurrency(item.projected) : '-'}
-                                        </div>
-                                        <div className="col-span-3 text-right text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
+                                        <div className="col-span-4 text-right text-[12px] font-mono font-black text-emerald-600 dark:text-emerald-400">
                                             {formatCurrency(item.realized)}
                                         </div>
                                     </div>
