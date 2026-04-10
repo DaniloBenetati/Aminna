@@ -22,9 +22,23 @@ const getEffectiveStatus = (a: Appointment) => {
 
     if (statuses.length === 0) return a.status;
     const anyInProgress = statuses.some(s => s === 'Em Andamento' || s === 'Em atendimento');
-    if (!anyInProgress) return statuses.includes('Aguardando') ? 'Aguardando' : a.status;
-    const anyWaiting = statuses.some(s => s === 'Aguardando' || s === 'Pendente' || s === 'Confirmado');
-    return anyWaiting ? 'Aguardando' : 'Em Andamento';
+    
+    // If any service is already in progress, the client is definitely at the salon.
+    // They only count as "Em Andamento" (Green) if NO other active services are "Aguardando/Pendente/Confirmado".
+    if (anyInProgress) {
+        const anyWaiting = statuses.some(s => s === 'Aguardando' || s === 'Pendente' || s === 'Confirmado');
+        return anyWaiting ? 'Aguardando' : 'Em Andamento';
+    }
+
+    // If NO service has started yet:
+    // We should only show "Aguardando" (Beige) if the main status is "Aguardando" (meaning check-in was done),
+    // OR if the main status is "Concluído" but there are still other services to be done.
+    if (a.status !== 'Aguardando' && a.status !== 'Em Andamento' && a.status !== 'Em atendimento') {
+        if (a.status === 'Concluído' && statuses.includes('Aguardando')) return 'Aguardando';
+        return a.status;
+    }
+
+    return statuses.includes('Aguardando') ? 'Aguardando' : a.status;
 };
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
