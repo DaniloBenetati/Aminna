@@ -145,39 +145,44 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         }, {} as Record<string, number>);
     }, [dailyRelTrans]);
 
-    const cardBreakdown = useMemo(() => {
-        const dailyApps = appointments.filter(app => {
-            const appDate = app.date?.substring(0, 10);
-            const payDate = app.paymentDate?.substring(0, 10);
-            return (appDate === dateStr || payDate === dateStr) && app.status === 'Concluído';
-        });
+    const methodBreakdown = useMemo(() => {
+        const breakdown: Record<string, { count: number, total: number, values: number[], brands?: Record<string, { count: number, total: number, values: number[] }> }> = {};
 
-        const breakdown: Record<string, { count: number, total: number }> = {};
+        dailyRelTrans.forEach(t => {
+            const method = t.paymentMethod || 'Outros';
+            if (!breakdown[method]) {
+                breakdown[method] = { count: 0, total: 0, values: [], brands: {} };
+            }
 
-        dailyApps.forEach(app => {
-            if (app.payments && app.payments.length > 0) {
-                app.payments.forEach(p => {
-                    const method = p.method || 'Outros';
-                    if (method.toLowerCase().includes('cartão')) {
-                        const brand = p.cardBrand || 'Outros';
-                        const key = `${method} - ${brand}`;
-                        if (!breakdown[key]) breakdown[key] = { count: 0, total: 0 };
-                        breakdown[key].count += 1;
-                        breakdown[key].total += p.amount;
+            breakdown[method].count += 1;
+            breakdown[method].total += t.amount;
+            breakdown[method].values.push(t.amount);
+
+            if (method.toLowerCase().includes('cartão')) {
+                // Try to find brand info
+                const appId = t.id.includes('app-') ? t.id.split('-').slice(2).join('-') : null;
+                const app = appointments.find(a => a.id === appId || (t.description && t.description.includes(a.id)));
+                
+                let brand = 'Outros';
+                if (app) {
+                    if (app.payments && app.payments.length > 0) {
+                        const brandMatch = app.payments.find(p => (p.method || '').toLowerCase() === method.toLowerCase())?.cardBrand;
+                        brand = brandMatch || app.payments[0].cardBrand || 'Outros';
+                    } else if ((app as any).cardBrand) {
+                        brand = (app as any).cardBrand;
                     }
-                });
-            } else {
-                const method = app.paymentMethod || 'Outros';
-                if (method.toLowerCase().includes('cartão')) {
-                    const key = `${method} - Outros`;
-                    if (!breakdown[key]) breakdown[key] = { count: 0, total: 0 };
-                    breakdown[key].count += 1;
-                    breakdown[key].total += (app.pricePaid || 0);
                 }
+
+                if (!breakdown[method].brands![brand]) {
+                    breakdown[method].brands![brand] = { count: 0, total: 0, values: [] };
+                }
+                breakdown[method].brands![brand].count += 1;
+                breakdown[method].brands![brand].total += t.amount;
+                breakdown[method].brands![brand].values.push(t.amount);
             }
         });
         return breakdown;
-    }, [appointments, dateStr]);
+    }, [dailyRelTrans, appointments]);
 
     const handlePrint = () => {
         const printContent = `
@@ -260,34 +265,33 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div class="divider"></div>
 
                 <div class="section-title">DETALHAMENTO POR MÉTODO:</div>
-                ${Object.entries(dailyTrans.reduce((acc: any, t: FinancialTransaction) => {
-            const method = t.paymentMethod || 'Outros';
-            if (!acc[method]) acc[method] = { count: 0, total: 0 };
-            acc[method].count += 1;
-            acc[method].total += (t.type === 'RECEITA' ? t.amount : -t.amount);
-            return acc;
-        }, {})).map(([method, data]: [string, any]) => {
+                ${Object.entries(methodBreakdown).map(([method, data]) => {
             const isCard = method.toLowerCase().includes('cartão');
             let methodHtml = `
-                <div class="row">
-                    <span>${method.toUpperCase()} (${data.count}x):</span>
-                    <span>R$ ${data.total.toFixed(2)}</span>
+                <div class="row" style="margin-top: 5px;">
+                    <span style="font-weight: bold;">${method.toUpperCase()} (${data.count}x):</span>
+                    <span style="font-weight: bold;">R$ ${data.total.toFixed(2)}</span>
                 </div>
             `;
             
-            if (isCard) {
-                const subItems = Object.entries(cardBreakdown)
-                    .filter(([key]) => key.startsWith(method))
-                    .map(([key, subData]) => {
-                        const brand = key.split(' - ')[1] || 'Outros';
-                        return `
-                            <div class="row" style="padding-left: 15px; font-size: 9px; opacity: 0.8;">
-                                <span>• ${brand.toUpperCase()} (${subData.count}x):</span>
-                                <span>R$ ${subData.total.toFixed(2)}</span>
-                            </div>
-                        `;
-                    }).join('');
-                if (subItems) methodHtml += subItems;
+            if (isCard && data.brands) {
+                const brandHtml = Object.entries(data.brands)
+                    .map(([brand, bData]) => `
+                        <div class="row" style="padding-left: 15px; font-size: 9px; opacity: 0.9; margin-top: 2px;">
+                            <span>• ${brand.toUpperCase()} (${bData.count}x):</span>
+                            <span>R$ ${bData.total.toFixed(2)}</span>
+                        </div>
+                        <div style="padding-left: 25px; font-size: 8px; color: #777; font-style: italic;">
+                            [${bData.values.map(v => `R$ ${v.toFixed(2)}`).join(' / ')}]
+                        </div>
+                    `).join('');
+                if (brandHtml) methodHtml += brandHtml;
+            } else {
+                methodHtml += `
+                    <div style="padding-left: 15px; font-size: 8px; color: #777; font-style: italic;">
+                        [${data.values.map(v => `R$ ${v.toFixed(2)}`).join(' / ')}]
+                    </div>
+                `;
             }
             
             return methodHtml;
@@ -386,16 +390,17 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         message += `\uD83D\uDCA0 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
         message += `*DETALHAMENTO POR MÉTODO:*\n`;
-        Object.entries(paymentMethods).forEach(([method, data]: [string, any]) => {
-            message += `\uD83D\uDD39 ${method} (${data.count}x): R$ ${data.total.toFixed(2)}\n`;
+        Object.entries(methodBreakdown).forEach(([method, data]) => {
+            const isCard = method.toLowerCase().includes('cartão');
+            message += `\uD83D\uDD39 *${method} (${data.count}x): R$ ${data.total.toFixed(2)}*\n`;
             
-            if (method.toLowerCase().includes('cartão')) {
-                Object.entries(cardBreakdown)
-                    .filter(([key]) => key.startsWith(method))
-                    .forEach(([key, subData]) => {
-                        const brand = key.split(' - ')[1] || 'Outros';
-                        message += `     \u25AB\uFE0F ${brand} (${subData.count}x): R$ ${subData.total.toFixed(2)}\n`;
-                    });
+            if (isCard && data.brands) {
+                Object.entries(data.brands).forEach(([brand, bData]) => {
+                    message += `     \u25AB\uFE0F ${brand} (${bData.count}x): R$ ${bData.total.toFixed(2)}\n`;
+                    message += `     \u20AB [${bData.values.map(v => v.toFixed(2)).join(' / ')}]\n`;
+                });
+            } else {
+                message += `     \u20AB [${data.values.map(v => v.toFixed(2)).join(' / ')}]\n`;
             }
         });
         message += `\n`;
@@ -486,7 +491,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
 
 
-            <div className={`grid grid-cols-1 ${showControls ? 'lg:grid-cols-2' : ''} gap-4 print:hidden`}>
+            <div className={`grid grid-cols-1 ${showControls ? 'lg:grid-cols-[1fr_1.3fr]' : ''} gap-4 print:hidden`}>
                 <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
                     <div className="p-2 overflow-y-auto max-h-[750px]">
@@ -571,31 +576,40 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                         <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><PenTool size={14} /> Conferência</h4></div>
                         <div className="p-4 space-y-4">
                             <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-slate-100 dark:border-zinc-800">
-                                <h5 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><Wallet size={10} /> Totais por Método</h5>
-                                <div className="space-y-1.5">
-                                    {Object.entries(paymentMethodsSummary).map(([method, amount]: [string, any]) => (
-                                        <div key={method} className="space-y-1">
-                                            <div className="flex justify-between items-center text-[10px]">
-                                                <span className="font-bold uppercase text-slate-700 dark:text-slate-300">{method}</span>
-                                                <span className="font-black text-slate-950 dark:text-white">R$ {amount.toFixed(2)}</span>
-                                            </div>
-                                            {method.toLowerCase().includes('cartão') && Object.entries(cardBreakdown)
-                                                .filter(([key]) => key.startsWith(method))
-                                                .map(([key, subData]) => {
-                                                    const brand = key.split(' - ')[1] || 'Outros';
-                                                    return (
-                                                        <div key={key} className="flex justify-between items-center text-[8px] pl-3 opacity-70">
-                                                            <span className="font-bold uppercase text-slate-500 dark:text-slate-400">• {brand}</span>
-                                                            <span className="font-black text-slate-700 dark:text-slate-300">R$ {subData.total.toFixed(2)}</span>
+                                <h5 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Wallet size={12} /> Totais por Método</h5>
+                                <div className="space-y-4">
+                                    {Object.entries(methodBreakdown).map(([method, data]) => {
+                                        const isCard = method.toLowerCase().includes('cartão');
+                                        return (
+                                            <div key={method} className="space-y-2">
+                                                <div className="flex justify-between items-center text-xs lg:text-sm">
+                                                    <span className="font-black uppercase text-slate-800 dark:text-white">{method}</span>
+                                                    <span className="font-black text-slate-950 dark:text-white">R$ {data.total.toFixed(2)}</span>
+                                                </div>
+                                                
+                                                {isCard && data.brands ? (
+                                                    Object.entries(data.brands).map(([brand, bData]) => (
+                                                        <div key={brand} className="space-y-1 ml-3 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">
+                                                            <div className="flex justify-between items-center text-[10px] lg:text-[11px]">
+                                                                <span className="font-bold uppercase text-slate-500">• {brand} ({bData.count}x)</span>
+                                                                <span className="font-black text-slate-700 dark:text-slate-300">R$ {bData.total.toFixed(2)}</span>
+                                                            </div>
+                                                            <div className="text-[9px] lg:text-[10px] text-zinc-500 dark:text-zinc-400 font-medium italic leading-relaxed">
+                                                                [{bData.values.map(v => v.toFixed(2)).join(' / ')}]
+                                                            </div>
                                                         </div>
-                                                    );
-                                                })
-                                            }
-                                        </div>
-                                    ))}
-                                    <div className="border-t border-slate-200 dark:border-zinc-700 my-1 pt-1 flex justify-between items-center text-[10px]">
-                                        <span className="font-black uppercase text-slate-950 dark:text-white">Total</span>
-                                        <span className="font-black text-slate-950 dark:text-white">R$ {Object.values(paymentMethodsSummary).reduce((a: any, b: any) => a + b, 0).toFixed(2)}</span>
+                                                    ))
+                                                ) : (
+                                                    <div className="pl-3 text-[9px] lg:text-[10px] text-zinc-500 dark:text-zinc-400 font-medium italic leading-relaxed">
+                                                        [{data.values.map(v => v.toFixed(2)).join(' / ')}]
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    <div className="border-t-2 border-slate-200 dark:border-zinc-700 mt-2 pt-2 flex justify-between items-center text-sm">
+                                        <span className="font-black uppercase text-slate-950 dark:text-white">Total Geral</span>
+                                        <span className="font-black text-slate-950 dark:text-white">R$ {totalRevenue.toFixed(2)}</span>
                                     </div>
                                 </div>
                             </div>

@@ -14,31 +14,42 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
     return (endH * 60 + endM) - (startH * 60 + startM);
 };
 
-const getEffectiveStatus = (a: Appointment) => {
-    const statuses = [
-        a.status,
-        ...(a.additionalServices || []).map(s => s.status || 'Pendente')
-    ].filter(s => s !== 'Cancelado' && s !== 'Concluído');
-
-    if (statuses.length === 0) return a.status;
-    const anyInProgress = statuses.some(s => s === 'Em Andamento' || s === 'Em atendimento');
+const getEffectiveStatus = (a: Appointment, providerId?: string) => {
+    // If providerId is specified, we filter to only consider services belonging to that professional.
+    const relevantServices = [
+        ...(a.providerId === providerId || !providerId ? [{ status: a.status }] : []),
+        ...(a.additionalServices || [])
+            .filter(s => s.providerId === providerId || !providerId)
+            .map(s => ({ status: s.status || 'Pendente' }))
+    ];
     
-    // If any service is already in progress, the client is definitely at the salon.
-    // They only count as "Em Andamento" (Green) if NO other active services are "Aguardando/Pendente/Confirmado".
+    const activeStatuses = relevantServices
+        .map(s => s.status)
+        .filter(s => s !== 'Cancelado' && s !== 'Concluído');
+
+    // If no active services remain for this context, return the main status
+    if (activeStatuses.length === 0) return a.status;
+
+    const anyInProgress = activeStatuses.some(s => s === 'Em Andamento' || s === 'Em atendimento');
+    
+    // IF we are in a provider-specific context (individual box):
+    // If anything for THIS provider is in progress, the box should be green.
+    if (providerId && anyInProgress) return 'Em Andamento';
+
+    // Global context or multiple services for same provider:
+    // If anything is in progress but others are still waiting, keep it as "Aguardando" 
+    // to signal the client is still at the reception/waiting for some part of the service.
+    // However, the user explicitly asked for "independent" colors in the grid.
     if (anyInProgress) {
-        const anyWaiting = statuses.some(s => s === 'Aguardando' || s === 'Pendente' || s === 'Confirmado');
+        const anyWaiting = activeStatuses.some(s => s === 'Aguardando' || s === 'Pendente' || s === 'Confirmado');
         return anyWaiting ? 'Aguardando' : 'Em Andamento';
     }
 
-    // If NO service has started yet:
-    // We should only show "Aguardando" (Beige) if the main status is "Aguardando" (meaning check-in was done),
-    // OR if the main status is "Concluído" but there are still other services to be done.
-    if (a.status !== 'Aguardando' && a.status !== 'Em Andamento' && a.status !== 'Em atendimento') {
-        if (a.status === 'Concluído' && statuses.includes('Aguardando')) return 'Aguardando';
-        return a.status;
-    }
+    // Prioritize "Aguardando" (Check-in done)
+    if (activeStatuses.includes('Aguardando')) return 'Aguardando';
 
-    return statuses.includes('Aguardando') ? 'Aguardando' : a.status;
+    // Default to the first active status (e.g. Confirmado)
+    return activeStatuses[0];
 };
 import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
@@ -1507,7 +1518,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {provAppts.map(appt => {
                                                     const customer = customers.find(c => String(c.id).trim().toLowerCase() === String(appt.customerId).trim().toLowerCase());
                                                     const serviceName = appt.combinedServiceNames || services.find(s => s.id === appt.serviceId)?.name || 'Serviço';
-                                                    let localStatus = getEffectiveStatus(appt);
+                                                    let localStatus = getEffectiveStatus(appt, p.id);
                                                     const statusColor = (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
                                                         localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
                                                             (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
@@ -1737,7 +1748,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                     // Overlap handling
                                                                     const width = 100 / slotAppointments.length;
                                                                     const left = idx * width;
-                                                                    let localStatus = getEffectiveStatus(appt);
+                                                                    let localStatus = getEffectiveStatus(appt, p.id);
                                                                     const statusColor = (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-500' :
                                                                         localStatus === 'Concluído' ? 'bg-[#E66A6E]' :
                                                                             (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
@@ -2438,7 +2449,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isFinanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-5xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
+                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-6xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                                 <div className="flex items-center gap-6">
                                     <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
