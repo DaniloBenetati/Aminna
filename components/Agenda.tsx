@@ -1821,12 +1821,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 )}
 
                                                                                 {/* HOVER TOOLTIP */}
-                                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-80 bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-[420px] bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-6 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
                                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
                                                                                         <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
-                                                                                        <div>
-                                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{customer?.name || 'Cliente Desconhecida'}</p>
-                                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase">
+                                                                                        <div className="flex flex-col">
+                                                                                            {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                                                <div className="mb-2">
+                                                                                                    <span className="bg-indigo-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full uppercase shadow-sm">1º Agendamento</span>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            <p className="text-[13px] font-black text-slate-900 dark:text-white uppercase tracking-wider leading-tight">{customer?.name || 'Cliente Desconhecida'}</p>
+                                                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1 uppercase mt-1">
                                                                                                 <CalendarIcon size={12} /> {gridDateStr.split('-').reverse().join('/')}
                                                                                             </p>
                                                                                         </div>

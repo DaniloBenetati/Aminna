@@ -5,6 +5,7 @@ import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentS
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
+import { isFirstAppointment } from '../services/financialService';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
@@ -2524,7 +2525,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     ) : (
                         <>
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
-                                <div className="min-w-0 flex-1">
+                                <div className="flex flex-col">
+                                    {customer?.id && isFirstAppointment(customer.id, appointmentDate, allAppointments) && (
+                                        <div className="mb-2">
+                                            <span className="bg-indigo-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full uppercase shadow-sm">1º Agendamento</span>
+                                        </div>
+                                    )}
                                     <h2 className="text-lg font-black text-slate-950 dark:text-white leading-tight uppercase truncate">{customer.name}</h2>
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
