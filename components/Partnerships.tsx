@@ -16,6 +16,7 @@ interface PartnershipsProps {
   appointments: Appointment[];
   customers: Customer[];
   services: Service[];
+  providers: Provider[];
 }
 
 export const Partnerships: React.FC<PartnershipsProps> = ({ 
@@ -27,7 +28,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   setPartnerExchanges,
   appointments,
   customers,
-  services
+  services,
+  providers
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS'>('INFLUENCERS');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +51,12 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   const [editingCampaign, setEditingCampaign] = useState<Partial<Campaign> | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [isDrilldownModalOpen, setIsDrilldownModalOpen] = useState(false);
+  const [selectedCouponForDrilldown, setSelectedCouponForDrilldown] = useState<string | null>(null);
+  const [drilldownDateRange, setDrilldownDateRange] = useState({
+    start: '', // Empty means 'from the beginning'
+    end: ''    // Empty means 'until today'
+  });
 
   // Dynamic social media tags
   const [socialMediaInputs, setSocialMediaInputs] = useState<string[]>(['']);
@@ -58,9 +66,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   const campaignsWithStats = campaigns.map(c => {
     const matchingAppts = appointments.filter(a => 
       a.appliedCoupon === c.couponCode && 
-      a.status === 'Concluído' &&
-      a.date >= analysisDateRange.start &&
-      a.date <= analysisDateRange.end
+      a.status === 'Concluído'
     );
     const dynamicUseCount = matchingAppts.length;
     const dynamicRevenue = matchingAppts.reduce((acc, a) => acc + (a.pricePaid || 0), 0);
@@ -89,7 +95,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   const topCampaign = [...campaignsWithStats].sort((a, b) => b.totalRevenueGenerated - a.totalRevenueGenerated)[0];
   const uniqueCouponCustomers = new Set(
     appointments
-      .filter(a => a.appliedCoupon && a.status === 'Concluído' && a.date >= analysisDateRange.start && a.date <= analysisDateRange.end)
+      .filter(a => a.appliedCoupon && a.status === 'Concluído')
       .map(a => a.customerId)
   ).size;
 
@@ -703,7 +709,16 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 <div className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 rounded-lg text-[8px] font-black uppercase text-slate-500 whitespace-nowrap">Usos: {c.useCount}/{c.maxUses}</div>
-                                <div className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-[8px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap" title="Faturamento Gerado">Fat: R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+                                <div 
+                                  onClick={() => {
+                                    setSelectedCouponForDrilldown(c.couponCode);
+                                    setIsDrilldownModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-[8px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-800/40 transition-all hover:scale-105" 
+                                  title="Clique para ver clientes (Faturamento Gerado)"
+                                >
+                                  Fat: R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                </div>
                                 <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-[8px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {(c.investmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
                               </div>
                             </div>
@@ -1068,51 +1083,193 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
         </div>
       )}
 
-      {isCampaignModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border-2 border-black">
-            <div className="px-6 py-4 bg-indigo-700 text-white flex justify-between items-center">
-              <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Tag size={18} /> {editingCampaign?.id ? 'Atualizar Cupom' : 'Novo Cupom'}</h3>
-              <button onClick={() => setIsCampaignModalOpen(false)}><X size={24} /></button>
+      {isDrilldownModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm transition-all animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.2)] w-full max-w-6xl overflow-hidden border border-slate-200 dark:border-zinc-800 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-300">
+            {/* Clean Header */}
+            <div className="px-10 py-10 bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-start flex-shrink-0">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-2 h-8 bg-indigo-600 rounded-full" />
+                  <h3 className="font-black text-2xl text-slate-900 dark:text-white tracking-tight uppercase">Detalhamento de Conversão</h3>
+                </div>
+                <div className="flex items-center gap-6 mt-4">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Campanha Ativa</span>
+                    <span className="text-xs font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800 flex items-center gap-2">
+                       <Tag size={12} /> {selectedCouponForDrilldown}
+                    </span>
+                  </div>
+                  
+                  <div className="w-px h-10 bg-slate-100 dark:bg-zinc-800" />
+                  
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Filtrar por Período</span>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="date"
+                        value={drilldownDateRange.start}
+                        onChange={(e) => setDrilldownDateRange(prev => ({ ...prev, start: e.target.value }))}
+                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                      <span className="text-slate-300">/</span>
+                      <input 
+                        type="date"
+                        value={drilldownDateRange.end}
+                        onChange={(e) => setDrilldownDateRange(prev => ({ ...prev, end: e.target.value }))}
+                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                      {(drilldownDateRange.start || drilldownDateRange.end) && (
+                        <button 
+                          onClick={() => setDrilldownDateRange({ start: '', end: '' })}
+                          className="ml-2 text-[9px] font-black text-rose-500 uppercase hover:underline"
+                        >
+                          Limpar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsDrilldownModalOpen(false);
+                  setSelectedCouponForDrilldown(null);
+                }}
+                className="p-3 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-950 dark:hover:text-white rounded-2xl transition-all border border-slate-100 dark:border-zinc-700 hover:shadow-sm"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <form onSubmit={handleSaveCampaign} className="p-6 md:p-8 space-y-4">
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Atrelar ao Parceiro</label>
-                <select name="partnerId" defaultValue={editingCampaign?.partnerId || ''} required className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600">
-                  <option value="">Selecione...</option>
-                  {partners.filter(p => !p.partnerType || p.partnerType === 'Influenciador').map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Nome do Cupom</label>
-                <input name="name" required defaultValue={editingCampaign?.name || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="Ex: Campanha Março" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Código</label>
-                  <input name="couponCode" required defaultValue={editingCampaign?.couponCode || ''} className="w-full p-4 bg-indigo-50 text-indigo-800 font-mono font-black rounded-2xl text-xs outline-none focus:border-indigo-600 uppercase" placeholder="CODIGO10" />
+            
+            {/* Clean Content */}
+            <div className="flex-1 overflow-y-auto p-10">
+              {appointments.filter(a => 
+                a.appliedCoupon === selectedCouponForDrilldown && 
+                a.status === 'Concluído' &&
+                (!drilldownDateRange.start || a.date >= drilldownDateRange.start) &&
+                (!drilldownDateRange.end || a.date <= drilldownDateRange.end)
+              ).length > 0 ? (
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="w-full">
+                    <thead>
+                      <tr>
+                        <th className="text-left py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">Cliente</th>
+                        <th className="text-left py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">WhatsApp</th>
+                        <th className="text-left py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">Data Atendimento</th>
+                        <th className="text-left py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">Profissional</th>
+                        <th className="text-left py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">Serviço Realizado</th>
+                        <th className="text-right py-4 px-2 text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] border-b border-slate-100 dark:border-zinc-800 pb-6 whitespace-nowrap">Faturamento</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 dark:divide-zinc-800/50">
+                      {appointments
+                        .filter(a => 
+                          a.appliedCoupon === selectedCouponForDrilldown && 
+                          a.status === 'Concluído' &&
+                          (!drilldownDateRange.start || a.date >= drilldownDateRange.start) &&
+                          (!drilldownDateRange.end || a.date <= drilldownDateRange.end)
+                        )
+                        .sort((a, b) => b.date.localeCompare(a.date))
+                        .map(appt => {
+                          const customer = customers.find(c => c.id === appt.customerId);
+                          const service = services.find(s => s.id === appt.serviceId);
+                          const provider = providers.find(p => p.id === appt.providerId);
+                          return (
+                            <tr key={appt.id} className="hover:bg-slate-50/40 dark:hover:bg-zinc-800/30 transition-all group">
+                              <td className="py-6 px-2">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                                    {customer?.name?.substring(0, 2) || '??'}
+                                  </div>
+                                  <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                                    {customer?.name || 'Cliente Desconhecido'}
+                                  </p>
+                                </div>
+                              </td>
+                              <td className="py-6 px-2">
+                                {customer?.phone ? (
+                                  <a 
+                                    href={`https://wa.me/55${customer.phone.replace(/\D/g, '')}`} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5"
+                                  >
+                                    <Smartphone size={14} className="text-indigo-400" />
+                                    {customer.phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-[10px] font-bold text-slate-300 italic">N/I</span>
+                                )}
+                              </td>
+                              <td className="py-6 px-2">
+                                <p className="text-[11px] font-black text-slate-500 font-mono">
+                                  {new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR')}
+                                </p>
+                              </td>
+                              <td className="py-6 px-2">
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg">
+                                  {provider?.nickname || provider?.name || '---'}
+                                </span>
+                              </td>
+                              <td className="py-6 px-2">
+                                <p className="text-[10px] font-black text-slate-500 dark:text-slate-500 uppercase tracking-widest max-w-[200px] truncate">
+                                  {service?.name || 'Serviço'}
+                                </p>
+                              </td>
+                              <td className="py-6 px-2 text-right">
+                                <p className="text-sm font-black text-slate-900 dark:text-white tracking-tighter">
+                                  R$ {(appt.pricePaid || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </p>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Desconto</label>
-                  <input name="discountValue" type="number" step="0.01" required defaultValue={editingCampaign?.discountValue || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="10.00" />
-                  <input type="hidden" name="discountType" value="PERCENTAGE" />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-40">
+                  <div className="w-16 h-16 rounded-full bg-slate-50 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                    <Search size={24} className="text-slate-300" />
+                  </div>
+                  <p className="font-black text-slate-400 uppercase tracking-widest text-[10px]">Sem registros encontrados</p>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Limite de Usos</label>
-                  <input name="maxUses" type="number" required defaultValue={editingCampaign?.maxUses || 100} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Investimento (R$)</label>
-                  <input name="investmentValue" type="number" step="0.01" required defaultValue={editingCampaign?.investmentValue || 0} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="0.00" />
-                </div>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Descartar</button>
-                <button type="submit" className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-indigo-800 transition-all">Salvar Cupom</button>
-              </div>
-            </form>
+              )}
+            </div>
+
+            {/* Clean Footer */}
+            <div className="px-10 py-10 bg-slate-50 dark:bg-zinc-800/30 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+               <div className="flex flex-col">
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Volume Total</p>
+                 <div className="flex items-baseline gap-2">
+                   <p className="text-3xl font-black text-slate-900 dark:text-white leading-none">
+                     {appointments.filter(a => 
+                        a.appliedCoupon === selectedCouponForDrilldown && 
+                        a.status === 'Concluído' &&
+                        (!drilldownDateRange.start || a.date >= drilldownDateRange.start) &&
+                        (!drilldownDateRange.end || a.date <= drilldownDateRange.end)
+                     ).length}
+                   </p>
+                   <span className="text-[10px] font-black text-slate-400 uppercase">Clientes</span>
+                 </div>
+               </div>
+               
+               <div className="flex flex-col text-right">
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Receita Gerada</p>
+                 <p className="text-3xl font-black text-indigo-600 dark:text-indigo-400 leading-none tracking-tighter">
+                   R$ {appointments
+                     .filter(a => 
+                       a.appliedCoupon === selectedCouponForDrilldown && 
+                       a.status === 'Concluído' &&
+                       (!drilldownDateRange.start || a.date >= drilldownDateRange.start) &&
+                       (!drilldownDateRange.end || a.date <= drilldownDateRange.end)
+                     )
+                     .reduce((sum, a) => sum + (a.pricePaid || 0), 0)
+                     .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                 </p>
+               </div>
+            </div>
           </div>
         </div>
       )}
