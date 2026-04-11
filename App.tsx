@@ -842,7 +842,33 @@ const App: React.FC = () => {
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
-        return <Partnerships partners={partners} setPartners={setPartners} partnerExchanges={partnerExchanges} setPartnerExchanges={setPartnerExchanges} campaigns={campaigns} setCampaigns={setCampaigns} appointments={appointments} customers={customers} services={services} providers={providers} />;
+        return (
+          <Partnerships 
+            partners={partners} 
+            setPartners={setPartners} 
+            partnerExchanges={partnerExchanges} 
+            setPartnerExchanges={setPartnerExchanges} 
+            campaigns={campaigns} 
+            setCampaigns={setCampaigns} 
+            appointments={appointments} 
+            customers={customers} 
+            services={services} 
+            providers={providers} 
+            onNavigate={(view, payload) => {
+              if (view === ViewState.CLIENTES) {
+                if (typeof payload === 'string') {
+                  setSelectedCustomerId(payload);
+                } else if (payload && typeof payload === 'object' && payload.id) {
+                  setSelectedCustomerId(payload.id);
+                  if (payload.returnTo) {
+                    setReturnView(payload.returnTo);
+                  }
+                }
+              }
+              setCurrentView(view);
+            }} 
+          />
+        );
       case ViewState.COPA:
         return (
           <Copa

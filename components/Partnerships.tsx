@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CircleCheck, ChevronDown, Gift, Package, DollarSign, Share2 } from 'lucide-react';
-import { Partner, Campaign, PartnerExchange, Appointment, Customer, Service } from '../types';
+import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CircleCheck, ChevronDown, Gift, Package, DollarSign, Share2, History, Clock, Sparkles, Star } from 'lucide-react';
+import { Partner, Campaign, PartnerExchange, Appointment, Customer, Service, Provider, ViewState } from '../types';
 import { PartnerProducts } from './PartnerProducts';
 
 interface PartnershipsProps {
@@ -17,6 +17,7 @@ interface PartnershipsProps {
   customers: Customer[];
   services: Service[];
   providers: Provider[];
+  onNavigate: (view: ViewState, payload?: any) => void;
 }
 
 export const Partnerships: React.FC<PartnershipsProps> = ({ 
@@ -29,7 +30,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   appointments,
   customers,
   services,
-  providers
+  providers,
+  onNavigate
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS'>('INFLUENCERS');
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,13 +52,17 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Partial<Campaign> | null>(null);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [localSelectedCustomerId, setLocalSelectedCustomerId] = useState<string | null>(null);
   const [isDrilldownModalOpen, setIsDrilldownModalOpen] = useState(false);
   const [selectedCouponForDrilldown, setSelectedCouponForDrilldown] = useState<string | null>(null);
   const [drilldownDateRange, setDrilldownDateRange] = useState({
     start: '', // Empty means 'from the beginning'
     end: ''    // Empty means 'until today'
   });
+  
+  // Client History State
+  const [selectedCustomerForHistory, setSelectedCustomerForHistory] = useState<Customer | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   // Dynamic social media tags
   const [socialMediaInputs, setSocialMediaInputs] = useState<string[]>(['']);
@@ -108,7 +114,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
     setEditingPartner(partner);
     setCustomerSearch('');
     setIsCustomerDropdownOpen(false);
-    setSelectedCustomerId(partner?.linkedCustomerId || null);
+    setLocalSelectedCustomerId(partner?.linkedCustomerId || null);
     if (partner) {
       if (partner.socialMediaList && partner.socialMediaList.length > 0) {
         setSocialMediaInputs(partner.socialMediaList);
@@ -168,7 +174,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       notes: getVal('notes'),
       partner_type: 'Influenciador',
       active: editingPartner ? editingPartner.active : true,
-      linked_customer_id: selectedCustomerId // Use state directly
+      linked_customer_id: localSelectedCustomerId // Use state directly
     };
 
     try {
@@ -1008,7 +1014,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                               type="button"
                               onClick={() => {
                                 setCustomerSearch(c.name);
-                                setSelectedCustomerId(c.id);
+                                setLocalSelectedCustomerId(c.id);
                                 setIsCustomerDropdownOpen(false);
                               }}
                               className="w-full px-4 py-3 text-left hover:bg-slate-50 dark:hover:bg-zinc-800 flex items-center justify-between border-b border-slate-50 dark:border-zinc-800 last:border-0 group/item"
@@ -1029,21 +1035,21 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                         )}
                       </div>
                     )}
-                    <input type="hidden" name="linkedCustomerId" value={selectedCustomerId || ''} />
+                    <input type="hidden" name="linkedCustomerId" value={localSelectedCustomerId || ''} />
                     
                     {(!isCustomerDropdownOpen || !customerSearch) && (
                       <div className="mt-2 flex flex-col gap-2">
-                        {selectedCustomerId ? (
+                        {localSelectedCustomerId ? (
                           <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800">
                             <CircleCheck size={14} className="text-indigo-600" />
                             <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">
-                              Vinculado: {customers.find(c => c.id === selectedCustomerId)?.name || 'Cliente Selecionado'}
+                              Vinculado: {customers.find(c => c.id === localSelectedCustomerId)?.name || 'Cliente Selecionado'}
                             </span>
                             <button 
                               type="button" 
                               onClick={() => {
                                 setCustomerSearch('');
-                                setSelectedCustomerId(null);
+                                setLocalSelectedCustomerId(null);
                               }}
                               className="ml-auto text-rose-500 hover:text-rose-600"
                             >
@@ -1179,12 +1185,20 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                             <tr key={appt.id} className="hover:bg-slate-50/40 dark:hover:bg-zinc-800/30 transition-all group">
                               <td className="py-6 px-2">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase">
+                                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase shrink-0">
                                     {customer?.name?.substring(0, 2) || '??'}
                                   </div>
-                                  <p className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                                  <button 
+                                    onClick={() => {
+                                      if (customer) {
+                                        setSelectedCustomerForHistory(customer);
+                                        setIsHistoryModalOpen(true);
+                                      }
+                                    }}
+                                    className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-tight hover:text-indigo-600 transition-colors text-left"
+                                  >
                                     {customer?.name || 'Cliente Desconhecido'}
-                                  </p>
+                                  </button>
                                 </div>
                               </td>
                               <td className="py-6 px-2">
@@ -1269,6 +1283,137 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                      .toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                  </p>
                </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Histórico da Cliente Modal */}
+      {isHistoryModalOpen && selectedCustomerForHistory && (
+        <div className="fixed inset-0 bg-black/80 z-[150] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white dark:bg-zinc-950 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
+            {/* Header */}
+            <div className="p-8 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner">
+                  <History size={24} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight leading-none">Histórico da Cliente</h3>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mt-1.5">{selectedCustomerForHistory.name}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsHistoryModalOpen(false);
+                  setSelectedCustomerForHistory(null);
+                }} 
+                className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"
+              >
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            {/* Content: Timeline */}
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-white dark:bg-zinc-950 scrollbar-hide">
+              {(() => {
+                const clientAppointments = appointments
+                  .filter(a => a.customerId === selectedCustomerForHistory.id && a.status === 'Concluído')
+                  .sort((a, b) => b.date.localeCompare(a.date));
+
+                if (clientAppointments.length === 0) {
+                  return (
+                    <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                      <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm">
+                        <Calendar size={32} />
+                      </div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum atendimento realizado ainda</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-zinc-800 before:to-transparent">
+                    {clientAppointments.map((appt) => {
+                      const svc = services.find(s => s.id === appt.serviceId);
+                      const prov = providers.find(p => p.id === appt.providerId);
+                      return (
+                        <div key={appt.id} className="relative flex items-start gap-6 group">
+                          {/* Timeline Circle */}
+                          <div className="absolute left-0 mt-2 w-10 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-950 border-2 border-indigo-500 flex items-center justify-center shadow-md animate-in zoom-in duration-300">
+                              <CircleCheck size={18} className="text-indigo-500" />
+                            </div>
+                          </div>
+
+                          {/* Card */}
+                          <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
+                                  {new Date(appt.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                </p>
+                                <h4 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight">{svc?.name || 'Serviço'}</h4>
+                              </div>
+                              <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase shadow-sm">SISTEMA</span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 mb-4">
+                              <div className="flex items-center gap-1.5">
+                                <Users size={12} className="text-slate-400" />
+                                <span>PROFISSIONAL: <span className="text-slate-900 dark:text-white uppercase">{prov?.name || 'Não informado'}</span></span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-900 dark:text-white font-black">R$ {(appt.pricePaid || 0).toFixed(2)}</span>
+                              </div>
+                            </div>
+
+                            {/* Coupon Tracking */}
+                            {appt.appliedCoupon && (
+                              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-3 py-1.5 rounded-xl w-fit mt-2">
+                                <Tag size={12} className="text-emerald-600 dark:text-emerald-400" />
+                                <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">CUPOM UTILIZADO: {appt.appliedCoupon}</span>
+                              </div>
+                            )}
+
+                            {appt.feedback && (
+                              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex items-start gap-2 theme-indigo">
+                                <span className="text-indigo-400 text-lg leading-none">“</span>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 italic font-medium leading-relaxed">
+                                  {appt.feedback}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Footer */}
+            <div className="p-8 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/50 flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  onNavigate(ViewState.CLIENTES, { id: selectedCustomerForHistory.id, returnTo: ViewState.PARTNERSHIPS });
+                  setIsHistoryModalOpen(false);
+                  setSelectedCustomerForHistory(null);
+                  setIsDrilldownModalOpen(false);
+                }}
+                className="w-full py-5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-3xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
+              >
+                <Users size={18} /> Gerenciar Cliente Completo
+              </button>
+              <button 
+                onClick={() => {
+                  setIsHistoryModalOpen(false);
+                  setSelectedCustomerForHistory(null);
+                }}
+                className="w-full py-3 text-slate-400 font-bold uppercase text-[9px] tracking-widest hover:text-slate-600 transition-colors"
+              >
+                Voltar ao Detalhamento
+              </button>
             </div>
           </div>
         </div>
