@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
-import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
@@ -57,6 +57,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const [filterPartner, setFilterPartner] = useState('all');
     const [filterChannel, setFilterChannel] = useState('all'); // New Channel Filter
     const [showFilters, setShowFilters] = useState(false);
+    const [isChurnModalOpen, setIsChurnModalOpen] = useState(false);
+    const [churnModalTab, setChurnModalTab] = useState<'loyal' | 'new'>('loyal');
 
     // --- HELPERS ---
     const navigateDate = (direction: 'prev' | 'next') => {
@@ -578,37 +580,62 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             recurringRevenue: 0,
             recurringAppointments: 0,
             churnRiskCount: 0,
+            churnRiskClients: [] as { id: string, name: string, phone: string, lastVisit: string, avgTicket: number, daysInactive: number }[],
+            oneTimeOnlyClients: [] as { id: string, name: string, phone: string, lastVisit: string, avgTicket: number, daysInactive: number }[],
             avgFrequency: 0,
-            secondVisitConversion: 0
+            secondVisitConversion: 0,
+            realChurnRate: 0
         };
 
         const now = new Date();
-        const churnThreshold = 45 * 24 * 60 * 60 * 1000; // 45 dias
+        const churnThreshold = 45 * 24 * 60 * 60 * 1000; // 45 dias para fiéis
+        const oneTimeThreshold = 30 * 24 * 60 * 60 * 1000; // 30 dias para novos
 
         customers.forEach(c => {
             const customerApps = appointments.filter(a => a.customerId === c.id && a.status === 'Concluído');
             const appCount = customerApps.length;
+            let totalSpent = 0;
             
+            customerApps.forEach(a => {
+                totalSpent += (a.pricePaid ?? a.bookedPrice ?? 0);
+            });
+
             if (appCount > 1) {
                 stats.recurringClients++;
-                customerApps.forEach(a => {
-                    stats.recurringRevenue += (a.pricePaid ?? a.bookedPrice ?? 0);
-                });
+                stats.recurringRevenue += totalSpent;
                 stats.recurringAppointments += appCount;
             }
 
-            // Churn Risk: Não voltou há mais de 45 dias
             const lastApp = [...customerApps].sort((a, b) => b.date.localeCompare(a.date))[0];
             if (lastApp) {
                 const lastDate = new Date(lastApp.date);
-                if (now.getTime() - lastDate.getTime() > churnThreshold) {
+                const diff = now.getTime() - lastDate.getTime();
+                const daysInactive = Math.floor(diff / (24 * 60 * 60 * 1000));
+                const avgTicket = appCount > 0 ? totalSpent / appCount : 0;
+
+                const clientData = {
+                    id: c.id,
+                    name: c.name,
+                    phone: c.phone || '',
+                    lastVisit: lastApp.date,
+                    avgTicket,
+                    daysInactive
+                };
+
+                if (appCount > 1 && diff > churnThreshold) {
                     stats.churnRiskCount++;
+                    stats.churnRiskClients.push(clientData);
+                } else if (appCount === 1 && diff > oneTimeThreshold) {
+                    stats.oneTimeOnlyClients.push(clientData);
                 }
             }
         });
 
         stats.avgFrequency = stats.recurringClients > 0 ? stats.recurringAppointments / stats.recurringClients : 0;
         stats.secondVisitConversion = stats.totalClients > 0 ? (stats.recurringClients / stats.totalClients) * 100 : 0;
+        
+        // Taxa de Churn Real: (Clientes Inativos Fiéis / Clientes Totais que já foram Recorrentes)
+        stats.realChurnRate = stats.recurringClients > 0 ? (stats.churnRiskCount / stats.recurringClients) * 100 : 0;
 
         return stats;
     }, [customers, appointments]);
@@ -2803,11 +2830,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             <span className="text-slate-900 dark:text-white font-black">VIPs</span> são clientes que gastam acima de R$800/mês. Eles sozinhos geram 40% do seu lucro líquido.
                                         </p>
                                     </div>
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
-                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Risco de Churn</p>
+                                    <div 
+                                        className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 transition-all group"
+                                        onClick={() => {
+                                            setChurnModalTab('loyal');
+                                            setIsChurnModalOpen(true);
+                                        }}
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <p className="text-[10px] font-black text-rose-600 uppercase">Risco de Churn</p>
+                                            <div className="bg-rose-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase">Ação Reativa</div>
+                                        </div>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            Identificamos <span className="text-rose-900 dark:text-rose-400 font-black">{recurringStats.churnRiskCount} clientes</span> que não retornam há mais de 45 dias. Isso representa uma perda potencial de R$ {(recurringStats.churnRiskCount * (customerAvgTicket[0]?.value || 150)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês.
+                                            Identificamos <span className="text-rose-900 dark:text-rose-400 font-black">{recurringStats.churnRiskCount} fiéis</span> e <span className="text-sky-700 dark:text-sky-400 font-black">{recurringStats.oneTimeOnlyClients.length} novos</span> que não retornam. Perda potencial: R$ {((recurringStats.churnRiskCount + recurringStats.oneTimeOnlyClients.length) * (customerAvgTicket[0]?.value || 150)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês.
                                         </p>
+                                        <div className="mt-3 flex items-center gap-1 text-[9px] font-black text-rose-600 uppercase tracking-widest">
+                                            Recuperar Clientes <ChevronRight size={10} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -3022,6 +3061,161 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     )}
                 </div>
             ) : null}
+
+            {/* Churn Action Modal */}
+            {isChurnModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden border-2 border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-8 py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2">
+                                    <Target size={18} className="text-rose-500" /> Plano de Recuperação de Clientes
+                                </h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    Taxa de Churn Real: <span className="text-rose-400">{recurringStats.realChurnRate.toFixed(1)}%</span> | Base Analisada: {customers.length} clientes
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsChurnModalOpen(false)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex gap-4 px-8 pt-6 border-b border-slate-100 dark:border-zinc-800">
+                            <button 
+                                onClick={() => setChurnModalTab('loyal')}
+                                className={`pb-4 px-2 text-[10px] font-black uppercase tracking-widest transition-all relative ${churnModalTab === 'loyal' ? 'text-rose-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    Recuperar Fiéis <span className="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full text-[8px]">{recurringStats.churnRiskClients.length}</span>
+                                </div>
+                                {churnModalTab === 'loyal' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-rose-600 rounded-t-full" />}
+                            </button>
+                            <button 
+                                onClick={() => setChurnModalTab('new')}
+                                className={`pb-4 px-2 text-[10px] font-black uppercase tracking-widest transition-all relative ${churnModalTab === 'new' ? 'text-sky-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    Novos s/ Retorno <span className="bg-sky-100 text-sky-600 px-1.5 py-0.5 rounded-full text-[8px]">{recurringStats.oneTimeOnlyClients.length}</span>
+                                </div>
+                                {churnModalTab === 'new' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-sky-600 rounded-t-full" />}
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-8">
+                            <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800">
+                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <BrainCircuit size={14} /> Estratégia Sugerida
+                                </h4>
+                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                    {churnModalTab === 'loyal' ? (
+                                        "Estes são clientes que já tiveram pelo menos 2 experiências positivas mas não voltaram há mais de 45 dias. O foco aqui é RELACIONAMENTO. Ofereça um atendimento de 'saudade' ou uma cortesia simples para reativar o hábito."
+                                    ) : (
+                                        "Estes clientes vieram apenas UMA vez e não voltaram em 30 dias. O foco aqui é PESQUISA E SATISFAÇÃO. Tente entender se algo não atendeu às expectativas e ofereça um incentivo (ex: 15% OFF) para a segunda visita."
+                                    )}
+                                </p>
+                            </div>
+
+                            <div className="overflow-x-auto bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest">Cliente</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Última Visita</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Inativo há</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Gasto Médio</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Potencial Anual</th>
+                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Ação</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {[...(churnModalTab === 'loyal' ? recurringStats.churnRiskClients : recurringStats.oneTimeOnlyClients)]
+                                            .sort((a, b) => b.daysInactive - a.daysInactive)
+                                            .map((client) => (
+                                            <tr 
+                                                key={client.id}
+                                                className="border-b border-slate-50 dark:border-zinc-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
+                                            >
+                                                <td className="px-6 py-4">
+                                                    <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{client.name}</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase">{client.phone}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400">{new Date(client.lastVisit).toLocaleDateString('pt-BR')}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                        {client.daysInactive} dias
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <p className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {client.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">R$ {(client.avgTicket * 12).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                const firstName = client.name.split(' ')[0];
+                                                                const phone = client.phone.replace(/\D/g, '');
+                                                                const msg = churnModalTab === 'loyal' 
+                                                                    ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana? Temos novidades te esperando!`
+                                                                    : `Olá ${firstName}, foi um prazer recebê-la pela primeira vez na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para conhecer nossos outros serviços com 15% de desconto na sua segunda visita!`;
+                                                                
+                                                                window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                            }}
+                                                            className="p-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm flex items-center justify-center group"
+                                                            title="Abrir WhatsApp"
+                                                        >
+                                                            <MessageCircle size={14} />
+                                                        </button>
+                                                        
+                                                        <button 
+                                                            onClick={() => {
+                                                                const firstName = client.name.split(' ')[0];
+                                                                const msg = churnModalTab === 'loyal' 
+                                                                    ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana? Temos novidades te esperando!`
+                                                                    : `Olá ${firstName}, foi um prazer recebê-la pela primeira vez na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para conhecer nossos outros serviços com 15% de desconto na sua segunda visita!`;
+                                                                
+                                                                navigator.clipboard.writeText(msg);
+                                                                alert('Mensagem copiada para a área de transferência!');
+                                                            }}
+                                                            className="p-2 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm flex items-center justify-center group"
+                                                            title="Copiar Mensagem"
+                                                        >
+                                                            <Copy size={13} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {(churnModalTab === 'loyal' ? recurringStats.churnRiskClients : recurringStats.oneTimeOnlyClients).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                                    <Sparkles size={48} className="mb-4 opacity-20" />
+                                    <p className="font-black uppercase text-xs tracking-widest">Nenhum cliente neste perfil no momento</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 py-4 bg-slate-50 dark:bg-zinc-950/50 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-[9px]">
+                            <p className="font-bold text-slate-400 uppercase tracking-tighter">Planilha de Recuperação Gerada em {new Date().toLocaleDateString('pt-BR')}</p>
+                            <p className="font-black text-slate-600 dark:text-slate-400 uppercase">Foco total na Experiência do Cliente</p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

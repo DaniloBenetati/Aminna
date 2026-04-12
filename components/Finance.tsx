@@ -1040,9 +1040,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             if (txError) throw txError;
 
             // 3. Update status of LINKED items
+            // REGIME DE CAIXA: For EXPENSES, we update the date to match the bank transaction date
             const linkPromises = finalMatches.map(m => {
                 if (m.type === 'EXPENSE') {
-                    return supabase.from('expenses').update({ is_reconciled: true, status: 'Pago' }).eq('id', m.id);
+                    return supabase.from('expenses').update({ 
+                        is_reconciled: true, 
+                        status: 'Pago',
+                        date: linkingBankTx?.date // Sync date with bank (Regime de Caixa)
+                    }).eq('id', m.id);
                 } else if (m.type === 'SALE') {
                     return supabase.from('sales').update({ is_reconciled: true }).eq('id', m.id);
                 } else {
@@ -1069,7 +1074,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setExpenses(prev => prev.map(e => {
                 const isLinked = finalMatches.find(m => m.type === 'EXPENSE' && m.id === e.id);
                 const isUnlinked = unlinkedItems.find(m => m.type === 'EXPENSE' && m.id === e.id);
-                if (isLinked) return { ...e, isReconciled: true, status: 'Pago' };
+                if (isLinked) return { ...e, isReconciled: true, status: 'Pago', date: linkingBankTx?.date };
                 if (isUnlinked) return { ...e, isReconciled: false, status: 'Pendente' };
                 return e;
             }));
@@ -1169,14 +1174,46 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     // ---- Plano de Contas CRUD ----
     const handleSaveCategory = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!categoryForm.name.trim()) return;
+        const newName = categoryForm.name.trim();
+        const newDreClass = categoryForm.dreClass;
+        if (!newName) return;
+
         try {
             if (editingCategoryId) {
-                const { error } = await supabase.from('expense_categories').update({ name: categoryForm.name, dre_class: categoryForm.dreClass }).eq('id', editingCategoryId);
+                const oldCategory = expenseCategories.find(c => c.id === editingCategoryId);
+                const oldName = oldCategory?.name;
+                const oldDreClass = oldCategory?.dreClass;
+
+                // 1. Update the category itself
+                const { error } = await supabase.from('expense_categories').update({ name: newName, dre_class: newDreClass }).eq('id', editingCategoryId);
                 if (error) throw error;
-                setExpenseCategories(prev => prev.map(c => c.id === editingCategoryId ? { ...c, name: categoryForm.name, dreClass: categoryForm.dreClass as any } : c));
+
+                // 2. CASCADING UPDATE: Only if name or dreClass changed
+                if (oldName && (oldName !== newName || oldDreClass !== newDreClass)) {
+                    // Update expenses
+                    await supabase.from('expenses')
+                        .update({ category: newName, dre_class: newDreClass })
+                        .eq('category', oldName);
+                    
+                    // Update bank transactions (system_category)
+                    await supabase.from('bank_transactions')
+                        .update({ system_category: newName })
+                        .eq('system_category', oldName);
+
+                    // Sync local state
+                    setExpenses(prev => prev.map(exp => exp.category === oldName ? { ...exp, category: newName, dreClass: newDreClass as any } : exp));
+                    setBankTransactions(prev => prev.map(bt => bt.systemCategory === oldName ? { ...bt, systemCategory: newName } : bt));
+                }
+
+                setExpenseCategories(prev => prev.map(c => c.id === editingCategoryId ? { ...c, name: newName, dreClass: newDreClass as any } : c));
             } else {
-                const { data, error } = await supabase.from('expense_categories').insert([{ name: categoryForm.name, dre_class: categoryForm.dreClass }]).select();
+                // Safety: ensure name is trimmed and dre_class is never null
+                const { data, error } = await supabase.from('expense_categories')
+                    .insert([{ 
+                        name: newName, 
+                        dre_class: newDreClass || 'EXPENSE_ADM' 
+                    }])
+                    .select();
                 if (error) throw error;
                 if (data) {
                     setExpenseCategories(prev => [...prev, { id: data[0].id, name: data[0].name, dreClass: data[0].dre_class }]);
@@ -1190,9 +1227,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             setIsQuickAddingCategory(false);
             setEditingCategoryId(null);
             setCategoryForm({ name: '', dreClass: 'EXPENSE_ADM' });
+            setNotification({ message: 'Plano de contas atualizado com sucesso!', type: 'success' });
         } catch (err) {
             console.error('Error saving category:', err);
-            alert('Erro ao salvar conta.');
+            setNotification({ message: 'Erro ao salvar alteração no plano.', type: 'error' });
         }
     };
 
@@ -1676,7 +1714,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 const eDateClean = e.date ? e.date.substring(0, 10) : '';
                 const matchesDate = eDateClean >= start && eDateClean <= end;
                 if (!matchesDate) return false;
-                if (isClosed) return e.isReconciled;
+                
+                // Resilience: Check if it's linked to any bank transaction even if the flag was failed to update
+                const isLinkedByBank = bankTransactions.some(bt => 
+                    bt.system_matches && Array.isArray(bt.system_matches) && 
+                    bt.system_matches.some((m: any) => m.id === e.id)
+                );
+
+                if (isClosed) return e.isReconciled || isLinkedByBank;
                 return true;
             });
 
@@ -1787,7 +1832,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const amountVendas = expensesVendas.reduce((acc, e) => acc + e.amount, 0);
             const amountAdm = expensesAdm.reduce((acc, e) => acc + e.amount, 0);
             const amountFin = expensesFin.reduce((acc, e) => acc + e.amount, 0);
-            const totalOpExpenses = amountVendas + amountAdm + amountFin;
+
+            // Catch-all for unmapped or misclassified expenses
+            const mappedClasses = ['REVENUE', 'OTHER_INCOME', 'COSTS', 'EXPENSE_SALES', 'EXPENSE_ADM', 'EXPENSE_FIN', 'TAX', 'DEDUCTION'];
+            const unmappedExps = exps.filter(e => {
+                const cat = e.category.toLowerCase();
+                const isRepasse = cat.includes('repasse') || cat.includes('comissão');
+                // Resilience: If dreClass is missing in the object, try to find it in the category list
+                const actualClass = e.dreClass || expenseCategories.find(c => c.name === e.category)?.dreClass;
+                return !mappedClasses.includes(actualClass || '') && !isRepasse;
+            });
+            const amountUnmapped = unmappedExps.reduce((acc, e) => acc + e.amount, 0);
+
+            const totalOpExpenses = amountVendas + amountAdm + amountFin + amountUnmapped;
 
             const groupByCat = (list: Expense[]) => {
                 return list.reduce((acc: Record<string, { total: number, items: Expense[] }>, e) => {
@@ -1878,13 +1935,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 revenueForecast, grossForecast,
                 deductions, netRevenue,
                 totalCOGS, commissions,
-                grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin,
+                grossProfit, otherRevenues, totalOpExpenses, amountVendas, amountAdm, amountFin, amountUnmapped,
                 resultBeforeTaxes, irpjCsll, netResult,
                 totalOutflows,
                 suggestedCashReserve, periodInitialBalance,
                 breakdownVendas: groupByCat(expensesVendas),
                 breakdownAdm: groupByCat(expensesAdm),
                 breakdownFin: groupByCat(expensesFin),
+                breakdownUnmapped: groupByCat(unmappedExps),
                 // REVENUE = card service income (Receita Bruta) â€” only show breakdown when not isClosed
                 // (when isClosed they're shown as aggregate Cartão/PIX sub-line in Receita Bruta)
                 breakdownBankRevenues: (isClosed && reconciledBankRevenues > 0) ? {} : groupByCat(exps.filter(e => e.dreClass === 'REVENUE')),
@@ -2119,16 +2177,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             // 3. Create a new expense/revenue item to match
             if (tx.type === 'DESPESA') {
+                const catName = tx.systemCategory || 'Despesas Diversas';
+                const catDef = expenseCategories.find(c => c.name === catName);
                 const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
                     description: name,
                     amount: tx.amount,
                     date: tx.date,
-                    category: tx.systemCategory || 'Despesas Diversas',
+                    category: catName,
                     supplier_id: id,
                     status: 'Pago',
                     payment_method: 'Transferência',
                     is_reconciled: true,
-                    dre_class: 'EXPENSE_ADM'
+                    dre_class: catDef?.dreClass || 'EXPENSE_ADM'
                 }).select().single();
 
                 if (expErr) throw expErr;
@@ -2488,7 +2548,21 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         }
 
         // Only ask for confirmation if not coming from the batch modal
-        if (!overrideOption && !window.confirm('Tem certeza que deseja excluir?')) return;
+        if (!overrideOption) {
+            if (expense.isReconciled) {
+                const btx = bankTransactions.find(bt => 
+                    bt.system_matches && 
+                    Array.isArray(bt.system_matches) && 
+                    bt.system_matches.some((m: any) => m.id === id)
+                );
+                if (btx) {
+                    alert('Esta despesa está vinculada a uma conciliação. Para excluí-la, você deve primeiro desvinculá-la no modal de conciliação que será aberto agora.');
+                    setLinkingBankTx(btx);
+                    return;
+                }
+            }
+            if (!window.confirm('Tem certeza que deseja excluir?')) return;
+        }
 
         try {
             if (expense.recurringId && currentOption !== 'ONLY_THIS') {
@@ -3665,18 +3739,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                 onConfirm: async () => {
                                                                                                     try {
                                                                                                         const isProfitDist = (newName?.toLowerCase().includes('lucro') || newName?.toLowerCase().includes('distribuição') || t.description?.toLowerCase().includes('lucro') || t.description?.toLowerCase().includes('distribuição'));
+                                                                                                        const catName = isProfitDist ? 'Distribuição de Lucros' : (t.systemCategory || 'Despesas Diversas');
+                                                                                                        const catDef = expenseCategories.find(c => c.name === catName);
                                                                                                         const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
                                                                                                             description: newName,
                                                                                                             amount: t.amount,
                                                                                                             date: t.date,
-                                                                                                            category: isProfitDist ? 'Distribuição de Lucros' : (t.systemCategory || 'Despesas Diversas'),
+                                                                                                            category: catName,
                                                                                                             provider_id: isProfessional ? realId : null,
                                                                                                             employee_id: isEmployee ? realId : null,
                                                                                                             supplier_id: (!isProfessional && !isEmployee) ? realId : null,
                                                                                                             status: 'Pago',
                                                                                                             payment_method: 'Transferência',
                                                                                                             is_reconciled: true,
-                                                                                                            dre_class: 'EXPENSE_ADM'
+                                                                                                            dre_class: catDef?.dreClass || 'EXPENSE_ADM'
                                                                                                         }).select().single();
 
                                                                                                         if (expErr) throw expErr;
