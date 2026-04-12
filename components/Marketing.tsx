@@ -5,7 +5,7 @@ import {
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
-  Instagram, Plus, Edit2, ArrowUp
+  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
@@ -215,12 +215,28 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
               <span className="text-[10px] font-bold text-emerald-600 uppercase">Qtd:</span>
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value}</span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase">Valor:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-amber-600 uppercase">Cupons:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.coupons || 0}</span>
+            </div>
           </div>
-          <div className="space-y-1 border-t border-slate-50 dark:border-zinc-700/50 pt-2">
+          <div className="space-y-1 border-t border-slate-50 dark:border-zinc-700/50 pt-3 mt-1">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Recorrentes</p>
             <div className="flex justify-between items-center">
               <span className="text-[10px] font-bold text-indigo-600 uppercase">Qtd:</span>
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurring}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase">Valor:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.recurringRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-amber-600 uppercase">Cupons:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurringCoupons || 0}</span>
             </div>
           </div>
         </div>
@@ -230,12 +246,93 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-[80vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+          <div>
+            <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
+              <Ticket size={18} className="text-amber-500" /> Detalhamento de Cupons Usados
+            </h3>
+            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+              Total de Cupons: <span className="text-amber-400">{couponsListData.length}</span> | Período: {getDateLabel()}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/50 dark:bg-zinc-900/50">
+          <div className="flex-1 overflow-auto p-4 md:p-8">
+            <div className="bg-white dark:bg-zinc-950 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-100 dark:border-zinc-800">
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Cliente</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Data</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Código</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Profissional</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tíquete</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Serviços</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-zinc-800">
+                    {couponsListData.map((row: any) => (
+                      <tr key={row.id} className="group hover:bg-slate-50/50 dark:hover:bg-zinc-900/30 transition-colors">
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="font-black text-xs uppercase text-slate-900 dark:text-white">{row.name}</p>
+                            <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-tighter ${row.isNew ? 'bg-emerald-100 text-emerald-600' : 'bg-indigo-100 text-indigo-600'}`}>
+                              {row.isNew ? 'Novo Cliente' : 'Recorrente'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-[10px] font-bold text-slate-500">{new Date(row.date).toLocaleDateString('pt-BR')}</span>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">
+                            {row.couponCode}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-zinc-300 uppercase">{row.professional}</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs font-black text-emerald-600">R$ {row.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                        </td>
+                        <td className="px-6 py-4 max-w-xs">
+                          <p className="text-[10px] font-medium text-slate-500 dark:text-zinc-400 leading-tight line-clamp-2">{row.services}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {couponsListData.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-24 text-slate-400 uppercase tracking-widest font-black text-xs gap-4 opacity-50">
+              <Ticket size={48} strokeWidth={1} />
+              Nenhum cupom utilizado no período
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
-export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[] }> = ({ appointments = [], customers = [], services = [] }) => {
+export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [] }) => {
   const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic'>(() => 
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'organic') || 'paid'
   );
@@ -287,6 +384,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasFetched, setHasFetched] = useState(false);
+  const [isCouponsModalOpen, setIsCouponsModalOpen] = useState(false);
 
   const [datePreset, setDatePreset] = useState('last_30d');
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -418,24 +516,31 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   }, [customers, appointments]);
 
   const trafficChartData = useMemo(() => {
-    const dailyData: Record<string, { count: number, recurring: number, services: number, recurringServices: number }> = {};
+    const dailyData: Record<string, { count: number, recurring: number, services: number, recurringServices: number, revenue: number, recurringRevenue: number, coupons: number, recurringCoupons: number }> = {};
     
     Object.values(firstVisits).forEach((v: any) => {
       if (isAppointmentInMarketingPeriod(v.date)) {
-        dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
         dailyData[v.date].count++;
       }
     });
 
     appointments.filter(a => a.status === 'Concluído' && isAppointmentInMarketingPeriod(a.date)).forEach(a => {
       const fv = firstVisits[a.customerId];
+      const svc = services.find(s => s.id === a.serviceId);
+      const appRevenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
+
       if (fv && fv.date !== a.date) {
-        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
         dailyData[a.date].recurring++;
+        dailyData[a.date].recurringRevenue += appRevenue;
         dailyData[a.date].recurringServices += (1 + (a.additionalServices || []).length);
+        if (a.appliedCoupon) dailyData[a.date].recurringCoupons++;
       } else if (fv && fv.date === a.date) {
-        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
+        dailyData[a.date].revenue += appRevenue;
         dailyData[a.date].services += (1 + (a.additionalServices || []).length);
+        if (a.appliedCoupon) dailyData[a.date].coupons++;
       }
     });
 
@@ -449,18 +554,48 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     
     while (curr <= last) {
       const dStr = curr.toISOString().split('T')[0];
-      const day = dailyData[dStr] || { count: 0, recurring: 0, services: 0, recurringServices: 0 };
+      const day = dailyData[dStr] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
       data.push({
         name: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
         value: day.count,
         recurring: day.recurring,
         services: day.services,
-        recurringServices: day.recurringServices
+        recurringServices: day.recurringServices,
+        revenue: day.revenue,
+        recurringRevenue: day.recurringRevenue,
+        coupons: day.coupons,
+        recurringCoupons: day.recurringCoupons
       });
       curr.setDate(curr.getDate() + 1);
     }
     return data;
-  }, [firstVisits, appointments, isAppointmentInMarketingPeriod, customStartDate, customEndDate, dateRange]);
+  }, [firstVisits, appointments, isAppointmentInMarketingPeriod, customStartDate, customEndDate, dateRange, services]);
+
+  const couponsListData = useMemo(() => {
+    return appointments
+        .filter(a => a.status === 'Concluído' && a.appliedCoupon && isAppointmentInMarketingPeriod(a.date))
+        .map(a => {
+            const customer = customers.find(c => c.id === a.customerId);
+            const professional = providers.find(p => p.id === a.providerId)?.name || 'N/A';
+            const svc = services.find(s => s.id === a.serviceId);
+            const servicesNames = [svc?.name || 'Serviço', ...(a.additionalServices || []).map((extra: any) => services.find(s => s.id === extra.serviceId)?.name).filter(Boolean)].join(', ');
+            const revenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
+            const isNew = firstVisits[a.customerId]?.date === a.date;
+
+            return {
+                id: a.id,
+                customerId: a.customerId,
+                name: customer?.name || 'Sem Nome',
+                date: a.date,
+                professional,
+                services: servicesNames,
+                revenue,
+                couponCode: a.appliedCoupon,
+                isNew
+            };
+        })
+        .sort((a, b) => b.date.localeCompare(a.date));
+  }, [appointments, customers, services, providers, firstVisits, isAppointmentInMarketingPeriod]);
 
   const fetchAll = useCallback(async () => {
     if (!adAccountId || !token) return;
@@ -1287,37 +1422,42 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Análise de novos clientes e serviços no período</p>
                           </div>
                           <div className="flex flex-wrap gap-4">
-                            <div className="bg-slate-900 dark:bg-white p-1 rounded-3xl shadow-xl flex items-center overflow-hidden border border-slate-800 dark:border-slate-200">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-3xl shadow-sm flex items-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
                               <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Base de Novos</p>
-                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Base de Novos</p>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                   {trafficChartData.reduce((sum: number, d: any) => sum + (d.value || 0), 0)}
                                 </p>
                               </div>
-                              <div className="w-px h-8 bg-slate-800 dark:bg-slate-100" />
+                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="px-5 py-2 text-center min-w-[100px]">
+                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                  R$ {trafficChartData.reduce((sum: number, d: any) => sum + (d.revenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                </p>
+                              </div>
+                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
                               <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Serviços</p>
-                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Serviços</p>
+                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                   {trafficChartData.reduce((sum: number, d: any) => sum + (d.services || 0), 0)}
                                 </p>
                               </div>
+                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div 
+                                className="px-5 py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new"
+                                onClick={() => setIsCouponsModalOpen(true)}
+                              >
+                                <p className="text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
+                                <div className="flex items-center gap-1">
+                                  <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                    {trafficChartData.reduce((sum: number, d: any) => sum + (d.coupons || 0), 0)}
+                                  </p>
+                                  <ChevronRight size={14} className="text-slate-400 mt-0.5" />
+                                </div>
+                              </div>
                             </div>
 
-                            <div className="bg-white dark:bg-zinc-800 p-1 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center overflow-hidden">
-                              <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
-                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.recurring || 0), 0)}
-                                </p>
-                              </div>
-                              <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
-                              <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços Recorr.</p>
-                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
-                                  {trafficChartData.reduce((sum: number, d: any) => sum + (d.recurringServices || 0), 0)}
-                                </p>
-                              </div>
-                            </div>
                           </div>
                         </div>
                         <div className="h-80 mt-4">
@@ -1363,6 +1503,17 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           )}
         </div>
       </div>
+      {isCouponsModalOpen && (
+        <CouponsModal 
+          couponsListData={couponsListData} 
+          onClose={() => setIsCouponsModalOpen(false)} 
+          getDateLabel={() => {
+            const start = dateRange.start || customStartDate;
+            const end = dateRange.stop || customEndDate;
+            return `${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()}`;
+          }}
+        />
+      )}
     </div>
   );
 };

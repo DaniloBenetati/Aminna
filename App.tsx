@@ -895,7 +895,7 @@ const App: React.FC = () => {
           />
         );
       case ViewState.TRAFEGO_PAGO:
-        return <Marketing appointments={appointments} customers={customers} services={services} />;
+        return <Marketing appointments={appointments} customers={customers} services={services} providers={providers} />;
       case ViewState.SETTINGS:
         return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} isAdmin={userProfile?.role === 'admin'} onSimulateUser={setSimulatedProfile} financialConfigs={financialConfigs} setFinancialConfigs={setFinancialConfigs} />;
       default:
