@@ -186,6 +186,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 
                 let revenue = 0;
                 let servicesCount = 0;
+                let hasCoupon = false;
                 
                 sameDayApps.forEach(a => {
                     const mainSvc = services.find(s => s.id === a.serviceId);
@@ -197,9 +198,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     
                     revenue += mainBooked + extras;
                     servicesCount += 1 + (a.additionalServices || []).length;
+                    
+                    if (a.appliedCoupon) hasCoupon = true;
                 });
                 
-                visits[c.id] = { date: first.date, revenue, servicesCount };
+                visits[c.id] = { date: first.date, revenue, servicesCount, hasCoupon };
             }
         });
         return visits;
@@ -247,14 +250,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     }, [firstVisits, customers, appointments, providers, services, timeView, dateRef, customRange]);
 
     const newCustomersTrafficData = useMemo(() => {
-        const dailyData: Record<string, { count: number, recurring: number, revenue: number, services: number, recurringRevenue: number, recurringServices: number }> = {};
+        const dailyData: Record<string, { count: number, recurring: number, revenue: number, services: number, recurringRevenue: number, recurringServices: number, coupons: number }> = {};
         
         Object.values(firstVisits).forEach(v => {
             if (isDateInPeriod(v.date)) {
-                dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+                dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0, coupons: 0 };
                 dailyData[v.date].count++;
                 dailyData[v.date].revenue += v.revenue;
                 dailyData[v.date].services += v.servicesCount;
+                if ((v as any).hasCoupon) dailyData[v.date].coupons++;
             }
         });
 
@@ -262,7 +266,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             const fv = firstVisits[a.customerId];
             // If the appointment is NOT the first visit, it's a recurring customer
             if (fv && fv.date !== a.date) {
-                dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0 };
+                dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, revenue: 0, services: 0, recurringRevenue: 0, recurringServices: 0, coupons: 0 };
                 dailyData[a.date].recurring++;
 
                 // Calculate Revenue and Services for recurring appointments
@@ -288,7 +292,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 revenue: d.revenue,
                 services: d.services,
                 recurringRevenue: d.recurringRevenue,
-                recurringServices: d.recurringServices
+                recurringServices: d.recurringServices,
+                coupons: d.coupons
              }];
         }
 
@@ -307,7 +312,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     revenue: dayData.revenue,
                     services: dayData.services,
                     recurringRevenue: dayData.recurringRevenue,
-                    recurringServices: dayData.recurringServices
+                    recurringServices: dayData.recurringServices,
+                    coupons: dayData.coupons
                 });
             }
             return data;
@@ -317,7 +323,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             const data = [];
             for (let m = 0; m < 12; m++) {
                 const monthName = new Date(dateRef.getFullYear(), m, 1).toLocaleDateString('pt-BR', { month: 'short' });
-                let mCount = 0, mRec = 0, mRev = 0, mServ = 0, mRecRev = 0, mRecServ = 0;
+                let mCount = 0, mRec = 0, mRev = 0, mServ = 0, mRecRev = 0, mRecServ = 0, mCoupons = 0;
                 Object.entries(dailyData).forEach(([date, val]) => {
                     const [y, mm] = date.split('-').map(Number);
                     if (y === dateRef.getFullYear() && (mm - 1) === m) {
@@ -327,6 +333,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         mServ += val.services;
                         mRecRev += val.recurringRevenue;
                         mRecServ += val.recurringServices;
+                        mCoupons += val.coupons;
                     }
                 });
                 data.push({ 
@@ -336,7 +343,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     revenue: mRev, 
                     services: mServ,
                     recurringRevenue: mRecRev,
-                    recurringServices: mRecServ
+                    recurringServices: mRecServ,
+                    coupons: mCoupons
                 });
             }
             return data;
@@ -1384,6 +1392,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             <div className="flex justify-between items-center">
                                 <span className="text-[10px] font-bold text-emerald-600 uppercase">Valor:</span>
                                 <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-amber-600 uppercase">Cupons:</span>
+                                <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.coupons || 0}</span>
                             </div>
                         </div>
 
@@ -2753,6 +2765,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.services || 0), 0)}
                                                 </p>
                                             </div>
+                                            <div className="w-px h-8 bg-slate-800 dark:bg-slate-100" />
+                                            <div className="px-5 py-2">
+                                                <p className="text-[8px] font-black text-amber-400 uppercase tracking-widest">Cupons</p>
+                                                <p className="text-sm font-black text-white dark:text-black mt-0.5">
+                                                    {newCustomersTrafficData.reduce((sum, d) => sum + (d.coupons || 0), 0)}
+                                                </p>
+                                            </div>
                                         </div>
 
                                         {/* Unified Recorrentes Card */}
@@ -3393,9 +3412,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50 dark:bg-zinc-900/50">
-                            {/* Mobile Grid */}
-                            <div className="block lg:hidden space-y-3">
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-900/50">
+                            {/* Mobile/Tablet Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4">
                                 {newCustomersListData.map((row) => {
                                     const isAlreadyMessaged = row.lastMarketingContact && 
                                         new Date(row.lastMarketingContact).toDateString() === new Date().toDateString();
