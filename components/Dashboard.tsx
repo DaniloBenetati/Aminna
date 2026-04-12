@@ -5,6 +5,7 @@ import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Cl
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
+import { supabase } from '../services/supabase';
 
 const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize }: any) => (
     <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default gap-3 h-full">
@@ -38,7 +39,7 @@ interface DashboardProps {
     paymentSettings: PaymentSetting[];
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, sales, stock, services, campaigns, providers, paymentSettings, setCustomers }) => {
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('month');
     const [dashboardTab, setDashboardTab] = useState<'geral' | 'ocupacao' | 'profissionais' | 'servicos' | 'clientes' | 'campanhas'>('geral');
     const [activeSubTab, setActiveSubTab] = useState<'charts' | 'insights' | 'ausencias' | 'high_performance'>('charts');
@@ -619,8 +620,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     phone: c.phone || '',
                     lastVisit: lastApp.date,
                     avgTicket,
-                    daysInactive
+                    avgTicket,
+                    daysInactive,
+                    lastMarketingContact: c.lastMarketingContact
                 };
+
+                const isAlreadyMessaged = c.lastMarketingContact && 
+                    new Date(c.lastMarketingContact).toLocaleDateString() === now.toLocaleDateString();
 
                 if (appCount > 1 && diff > churnThreshold) {
                     stats.churnRiskCount++;
@@ -639,6 +645,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return stats;
     }, [customers, appointments]);
+
+    const handleMarkAsMessaged = async (clientId: string) => {
+        try {
+            const customer = customers.find(c => c.id === clientId);
+            const now = new Date();
+            
+            // Toggle logic: if already marked today, unmark (set null)
+            const isAlreadyMarkedToday = customer?.lastMarketingContact && 
+                new Date(customer.lastMarketingContact).toDateString() === now.toDateString();
+            
+            const newValue = isAlreadyMarkedToday ? null : now.toISOString();
+            
+            // 1. Update Supabase
+            const { error } = await supabase
+                .from('customers')
+                .update({ last_marketing_contact: newValue })
+                .eq('id', clientId);
+
+            if (error) throw error;
+
+            // 2. Update local state
+            setCustomers(prev => prev.map(c => 
+                c.id === clientId ? { ...c, lastMarketingContact: newValue || undefined } : c
+            ));
+
+        } catch (error) {
+            console.error('Error toggling client message status:', error);
+            alert('Erro ao atualizar status do cliente.');
+        }
+    };
 
     // 5. Top Partners - Already Revenue
     const topPartners = useMemo(() => {
@@ -1506,58 +1542,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             )}
 
             {/* --- DASHBOARD TABS --- */}
-            <div className="flex gap-6 border-b border-slate-200 dark:border-zinc-800 overflow-x-auto scrollbar-hide">
-                <button
-                    onClick={() => setDashboardTab('geral')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'geral' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Visão Geral
-                </button>
-                <button
-                    onClick={() => setDashboardTab('ocupacao')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'ocupacao' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Análise de Ocupação
-                </button>
-                <button
-                    onClick={() => setDashboardTab('profissionais')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'profissionais' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Profissionais
-                </button>
-                <button
-                    onClick={() => setDashboardTab('servicos')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'servicos' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Serviços
-                </button>
-                <button
-                    onClick={() => setDashboardTab('clientes')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'clientes' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Clientes
-                </button>
-                <button
-                    onClick={() => setDashboardTab('campanhas')}
-                    className={`font-black uppercase tracking-widest text-xs pb-3 pt-1 border-b-[3px] transition-colors whitespace-nowrap ${dashboardTab === 'campanhas' ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                >
-                    Campanhas
-                </button>
+            <div className="flex gap-2 md:gap-6 border-b border-slate-200 dark:border-zinc-800 overflow-x-auto no-scrollbar scroll-smooth pb-px">
+                {[
+                    { id: 'geral', label: 'Visão Geral' },
+                    { id: 'ocupacao', label: 'Ocupação' },
+                    { id: 'profissionais', label: 'Profissionais' },
+                    { id: 'servicos', label: 'Serviços' },
+                    { id: 'clientes', label: 'Clientes' },
+                    { id: 'campanhas', label: 'Campanhas' }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setDashboardTab(tab.id as any)}
+                        className={`font-black uppercase tracking-widest text-[10px] md:text-xs pb-3 pt-1 border-b-[3px] transition-all whitespace-nowrap px-2 md:px-0 ${dashboardTab === tab.id ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {dashboardTab === 'geral' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Global View */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-full sm:w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BarChart2 size={14} /> Visão Executiva
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> IA de Negócios
                         </button>
@@ -2603,16 +2619,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'clientes' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Customers */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-full sm:w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <Users size={14} /> Base de Clientes
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> CRM Inteligente
                         </button>
@@ -3064,16 +3080,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
             {/* Churn Action Modal */}
             {isChurnModalOpen && (
-                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-[85vh] overflow-hidden border-2 border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
                         {/* Header */}
-                        <div className="px-8 py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                        <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
-                                <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2">
-                                    <Target size={18} className="text-rose-500" /> Plano de Recuperação de Clientes
+                                <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
+                                    <Target size={18} className="text-rose-500" /> Plano de Recuperação
                                 </h3>
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    Taxa de Churn Real: <span className="text-rose-400">{recurringStats.realChurnRate.toFixed(1)}%</span> | Base Analisada: {customers.length} clientes
+                                <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    Churn Real: <span className="text-rose-400">{recurringStats.realChurnRate.toFixed(1)}%</span> | {customers.length} clientes
                                 </p>
                             </div>
                             <button 
@@ -3085,10 +3101,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
 
                         {/* Tabs */}
-                        <div className="flex gap-4 px-8 pt-6 border-b border-slate-100 dark:border-zinc-800">
+                        <div className="flex gap-4 px-6 md:px-8 pt-4 md:pt-6 border-b border-slate-100 dark:border-zinc-800 overflow-x-auto no-scrollbar">
                             <button 
                                 onClick={() => setChurnModalTab('loyal')}
-                                className={`pb-4 px-2 text-[10px] font-black uppercase tracking-widest transition-all relative ${churnModalTab === 'loyal' ? 'text-rose-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`pb-4 px-2 text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all relative whitespace-nowrap ${churnModalTab === 'loyal' ? 'text-rose-600' : 'text-slate-400 hover:text-slate-600'}`}
                             >
                                 <div className="flex items-center gap-2">
                                     Recuperar Fiéis <span className="bg-rose-100 text-rose-600 px-1.5 py-0.5 rounded-full text-[8px]">{recurringStats.churnRiskClients.length}</span>
@@ -3107,95 +3123,167 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-y-auto p-8">
-                            <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800">
-                                <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <BrainCircuit size={14} /> Estratégia Sugerida
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50 dark:bg-zinc-900/50">
+                            <div className="mb-6 bg-white dark:bg-zinc-800/80 p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm">
+                                <h4 className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <BrainCircuit size={14} className="text-indigo-500" /> Estratégia Sugerida
                                 </h4>
-                                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
+                                <p className="text-[11px] md:text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                     {churnModalTab === 'loyal' ? (
-                                        "Estes são clientes que já tiveram pelo menos 2 experiências positivas mas não voltaram há mais de 45 dias. O foco aqui é RELACIONAMENTO. Ofereça um atendimento de 'saudade' ou uma cortesia simples para reativar o hábito."
+                                        "Estes são clientes fiéis (2+ visitas) inativos há 45+ dias. O foco é RELACIONAMENTO. Ofereça uma cortesia ou diga que sentimos saudade."
                                     ) : (
-                                        "Estes clientes vieram apenas UMA vez e não voltaram em 30 dias. O foco aqui é PESQUISA E SATISFAÇÃO. Tente entender se algo não atendeu às expectativas e ofereça um incentivo (ex: 15% OFF) para a segunda visita."
+                                        "Estes clientes vieram apenas UMA vez e não voltaram em 30 dias. O foco é PESQUISA. Tente entender se algo não atendeu e ofereça um incentivo."
                                     )}
                                 </p>
                             </div>
 
-                            <div className="overflow-x-auto bg-white dark:bg-zinc-900 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+                            {/* Mobile Grid / Desktop Table */}
+                            <div className="block md:hidden space-y-3">
+                                {[...(churnModalTab === 'loyal' ? recurringStats.churnRiskClients : recurringStats.oneTimeOnlyClients)]
+                                    .sort((a, b) => b.daysInactive - a.daysInactive)
+                                    .map((client: any) => {
+                                        const isAlreadyMessaged = client.lastMarketingContact && 
+                                            new Date(client.lastMarketingContact).toDateString() === new Date().toDateString();
+                                        
+                                        return (
+                                            <div key={client.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all ${isAlreadyMessaged ? 'opacity-60 grayscale-[0.5] border-emerald-200 dark:border-emerald-900/50' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate">{client.name}</p>
+                                                            {isAlreadyMessaged && <CircleCheck size={14} className="text-emerald-500" />}
+                                                        </div>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{client.phone}</p>
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                        {client.daysInactive} dias
+                                                    </span>
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
+                                                    <div>
+                                                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Última Visita</p>
+                                                        <p className="text-[10px] font-black text-slate-700 dark:text-zinc-300">
+                                                            {new Date(client.lastVisit).toLocaleDateString('pt-BR')}
+                                                        </p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Gasto Médio</p>
+                                                        <p className="text-[10px] font-black text-slate-900 dark:text-white">
+                                                            R$ {client.avgTicket.toLocaleString('pt-BR')}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <button 
+                                                        onClick={() => {
+                                                            const firstName = client.name.split(' ')[0];
+                                                            const phone = client.phone.replace(/\D/g, '');
+                                                            const msg = churnModalTab === 'loyal' 
+                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana?`
+                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para voltar com 15% de desconto!`;
+                                                            
+                                                            window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                            handleMarkAsMessaged(client.id);
+                                                        }}
+                                                        className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black'}`}
+                                                    >
+                                                        <MessageCircle size={14} />
+                                                        {isAlreadyMessaged ? 'Reenviar Novamente' : 'Enviar WhatsApp'}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const firstName = client.name.split(' ')[0];
+                                                            const msg = churnModalTab === 'loyal' 
+                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita.`
+                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna! 👋`;
+                                                            navigator.clipboard.writeText(msg);
+                                                            handleMarkAsMessaged(client.id);
+                                                            alert('Copiado!');
+                                                        }}
+                                                        className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200"
+                                                    >
+                                                        <Copy size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                            </div>
+
+                            <div className="hidden md:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest">Cliente</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Última Visita</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Inativo há</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Gasto Médio</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Potencial Anual</th>
-                                            <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Ação</th>
+                                        <tr className="bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest">Cliente</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Inativo há</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Gasto Médio</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Status</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {[...(churnModalTab === 'loyal' ? recurringStats.churnRiskClients : recurringStats.oneTimeOnlyClients)]
                                             .sort((a, b) => b.daysInactive - a.daysInactive)
-                                            .map((client) => (
-                                            <tr 
-                                                key={client.id}
-                                                className="border-b border-slate-50 dark:border-zinc-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors group"
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{client.name}</p>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase">{client.phone}</p>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400">{new Date(client.lastVisit).toLocaleDateString('pt-BR')}</p>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                        {client.daysInactive} dias
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <p className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {client.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <p className="text-xs font-black text-emerald-600 dark:text-emerald-400">R$ {(client.avgTicket * 12).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</p>
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <button 
-                                                            onClick={() => {
-                                                                const firstName = client.name.split(' ')[0];
-                                                                const phone = client.phone.replace(/\D/g, '');
-                                                                const msg = churnModalTab === 'loyal' 
-                                                                    ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana? Temos novidades te esperando!`
-                                                                    : `Olá ${firstName}, foi um prazer recebê-la pela primeira vez na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para conhecer nossos outros serviços com 15% de desconto na sua segunda visita!`;
-                                                                
-                                                                window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
-                                                            }}
-                                                            className="p-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm flex items-center justify-center group"
-                                                            title="Abrir WhatsApp"
-                                                        >
-                                                            <MessageCircle size={14} />
-                                                        </button>
-                                                        
-                                                        <button 
-                                                            onClick={() => {
-                                                                const firstName = client.name.split(' ')[0];
-                                                                const msg = churnModalTab === 'loyal' 
-                                                                    ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana? Temos novidades te esperando!`
-                                                                    : `Olá ${firstName}, foi um prazer recebê-la pela primeira vez na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para conhecer nossos outros serviços com 15% de desconto na sua segunda visita!`;
-                                                                
-                                                                navigator.clipboard.writeText(msg);
-                                                                alert('Mensagem copiada para a área de transferência!');
-                                                            }}
-                                                            className="p-2 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm flex items-center justify-center group"
-                                                            title="Copiar Mensagem"
-                                                        >
-                                                            <Copy size={13} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                            .map((client: any) => {
+                                                const isAlreadyMessaged = client.lastMarketingContact && 
+                                                    new Date(client.lastMarketingContact).toDateString() === new Date().toDateString();
+
+                                                return (
+                                                    <tr 
+                                                        key={client.id}
+                                                        className={`border-b border-slate-50 dark:border-zinc-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors group ${isAlreadyMessaged ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                                                    >
+                                                        <td className="px-6 py-4">
+                                                            <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{client.name}</p>
+                                                            <p className="text-[9px] font-bold text-slate-400 uppercase">{client.phone}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                                {client.daysInactive} dias
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <p className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {client.avgTicket.toLocaleString('pt-BR')}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            {isAlreadyMessaged ? (
+                                                                <span className="flex items-center justify-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase">
+                                                                    <CircleCheck size={14} /> Contatado
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-[9px] font-black text-slate-400 uppercase">Pendente</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button 
+                                                                    onClick={() => {
+                                                                        const firstName = client.name.split(' ')[0];
+                                                                        const phone = client.phone.replace(/\D/g, '');
+                                                                        const msg = churnModalTab === 'loyal' 
+                                                                            ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna!`
+                                                                            : `Olá ${firstName}, foi um prazer recebê-la na Aminna!`;
+                                                                        window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                                        handleMarkAsMessaged(client.id);
+                                                                    }}
+                                                                    className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                                                >
+                                                                    <MessageCircle size={16} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleMarkAsMessaged(client.id)}
+                                                                    className={`p-2.5 rounded-xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
+                                                                    title="Marcar como enviado manualmente"
+                                                                >
+                                                                    <CircleCheck size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
                                     </tbody>
                                 </table>
                             </div>

@@ -125,6 +125,7 @@ export interface Customer {
   isVip?: boolean; // Cliente VIP
   vipDiscountPercent?: number; // Percentual de desconto VIP (0-100)
   creditBalance?: number; // Saldo de Crédito
+  lastMarketingContact?: string; // Último contato de recuperação/marketing
 }
 
 export interface CustomerHistoryItem {
