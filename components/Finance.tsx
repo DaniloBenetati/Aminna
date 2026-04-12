@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
     ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X,
     DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight,
@@ -90,11 +90,18 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
     const [selectedBankTxId, setSelectedBankTxId] = useState<string | null>(null);
 
     const filteredBankTxs = useMemo(() => {
-        return (bankTransactions || []).filter(bt => 
-            !bt.reconciled && 
-            bt.type === 'DESPESA' && // Batch linking defaults to expenses in 'Contas a Pagar'
-            (bt.description.toLowerCase().includes(searchBank.toLowerCase()) || bt.amount.toString().includes(searchBank))
-        ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const bufferDate = new Date();
+        bufferDate.setDate(bufferDate.getDate() - 30);
+        const startDate = bufferDate.toISOString();
+
+        return (bankTransactions || [])
+            .filter(bt => 
+                !bt.reconciled && 
+                bt.type === 'DESPESA' && 
+                (bt.description.toLowerCase().includes(searchBank.toLowerCase()) || bt.amount.toString().includes(searchBank)) &&
+                bt.date >= startDate
+            )
+            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     }, [bankTransactions, searchBank]);
 
     if (!isOpen) return null;
@@ -751,62 +758,67 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [pendingDates, setPendingDates] = useState<string[]>([]);
     const [isPendingDatesLoading, setIsPendingDatesLoading] = useState(false);
 
-    useEffect(() => {
-        const fetchBankTransactions = async () => {
-            setBankTransactionsLoading(true);
-            setBankTransactions([]); // Clear stale data
-            setOpeningBalance(0);    // Clear stale balance
+    const fetchBankTransactions = useCallback(async () => {
+        setBankTransactionsLoading(true);
+        // setBankTransactions([]); // Removed clear to avoid flickering during refresh
+        // setOpeningBalance(0);   
 
-            try {
-                // 1. Fetch historical sum for Opening Balance
-                const { data: historyData, error: historyError } = await supabase
-                    .from('bank_transactions')
-                    .select('amount, type')
-                    .lt('date', startDate);
+        try {
+            // Buffer date for split detection (45 days before visible startDate)
+            const bufferStart = new Date(parseDateSafe(startDate));
+            bufferStart.setDate(bufferStart.getDate() - 45);
+            const bufferStartStr = toLocalDateStr(bufferStart);
 
-                if (!historyError && historyData) {
-                    const oldestConfig = financialConfigs[financialConfigs.length - 1];
-                    const initialBalance = oldestConfig?.initialBalance || 0;
-                    const historicalSum = historyData.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
-                    setOpeningBalance(initialBalance + historicalSum);
-                }
+            // 1. Fetch historical sum for Opening Balance (everything strictly before startDate)
+            const { data: historyData, error: historyError } = await supabase
+                .from('bank_transactions')
+                .select('amount, type')
+                .lt('date', startDate);
 
-                // 2. Fetch strictly within the selected date range
-                const { data, error } = await supabase
-                    .from('bank_transactions')
-                    .select('*')
-                    .gte('date', startDate)
-                    .lte('date', endDate)
-                    .order('date', { ascending: true });
-
-                if (error) throw error;
-                if (data) {
-                    // map snake_case to camelCase
-                    setBankTransactions(data.map(d => ({
-                        id: d.id,
-                        date: d.date,
-                        description: d.description,
-                        document: d.document,
-                        amount: d.amount,
-                        type: d.type,
-                        systemCategory: d.system_category,
-                        systemEntityName: d.system_entity_name,
-                        systemPaymentMethod: d.system_payment_method,
-                        systemMatches: d.system_matches,
-                        createdAt: d.created_at
-                    })));
-                }
-            } catch (err) {
-                console.error("Error fetching bank_transactions:", err);
-            } finally {
-                setBankTransactionsLoading(false);
+            if (!historyError && historyData) {
+                const oldestConfig = financialConfigs[financialConfigs.length - 1];
+                const initialBalance = oldestConfig?.initialBalance || 0;
+                const historicalSum = historyData.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+                setOpeningBalance(initialBalance + historicalSum);
             }
-        };
 
+            // 2. Fetch with buffer to ensure context for splits is not lost if the parent transaction is older
+            const { data, error } = await supabase
+                .from('bank_transactions')
+                .select('*')
+                .gte('date', bufferStartStr)
+                .lte('date', endDate)
+                .order('date', { ascending: true });
+
+            if (error) throw error;
+            if (data) {
+                // map snake_case to camelCase
+                setBankTransactions(data.map(d => ({
+                    id: d.id,
+                    date: d.date,
+                    description: d.description,
+                    document: d.document,
+                    amount: d.amount,
+                    type: d.type,
+                    systemCategory: d.system_category,
+                    systemEntityName: d.system_entity_name,
+                    systemPaymentMethod: d.system_payment_method,
+                    systemMatches: d.system_matches,
+                    createdAt: d.created_at
+                })));
+            }
+        } catch (err) {
+            console.error("Error fetching bank_transactions:", err);
+        } finally {
+            setBankTransactionsLoading(false);
+        }
+    }, [startDate, endDate, financialConfigs]);
+
+    useEffect(() => {
         if (accountsSubTab === 'CONCILIADO' || accountsSubTab === 'PAYABLES') {
             fetchBankTransactions();
         }
-    }, [startDate, endDate, accountsSubTab, financialConfigs]);
+    }, [accountsSubTab, fetchBankTransactions]);
 
     useEffect(() => {
         const fetchYearlyBilling = async () => {
@@ -1455,7 +1467,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
-            const matchesDate = t.date >= startDate && t.date <= endDate;
+            const tDate = t.date ? t.date.substring(0, 10) : '';
+            const matchesDate = tDate >= startDate && tDate <= endDate;
             const matchesDescription = t.description.toLowerCase().includes(detailedFilter.toLowerCase()) ||
                 (t.customerOrProviderName || '').toLowerCase().includes(detailedFilter.toLowerCase()); // Search in both description and name
 
@@ -1469,9 +1482,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // For the Bank Statement (CONCILIADOS) view, we MUST use the settlement date (t.date)
             // to match the bank statement lines for the selected period, regardless of when 
             // the service occurred.
-            const rawDate = t.date;
-            const effectiveDate = rawDate ? rawDate.substring(0, 10) : '';
-            return effectiveDate >= startDate && effectiveDate <= endDate;
+            const tDate = t.date ? t.date.substring(0, 10) : '';
+            return tDate >= startDate && tDate <= endDate;
         });
         return results;
     }, [transactions, startDate, endDate]);
@@ -1607,7 +1619,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         const splitTxIds = new Set<string>(); // Tracks strictly those that were split in bank reconciliation
 
         bankTransactions.forEach(t => {
-            if (t.systemMatches) {
+            // Only force visibility if the bank transaction ITSELF is within the current visible range
+            if (t.date >= startDate && t.date <= endDate && t.systemMatches) {
                 const isSplit = t.systemMatches.length > 1;
                 t.systemMatches.forEach(m => {
                     forcedTxIds.add(m.id);
@@ -1682,7 +1695,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 (payablesSplitFilter === 'YES' && isSplit) ||
                 (payablesSplitFilter === 'NO' && !isSplit);
 
-            return matchesSplit;
+            if (!matchesSplit) return false;
+
+            // 6. Inherited Visibility for Splits: 
+            // If any item in the SAME group is visible, this one should be too
+            // Implementation: We rely on the fact that isForced/isSplit are populated from bank_transactions
+            // which now has a 45-day buffer.
+            return true;
         });
 
         // 6. Category filter for visibility ('identifiedPayables' logic merged here)
@@ -1692,7 +1711,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const bareId = t.id.replace(/^([a-z0-9]+-)+/, '');
             const isForced = forcedTxIds.has(t.id) || forcedTxIds.has(bareId);
             const isSplit = splitTxIds.has(t.id) || splitTxIds.has(bareId);
+            
+            // Critical Visibility Rule:
+            // 1. Has a real category
+            // 2. IS a forced match from bank reconciliation
+            // 3. IS a split item
             const hasCategory = category.trim() !== '' && category !== 'Sem Categoria';
+            
             return hasCategory || isForced || isSplit;
         });
 
@@ -1706,8 +1731,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             const endDay = parseDateSafe(end);
             const isClosed = monthlyClosings[`${startDay.getFullYear()}-${startDay.getMonth()}`];
 
-            const apps = appointments.filter(a => a.date >= start && a.date <= end && a.status !== 'Cancelado');
-            const sls = sales.filter(s => s.date >= start && s.date <= end);
+            const apps = appointments.filter(a => {
+                const aDate = a.date ? a.date.substring(0, 10) : '';
+                return aDate >= start && aDate <= end && a.status !== 'Cancelado';
+            });
+            const sls = sales.filter(s => {
+                const sDate = s.date ? s.date.substring(0, 10) : '';
+                return sDate >= start && sDate <= end;
+            });
             // If the month is closed, show only reconciled expenses.
             // If NOT closed, show ALL expenses (forecast).
             const exps = expenses.filter(e => {
@@ -2475,6 +2506,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 if (error) throw error;
             }
             await fetchExpenses(); // Refresh list
+            await fetchBankTransactions(); // Refresh bank links to maintain split visibility
             setIsModalOpen(false);
             setIsBatchModalOpen(false);
             setBatchActionType('IDLE');
@@ -2737,7 +2769,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="positive">${formatValue(dreData.grossRevenue, 0)}</td>${months.map(m => `<td>${formatValue(m.grossRevenue, 0)}</td>`).join('')}</tr>
                         <tr class="sub-row"><td>Serviços</td><td>${formatValue(dreData.revenueServices, 0)}</td>${months.map(m => `<td>${formatValue(m.revenueServices, 0)}</td>`).join('')}</tr>
 
-                        <tr><td>2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)</td><td class="negative">-${formatValue(dreData.deductions, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.deductions, 0)}</td>`).join('')}</tr>
+                        <tr><td>2. (-) DEDUÇÕES (Repasses Salão Parceiro)</td><td class="negative">-${formatValue(dreData.deductions, 0)}</td>${months.map(m => `<td class="negative">-${formatValue(m.deductions, 0)}</td>`).join('')}</tr>
 
                         <tr class="main-row"><td>3. (=) REC. LÃQUIDA</td><td>${formatValue(dreData.netRevenue, 0)}</td>${months.map(m => `<td>${formatValue(m.netRevenue, 0)}</td>`).join('')}</tr>
 
@@ -2798,9 +2830,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <tr class="main-row"><td>1. RECEITA BRUTA</td><td class="amount positive">${formatCurrency(dreData.grossRevenue)}</td><td class="amount">100.0%</td></tr>
                         <tr class="sub-row"><td>Serviços</td><td class="amount">${formatCurrency(dreData.revenueServices)}</td><td class="amount">${formatPercent(dreData.revenueServices, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)</td><td class="amount negative">- ${formatCurrency(dreData.deductions)}</td><td class="amount">${formatPercent(dreData.deductions, dreData.grossRevenue)}</td></tr>
+                        <tr><td>2. (-) DEDUÇÕES (Repasses Salão Parceiro)</td><td class="amount negative">- ${formatCurrency(dreData.deductions)}</td><td class="amount">${formatPercent(dreData.deductions, dreData.grossRevenue)}</td></tr>
                         
-                        <tr class="main-row"><td>3. (=) RECEITA LÃQUIDA</td><td class="amount">${formatCurrency(dreData.netRevenue)}</td><td class="amount">${formatPercent(dreData.netRevenue, dreData.grossRevenue)}</td></tr>
+                        <tr class="main-row"><td>3. (=) RECEITA LÍQUIDA</td><td class="amount">${formatCurrency(dreData.netRevenue)}</td><td class="amount">${formatPercent(dreData.netRevenue, dreData.grossRevenue)}</td></tr>
                         
                         <tr><td>4. (-) CPV / CMV</td><td class="amount negative">- ${formatCurrency(dreData.totalCOGS)}</td><td class="amount">${formatPercent(dreData.totalCOGS, dreData.grossRevenue)}</td></tr>
                         <tr class="sub-row"><td>Comissões Técnica</td><td class="amount">${formatCurrency(dreData.commissions)}</td><td class="amount">${formatPercent(dreData.commissions, dreData.grossRevenue)}</td></tr>
@@ -2809,9 +2841,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         
                         <tr><td>6. (+) OUTRAS RECEITAS</td><td class="amount positive">+ ${formatCurrency(dreData.otherRevenues)}</td><td class="amount">${formatPercent(dreData.otherRevenues, dreData.grossRevenue)}</td></tr>
                         ${Object.entries((dreData.breakdownBankRevenues || {}) as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
-
+ 
                         <tr><td>7. (-) DESPESAS COM VENDAS</td><td class="amount negative">- ${formatCurrency(dreData.amountVendas)}</td><td class="amount">${formatPercent(dreData.amountVendas, dreData.grossRevenue)}</td></tr>
                         ${Object.entries(dreData.breakdownVendas as Record<string, any>).map(([cat, info]) => `
                             <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
@@ -2819,20 +2851,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         
                         <tr><td>8. (-) DESPESAS ADMINISTRATIVAS</td><td class="amount negative">- ${formatCurrency(dreData.amountAdm)}</td><td class="amount">${formatPercent(dreData.amountAdm, dreData.grossRevenue)}</td></tr>
                          ${Object.entries(dreData.breakdownAdm as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
-
+ 
                         <tr><td>9. (-) DESPESAS FINANCEIRAS</td><td class="amount negative">- ${formatCurrency(dreData.amountFin)}</td><td class="amount">${formatPercent(dreData.amountFin, dreData.grossRevenue)}</td></tr>
-
+ 
                          ${Object.entries(dreData.breakdownFin as Record<string, any>).map(([cat, info]) => `
-                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">â”” ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
+                            <tr class="sub-row"><td style="padding-left: 30px; font-weight: bold; color: #4338ca;">└ ${cat}</td><td class="amount">${formatCurrency(info.total)}</td><td class="amount"></td></tr>
                         `).join('')}
-
+ 
                         <tr class="main-row"><td>10. (=) RESULTADO ANTES IRPJ/CSLL</td><td class="amount">${formatCurrency(dreData.resultBeforeTaxes)}</td><td class="amount">${formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)}</td></tr>
                         
-                        <tr><td>11. (-) PROVISÃ•ES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
+                        <tr><td>11. (-) PROVISÕES IRPJ/CSLL</td><td class="amount negative">- ${formatCurrency(dreData.irpjCsll)}</td><td class="amount">${formatPercent(dreData.irpjCsll, dreData.grossRevenue)}</td></tr>
                         
-                        <tr class="result-row"><td>12. (=) RESULTADO LÃQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
+                        <tr class="result-row"><td>12. (=) RESULTADO LÍQUIDO</td><td class="amount">${formatCurrency(dreData.netResult)}</td><td class="amount">${formatPercent(dreData.netResult, dreData.grossRevenue)}</td></tr>
                     </tbody>
                 </table>
                 <p style="margin-top: 20px; font-size: 10px; color: #94a3b8; text-align: center;">Este é um documento confidencial gerado pelo sistema Aminna.</p>
@@ -2843,6 +2875,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         const win = window.open('', '_blank');
         if (win) { win.document.write(printContent); win.document.close(); }
     };
+
 
     const handleDownloadDRE = () => {
         const formatPercent = (val: number, total: number) => {
@@ -2864,8 +2897,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             headerRow,
             ['1. RECEITA BRUTA', formatValue(dreData.grossRevenue), ...(isYearView ? months.map(m => formatValue(m.grossRevenue)) : ['100.0%'])],
             ['   Serviços', formatValue(dreData.revenueServices), ...(isYearView ? months.map(m => formatValue(m.revenueServices)) : [formatPercent(dreData.revenueServices, dreData.grossRevenue)])],
-            ['2. (-) DEDUÇÃ•ES (Repasses Salão Parceiro)', `-${formatValue(dreData.deductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.deductions)}`) : [formatPercent(dreData.deductions, dreData.grossRevenue)])],
-            ['3. (=) RECEITA LÃQUIDA', formatValue(dreData.netRevenue), ...(isYearView ? months.map(m => formatValue(m.netRevenue)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
+            ['2. (-) DEDUÇÕES (Repasses Salão Parceiro)', `-${formatValue(dreData.deductions)}`, ...(isYearView ? months.map(m => `-${formatValue(m.deductions)}`) : [formatPercent(dreData.deductions, dreData.grossRevenue)])],
+            ['3. (=) RECEITA LÍQUIDA', formatValue(dreData.netRevenue), ...(isYearView ? months.map(m => formatValue(m.netRevenue)) : [formatPercent(dreData.netRevenue, dreData.grossRevenue)])],
             ['4. (-) CPV / CMV', `-${formatValue(dreData.totalCOGS)}`, ...(isYearView ? months.map(m => `-${formatValue(m.totalCOGS)}`) : [formatPercent(dreData.totalCOGS, dreData.grossRevenue)])],
             ['5. (=) LUCRO BRUTO', formatValue(dreData.grossProfit), ...(isYearView ? months.map(m => formatValue(m.grossProfit)) : [formatPercent(dreData.grossProfit, dreData.grossRevenue)])],
             ['6. (+) OUTRAS RECEITAS', formatValue(dreData.otherRevenues), ...(isYearView ? months.map(m => formatValue(m.otherRevenues)) : [formatPercent(dreData.otherRevenues, dreData.grossRevenue)])],
@@ -2875,7 +2908,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
             ['10. (=) RESULTADO ANTES IRPJ', formatValue(dreData.resultBeforeTaxes), ...(isYearView ? months.map(m => formatValue(m.resultBeforeTaxes)) : [formatPercent(dreData.resultBeforeTaxes, dreData.grossRevenue)])],
             ['11. (-) IRPJ/CSLL', `-${formatValue(dreData.irpjCsll)}`, ...(isYearView ? months.map(m => `-${formatValue(m.irpjCsll)}`) : [formatPercent(dreData.irpjCsll, dreData.grossRevenue)])],
-            ['12. (=) RESULTADO LÃQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
+            ['12. (=) RESULTADO LÍQUIDO', formatValue(dreData.netResult), ...(isYearView ? months.map(m => formatValue(m.netResult)) : [formatPercent(dreData.netResult, dreData.grossRevenue)])]
         ];
 
         const csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(";")).join("\n");
@@ -3026,7 +3059,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
-                        {/* ===== ACCOUNTS Sub-nav â€” always first ===== */}
+                        {/* ===== ACCOUNTS Sub-nav — always first ===== */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
                             <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
@@ -3252,7 +3285,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             let currentBal = openingBalance;
                             const expandedRows: { t: BankTransaction; delta: number; balance: number; match?: { id: string, type: string, amount: number }; isSplit?: boolean }[] = [];
 
-                            bankTransactions.forEach(t => {
+                            bankTransactions
+                                .filter(t => {
+                                    const tDate = t.date ? t.date.substring(0, 10) : '';
+                                    return tDate >= startDate && tDate <= endDate;
+                                })
+                                .forEach(t => {
                                 if (t.systemMatches && t.systemMatches.length > 0) {
                                     // Deduplicate matches to prevent "ficou duplicado" issue
                                     const seenMatchIds = new Set();
@@ -3278,8 +3316,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                             const allWithBalance = expandedRows;
 
-                            const totalIn = bankTransactions.filter(t => t.type === 'RECEITA').reduce((s, t) => s + Math.abs(t.amount), 0);
-                            const totalOut = bankTransactions.filter(t => t.type === 'DESPESA').reduce((s, t) => s + Math.abs(t.amount), 0);
+                             const visibleTxs = bankTransactions.filter(t => {
+                                 const tDate = t.date ? t.date.substring(0, 10) : '';
+                                 return tDate >= startDate && tDate <= endDate;
+                             });
+                            const totalIn = visibleTxs.filter(t => t.type === 'RECEITA').reduce((s, t) => s + Math.abs(t.amount), 0);
+                            const totalOut = visibleTxs.filter(t => t.type === 'DESPESA').reduce((s, t) => s + Math.abs(t.amount), 0);
                             const runningBalance = currentBal;
 
                             const rowsWithBalance = allWithBalance.filter(({ t, match, isSplit }) => {
@@ -3390,11 +3432,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     .tot{font-size:12px}
                                 </style></head><body>
                                 <h2>Extrato Conciliado</h2>
-                                <p>Período: ${parseDateSafe(startDate).toLocaleDateString('pt-BR')} a ${parseDateSafe(endDate).toLocaleDateString('pt-BR')} â€” ${filtered.length} lançamentos do banco</p>
+                                <p>Período: ${parseDateSafe(startDate).toLocaleDateString('pt-BR')} a ${parseDateSafe(endDate).toLocaleDateString('pt-BR')} — ${filtered.length} lançamentos do banco</p>
                                 <table><thead><tr><th>Data</th><th>Descrição Banco</th><th>Categoria Sinc.</th><th>Favorecido / Origem</th><th>Pagamento</th><th style="text-align:right">Valor (R$)</th><th style="text-align:right">Saldo (R$)</th></tr>
                                 <tr><td colspan="5" style="color:#888">Saldo Anterior</td><td></td><td style="text-align:right">${openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td></tr>
                                 </thead><tbody>${rowsHtml}</tbody></table>
-                                <div class="totals"><div class="tot">âœ… Entradas: <b style="color:#059669">R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">âŒ Saídas: <b style="color:#dc2626">R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">ðŸ’° Saldo Final: <b>R$ ${runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div></div>
+                                <div class="totals"><div class="tot">✅ Entradas: <b style="color:#059669">R$ ${totalIn.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">❌ Saídas: <b style="color:#dc2626">R$ ${totalOut.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div><div class="tot">💰 Saldo Final: <b>R$ ${runningBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</b></div></div>
                                 </body></html>`);
                                 w.document.close(); w.print();
                             };
@@ -4021,7 +4063,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 </div>
                             );
                         })()}
-                        {/* ===== CAIXA DIÃRIO ===== */}
+                        {/* ===== CAIXA DIÁRIO ===== */}
                         {accountsSubTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
 
 
@@ -4383,7 +4425,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                             <td className="px-4 py-2.5 text-[10px] font-black text-emerald-600 text-right">{formatCurrency(item.closure)}</td>
                                                                                             <td className="px-4 py-2.5 text-center">
                                                                                                 <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                                                                                                    item.status?.toUpperCase() === 'CONCLUÃDO' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                                    item.status?.toUpperCase() === 'CONCLUÍDO' ? 'bg-emerald-100 text-emerald-700' :
                                                                                                     item.status?.toUpperCase() === 'CANCELADO' ? 'bg-rose-100 text-rose-700' :
                                                                                                     'bg-amber-100 text-amber-700'
                                                                                                 }`}>
@@ -5278,7 +5320,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </>
                                             )}
 
-                                            {/* 2. DEDUÇÃ•ES */}
+                                            {/* 2. DEDUÇÕES */}
                                             <tr onClick={() => toggleSection('deductions')} className="cursor-pointer hover:bg-slate-50/80 transition-colors">
                                                 <td className="px-8 py-4 font-bold text-xs text-rose-600 uppercase flex items-center gap-2 sticky left-0 bg-white dark:bg-zinc-900 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
                                                     {expandedSections.includes('deductions') ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -5348,9 +5390,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </>
                                             )}
 
-                                            {/* 3. RECEITA LÃQUIDA */}
+                                            {/* 3. RECEITA LÍQUIDA */}
                                             <tr className="bg-slate-50 dark:bg-zinc-800/50">
-                                                <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÃQUIDA</td>
+                                                <td className="px-8 py-4 font-black text-sm text-slate-950 dark:text-white uppercase sticky left-0 bg-slate-50 dark:bg-zinc-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">3. (=) RECEITA LÍQUIDA</td>
                                                 {timeView === 'year' ? (
                                                     <>
                                                         {dreData.monthlySnapshots?.map((m: any) => (

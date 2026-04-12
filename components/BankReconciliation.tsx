@@ -1290,8 +1290,18 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 }
                 if (data) {
                     setExpenses(prev => [...prev, ...data.map(d => ({
-                        id: d.id, description: d.description, amount: d.amount, date: d.date,
-                        category: d.category, dreClass: d.dre_class, status: d.status, paymentMethod: d.payment_method, isReconciled: true
+                        id: d.id, 
+                        description: d.description, 
+                        amount: d.amount, 
+                        date: d.date,
+                        category: d.category, 
+                        dreClass: d.dre_class, 
+                        status: d.status, 
+                        paymentMethod: d.payment_method, 
+                        isReconciled: true,
+                        supplierId: d.supplier_id,
+                        providerId: d.provider_id,
+                        employeeId: d.employee_id
                     } as Expense))]);
                 }
             }

@@ -219,86 +219,96 @@ export const generateFinancialTransactions = (
         // totalBooked here is just for proportion calculation
         const totalBooked = mainBooked + extrasList.reduce((acc: number, e: any) => acc + e.bookedPrice, 0);
 
+        // --- SPLIT PAYMENT HANDLING ---
+        const appPayments = app.payments || rawApp.payments || [];
+        const totalValue = actualTotalRevenue + tipAmount; // Total money flowing in
+        const confirmedTotalPaid = appPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+        
+        // Determine the distribution weights
+        // If payments array exists and has valid amounts, use them. Otherwise fallback to the single method.
+        let paymentBreakdown = [{ method: paymentMethodName, proportion: 1 }];
+        if (appPayments.length > 0 && confirmedTotalPaid > 0) {
+            paymentBreakdown = appPayments.map((p: any) => ({
+                method: p.method || 'Outros',
+                proportion: Number(p.amount || 0) / confirmedTotalPaid
+            }));
+        }
+
         // Filter: If actualTotalRevenue is 0 (due to status or remake), we skip the revenue lines but might still have expenses
         if (actualTotalRevenue > 0) {
+            paymentBreakdown.forEach((pb, pIdx) => {
+                const pbSuffix = paymentBreakdown.length > 1 ? `-p${pIdx}` : '';
+                
+                // Main Service Transaction(s)
+                const mainAmount = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+                if (mainAmount > 0) {
+                    allTrans.push({
+                        id: `app-main-${app.id}${pbSuffix}`,
+                        date: settlementDate,
+                        type: 'RECEITA',
+                        category: 'Serviço',
+                        description: `${service?.name || 'Serviço'} - ${customer?.name}${paymentBreakdown.length > 1 ? ` (${pb.method})` : ''}`,
+                        amount: mainAmount * pb.proportion,
+                        status: status,
+                        paymentMethod: app.status === 'Concluído' && mainBooked === 0 ? 'Cortesia' : pb.method,
+                        origin: 'Serviço',
+                        customerOrProviderName: customer?.name || 'Cliente',
+                        providerName: provider?.name || 'Não atribuído',
+                        customerName: customer?.name || 'Desconhecido',
+                        serviceName: service?.name || 'Serviço',
+                        appointmentDate: app.date,
+                        isReconciled: app.isReconciled,
+                        customerId: app.customerId
+                    });
+                }
 
-        // Main Service Transaction
-        allTrans.push({
-            id: `app-main-${app.id}`,
-            date: settlementDate,
-            type: 'RECEITA',
-            category: 'Serviço',
-            description: `${service?.name || 'Serviço'} - ${customer?.name}`,
-            amount: totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0,
-            status: status,
-            paymentMethod: app.status === 'Concluído' && mainBooked === 0 ? 'Cortesia' : paymentMethodName,
-            origin: 'Serviço',
-            customerOrProviderName: customer?.name || 'Cliente',
-            providerName: provider?.name || 'Não atribuído',
-            customerName: customer?.name || 'Desconhecido',
-            serviceName: service?.name || 'Serviço',
-            appointmentDate: app.date,
-            isReconciled: app.isReconciled,
-            customerId: app.customerId
-        });
+                // Extras Transactions
+                extrasList.forEach((extra, idx) => {
+                    const extraProv = providers.find(p => p.id === extra.providerId);
+                    const extraAmount = totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualTotalRevenue : 0;
+                    if (extraAmount > 0) {
+                        allTrans.push({
+                            id: `app-extra-rev-${app.id}-${idx}${pbSuffix}`,
+                            date: settlementDate,
+                            type: 'RECEITA',
+                            category: 'Serviço',
+                            description: `${extra.serviceName} - ${customer?.name}${paymentBreakdown.length > 1 ? ` (${pb.method})` : ''}`,
+                            amount: extraAmount * pb.proportion,
+                            status: status,
+                            paymentMethod: app.status === 'Concluído' && extra.bookedPrice === 0 ? 'Cortesia' : pb.method,
+                            origin: 'Serviço',
+                            customerOrProviderName: customer?.name || 'Cliente',
+                            providerName: extraProv?.name || 'Não atribuído',
+                            customerName: customer?.name || 'Desconhecido',
+                            serviceName: extra.serviceName,
+                            appointmentDate: app.date,
+                            isReconciled: app.isReconciled,
+                            customerId: app.customerId
+                        });
+                    }
+                });
 
-        // Extras Transactions
-        extrasList.forEach((extra, idx) => {
-            const extraProv = providers.find(p => p.id === extra.providerId);
-            allTrans.push({
-                id: `app-extra-rev-${app.id}-${idx}`,
-                date: settlementDate,
-                type: 'RECEITA',
-                category: 'Serviço',
-                description: `${extra.serviceName} - ${customer?.name}`,
-                amount: totalBooked > 0 ? (extra.bookedPrice / totalBooked) * actualTotalRevenue : 0,
-                status: status,
-                paymentMethod: app.status === 'Concluído' && extra.bookedPrice === 0 ? 'Cortesia' : paymentMethodName,
-                origin: 'Serviço',
-                customerOrProviderName: customer?.name || 'Cliente',
-                providerName: extraProv?.name || 'Não atribuído',
-                customerName: customer?.name || 'Desconhecido',
-                serviceName: extra.serviceName,
-                appointmentDate: app.date,
-                isReconciled: app.isReconciled,
-                customerId: app.customerId
-            });
-        });
-    }
-
-        // Price Discrepancy is now distributed into the service lines themselves
-        /*
-        const priceDiscrepancy = actualTotalRevenue - totalBooked;
-        if (app.status === 'Concluído' && Math.abs(priceDiscrepancy) > 0.01) {
-            ...
-        }
-        */
-
-        // --- AUTO-GENERATED CARD/ANTICIPATION FEES REMOVED BY USER REQUEST ---
-        /*
-        if (fee > 0 && actualTotalRevenue > 0) { ... }
-        ...
-        */
-
-        // Caixinha (Tip)
-        if (app.status === 'Concluído' && tipAmount > 0) {
-            allTrans.push({
-                id: `app-tip-${app.id}`,
-                date: settlementDate,
-                type: 'RECEITA',
-                category: 'Caixinha',
-                description: `Caixinha - ${customer?.name}`,
-                amount: tipAmount,
-                status: status,
-                paymentMethod: paymentMethodName,
-                origin: 'Outro',
-                customerOrProviderName: customer?.name || 'Cliente',
-                providerName: provider?.name || 'Vários',
-                customerName: customer?.name || 'Desconhecido',
-                serviceName: 'Caixinha / Gorjeta',
-                appointmentDate: app.date,
-                isReconciled: app.isReconciled,
-                customerId: app.customerId
+                // Caixinha (Tip) - Split proportionally too
+                if (app.status === 'Concluído' && tipAmount > 0) {
+                    allTrans.push({
+                        id: `app-tip-${app.id}${pbSuffix}`,
+                        date: settlementDate,
+                        type: 'RECEITA',
+                        category: 'Caixinha',
+                        description: `Caixinha - ${customer?.name}${paymentBreakdown.length > 1 ? ` (${pb.method})` : ''}`,
+                        amount: tipAmount * pb.proportion,
+                        status: status,
+                        paymentMethod: pb.method,
+                        origin: 'Outro',
+                        customerOrProviderName: customer?.name || 'Cliente',
+                        providerName: provider?.name || 'Vários',
+                        customerName: customer?.name || 'Desconhecido',
+                        serviceName: 'Caixinha / Gorjeta',
+                        appointmentDate: app.date,
+                        isReconciled: app.isReconciled,
+                        customerId: app.customerId
+                    });
+                }
             });
         }
 

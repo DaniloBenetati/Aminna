@@ -7,12 +7,18 @@ import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
 import { supabase } from '../services/supabase';
 
-const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize }: any) => (
-    <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-shadow cursor-default gap-3 h-full">
+const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, onClick }: any) => (
+    <div 
+        onClick={onClick}
+        className={`bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-3 h-full`}
+    >
         <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
                 <p className="text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
-                <h3 className={`${valueSize || 'text-xl md:text-3xl'} font-black text-slate-900 dark:text-white tracking-tighter mt-1`}>{value}</h3>
+                <div className="flex items-center gap-2">
+                    <h3 className={`${valueSize || 'text-xl md:text-3xl'} font-black text-slate-900 dark:text-white tracking-tighter mt-1`}>{value}</h3>
+                    {onClick && <ChevronRight size={16} className="text-slate-400 mt-1" />}
+                </div>
             </div>
             <div className={`p-3 rounded-2xl flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
                 <Icon className={`w-5 h-5 md:w-6 md:h-6 ${color} dark:text-current`} />
@@ -59,6 +65,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const [filterChannel, setFilterChannel] = useState('all'); // New Channel Filter
     const [showFilters, setShowFilters] = useState(false);
     const [isChurnModalOpen, setIsChurnModalOpen] = useState(false);
+    const [isNewCustomersModalOpen, setIsNewCustomersModalOpen] = useState(false);
     const [churnModalTab, setChurnModalTab] = useState<'loyal' | 'new'>('loyal');
 
     // --- HELPERS ---
@@ -201,6 +208,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const newCustomersCount = useMemo(() => {
         return Object.values(firstVisits).filter(v => isDateInPeriod(v.date)).length;
     }, [firstVisits, timeView, dateRef, customRange]);
+
+    const newCustomersListData = useMemo(() => {
+        return Object.entries(firstVisits)
+            .filter(([_, v]) => isDateInPeriod(v.date))
+            .map(([customerId, v]) => {
+                const customer = customers.find(c => c.id === customerId);
+                // Find appointments for that specific first visit date
+                const firstDayApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído' && a.date === v.date);
+                
+                // Get professional name (from the first appointment of the day)
+                const mainApp = firstDayApps[0];
+                const professional = providers.find(p => p.id === mainApp?.providerId)?.name || 'N/A';
+                
+                // Collect all service names from that day
+                const servicesNames = firstDayApps.map(a => {
+                    const svc = services.find(s => s.id === a.serviceId);
+                    let names = [svc?.name || 'Serviço'];
+                    (a.additionalServices || []).forEach(extra => {
+                        const extraSvc = services.find(es => es.id === extra.serviceId);
+                        if (extraSvc) names.push(extraSvc.name);
+                    });
+                    return names.join(', ');
+                }).join(', ');
+
+                return {
+                    id: customerId,
+                    name: customer?.name || 'Sem Nome',
+                    phone: customer?.phone || '',
+                    date: v.date,
+                    professional,
+                    services: servicesNames,
+                    revenue: v.revenue,
+                    lastMarketingContact: customer?.lastMarketingContact
+                };
+            })
+            .sort((a, b) => b.date.localeCompare(a.date));
+    }, [firstVisits, customers, appointments, providers, services, timeView, dateRef, customRange]);
 
     const newCustomersTrafficData = useMemo(() => {
         const dailyData: Record<string, { count: number, recurring: number, revenue: number, services: number, recurringRevenue: number, recurringServices: number }> = {};
@@ -1607,6 +1651,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={Users}
                                     color="text-blue-700"
                                     lightColor="bg-blue-50"
+                                    onClick={() => setIsNewCustomersModalOpen(true)}
                                 />
                                 <KPICard
                                     title="Produtos Vendidos (Qtd)"
@@ -2682,8 +2727,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <div className="flex flex-wrap gap-4">
                                         {/* Unified Novos Clientes Card */}
                                         <div className="bg-slate-900 dark:bg-white p-1 rounded-3xl shadow-xl flex items-center overflow-hidden border border-slate-800 dark:border-slate-200">
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Base de Novos</p>
+                                            <div 
+                                                className="px-5 py-2 cursor-pointer hover:bg-slate-800 dark:hover:bg-slate-50 transition-colors group/new"
+                                                onClick={() => setIsNewCustomersModalOpen(true)}
+                                            >
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Base de Novos</p>
+                                                    <ChevronRight size={8} className="text-slate-500 opacity-0 group-hover/new:opacity-100 transition-opacity" />
+                                                </div>
                                                 <p className="text-sm font-black text-white dark:text-black mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.value || 0), 0)}
                                                 </p>
@@ -3081,7 +3132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {/* Churn Action Modal */}
             {isChurnModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
@@ -3314,6 +3365,219 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="px-8 py-4 bg-slate-50 dark:bg-zinc-950/50 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-[9px]">
                             <p className="font-bold text-slate-400 uppercase tracking-tighter">Planilha de Recuperação Gerada em {new Date().toLocaleDateString('pt-BR')}</p>
                             <p className="font-black text-slate-600 dark:text-slate-400 uppercase">Foco total na Experiência do Cliente</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Customers Modal */}
+            {isNewCustomersModalOpen && (
+                <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                        {/* Header */}
+                        <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
+                                    <Users size={18} className="text-blue-500" /> Relatório de Novos Clientes
+                                </h3>
+                                <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                    Base de Novos: <span className="text-blue-400">{newCustomersListData.length}</span> | Período: {getDateLabel()}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setIsNewCustomersModalOpen(false)}
+                                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50 dark:bg-zinc-900/50">
+                            {/* Mobile Grid */}
+                            <div className="block lg:hidden space-y-3">
+                                {newCustomersListData.map((row) => {
+                                    const isAlreadyMessaged = row.lastMarketingContact && 
+                                        new Date(row.lastMarketingContact).toDateString() === new Date().toDateString();
+
+                                    return (
+                                        <div key={row.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                            {isAlreadyMessaged && (
+                                                <div className="absolute top-0 right-0 bg-emerald-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-1 shadow-sm animate-in slide-in-from-top-2">
+                                                    <CircleCheck size={10} /> Contatado Hoje
+                                                </div>
+                                            )}
+                                            
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div>
+                                                    <p className={`font-black text-xs uppercase truncate ${isAlreadyMessaged ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{row.name}</p>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{row.phone}</p>
+                                                </div>
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black ${isAlreadyMessaged ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600'}`}>
+                                                    {new Date(row.date).toLocaleDateString('pt-BR')}
+                                                </span>
+                                            </div>
+
+                                            <div className="space-y-2 mb-4">
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Profissional</span>
+                                                    <span className="font-black text-slate-700 dark:text-zinc-300">{row.professional}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Serviços</span>
+                                                    <span className="font-black text-slate-700 dark:text-zinc-300 truncate max-w-[150px]">{row.services}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center text-[10px]">
+                                                    <span className="font-bold text-slate-400 uppercase">Faturamento</span>
+                                                    <span className="font-black text-emerald-600">R$ {row.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => {
+                                                        const firstName = row.name.split(' ')[0];
+                                                        const phone = row.phone.replace(/\D/g, '');
+                                                        const msg = `Oi, ${row.name} 
+tudo bem? 
+
+Foi um prazer ter você na Aminna pela primeira vez!
+Conta pra gente como foi a sua experiência, você se sentiu bem atendida? Gostou do resultado?
+
+Sua opinião é muito importante pra gente :)`;
+                                                        window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                        handleMarkAsMessaged(row.id);
+                                                    }}
+                                                    className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
+                                                >
+                                                    <MessageCircle size={14} />
+                                                    {isAlreadyMessaged ? 'Reenviar' : 'WhatsApp'}
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleMarkAsMessaged(row.id)}
+                                                    className={`p-3 rounded-2xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
+                                                    title="Marcar como enviado manualmente"
+                                                >
+                                                    <CircleCheck size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const firstName = row.name.split(' ')[0];
+                                                        const msg = `Oi, ${row.name} 
+tudo bem? 
+
+Foi um prazer ter você na Aminna pela primeira vez!
+Conta pra gente como foi a sua experiência, você se sentiu bem atendida? Gostou do resultado?
+
+Sua opinião é muito importante pra gente :)`;
+                                                        navigator.clipboard.writeText(msg);
+                                                        handleMarkAsMessaged(row.id);
+                                                        alert('Mensagem copiada!');
+                                                    }}
+                                                    className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200 shadow-sm"
+                                                >
+                                                    <Copy size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            {/* Desktop Table */}
+                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest">Cliente</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Data</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest">Profissional</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-right">Faturamento</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Status</th>
+                                            <th className="px-6 py-5 text-[10px] font-black uppercase text-slate-500 tracking-widest text-center">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {newCustomersListData.map((row) => {
+                                            const isAlreadyMessaged = row.lastMarketingContact && 
+                                                new Date(row.lastMarketingContact).toDateString() === new Date().toDateString();
+
+                                            return (
+                                                <tr key={row.id} className={`border-b border-slate-50 dark:border-zinc-800/50 hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors group ${isAlreadyMessaged ? 'opacity-60 grayscale-[0.5]' : ''}`}>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate max-w-[200px]">{row.name}</p>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase">{row.phone}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <span className="px-3 py-1 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-full text-[10px] font-black whitespace-nowrap">
+                                                            {new Date(row.date).toLocaleDateString('pt-BR')}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase">{row.professional}</p>
+                                                        <p className="text-[9px] font-bold text-slate-500 dark:text-slate-400 truncate max-w-[200px]">{row.services}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <p className="text-xs font-black text-emerald-600">R$ {row.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        {isAlreadyMessaged ? (
+                                                            <span className="flex items-center justify-center gap-1.5 text-[9px] font-black text-emerald-600 uppercase">
+                                                                <CircleCheck size={14} /> Contatado
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase">Pendente</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button 
+                                                                onClick={() => {
+                                                                    const firstName = row.name.split(' ')[0];
+                                                                    const phone = row.phone.replace(/\D/g, '');
+                                                                    const msg = `Oi, ${row.name} 
+tudo bem? 
+
+Foi um prazer ter você na Aminna pela primeira vez!
+Conta pra gente como foi a sua experiência, você se sentiu bem atendida? Gostou do resultado?
+
+Sua opinião é muito importante pra gente :)`;
+                                                                    window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
+                                                                    handleMarkAsMessaged(row.id);
+                                                                }}
+                                                                className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                                                title="Enviar Pesquisa de Satisfação"
+                                                            >
+                                                                <MessageCircle size={16} />
+                                                            </button>
+                                                            <button 
+                                                                onClick={() => handleMarkAsMessaged(row.id)}
+                                                                className={`p-2.5 rounded-xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
+                                                                title="Marcar como enviado manualmente"
+                                                            >
+                                                                <CircleCheck size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {newCustomersListData.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 text-slate-300">
+                                    <Users size={48} className="mb-4 opacity-20" />
+                                    <p className="font-black uppercase text-xs tracking-widest">Nenhum novo cliente neste período</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-8 py-4 bg-slate-50 dark:bg-zinc-950/50 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-[9px]">
+                            <p className="font-bold text-slate-400 uppercase tracking-tighter">Relatório Gerado em {new Date().toLocaleDateString('pt-BR')}</p>
+                            <p className="font-black text-slate-600 dark:text-slate-400 uppercase">Fidelizando novos talentos</p>
                         </div>
                     </div>
                 </div>
