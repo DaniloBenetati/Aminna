@@ -3137,8 +3137,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </p>
                             </div>
 
-                            {/* Mobile Grid / Desktop Table */}
-                            <div className="block md:hidden space-y-3">
+                            {/* Mobile/Tablet Grid (up to LG) / Desktop Table (LG+) */}
+                            <div className="block lg:hidden space-y-3">
                                 {[...(churnModalTab === 'loyal' ? recurringStats.churnRiskClients : recurringStats.oneTimeOnlyClients)]
                                     .sort((a, b) => b.daysInactive - a.daysInactive)
                                     .map((client: any) => {
@@ -3146,18 +3146,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             new Date(client.lastMarketingContact).toDateString() === new Date().toDateString();
                                         
                                         return (
-                                            <div key={client.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all ${isAlreadyMessaged ? 'opacity-60 grayscale-[0.5] border-emerald-200 dark:border-emerald-900/50' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                            <div key={client.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                                {isAlreadyMessaged && (
+                                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-1 shadow-sm animate-in slide-in-from-top-2">
+                                                        <CircleCheck size={10} /> Contatado Hoje
+                                                    </div>
+                                                )}
+                                                
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="font-black text-xs text-slate-900 dark:text-white uppercase truncate">{client.name}</p>
-                                                            {isAlreadyMessaged && <CircleCheck size={14} className="text-emerald-500" />}
+                                                            <p className={`font-black text-xs uppercase truncate ${isAlreadyMessaged ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}`}>{client.name}</p>
                                                         </div>
                                                         <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{client.phone}</p>
                                                     </div>
-                                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                        {client.daysInactive} dias
-                                                    </span>
+                                                    {!isAlreadyMessaged && (
+                                                        <span className={`px-3 py-1 rounded-full text-[9px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                            {client.daysInactive} dias
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
@@ -3181,28 +3188,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                             const firstName = client.name.split(' ')[0];
                                                             const phone = client.phone.replace(/\D/g, '');
                                                             const msg = churnModalTab === 'loyal' 
-                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita. Que tal tirar um momento só pra você esta semana?`
-                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna! 👋 Passando para saber se deu tudo certo com seu atendimento e te convidar para voltar com 15% de desconto!`;
+                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna!`
+                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna!`;
                                                             
                                                             window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                             handleMarkAsMessaged(client.id);
                                                         }}
-                                                        className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black'}`}
+                                                        className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
                                                     >
                                                         <MessageCircle size={14} />
-                                                        {isAlreadyMessaged ? 'Reenviar Novamente' : 'Enviar WhatsApp'}
+                                                        {isAlreadyMessaged ? 'Reenviar' : 'WhatsApp'}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleMarkAsMessaged(client.id)}
+                                                        className={`p-3 rounded-2xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
+                                                        title="Marcar como enviado manualmente"
+                                                    >
+                                                        <CircleCheck size={18} />
                                                     </button>
                                                     <button 
                                                         onClick={() => {
                                                             const firstName = client.name.split(' ')[0];
                                                             const msg = churnModalTab === 'loyal' 
-                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna! 👋 Faz um tempinho que não nos visita.`
-                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna! 👋`;
+                                                                ? `Olá ${firstName}, tudo bem? Sentimos sua falta aqui na Aminna!`
+                                                                : `Olá ${firstName}, foi um prazer recebê-la na Aminna!`;
                                                             navigator.clipboard.writeText(msg);
                                                             handleMarkAsMessaged(client.id);
                                                             alert('Copiado!');
                                                         }}
-                                                        className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200"
+                                                        className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200 shadow-sm"
                                                     >
                                                         <Copy size={16} />
                                                     </button>
@@ -3212,7 +3226,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     })}
                             </div>
 
-                            <div className="hidden md:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
@@ -3240,7 +3254,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                             <p className="text-[9px] font-bold text-slate-400 uppercase">{client.phone}</p>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
-                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap ${client.daysInactive > 60 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-600'}`}>
                                                                 {client.daysInactive} dias
                                                             </span>
                                                         </td>
