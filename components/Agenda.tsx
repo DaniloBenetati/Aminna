@@ -502,26 +502,43 @@ export const Agenda: React.FC<AgendaProps> = ({
             const dayOfWeek = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
             const day = dateObj.getDate();
             const month = dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
-
-            const srv = services.find(s => s.id === a.serviceId);
-            const [h, m] = a.time.split(':');
-            const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
-            const serviceName = a.combinedServiceNames || srv?.name || 'Serviço';
-
+            
             message += `${dayOfWeek} ${day} ${month}\n`;
-            message += `${displayTime} | ${serviceName}\n`;
+
+            const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
             
-            let preferenceName = 'Equipe';
-            const prefIds = customer.assignedProviderIds || [];
-            if (prefIds.length > 0) {
-                const preferred = providers.find(p => p.id === prefIds[0]);
-                if (preferred) preferenceName = preferred.nickname || preferred.name;
-            } else if (customer.assignedProviderId) {
-                const preferred = providers.find(p => p.id === customer.assignedProviderId);
-                if (preferred) preferenceName = preferred.nickname || preferred.name;
-            }
-            
-            message += `*Agendamento com preferência | ${preferenceName}*\n\n`;
+            const getPrefLabel = (providerId: string) => {
+                const pid = String(providerId).trim().toLowerCase();
+                if (prefIds.includes(pid)) {
+                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                    return prof ? prof.nickname || prof.name : 'Equipe';
+                }
+                return 'Equipe';
+            };
+
+            // Lista de todos os serviços (Principal + Adicionais)
+            const mainSrv = services.find(s => s.id === a.serviceId);
+            const allServices = [
+                { 
+                    name: mainSrv?.name || 'Serviço', 
+                    time: a.time, 
+                    providerId: a.providerId 
+                },
+                ...(a.additionalServices || []).map(extra => ({
+                    name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                    time: extra.startTime || a.time,
+                    providerId: extra.providerId
+                }))
+            ];
+
+            allServices.forEach(srvItem => {
+                const [h, m] = srvItem.time.split(':');
+                const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
+                const prefName = getPrefLabel(srvItem.providerId);
+                
+                message += `${displayTime} | ${srvItem.name}\n`;
+                message += `*Agendamento com preferência | ${prefName}*\n\n`;
+            });
         });
 
         message += `Confirma ?\n\n`;
