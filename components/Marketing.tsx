@@ -73,6 +73,7 @@ interface AdInsight {
   cpc: number;
   conversions: number;
   creative?: { thumbnail_url?: string };
+  quality_ranking?: string;
 }
 
 const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
@@ -83,13 +84,13 @@ const CAMPAIGN_FIELDS = [
 ].join(',');
 
 const ADSET_FIELDS = [
-  'id', 'name', 'status', 'campaign_id', 'campaign{name}',
+  'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting',
   'insights.date_preset(last_30d){spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,frequency}'
 ].join(',');
 
 const AD_FIELDS = [
   'id', 'name', 'status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
-  'insights.date_preset(last_30d){spend,impressions,clicks,ctr,conversions,cost_per_conversion}',
+  'insights.date_preset(last_30d){spend,impressions,clicks,ctr,conversions,cost_per_conversion,quality_ranking,engagement_rate_ranking}',
   'creative{thumbnail_url}'
 ].join(',');
 
@@ -210,33 +211,18 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
         <div className="space-y-3">
           <div className="space-y-1">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Novos Clientes</p>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase">Qtd:</span>
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-emerald-600 uppercase">Valor:</span>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Nível: Novos Clientes</p>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Valor:</span>
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-amber-600 uppercase">Cupons:</span>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Cupons:</span>
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.coupons || 0}</span>
             </div>
-          </div>
-          <div className="space-y-1 border-t border-slate-50 dark:border-zinc-700/50 pt-3 mt-1">
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Nível: Recorrentes</p>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-indigo-600 uppercase">Qtd:</span>
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurring}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-indigo-600 uppercase">Valor:</span>
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.recurringRevenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-amber-600 uppercase">Cupons:</span>
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.recurringCoupons || 0}</span>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Serviços:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.services || 0}</span>
             </div>
           </div>
         </div>
@@ -678,11 +664,22 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       const parsedAdSets: AdSet[] = (adsetData.data || []).map((a: any) => {
         const insight = a.insights?.data?.[0];
+        let targetingDesc = '—';
+        if (a.targeting) {
+           const parts = [];
+           if (a.targeting.age_min) parts.push(`${a.targeting.age_min}-${a.targeting.age_max || '65+'} anos`);
+           if (a.targeting.genders && a.targeting.genders.length === 1) parts.push(a.targeting.genders[0] === 1 ? 'Homens' : 'Mulheres');
+           if (a.targeting.custom_audiences) parts.push('Público Personalizado');
+           if (a.targeting.flexible_spec && a.targeting.flexible_spec.length > 0) parts.push('Interesses Detalhados');
+           else if (a.targeting.geo_locations?.cities) parts.push(`${a.targeting.geo_locations.cities.length} Cidades`);
+           targetingDesc = parts.join(' • ') || 'Aberto / Broad';
+        }
         return {
           id: a.id,
           campaign_id: a.campaign_id,
           campaign_name: a.campaign?.name || '—',
           name: a.name,
+          targeting_desc: targetingDesc,
           status: a.status,
           ...parseInsight(insight),
         };
@@ -705,6 +702,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           name: ad.name,
           status: ad.status,
           creative: ad.creative,
+          quality_ranking: insight?.quality_ranking || 'UNKNOWN',
           ...parseInsight(insight),
         };
       });
@@ -756,7 +754,17 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const totalImpressions = campaigns.reduce((s, c) => s + c.impressions, 0);
   const totalClicks = campaigns.reduce((s, c) => s + c.clicks, 0);
-  const totalConversions = campaigns.reduce((s, c) => s + c.conversions, 0);
+  const totalConversions = campaigns.reduce((s, c) => {
+    const matchingCouponAppts = appointments.filter(a => 
+        a.status === 'Concluído' && 
+        a.appliedCoupon && (
+           c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
+           (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
+        ) &&
+        isAppointmentInMarketingPeriod(a.date)
+    );
+    return s + matchingCouponAppts.length;
+  }, 0);
   const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
   const avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
@@ -766,7 +774,17 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const highFrequency = campaigns.filter(c => c.frequency > 3 && c.status === 'ACTIVE');
   const lowCTR = campaigns.filter(c => c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
   const highCPA = campaigns.filter(c => c.cpa > avgCPA * 2 && c.cpa > 0 && c.status === 'ACTIVE');
-  const zeroConversions = campaigns.filter(c => c.conversions === 0 && c.spend > 50 && c.status === 'ACTIVE');
+  const zeroConversions = campaigns.filter(c => {
+    const matchingCouponAppts = appointments.filter(a => 
+        a.status === 'Concluído' && 
+        a.appliedCoupon && (
+           c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
+           (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
+        ) &&
+        isAppointmentInMarketingPeriod(a.date)
+    );
+    return matchingCouponAppts.length === 0 && c.spend > 50 && c.status === 'ACTIVE';
+  });
   const topPerformers = campaigns.filter(c => c.roas > 2 && c.status === 'ACTIVE').sort((a, b) => b.roas - a.roas);
   const problems = [...highFrequency.map(c => ({ type: 'frequency', campaign: c })),
     ...lowCTR.map(c => ({ type: 'ctr', campaign: c })),
@@ -914,7 +932,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
 
   const renderCampaigns = () => (
-    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-xl overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-none overflow-hidden">
       {/* Desktop Version */}
       <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -924,19 +942,39 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Veiculação</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Ações</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Resultados</th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo por result.</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo p/ res.</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Orçamento</th>
-                <th className="px-6 py-4 text-right">Valor usado</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Valor usado</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right text-emerald-600">Retorno CRM</th>
+                <th className="px-6 py-4 text-right text-emerald-600">ROI CRM</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
             {campaigns.map(c => {
                const isActive = c.status === 'ACTIVE';
                const hasProblem = problems.find(p => p.campaign.id === c.id);
+               
+               const matchingCouponAppts = appointments.filter(a => 
+                  a.status === 'Concluído' && 
+                  a.appliedCoupon && (
+                     c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
+                     (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
+                  ) &&
+                  isAppointmentInMarketingPeriod(a.date)
+               );
+               
+               const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
+                  const svc = services.find(s => s.id === a.serviceId);
+                  const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
+                  return sum + rev;
+               }, 0);
+               
+               const crmROI = c.spend > 0 ? crmRevenue / c.spend : 0;
+
                return (
                  <tr key={c.id} className="hover:bg-indigo-50/50 dark:hover:bg-indigo-900/5 transition-colors group cursor-default h-14">
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
-                      <span className="text-[12px] font-bold text-indigo-600 dark:text-indigo-400 group-hover:underline cursor-pointer">{c.name}</span>
+                      <span className="text-[12px] font-black text-slate-900 dark:text-white uppercase leading-tight">{c.name}</span>
                    </td>
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
                       <div className="flex items-center gap-2">
@@ -961,8 +999,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
                       {c.results ? (
                         <div className="flex flex-col">
-                          <span className="text-[12px] font-bold text-slate-900 dark:text-white leading-none">{fmt.number(c.results.count, 0)}</span>
-                          <span className="text-[9px] text-slate-400 font-medium mt-0.5">{c.results.name || 'Conversas'}</span>
+                           <span className="text-[12px] font-bold text-slate-900 dark:text-white leading-none">{fmt.number(c.results.count, 0)}</span>
+                           <span className="text-[9px] text-slate-400 font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[80px]">{c.results.name || 'Conversas'}</span>
                         </div>
                       ) : (
                         <span className="text-slate-300 dark:text-zinc-700">—</span>
@@ -988,8 +1026,16 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                         </span>
                       </div>
                    </td>
+                   <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right font-black">
+                      <span className="text-[12px] text-slate-900 dark:text-white">{fmt.currency(c.spend)}</span>
+                   </td>
+                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">
+                      <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>{fmt.currency(crmRevenue)}</span>
+                   </td>
                    <td className="px-6 py-4 text-right">
-                      <span className="text-[12px] font-bold text-slate-900 dark:text-white">{fmt.currency(c.spend)}</span>
+                      <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-300 dark:text-zinc-700'}`}>
+                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
+                      </span>
                    </td>
                  </tr>
                );
@@ -1003,10 +1049,29 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         {campaigns.map(c => {
            const isActive = c.status === 'ACTIVE';
            const hasProblem = problems.find(p => p.campaign.id === c.id);
+
+           // Calculate Retorno CRM and ROI CRM for mobile
+           const matchingCouponAppts = appointments.filter(a => 
+              a.status === 'Concluído' && 
+              a.appliedCoupon && (
+                 c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
+                 (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
+              ) &&
+              isAppointmentInMarketingPeriod(a.date)
+           );
+           
+           const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
+              const svc = services.find(s => s.id === a.serviceId);
+              const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
+              return sum + rev;
+           }, 0);
+           
+           const crmROI = c.spend > 0 ? crmRevenue / c.spend : 0;
+
            return (
              <div key={c.id} className="p-5 space-y-4">
                 <div className="flex justify-between items-start gap-4">
-                   <span className="text-[13px] font-black text-indigo-600 dark:text-indigo-400 leading-tight">{c.name}</span>
+                   <span className="text-[13px] font-black text-slate-900 dark:text-white leading-tight uppercase">{c.name}</span>
                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 rounded-full h-fit flex-shrink-0">
                       <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#00a400]' : 'bg-slate-400'}`} />
                       <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">
@@ -1032,6 +1097,18 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </p>
                    </div>
                    <div className="space-y-0.5">
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
+                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                         {fmt.currency(crmRevenue)}
+                      </p>
+                   </div>
+                   <div className="space-y-0.5 text-right">
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
+                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
+                      </p>
+                   </div>
+                   <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Orçamento</p>
                       <p className="text-[11px] font-black text-slate-900 dark:text-white">
                          {fmt.currency((c.daily_budget || c.lifetime_budget || 0) / 100)}
@@ -1040,7 +1117,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    </div>
                    <div className="space-y-0.5 text-right">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Investido</p>
-                      <p className="text-[11px] font-black text-emerald-600">
+                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
                          {fmt.currency(c.spend)}
                       </p>
                    </div>
@@ -1066,7 +1143,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     </div>
   );
 
-  const renderAdSets = () => (
+  const renderAdSets = () => {
+    const activeAdSets = adSets.filter(a => a.status === 'ACTIVE');
+    return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
       {/* Desktop Version */}
       <div className="hidden sm:block overflow-x-auto">
@@ -1080,9 +1159,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-            {adSets.map(a => (
+            {activeAdSets.map(a => (
               <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
-                <td className="px-6 py-4 font-bold text-xs truncate max-w-[200px]">{a.name}</td>
+                <td className="px-6 py-4">
+                  <p className="font-bold text-xs truncate max-w-[200px] text-slate-900 dark:text-white">{a.name}</p>
+                  <p className="text-[10px] text-indigo-500 font-bold mt-1 truncate max-w-[200px]">{a.targeting_desc || '—'}</p>
+                </td>
                 <td className="px-6 py-4 text-[11px] text-slate-500">{a.campaign_name}</td>
                 <td className="px-6 py-4 font-black text-xs">{fmt.currency(a.spend)}</td>
                 <td className="px-6 py-4 font-bold text-xs">{a.conversions}</td>
@@ -1094,13 +1176,16 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       {/* Mobile Card Version */}
       <div className="sm:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
-         {adSets.map(a => (
+         {activeAdSets.map(a => (
            <div key={a.id} className="p-4 space-y-2">
               <div className="flex justify-between items-start gap-2">
                  <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{a.name}</p>
                  <span className="text-[10px] font-black text-emerald-600">{fmt.currency(a.spend)}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <p className="text-[10px] font-bold text-indigo-500 leading-tight">
+                 {a.targeting_desc || '—'}
+              </p>
+              <div className="flex justify-between items-center pt-1">
                  <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
                  <p className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full">
                     {a.conversions} Conv.
@@ -1110,17 +1195,31 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
          ))}
       </div>
     </div>
-  );
+  )};
 
-  const renderAds = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {ads.map(ad => (
+  const renderAds = () => {
+    const activeAds = ads.filter(ad => ad.status === 'ACTIVE');
+    
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {activeAds.map(ad => (
         <div key={ad.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4 shadow-sm hover:shadow-md transition-all">
           <div className="flex gap-4 mb-4">
              {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-16 h-16 rounded-xl object-cover" alt="" />}
              <div className="min-w-0">
                 <p className="font-black text-xs truncate text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{ad.name}</p>
-                <div className="flex gap-2"><StatusBadge status={ad.status} /></div>
+                <div className="flex gap-2 items-center">
+                   <StatusBadge status={ad.status} />
+                   {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+                         ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                         ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                         'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                      }`}>
+                         {ad.quality_ranking.includes('BELOW') ? 'Fadigado' : ad.quality_ranking.includes('ABOVE') ? 'Alta Qualidade' : 'Na Média'}
+                      </span>
+                   )}
+                </div>
              </div>
           </div>
           <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-zinc-800 pt-4">
@@ -1135,8 +1234,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           </div>
         </div>
       ))}
+      {activeAds.length === 0 && !loading && hasFetched && (
+        <div className="col-span-full py-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
+           Nenhum anúncio ativo encontrado
+        </div>
+      )}
     </div>
   );
+};
 
   const renderFunil = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -1390,22 +1495,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest animate-pulse">Sincronizando Inteligência Aminna...</p>
                 </div>
               ) : (
-                <div className="space-y-16 pb-24 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                  <div className="space-y-12">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                  <div className="space-y-6">
                     {renderOverview()}
                   </div>
 
-                  <div className="pt-20 border-t border-slate-200 dark:border-zinc-800 space-y-24">
-                    <section id="funil-marketing" className="scroll-mt-32">
-                      <SectionTitle sub="Análise detalhada da jornada do cliente no funil de conversão">🌪️ FUNIL E EFICIÊNCIA DE VENDAS</SectionTitle>
-                      {renderFunil()}
-                    </section>
-                    
-                    <section id="insights-IA" className="scroll-mt-32">
-                      <SectionTitle sub="Otimizações recomendadas com base no desempenho atual">💡 RECOMENDAÇÕES E INSIGHTS</SectionTitle>
-                      {renderRecommendations()}
-                    </section>
-
+                  <div className="space-y-8">
                     <section id="detalhamento-campanhas" className="scroll-mt-32">
                       <SectionTitle sub="Visão macro de performance por objetivo de campanha">📣 DETALHAMENTO DE CAMPANHAS</SectionTitle>
                       {renderCampaigns()}
@@ -1464,10 +1559,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={trafficChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                               <defs>
-                                <linearGradient id="colorRecMkt" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
-                                  <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                                </linearGradient>
                                 <linearGradient id="colorNewMkt" x1="0" y1="0" x2="0" y2="1">
                                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
                                   <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
@@ -1477,7 +1568,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                              <Area type="monotone" dataKey="recurring" name="Recorrentes" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorRecMkt)" dot={{ fill: '#4f46e5', r: 3 }} activeDot={{ r: 5 }} />
                               <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMkt)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
                             </AreaChart>
                           </ResponsiveContainer>
@@ -1492,9 +1582,15 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </div>
                     </section>
 
+
                     <section id="anuncios-criativos" className="scroll-mt-32">
                       <SectionTitle sub="Melhores criativos e análise visual de anúncios">🖼️ ANÚNCIOS E CRIATIVOS EM DESTAQUE</SectionTitle>
                       {renderAds()}
+                    </section>
+
+                    <section id="insights-IA" className="scroll-mt-32 mt-16">
+                      <SectionTitle sub="Otimizações recomendadas com base no desempenho atual">💡 RECOMENDAÇÕES E INSIGHTS</SectionTitle>
+                      {renderRecommendations()}
                     </section>
                   </div>
                 </div>
