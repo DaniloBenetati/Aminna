@@ -22,6 +22,7 @@ interface IGPost {
   media_url: string;
   permalink: string;
   timestamp: string;
+  username?: string;
   insights: {
     reach: number;
     impressions: number;
@@ -35,6 +36,7 @@ interface IGPost {
 }
 
 interface IGAccountInsights {
+  username?: string;
   reach: number;
   impressions: number;
   profile_views: number;
@@ -208,6 +210,7 @@ export const InstagramOrganic: React.FC<{
   const [error, setError] = useState<string | null>(null);
   const [showAllPosts, setShowAllPosts] = useState(false);
   const [postSortBy, setPostSortBy] = useState<'engagement' | 'reach' | 'followers'>('followers');
+  const [taggedPosts, setTaggedPosts] = useState<IGPost[]>([]);
 
   // Time Series for Reach (Extracted from Date Range)
   const timeSeriesData = useMemo(() => {
@@ -319,7 +322,7 @@ export const InstagramOrganic: React.FC<{
           return;
       }
 
-      const mediaFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,insights.metric(reach,impressions,saved,video_views,plays)';
+      const mediaFields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count,username,owner,insights.metric(reach,impressions,saved,video_views,plays)';
       try {
         const mediaRes = await fetch(`${META_GRAPH_URL}/${igAccId}/media?access_token=${token}&fields=${mediaFields}&since=${sinceTs}&until=${untilTs}&limit=200`);
         const mediaData = await mediaRes.json();
@@ -356,6 +359,29 @@ export const InstagramOrganic: React.FC<{
           }));
           setPosts(processedPosts);
         }
+
+        // Fetch Collabs & Mentions (Recent without time constraint to guarantee results if any exist)
+        const tagsRes = await fetch(`${META_GRAPH_URL}/${igAccId}/tags?access_token=${token}&fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=15`);
+        const tagsData = await tagsRes.json();
+        
+        if (tagsData.error) {
+           console.error("Tags fetch error:", tagsData.error);
+        }
+        if (tagsData && tagsData.data) {
+           const processedTags = tagsData.data.map((m: any) => ({
+             ...m,
+             caption: m.caption || 'Sem legenda',
+             media_url: m.thumbnail_url || m.media_url || '',
+             insights: {
+               reach: 0, impressions: 0, saves: 0, followers: 0,
+               likes: m.like_count || 0,
+               comments: m.comments_count || 0,
+               shares: 0
+             }
+           }));
+           setTaggedPosts(processedTags);
+        }
+
       } catch (err) {
         console.error("Media Fetch Exception:", err);
       }
@@ -369,7 +395,7 @@ export const InstagramOrganic: React.FC<{
         const followerRes = await fetch(`${META_GRAPH_URL}/${igAccId}/insights?metric=reach&period=day&since=${sinceTs}&until=${untilTs}&breakdown=follower_type&access_token=${token}`);
         const followerData = await followerRes.json();
 
-        const accInfoRes = await fetch(`${META_GRAPH_URL}/${igAccId}?fields=followers_count&access_token=${token}`);
+        const accInfoRes = await fetch(`${META_GRAPH_URL}/${igAccId}?fields=followers_count,username&access_token=${token}`);
         const accInfo = await accInfoRes.json();
 
         let topCitiesFromAPI = null;
@@ -433,7 +459,14 @@ export const InstagramOrganic: React.FC<{
           const totalReach = reachList.reduce((s: number, v: any) => s + v.value, 0);
           const totalImpressions = imprList.reduce((s: number, v: any) => s + v.value, 0);
 
+          let finalTaggedPosts = [];
+          setTaggedPosts(tgs => {
+             finalTaggedPosts = [...tgs];
+             return tgs;
+          });
+
           setAccInsights({
+            username: accInfo.username,
             reach: totalReach,
             impressions: totalImpressions,
             profile_views: profileList.reduce((s: number, v: any) => s + v.value, 0),
@@ -452,6 +485,22 @@ export const InstagramOrganic: React.FC<{
             topCities: topCitiesFromAPI,
             demographics: demographicsFromAPI
           });
+
+          // Check if any fetched posts are collabs with other profiles
+          if (accInfo.username) {
+            setPosts(curPosts => {
+               const feedCollabs = curPosts.filter(p => p.username && p.username !== accInfo.username);
+               
+               if (feedCollabs.length > 0) {
+                 setTaggedPosts(prev => {
+                    const collabIds = new Set(feedCollabs.map(c => c.id));
+                    const tagsOnly = prev.filter(t => !collabIds.has(t.id));
+                    return [...feedCollabs, ...tagsOnly];
+                 });
+               }
+               return curPosts;
+            });
+          }
         }
       } catch (err) {
         console.warn("Account insights fetch failed", err);
@@ -955,6 +1004,41 @@ export const InstagramOrganic: React.FC<{
              </div>
           ))}
         </div>
+      </div>
+
+      {/* Collabs e Menções */}
+      <div className="space-y-6 pt-12">
+         <div>
+            <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2"><Users size={20} className="text-rose-500" /> Collabs & Menções</h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">Posts de outras contas onde o negócio foi marcado</p>
+         </div>
+
+         {taggedPosts.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x">
+               {taggedPosts.map((tag, i) => (
+                  <div key={i} className="snap-start shrink-0 w-36 md:w-48 group relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
+                     <img src={tag.media_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                     
+                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 flex flex-col justify-end items-start opacity-100 mb-2">
+                        <div className="flex items-center gap-3">
+                           <div className="flex items-center gap-1 text-white text-[10px] font-black">
+                              <Heart size={12} fill="white" /> {fmt.compact(tag.insights.likes)}
+                           </div>
+                           <div className="flex items-center gap-1 text-white text-[10px] font-black">
+                              <MessageCircle size={12} fill="white" /> {fmt.compact(tag.insights.comments)}
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               ))}
+            </div>
+         ) : (
+            <div className="h-32 rounded-2xl border-2 border-dashed border-slate-200 dark:border-zinc-700/50 flex flex-col items-center justify-center text-center p-4">
+               <Users size={24} className="text-slate-300 dark:text-zinc-600 mb-2" />
+               <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Nenhuma Collab ou Menção</p>
+               <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">Ainda não encontramos parceiros externos marcando essa conta.</p>
+            </div>
+         )}
       </div>
 
       {/* Growth Strategy Section */}
