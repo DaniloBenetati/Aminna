@@ -636,7 +636,8 @@ const App: React.FC = () => {
           registrationDate: c.created_at,
           isVip: c.is_vip,
           vipDiscountPercent: c.vip_discount_percent,
-          creditBalance: c.credit_balance
+          creditBalance: c.credit_balance,
+          lastMarketingContact: c.last_marketing_contact
         }));
 
         // Frontend Deduplication
