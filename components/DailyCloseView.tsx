@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import {
     Users, Wallet, Lock, Sparkles, ShoppingBag, Target, Info, CircleCheck,
-    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send, History, FileText
+    ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send, History, FileText,
+    ShieldAlert
 } from 'lucide-react';
 import { Appointment, Service, FinancialTransaction } from '../types';
 import { toLocalDateStr, calculateDailySummary, isFirstAppointment } from '../services/financialService';
@@ -21,7 +22,7 @@ interface DailyCloseViewProps {
     onPrint?: () => void;
     onCloseRegister?: () => void;
     onShareWhatsapp?: (message?: string) => void;
-
+    isAlreadyClosed?: boolean;
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
     customers?: Customer[]; // Added to match name with ID for history but not strictly necessary if we only show history based on ID
@@ -31,7 +32,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     transactions, physicalCash, setPhysicalCash, closingObservation, setClosingObservation,
     closerName, setCloserName, date, appointments, services,
     onPrint, onCloseRegister, onShareWhatsapp, showControls = true,
-    vipMetrics = { value: 0, count: 0 }
+    vipMetrics = { value: 0, count: 0 },
+    isAlreadyClosed = false
 }) => {
     const dateStr = toLocalDateStr(date);
 
@@ -136,13 +138,15 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const [isCopied, setIsCopied] = useState(false);
     const [historyCustomerId, setHistoryCustomerId] = useState<string | null>(null);
 
-    const paymentMethodsSummary = useMemo(() => {
-        return dailyRelTrans.reduce((acc: Record<string, number>, t: FinancialTransaction) => {
-            const method = t.paymentMethod || 'Outros';
-            if (!acc[method]) acc[method] = 0;
-            acc[method] += (t.type === 'RECEITA' ? t.amount : -t.amount);
-            return acc;
-        }, {} as Record<string, number>);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+    const [shouldPrint, setShouldPrint] = useState(false);
+
+
+    const systemCashAmount = useMemo(() => {
+        return dailyRelTrans
+            .filter(t => t.paymentMethod === 'Dinheiro')
+            .reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     }, [dailyRelTrans]);
 
     const methodBreakdown = useMemo(() => {
@@ -628,31 +632,129 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 </div>
                             </div>
                             <div className="flex gap-2 pt-1">
-                                <button
-                                    onClick={handlePrint}
-                                    className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                                >
-                                    <Printer size={12} /> Relatório
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        handlePrint();
-                                        onCloseRegister && onCloseRegister();
-                                    }}
-                                    disabled={!physicalCash}
-                                    className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors"
-                                >
-                                    <Lock size={12} /> Fechar
-                                </button>
-                                <button onClick={handleOpenWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"><MessageCircle size={12} /> WhatsApp</button>
+                                {isAlreadyClosed ? (
+                                    <div className="flex-1 py-3 bg-slate-100 dark:bg-zinc-800 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 flex items-center justify-center gap-3 px-4 shadow-inner animate-in fade-in zoom-in duration-500">
+                                        <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-sm">
+                                            <CircleCheck size={18} />
+                                        </div>
+                                        <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-widest italic">Este caixa já foi fechado e validado</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={handlePrint}
+                                            className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                        >
+                                            <Printer size={12} /> Relatório
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowConfirmModal(true);
+                                            }}
+                                            disabled={systemCashAmount > 0 && !physicalCash}
+                                            className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors"
+                                        >
+                                            <Lock size={12} /> Fechar
+                                        </button>
+                                        <button onClick={handleOpenWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"><MessageCircle size={12} /> WhatsApp</button>
+                                    </>
+                                )}
                             </div>
-                            {!physicalCash && (
-                                <p className="text-[10px] text-rose-500 text-center font-bold">Realize a conferência do valor em dinheiro para liberar o fechamento.</p>
+                            {systemCashAmount > 0 && !physicalCash && (
+                                <p className="text-[10px] text-rose-500 text-center font-bold animate-pulse">
+                                    ⚠️ O sistema possui R$ {systemCashAmount.toFixed(2)} em dinheiro. Preencha o valor físico para fechar.
+                                </p>
                             )}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Modal de Confirmação de Fechamento (Padrão Aminna) */}
+            {showConfirmModal && (
+                <div className="fixed inset-0 bg-black/60 z-[10002] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                                <ShieldAlert size={40} className="animate-pulse" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tighter italic">Validar Dados</h3>
+                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-relaxed">
+                                    Os dados já foram validados antes de fechar o caixa?
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3 pt-2">
+                                {/* Opção de Impressão */}
+                                <button 
+                                    onClick={() => setShouldPrint(!shouldPrint)}
+                                    className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${shouldPrint ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className={`p-2 rounded-xl ${shouldPrint ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-slate-500'}`}>
+                                            <Printer size={16} />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className={`text-[10px] font-black uppercase tracking-widest ${shouldPrint ? 'text-indigo-900 dark:text-indigo-300' : 'text-slate-500'}`}>Imprimir Relatório</p>
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">Gerar documento físico</p>
+                                        </div>
+                                    </div>
+                                    <div className={`w-10 h-5 rounded-full relative transition-colors ${shouldPrint ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-600'}`}>
+                                        <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${shouldPrint ? 'right-1' : 'left-1'}`} />
+                                    </div>
+                                </button>
+
+                                <button 
+                                    onClick={() => {
+                                        setShowConfirmModal(false);
+                                        if (shouldPrint) {
+                                            handlePrint();
+                                        }
+                                        setShowSuccessMessage(true);
+                                        setTimeout(() => {
+                                            onCloseRegister && onCloseRegister();
+                                        }, 2500);
+                                    }}
+                                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    <CircleCheck size={16} /> Sim, Fechar Caixa
+                                </button>
+                                <button 
+                                    onClick={() => setShowConfirmModal(false)}
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                >
+                                    Voltar e Revisar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Overlay de Sucesso (Padrão Aminna) */}
+            {showSuccessMessage && (
+                <div className="fixed inset-0 bg-emerald-600 z-[10003] flex items-center justify-center backdrop-blur-xl animate-in fade-in duration-500">
+                    <div className="text-center text-white space-y-8 animate-in zoom-in-90 duration-700">
+                        <div className="relative">
+                            <div className="w-32 h-32 bg-white/20 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl animate-bounce">
+                                <Lock size={64} className="text-white" />
+                            </div>
+                            <div className="absolute -top-2 -right-2 bg-white text-emerald-600 p-2 rounded-full shadow-lg animate-pulse">
+                                <CircleCheck size={24} />
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <h2 className="text-4xl font-black uppercase tracking-tighter italic">Caixa Fechado</h2>
+                            <p className="text-emerald-100 font-bold uppercase tracking-[0.3em] text-[10px] opacity-90">Operação concluída com sucesso</p>
+                        </div>
+                        <div className="pt-8 flex justify-center">
+                            <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
+                                <div className="h-full bg-white animate-progress-fast origin-left"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
 
             {/* WhatsApp Modal */}

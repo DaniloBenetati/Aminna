@@ -259,6 +259,13 @@ export const Agenda: React.FC<AgendaProps> = ({
         return transactions.filter(t => (t.appointmentDate || t.date) === dateStr);
     }, [transactions, dateRef]);
 
+    const isAlreadyClosed = useMemo(() => {
+        const dateStr = toLocalDateStr(dateRef);
+        const apps = appointments.filter(a => a.date === dateStr && (a.status === 'Concluído' || a.status === 'Em Andamento' || a.status === 'Em atendimento'));
+        if (apps.length === 0) return false;
+        return apps.every(a => a.isReconciled === true);
+    }, [appointments, dateRef]);
+
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
@@ -1181,8 +1188,31 @@ export const Agenda: React.FC<AgendaProps> = ({
         window.print();
     };
 
-    const handleCloseRegister = () => {
-        setIsFinanceModalOpen(false);
+    const handleCloseRegister = async () => {
+        const dateStr = toLocalDateStr(dateRef);
+        
+        try {
+            // Update appointments for the day to isReconciled = true
+            const { error: apptError } = await supabase
+                .from('appointments')
+                .update({ is_reconciled: true })
+                .eq('date', dateStr)
+                .in('status', ['Concluído', 'Em Andamento', 'Em atendimento']);
+
+            if (apptError) throw apptError;
+
+            // Update local state immediately for visual feedback
+            setAppointments(prev => prev.map(a => 
+                a.date === dateStr && (a.status === 'Concluído' || a.status === 'Em Andamento' || a.status === 'Em atendimento')
+                    ? { ...a, isReconciled: true }
+                    : a
+            ));
+
+            setIsFinanceModalOpen(false);
+        } catch (error) {
+            console.error('Error closing register:', error);
+            alert('Erro ao fechar o caixa no servidor. Por favor, tente novamente.');
+        }
     };
 
     const handleShareWhatsappDailyClose = (previewMessage?: string) => {
@@ -2521,6 +2551,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     onPrint={handlePrintDailyClose}
                                     onCloseRegister={handleCloseRegister}
                                     onShareWhatsapp={handleShareWhatsappDailyClose}
+                                    isAlreadyClosed={isAlreadyClosed}
                                 />
                             </div>
                         </div>
