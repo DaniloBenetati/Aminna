@@ -23,6 +23,8 @@ interface DailyCloseViewProps {
     onCloseRegister?: () => void;
     onShareWhatsapp?: (message?: string) => void;
     isAlreadyClosed?: boolean;
+    canReopen?: boolean;
+    onReopenRegister?: () => void;
     showControls?: boolean;
     vipMetrics?: { value: number, count: number };
     customers?: Customer[]; // Added to match name with ID for history but not strictly necessary if we only show history based on ID
@@ -33,7 +35,9 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     closerName, setCloserName, date, appointments, services,
     onPrint, onCloseRegister, onShareWhatsapp, showControls = true,
     vipMetrics = { value: 0, count: 0 },
-    isAlreadyClosed = false
+    isAlreadyClosed = false,
+    canReopen = false,
+    onReopenRegister
 }) => {
     const dateStr = toLocalDateStr(date);
 
@@ -141,6 +145,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [shouldPrint, setShouldPrint] = useState(false);
+    const [showReopenConfirm, setShowReopenConfirm] = useState(false);
 
 
     const systemCashAmount = useMemo(() => {
@@ -633,11 +638,23 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             </div>
                             <div className="flex gap-2 pt-1">
                                 {isAlreadyClosed ? (
-                                    <div className="flex-1 py-3 bg-slate-100 dark:bg-zinc-800 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 flex items-center justify-center gap-3 px-4 shadow-inner animate-in fade-in zoom-in duration-500">
-                                        <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-sm">
-                                            <CircleCheck size={18} />
+                                    <div className="flex-1 py-3 bg-slate-100 dark:bg-zinc-800 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row items-center justify-between gap-3 px-6 shadow-inner animate-in fade-in zoom-in duration-500">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
+                                                <CircleCheck size={18} />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-widest italic leading-tight">Este caixa já foi fechado e validado</span>
                                         </div>
-                                        <span className="text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-widest italic">Este caixa já foi fechado e validado</span>
+                                        
+                                        {canReopen && (
+                                            <button
+                                                onClick={() => setShowReopenConfirm(true)}
+                                                className="bg-slate-200 dark:bg-zinc-700 hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 group whitespace-nowrap"
+                                            >
+                                                <History size={12} className="group-hover:rotate-[-45deg] transition-transform" />
+                                                Reabrir Registro
+                                            </button>
+                                        )}
                                     </div>
                                 ) : (
                                     <>
@@ -864,6 +881,42 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             >
                                 <Users size={14} className="inline mr-2" /> Gerenciar Cliente Completo
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Confirmação de Reabertura (Padrão Aminna) */}
+            {showReopenConfirm && (
+                <div className="fixed inset-0 bg-black/60 z-[10004] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                                <History size={40} className="animate-pulse" />
+                            </div>
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tighter italic">Reabrir Caixa</h3>
+                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-relaxed">
+                                    Deseja realmente reabrir este registro? Os dados voltarão ao estado de conferência.
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-3 pt-2">
+                                <button 
+                                    onClick={() => {
+                                        setShowReopenConfirm(false);
+                                        onReopenRegister && onReopenRegister();
+                                    }}
+                                    className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-rose-700 shadow-xl shadow-rose-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    Confirmar Reabertura
+                                </button>
+                                <button 
+                                    onClick={() => setShowReopenConfirm(false)}
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -1215,6 +1215,30 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
     };
 
+    const handleReopenRegister = async () => {
+        const dateStr = toLocalDateStr(dateRef);
+        
+        try {
+            // Update appointments for the day to isReconciled = false
+            const { error: apptError } = await supabase
+                .from('appointments')
+                .update({ is_reconciled: false })
+                .eq('date', dateStr);
+
+            if (apptError) throw apptError;
+
+            // Update local state immediately for visual feedback
+            setAppointments(prev => prev.map(a => 
+                a.date === dateStr
+                    ? { ...a, isReconciled: false }
+                    : a
+            ));
+        } catch (error) {
+            console.error('Error reopening register:', error);
+            alert('Erro ao reabrir o caixa no servidor. Por favor, tente novamente.');
+        }
+    };
+
     const handleShareWhatsappDailyClose = (previewMessage?: string) => {
         if (previewMessage && typeof previewMessage === 'string') {
             const encodedMessage = encodeURIComponent(previewMessage);
@@ -2552,6 +2576,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     onCloseRegister={handleCloseRegister}
                                     onShareWhatsapp={handleShareWhatsappDailyClose}
                                     isAlreadyClosed={isAlreadyClosed}
+                                    canReopen={userProfile?.role === 'admin'}
+                                    onReopenRegister={handleReopenRegister}
                                 />
                             </div>
                         </div>
