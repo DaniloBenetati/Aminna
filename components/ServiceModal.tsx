@@ -136,6 +136,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [whatsappResponseNeeded, setWhatsappResponseNeeded] = useState(appointment?.whatsappResponseNeeded || false);
     const [includeDebt, setIncludeDebt] = useState(false);
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
+    const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
 
     // NFSe State
     const [nfseStatus, setNfseStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -2389,6 +2390,59 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     const isAgendaMode = source === 'AGENDA';
 
+    const handleWhatsAppReminder = (action: 'COPY' | 'OPEN') => {
+        if (!customer.phone) {
+            alert('Cliente sem telefone cadastrado.');
+            return;
+        }
+
+        const cleanPhone = customer.phone.replace(/\D/g, '');
+        const whatsappPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+
+        // Greeting based on current time
+        const now = new Date();
+        const hoursNow = now.getHours();
+        let greeting = 'Bom dia';
+        if (hoursNow >= 12 && hoursNow < 18) greeting = 'Boa tarde';
+        else if (hoursNow >= 18) greeting = 'Boa noite';
+
+        // Date formatting: QUARTA-FEIRA 15 ABRIL
+        const weekdays = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+        const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+        
+        // Ensure date is parsed correctly regardless of timezone
+        const dateObj = new Date(appointmentDate + 'T12:00:00');
+        const formattedDate = `${weekdays[dateObj.getDay()]} ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+
+        // Service details list
+        const serviceDetails = lines.map(line => {
+            const service = services.find(s => s.id === line.serviceId);
+            const provider = providers.find(p => p.id === line.providerId);
+            const time = line.startTime || appointmentTime;
+            const hour = time.split(':')[0];
+            
+            return `${hour}H | ${service?.name || 'Serviço'}\n*Agendamento com preferência | ${provider?.name || 'Equipe'}*`;
+        }).join('\n\n');
+
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${serviceDetails}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
+
+        if (action === 'COPY') {
+            navigator.clipboard.writeText(message).then(() => {
+                alert('Mensagem copiada para a área de transferência!');
+            }).catch(err => {
+                console.error('Erro ao copiar mensagem:', err);
+                alert('Erro ao copiar mensagem.');
+            });
+        } else {
+            // Open WhatsApp (and copy for safety)
+            navigator.clipboard.writeText(message).catch(() => {});
+            const url = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+        
+        setShowWhatsAppOptions(false);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
             <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
@@ -2423,6 +2477,40 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 >
                                     <History size={10} /> Ver Histórico
                                 </button>
+                                
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowWhatsAppOptions(!showWhatsAppOptions)}
+                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 border border-emerald-400 rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                                        title="Lembrete WhatsApp"
+                                    >
+                                        <span className="text-xs">📲</span> Lembrete
+                                    </button>
+
+                                    {showWhatsAppOptions && (
+                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
+                                            <button 
+                                                onClick={() => handleWhatsAppReminder('COPY')}
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
+                                            >
+                                                <Copy size={12} /> Copiar Mensagem
+                                            </button>
+                                            <button 
+                                                onClick={() => handleWhatsAppReminder('OPEN')}
+                                                className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2 transition-colors"
+                                            >
+                                                <Smartphone size={12} /> Ir para WhatsApp
+                                            </button>
+                                            <div className="border-t border-slate-100 dark:border-zinc-700 my-1"></div>
+                                            <button 
+                                                onClick={() => setShowWhatsAppOptions(false)}
+                                                className="w-full text-center py-1 text-[8px] font-bold text-slate-400 uppercase hover:text-slate-600 transition-colors"
+                                            >
+                                                Fechar
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
