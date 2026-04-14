@@ -79,9 +79,9 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
     
     // Calculate Investment from Linked Customer (Permuta)
     const partner = partners.find(p => p.id === c.partnerId);
-    let linkedInvestment = 0;
+    let extraInvestment = 0;
     if (partner?.linkedCustomerId) {
-      linkedInvestment = appointments
+      extraInvestment = appointments
         .filter(a => a.customerId === partner.linkedCustomerId && a.status === 'Concluído')
         .reduce((acc, a) => acc + (a.bookedPrice || a.amount || 0), 0);
     }
@@ -90,14 +90,24 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       ...c,
       useCount: dynamicUseCount,
       totalRevenueGenerated: dynamicRevenue,
-      investmentValue: (c.investmentValue || 0) + linkedInvestment
+      linkedInvestment: extraInvestment // Keep as separate property
     };
   });
+
+  // Calculate global salon spending (Permuta) for ALL active partners once
+  const totalPartnerLinkedSpending = partners
+    .filter(p => p.active && p.linkedCustomerId)
+    .reduce((acc, p) => {
+       const pSpend = appointments
+         .filter(a => a.customerId === p.linkedCustomerId && a.status === 'Concluído')
+         .reduce((sum, a) => sum + (a.bookedPrice || a.amount || 0), 0);
+       return acc + pSpend;
+    }, 0);
 
   // Stats
   const totalPartnerRevenue = campaignsWithStats.reduce((acc, c) => acc + c.totalRevenueGenerated, 0);
   const totalPartnerAppointments = campaignsWithStats.reduce((acc, c) => acc + c.useCount, 0);
-  const totalInvestment = campaignsWithStats.reduce((acc, c) => acc + (c.investmentValue || 0), 0);
+  const totalInvestment = campaigns.reduce((acc, c) => acc + (c.investmentValue || 0), 0) + totalPartnerLinkedSpending;
   const topCampaign = [...campaignsWithStats].sort((a, b) => b.totalRevenueGenerated - a.totalRevenueGenerated)[0];
   const uniqueCouponCustomers = new Set(
     appointments
@@ -132,7 +142,13 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   };
 
   const handleOpenCampaignModal = (campaign: Campaign | null = null) => {
-    setEditingCampaign(campaign);
+    if (campaign) {
+      // Find original campaign data to avoid using derived stats (like linkedInvestment) when editing
+      const originalCampaign = campaigns.find(can => can.id === campaign.id);
+      setEditingCampaign(originalCampaign || campaign);
+    } else {
+      setEditingCampaign(null);
+    }
     setIsCampaignModalOpen(true);
   };
 
@@ -725,7 +741,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 >
                                   Fat: R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                                 </div>
-                                <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-[8px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {(c.investmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+                                <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-[8px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {( (c.investmentValue || 0) + (c.linkedInvestment || 0) ).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
                               </div>
                             </div>
                           ))}
@@ -883,7 +899,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                           <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <span className="text-xs font-bold text-rose-600 dark:text-rose-400">R$ {(c.investmentValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-xs font-bold text-rose-600 dark:text-rose-400">R$ {( (c.investmentValue || 0) + (c.linkedInvestment || 0) ).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <span className="text-xs font-bold text-slate-600 dark:text-slate-400">R$ {avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
@@ -896,7 +912,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 : 'bg-slate-50 text-slate-500 dark:bg-zinc-800'
                             }`}>
                               {(c.investmentValue || 0) > 0 
-                                ? ((c.totalRevenueGenerated - (c.investmentValue || 0)) / (c.investmentValue || 0)).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'x'
+                                ? ((c.totalRevenueGenerated - ((c.investmentValue || 0) + (c.linkedInvestment || 0))) / ((c.investmentValue || 0) + (c.linkedInvestment || 0))).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + 'x'
                                 : '0.0x'}
                             </span>
                           </div>
@@ -1083,6 +1099,110 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Cancelar</button>
                 <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">Salvar Parceiro</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isCampaignModalOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black">
+            <div className="px-6 py-4 bg-zinc-950 text-white flex justify-between items-center">
+              <h3 className="font-black uppercase tracking-tight flex items-center gap-2"><Tag size={20} /> {editingCampaign?.id ? 'Editar Cupom' : 'Novo Cupom'}</h3>
+              <button onClick={() => setIsCampaignModalOpen(false)}><X size={24} /></button>
+            </div>
+            <form onSubmit={handleSaveCampaign} className="p-6 md:p-8 space-y-4 max-h-[85vh] overflow-y-auto">
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Parceiro Responsável</label>
+                <select 
+                  name="partnerId" 
+                  required 
+                  defaultValue={editingCampaign?.partnerId || ''} 
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600"
+                >
+                  <option value="">Selecione um parceiro...</option>
+                  {partners.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Nome da Campanha</label>
+                <input 
+                  name="name" 
+                  required 
+                  defaultValue={editingCampaign?.name || ''} 
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  placeholder="Ex: Primavera 2024"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Código do Cupom</label>
+                  <input 
+                    name="couponCode" 
+                    required 
+                    defaultValue={editingCampaign?.couponCode || ''} 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 uppercase" 
+                    placeholder="EX: AMINNA10"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Limite Máximo de Usos</label>
+                  <input 
+                    name="maxUses" 
+                    type="number" 
+                    required 
+                    defaultValue={editingCampaign?.maxUses || 100} 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-zinc-800 pt-4">
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Tipo de Desconto</label>
+                  <select 
+                    name="discountType" 
+                    defaultValue={editingCampaign?.discountType || 'PERCENTAGE'} 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600"
+                  >
+                    <option value="PERCENTAGE">Porcentagem (%)</option>
+                    <option value="FIXED">Valor Fixo (R$)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Valor do Desconto</label>
+                  <input 
+                    name="discountValue" 
+                    type="number" 
+                    step="0.01" 
+                    required 
+                    defaultValue={editingCampaign?.discountValue || ''} 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Investimento Fixo Adicional (R$)</label>
+                <input 
+                  name="investmentValue" 
+                  type="number" 
+                  step="0.01" 
+                  defaultValue={editingCampaign?.investmentValue || 0} 
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  placeholder="Ex: 50.00"
+                />
+                <p className="mt-1 text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Além do custo das permutas vinculadas ao parceiro.</p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Cancelar</button>
+                <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg">Salvar Cupom</button>
               </div>
             </form>
           </div>
