@@ -705,7 +705,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     phone: c.phone || '',
                     lastVisit: lastApp.date,
                     avgTicket,
-                    avgTicket,
                     daysInactive,
                     lastMarketingContact: c.lastMarketingContact
                 };

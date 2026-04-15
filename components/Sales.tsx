@@ -9,6 +9,7 @@ import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from
 import { formatDateBR, parseDateSafe, toLocalDateStr } from '../services/financialService';
 import { sanitizeImageUrl, normalizeSearch } from '../services/utils';
 import { SalesAnalyses } from './SalesAnalyses';
+import { ReservationsManagement } from './ReservationsManagement';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
@@ -62,7 +63,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
     const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
-    const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG' | 'ANALYSES'>('ACTIVITY');
+    const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG' | 'ANALYSES' | 'RESERVAS'>('ACTIVITY');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
 
@@ -1083,13 +1084,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Responsive Tab Switcher */}
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
-                        {(['ACTIVITY', 'CATALOG', 'ANALYSES'] as const).map(tab => (
+                        {(['ACTIVITY', 'CATALOG', 'ANALYSES', 'RESERVAS'] as const).map(tab => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveMainTab(tab)}
                                 className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
-                                {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : 'Análises'}
+                                {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : tab === 'RESERVAS' ? 'Reservas' : 'Análises'}
                             </button>
                         ))}
                     </div>
@@ -1458,6 +1459,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         )}
                     </div>
                 </div>
+            ) : activeMainTab === 'RESERVAS' ? (
+                <ReservationsManagement />
             ) : (
                 <SalesAnalyses sales={filteredSales} stock={stock} customers={customers} />
             )}

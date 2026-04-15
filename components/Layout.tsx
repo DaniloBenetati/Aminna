@@ -75,7 +75,6 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
     { id: ViewState.RECURSOS_HUMANOS, label: 'Recursos Humanos', icon: Users },
     { id: ViewState.TRAFEGO_PAGO, label: 'Marketing', icon: Megaphone },
-    { id: ViewState.RESERVAS, label: 'Reservas Online', icon: ListOrdered },
   ].filter(item => {
     if (!userProfile) return true;
     if (userProfile.role === 'admin') return true;
@@ -106,7 +105,6 @@ export const Layout: React.FC<LayoutProps> = ({
     ViewState.VENDAS,
     ViewState.SETTINGS,
     ViewState.TRAFEGO_PAGO,
-      ViewState.RESERVAS,
   ].includes(currentView);
 
   return (
