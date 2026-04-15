@@ -346,9 +346,6 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setPayments(payments.map(p => {
             if (p.id === id) {
                 const updated = { ...p, [field]: value };
-                if (field === 'method' && value === 'CRÉDITO 6X') {
-                    updated.installments = 6;
-                }
                 return updated;
             }
             return p;
@@ -1777,7 +1774,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             value={payment.method}
                                                             onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                         >
-                                                            {[...paymentSettings, { id: 'virtual-credit', method: 'Crédito Aminna' }, { id: 'credit-6x', method: 'CRÉDITO 6X' }].filter((v, i, a) => a.findIndex(t => t.method === v.method) === i).map(pay => (
+                                                            {[...paymentSettings, { id: 'virtual-credit', method: 'Crédito Aminna' }].filter((v, i, a) => a.findIndex(t => t.method === v.method) === i).map(pay => (
                                                                 <option key={pay.id} value={pay.method}>
                                                                     {pay.method}
                                                                 </option>

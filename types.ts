@@ -1,4 +1,4 @@
-
+﻿
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   AGENDA = 'AGENDA',
@@ -16,7 +16,8 @@ export enum ViewState {
   COPA = 'COPA', // Novo Módulo
   SETTINGS = 'SETTINGS',
   RECURSOS_HUMANOS = 'RECURSOS_HUMANOS',
-  TRAFEGO_PAGO = 'TRAFEGO_PAGO' // Meta Ads Analytics
+  TRAFEGO_PAGO = 'TRAFEGO_PAGO', // Meta Ads Analytics
+  RESERVAS = 'RESERVAS'
 }
 
 export type LeadStatus = 'NOVO' | 'ATENDIMENTO' | 'QUALIFICADO' | 'PROPOSTA' | 'CONVERTIDO' | 'PERDIDO';
@@ -663,4 +664,25 @@ export interface CRMAutomation {
   conditions: any;
   actions: any;
   active: boolean;
+}
+
+export interface CatalogReservationItem {
+  id: string;
+  reservation_id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  created_at: string;
+}
+
+export interface CatalogReservation {
+  id: string;
+  customer_name: string;
+  customer_phone: string;
+  status: 'Pendente' | 'Aprovada' | 'Rejeitada' | 'Conclu�da';
+  total_amount: number;
+  created_at: string;
+  updated_at: string;
+  items?: CatalogReservationItem[];
 }

@@ -18,6 +18,7 @@ import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
 import { HRManagement } from './components/HRManagement';
 import { Marketing } from './components/Marketing';
+import { ReservationsManagement } from './components/ReservationsManagement';
 import { Login } from './components/Login';
 
 import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Campaign, PantryItem, PantryLog, Lead, Provider, Partner, PartnerExchange, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, UserProfile, NFSeRecord, FinancialConfig, Employee, PayrollRecord, EmployeeLoan } from './types';
@@ -897,6 +898,8 @@ const App: React.FC = () => {
         );
       case ViewState.TRAFEGO_PAGO:
         return <Marketing appointments={appointments} customers={customers} services={services} providers={providers} />;
+      case ViewState.RESERVAS:
+        return <ReservationsManagement />;
       case ViewState.SETTINGS:
         return <SettingsPage onNavigate={setCurrentView} expenseCategories={expenseCategories} setExpenseCategories={setExpenseCategories} paymentSettings={paymentSettings} setPaymentSettings={setPaymentSettings} commissionSettings={commissionSettings} setCommissionSettings={setCommissionSettings} isAdmin={userProfile?.role === 'admin'} onSimulateUser={setSimulatedProfile} financialConfigs={financialConfigs} setFinancialConfigs={setFinancialConfigs} />;
       default:
