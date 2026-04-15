@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
-import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { StockItem } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
 
@@ -19,6 +19,11 @@ export const PublicCatalog: React.FC = () => {
     const [checkoutName, setCheckoutName] = useState('');
     const [checkoutPhone, setCheckoutPhone] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Preview
+    const [previewProduct, setPreviewProduct] = useState<StockItem | null>(null);
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
+    const touchStartRef = React.useRef<number | null>(null);
 
     useEffect(() => {
         const fetchCatalog = async () => {
@@ -285,7 +290,10 @@ export const PublicCatalog: React.FC = () => {
                         {filteredCatalog.map(product => (
                             <button
                                 key={product.id}
-                                onClick={() => addToCart(product)}
+                                onClick={() => {
+                                    setPreviewProduct(product);
+                                    setActiveImageIndex(0);
+                                }}
                                 className="group bg-white dark:bg-zinc-800 rounded-3xl border-2 p-3 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-3 relative overflow-hidden"
                                 style={{ borderColor: '#D9D9D6' }}
                             >
@@ -301,12 +309,16 @@ export const PublicCatalog: React.FC = () => {
                                         <Package size={32} className="text-slate-200 dark:text-zinc-700" />
                                     )}
                                     <div className="absolute top-3 right-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                        <div 
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                addToCart(product);
+                                            }}
                                             className="p-2 rounded-xl shadow-lg transition-all bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90"
                                             title="Adicionar ao Carrinho"
                                         >
                                             <Plus size={16} />
-                                        </div>
+                                        </button>
                                     </div>
                                     {cart.some(c => c.product.id === product.id) && (
                                         <div className="absolute top-3 left-3 bg-[#947c4c] text-white text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-widest shadow-md">
@@ -333,6 +345,110 @@ export const PublicCatalog: React.FC = () => {
                     </div>
                 )}
             </main>
+
+            {previewProduct && (
+                <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-0 md:p-6 backdrop-blur-2xl animate-in fade-in duration-500">
+                    <div className="bg-white dark:bg-zinc-950 md:rounded-[3rem] shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col h-full md:h-[85vh] border border-white/5 relative">
+                        <button 
+                            onClick={() => setPreviewProduct(null)}
+                            className="absolute top-3 right-3 md:top-6 md:right-6 z-50 p-1.5 md:p-4 bg-black/40 hover:bg-black/60 backdrop-blur-xl text-white rounded-full transition-all border border-white/10 shadow-lg active:scale-90"
+                        >
+                            <X size={14} className="md:w-6 md:h-6" />
+                        </button>
+                        <div 
+                            className="flex-1 relative bg-zinc-50 dark:bg-black flex items-center justify-center group overflow-hidden touch-pan-y"
+                            onTouchStart={(e) => {
+                                touchStartRef.current = e.touches[0].clientX;
+                            }}
+                            onTouchEnd={(e) => {
+                                if (touchStartRef.current === null) return;
+                                const touchEnd = e.changedTouches[0].clientX;
+                                const diff = touchStartRef.current - touchEnd;
+                                const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                
+                                if (Math.abs(diff) > 50) {
+                                    if (diff > 0) setActiveImageIndex(prev => (prev < images.length - 1 ? prev + 1 : 0));
+                                    else setActiveImageIndex(prev => (prev > 0 ? prev - 1 : images.length - 1));
+                                }
+                                touchStartRef.current = null;
+                            }}
+                        >
+                            <img 
+                                src={sanitizeImageUrl([previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean)[activeImageIndex] as string || '')} 
+                                alt={previewProduct.name}
+                                className="w-full h-full object-contain animate-in fade-in zoom-in-95 duration-700 select-none pointer-events-none"
+                                referrerPolicy="no-referrer"
+                            />
+                            {[previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean).length > 1 && (
+                                <>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                            setActiveImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
+                                        }}
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                    >
+                                        <ChevronLeft size={32} />
+                                    </button>
+                                    <button 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
+                                            setActiveImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
+                                        }}
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                    >
+                                        <ChevronRight size={32} />
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                        <div className="absolute top-6 left-6 right-20 sm:static sm:p-12 sm:pb-8 sm:bg-white sm:dark:bg-zinc-950 flex flex-col sm:flex-row sm:items-end justify-between gap-6 pointer-events-auto sm:z-auto z-20">
+                            <div>
+                                <h2 className="text-xl sm:text-5xl font-black text-black sm:text-slate-900 dark:text-white uppercase tracking-tighter drop-shadow-md sm:drop-shadow-none leading-none mb-1 sm:mb-4">{previewProduct.name}</h2>
+                                <p className="text-xs sm:text-sm font-black text-[#947c4c] sm:text-slate-400 uppercase tracking-widest drop-shadow-md sm:drop-shadow-none">{previewProduct.category || "Produto"}</p>
+                            </div>
+                            <div className="hidden sm:flex items-center gap-6">
+                                <div className="text-right">
+                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Preço Atual</p>
+                                    <p className="text-4xl font-black text-[#947c4c]">R$ {previewProduct.price?.toFixed(2) || '0.00'}</p>
+                                </div>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        addToCart(previewProduct);
+                                        setPreviewProduct(null);
+                                    }}
+                                    className="bg-[#947c4c] text-white pl-8 pr-6 rounded-[2rem] h-20 flex items-center justify-center gap-4 hover:bg-[#867045] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#947c4c]/30 disabled:opacity-50"
+                                >
+                                    <span className="text-base font-black tracking-widest uppercase">Reservar</span>
+                                    <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
+                                        <Plus size={24} />
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="sm:hidden absolute bottom-6 left-6 right-6 flex items-center justify-between pointer-events-auto z-20">
+                            <div className="bg-black/40 backdrop-blur-md px-6 py-4 rounded-[2rem] border border-white/10 shadow-lg">
+                                <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Preço</p>
+                                <p className="text-2xl font-black text-white drop-shadow-sm">R$ {previewProduct.price?.toFixed(2) || '0.00'}</p>
+                            </div>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    addToCart(previewProduct);
+                                    setPreviewProduct(null);
+                                }}
+                                className="bg-[#947c4c] text-white p-6 rounded-[2rem] hover:bg-[#867045] active:scale-90 transition-all shadow-xl border border-white/20"
+                            >
+                                <Plus size={28} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Sidebar Carrinho */}
             {isCartOpen && (
