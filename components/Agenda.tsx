@@ -20,10 +20,34 @@ const getEffectiveStatus = (a: Appointment, providerId?: string) => {
 
     // If providerId is specified, we filter to only consider services belonging to that professional.
     const relevantServices = [
-        ...(a.providerId === providerId || !providerId ? [{ status: a.status }] : []),
+        ...(a.providerId === providerId || !providerId ? [{ 
+            status: (a.status === 'Em Andamento' || a.status === 'Em atendimento') && !a.startTimeActual
+                ? 'Aguardando' 
+                : a.status 
+        }] : []),
         ...(a.additionalServices || [])
             .filter(s => s.providerId === providerId || !providerId)
-            .map(s => ({ status: s.status || 'Pendente' }))
+            .map(s => {
+                let sStatus = s.status || 'Pendente';
+                
+                // Inherit arrival/confirmation from global status
+                if (a.status === 'Aguardando' && (sStatus === 'Pendente' || sStatus === 'Confirmado')) {
+                    sStatus = 'Aguardando';
+                } else if (a.status === 'Confirmado' && sStatus === 'Pendente') {
+                    sStatus = 'Confirmado';
+                }
+                
+                // Independence logic for "In Progress":
+                // If global appt is in progress, but this specific sub-service hasn't started (no startTimeActual),
+                // show it as "Aguardando" (Beige/Amber) instead of Green.
+                if ((a.status === 'Em Andamento' || a.status === 'Em atendimento') && 
+                    (sStatus === 'Pendente' || sStatus === 'Confirmado' || sStatus === 'Aguardando') && 
+                    !s.startTimeActual) {
+                    sStatus = 'Aguardando';
+                }
+                
+                return { status: sStatus };
+            })
     ];
     
     const activeStatuses = relevantServices
