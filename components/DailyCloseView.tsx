@@ -146,6 +146,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
     const [shouldPrint, setShouldPrint] = useState(false);
     const [showReopenConfirm, setShowReopenConfirm] = useState(false);
+    const [selectedMethodDetails, setSelectedMethodDetails] = useState<string | null>(null);
 
 
     const systemCashAmount = useMemo(() => {
@@ -590,9 +591,16 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     {Object.entries(methodBreakdown).map(([method, data]) => {
                                         const isCard = method.toLowerCase().includes('cartão');
                                         return (
-                                            <div key={method} className="space-y-2">
-                                                <div className="flex justify-between items-center text-xs lg:text-sm">
-                                                    <span className="font-black uppercase text-slate-800 dark:text-white">{method}</span>
+                                            <div key={method} className="space-y-2 group/method">
+                                                <div 
+                                                    onClick={() => setSelectedMethodDetails(method)}
+                                                    className="flex justify-between items-center text-xs lg:text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 -mx-2 px-2 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+                                                    title={`Clique para ver detalhes de ${method}`}
+                                                >
+                                                    <span className="font-black uppercase text-slate-800 dark:text-white flex items-center gap-2">
+                                                        {method}
+                                                        <Info size={12} className="text-slate-300 opacity-0 group-hover/method:opacity-100 transition-opacity" />
+                                                    </span>
                                                     <span className="font-black text-slate-950 dark:text-white">R$ {data.total.toFixed(2)}</span>
                                                 </div>
                                                 
@@ -917,6 +925,81 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     Cancelar
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Modal de Detalhamento de Método */}
+            {selectedMethodDetails && (
+                <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-100 dark:border-zinc-800">
+                        <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                                    <Wallet size={18} />
+                                </div>
+                                <div>
+                                    <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Detalhamento: {selectedMethodDetails}</h3>
+                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Lista de Recebimentos</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setSelectedMethodDetails(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all">
+                                <X size={18} className="text-slate-400" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                            {dailyRelTrans
+                                .filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA')
+                                .sort((a, b) => b.amount - a.amount)
+                                .map((t, idx) => (
+                                    <div key={t.id || idx} className="p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all">
+                                        <div className="flex justify-between items-center">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">
+                                                    {t.customerName || 'Cliente não identificado'}
+                                                </p>
+                                                <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase truncate pr-4">
+                                                    {t.serviceName || t.description || 'Venda/Serviço'}
+                                                </h4>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-sm font-black text-slate-950 dark:text-white">R$ {t.amount.toFixed(2)}</p>
+                                                <p className="text-[8px] font-black text-slate-400 uppercase leading-none mt-1">
+                                                    {t.status === 'Pago' ? 'Confirmado' : 'Pendente'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            
+                            {dailyRelTrans.filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA').length === 0 && (
+                                <div className="text-center py-12 opacity-50">
+                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                        <History size={20} />
+                                    </div>
+                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nenhum registro encontrado</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer with Summary */}
+                        <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/50">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Acumulado</span>
+                                <span className="text-lg font-black text-slate-950 dark:text-white">
+                                    R$ {dailyRelTrans
+                                        .filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA')
+                                        .reduce((acc, curr) => acc + curr.amount, 0)
+                                        .toFixed(2)}
+                                </span>
+                            </div>
+                            <button 
+                                onClick={() => setSelectedMethodDetails(null)}
+                                className="w-full mt-4 py-4 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                            >
+                                Fechar Detalhamento
+                            </button>
                         </div>
                     </div>
                 </div>
