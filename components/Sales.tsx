@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CircleCheck, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CircleCheck, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent, Sparkles, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
@@ -73,6 +73,17 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [showAdjustmentField, setShowAdjustmentField] = useState(false);
 
     const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+    const [convertingReservationId, setConvertingReservationId] = useState<string | null>(null);
+
+    // Aminna Premium Alert State
+    const [premiumAlert, setPremiumAlert] = useState<{
+        isOpen: boolean;
+        type: 'INFO' | 'SUCCESS' | 'ERROR' | 'CONFIRM' | 'DELETE';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+    }>({ isOpen: false, type: 'INFO', title: '', message: '' });
 
     // PERSISTENCE EFFECT: Load from localStorage on mount
     useEffect(() => {
@@ -88,6 +99,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 if (data.showAdjustmentField !== undefined) setShowAdjustmentField(data.showAdjustmentField);
                 if (data.saleDate) setSaleDate(data.saleDate);
                 if (data.editingSaleId) setEditingSaleId(data.editingSaleId);
+                if (data.convertingReservationId) setConvertingReservationId(data.convertingReservationId);
                 
                 // If there's an active cart, open the modal
                 if (data.cart && data.cart.length > 0) setIsModalOpen(true);
@@ -107,10 +119,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             adjustmentReason,
             showAdjustmentField,
             saleDate,
-            editingSaleId
+            editingSaleId,
+            convertingReservationId
         };
         localStorage.setItem('AMINNA_PENDING_SALE', JSON.stringify(data));
-    }, [cart, customerId, payments, adjustmentAmount, adjustmentReason, showAdjustmentField, saleDate]);
+    }, [cart, customerId, payments, adjustmentAmount, adjustmentReason, showAdjustmentField, saleDate, editingSaleId, convertingReservationId]);
 
     // Auto-switch to Month view when entering Analytics
     useEffect(() => {
@@ -159,9 +172,40 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setShowAdjustmentField(false);
         setSaleDate(new Date().toISOString().split('T')[0]);
         setEditingSaleId(null);
+        setConvertingReservationId(null);
         setTriedToSubmit(false);
         localStorage.removeItem('AMINNA_PENDING_SALE');
         setIsModalOpen(false);
+    };
+
+    const handleSelectReservationForSale = (reservation: any) => {
+        // 1. Tentar encontrar cliente pelo telefone
+        const cleanPhone = reservation.customer_phone.replace(/\D/g, '');
+        const existingCustomer = customers.find(c => c.phone.replace(/\D/g, '') === cleanPhone);
+        
+        if (existingCustomer) {
+            setCustomerId(existingCustomer.id);
+        } else {
+            // Se não encontrou, preenchemos o campo de busca
+            setCustomerSearch(reservation.customer_name);
+        }
+
+        // 2. Mapear itens da reserva para o carrinho
+        const reservationItems: CartItem[] = (reservation.items || []).map((item: any) => ({
+            id: `res-${item.id}`,
+            productId: item.product_id,
+            productName: item.product_name,
+            quantity: item.quantity,
+            unitPrice: item.unit_price,
+            total: item.quantity * item.unit_price
+        }));
+
+        setCart(reservationItems);
+        setConvertingReservationId(reservation.id);
+        
+        // 3. Abrir modal de venda
+        setIsModalOpen(true);
+        setActiveMainTab('ACTIVITY'); 
     };
 
     // --- DATE HELPERS ---
@@ -367,7 +411,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         if (!product) return;
 
         if (product.quantity < currentQuantity) {
-            alert(`Estoque insuficiente. Disponível: ${product.quantity}`);
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Estoque Insuficiente',
+                message: `Disponível: ${product.quantity} unidades.`
+            });
             return;
         }
 
@@ -376,7 +425,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         const totalRequested = (existingInCart ? existingInCart.quantity : 0) + currentQuantity;
 
         if (product.quantity < totalRequested) {
-            alert(`Estoque insuficiente para adicionar mais este item. Total disponível: ${product.quantity}`);
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Estoque Insuficiente',
+                message: `Você já tem este item no carrinho. Total disponível: ${product.quantity}.`
+            });
             return;
         }
 
@@ -396,7 +450,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
     const fastAddToCart = (product: StockItem) => {
         if (product.quantity < 1) {
-            alert(`Estoque esgotado para "${product.name}".`);
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Estoque Esgotado',
+                message: `Não há mais unidades de "${product.name}" em estoque.`
+            });
             return;
         }
 
@@ -404,7 +463,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         const totalRequested = (existingInCart ? existingInCart.quantity : 0) + 1;
 
         if (product.quantity < totalRequested) {
-            alert(`Estoque insuficiente para adicionar mais uma unidade de "${product.name}". Total disponível: ${product.quantity}`);
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Estoque Insuficiente',
+                message: `Limite de estoque atingido para "${product.name}". Total: ${product.quantity}.`
+            });
             return;
         }
 
@@ -507,12 +571,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         });
 
         if (existingCustomer) {
-            if (window.confirm(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nDeseja usar o cadastro existente?`)) {
-                setCustomerId(existingCustomer.id);
-                setIsQuickRegisterOpen(false);
-                setQuickRegisterData({ name: '', phone: '', cpf: '' });
-                return;
-            }
+            setPremiumAlert({
+                isOpen: true,
+                type: 'CONFIRM',
+                title: 'CONTA JÁ EXISTENTE',
+                message: `Encontramos "${existingCustomer.name}" com o mesmo telefone ou nome. Deseja utilizar este cadastro?`,
+                onConfirm: () => {
+                    setCustomerId(existingCustomer.id);
+                    setIsQuickRegisterOpen(false);
+                    setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                }
+            });
+            return;
         }
 
         setIsRegisteringClient(true);
@@ -536,24 +606,25 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             if (error) throw error;
 
             if (data) {
-                // Update local list (if parents use it) - actually we should update the prop or refetch
-                // Since 'customers' is a prop, we can't directly set it here, but we can set the customerId
-                // and hope the parent updates eventually, or we alert that it's done.
-                // However, in this app, usually customers are passed down.
-                // We'll set the ID so the user can proceed.
                 setCustomerId(data.id);
                 setIsQuickRegisterOpen(false);
                 setQuickRegisterData({ name: '', phone: '', cpf: '' });
                 
-                // IMPORTANT: We need to update the local 'customers' list so getCustomerName works.
-                // Since this component doesn't have setCustomers, the new customer name won't show up immediately
-                // unless we have a way to update the parent. 
-                // Wait, Agenda.tsx has setCustomers. Sales.tsx does NOT.
-                // Let me check SalesProps.
+                setPremiumAlert({
+                    isOpen: true,
+                    type: 'SUCCESS',
+                    title: 'Cliente Cadastrada',
+                    message: `${data.name} foi adicionada com sucesso.`
+                });
             }
         } catch (error) {
             console.error('Error creating customer:', error);
-            alert('Erro ao criar cliente.');
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Erro no Cadastro',
+                message: 'Não foi possível cadastrar a cliente. Verifique a conexão e os dados.'
+            });
         } finally {
             setIsRegisteringClient(false);
         }
@@ -719,12 +790,22 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setTriedToSubmit(true);
 
         if (!customerId || cart.length === 0 || payments.length === 0) {
-            alert('Por favor, selecione a cliente, adicione produtos e defina o pagamento.');
+            setPremiumAlert({
+                isOpen: true,
+                type: 'INFO',
+                title: 'Dados Incompletos',
+                message: 'Por favor, selecione a cliente, adicione produtos e defina o pagamento.'
+            });
             return;
         }
 
         if (Math.abs(totalPaid - cartTotal) > 0.01) {
-            alert('A soma dos pagamentos deve ser igual ao total do carrinho.');
+            setPremiumAlert({
+                isOpen: true,
+                type: 'INFO',
+                title: 'Pagamento Inconsistente',
+                message: 'A soma dos pagamentos deve ser igual ao total do carrinho.'
+            });
             return;
         }
 
@@ -914,6 +995,37 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 }
             }
 
+            // --- RESERVATION INTEGRATION ---
+            if (convertingReservationId) {
+                // 1. Antes de deduzir o estoque da venda, precisamos restaurar o estoque da reserva
+                // pois o trigger do banco já havia deduzido quando a reserva foi criada.
+                // Assim, a venda deduzirá o valor exato do que está no carrinho agora.
+                const { data: resItems } = await supabase
+                    .from('catalog_reservation_items')
+                    .select('product_id, quantity')
+                    .eq('reservation_id', convertingReservationId);
+                
+                if (resItems && resItems.length > 0) {
+                    for (const ri of resItems) {
+                        const sItem = stock.find(s => s.id === ri.product_id);
+                        if (sItem) {
+                            const restoredQty = sItem.quantity + ri.quantity;
+                            await supabase.from('stock_items').update({ quantity: restoredQty }).eq('id', ri.product_id);
+                            // Atualizamos o estado local para que o loop de dedução da venda abaixo use o valor correto
+                            setStock(prev => prev.map(s => s.id === ri.product_id ? { ...s, quantity: restoredQty } : s));
+                        }
+                    }
+                }
+
+                // 2. Marcar reserva como Concluída
+                await supabase
+                    .from('catalog_reservations')
+                    .update({ status: 'Concluída', updated_at: new Date().toISOString() })
+                    .eq('id', convertingReservationId);
+                
+                console.log('✅ Reserva convertida e estoque sincronizado:', convertingReservationId);
+            }
+
             setLastSaleForInvoice(finalSale);
             setShowSuccess(true);
             
@@ -927,158 +1039,160 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
         } catch (error: any) {
             console.error('Error registering sale:', error);
-            alert(`Erro ao registrar venda: ${error.message || 'Verifique se os dados estão corretos.'}`);
+            setPremiumAlert({
+                isOpen: true,
+                type: 'ERROR',
+                title: 'Erro no Registro',
+                message: `Não foi possível registrar a venda: ${error.message || 'Verifique sua conexão.'}`
+            });
         }
     };
 
     const handleCreateDebt = async () => {
         if (!customerId || cart.length === 0) {
-            alert('Selecione uma cliente e adicione produtos para registrar a dívida.');
+            setPremiumAlert({
+                isOpen: true,
+                type: 'INFO',
+                title: 'Dados Incompletos',
+                message: 'Selecione uma cliente e adicione produtos para registrar a dívida.'
+            });
             return;
         }
 
-        if (confirm(`Deseja registrar esta venda de R$ ${cartTotal.toFixed(2)} como Dívida (Fiado)?`)) {
-            try {
-                // For debt, we record a single payment of type 'Dívida'
-                const saleToInsert = {
-                    customer_id: customerId,
-                    date: saleDate,
-                    total_amount: cartTotal,
-                    total_price: cartTotal,
-                    payment_method: 'Dívida',
-                    adjustment_amount: adjustmentAmount,
-                    adjustment_reason: adjustmentReason,
-                    items: cart.map(i => ({
-                        productId: i.productId,
-                        name: i.productName,
-                        quantity: i.quantity,
-                        unitPrice: i.unitPrice
-                    })),
-                    payments: [{
-                        id: Date.now().toString(),
-                        method: 'Dívida',
-                        amount: cartTotal
-                    }]
-                };
-
-                const { data, error } = await supabase.from('sales').insert([saleToInsert]).select();
-                if (error) throw error;
-
-                if (data && data[0]) {
-                    const newSale: Sale = {
-                        id: data[0].id,
-                        customerId: data[0].customer_id,
-                        date: data[0].date,
-                        totalAmount: data[0].total_amount,
-                        paymentMethod: data[0].payment_method,
-                        items: data[0].items || [],
-                        payments: data[0].payments || []
+        setPremiumAlert({
+            isOpen: true,
+            type: 'CONFIRM',
+            title: 'Registrar Dívida',
+            message: `Deseja registrar esta venda de R$ ${cartTotal.toFixed(2)} como Dívida (Fiado)?`,
+            onConfirm: async () => {
+                try {
+                    // For debt, we record a single payment of type 'Dívida'
+                    const saleToInsert = {
+                        customer_id: customerId,
+                        date: saleDate,
+                        total_amount: cartTotal,
+                        total_price: cartTotal,
+                        payment_method: 'Dívida',
+                        adjustment_amount: adjustmentAmount,
+                        adjustment_reason: adjustmentReason,
+                        items: cart.map(i => ({
+                            productId: i.productId,
+                            name: i.productName,
+                            quantity: i.quantity,
+                            unitPrice: i.unitPrice
+                        })),
+                        payments: [{
+                            id: Date.now().toString(),
+                            method: 'Dívida',
+                            amount: cartTotal
+                        }]
                     };
-                    setSales([newSale, ...sales]);
-                }
 
-                // Update stock levels
-                for (const item of cart) {
-                    const stockItem = stock.find(s => s.id === item.productId);
-                    if (stockItem) {
-                        const newQuantity = stockItem.quantity - item.quantity;
-                        await supabase
-                            .from('stock_items')
-                            .update({ quantity: newQuantity })
-                            .eq('id', item.productId);
+                    const { data, error } = await supabase.from('sales').insert([saleToInsert]).select();
+                    if (error) throw error;
 
-                        // Log the movement in usage_logs
-                        const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
-                        await supabase.from('usage_logs').insert({
-                            stock_item_id: item.productId,
-                            quantity: item.quantity,
-                            type: 'VENDA',
-                            note: `Fiado para ${customerName} (R$ ${item.unitPrice.toFixed(2)}/un)`,
-                            date: new Date().toISOString()
-                        });
-                        
-                        setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
+                    if (data && data[0]) {
+                        const newSale: Sale = {
+                            id: data[0].id,
+                            customerId: data[0].customer_id,
+                            date: data[0].date,
+                            totalAmount: data[0].total_amount,
+                            paymentMethod: data[0].payment_method,
+                            items: data[0].items || [],
+                            payments: data[0].payments || []
+                        };
+                        setSales([newSale, ...sales]);
                     }
-                }
 
-                // Close and clean
-                setIsModalOpen(false);
-                setCustomerId('');
-                setCart([]);
-                setPayments([]);
-                setAdjustmentAmount(0);
-                setAdjustmentReason('');
-                setShowAdjustmentField(false);
-                
-                alert('Venda registrada como dívida com sucesso! ✅');
-            } catch (error) {
-                console.error('Error creating sale debt:', error);
-                alert('Erro ao registrar dívida.');
-            }
-        }
-    };
-
-    const handleDeleteSale = async (id: string) => {
-        if (confirm('Deseja estornar esta venda? O estoque será devolvido automaticamente.')) {
-            try {
-                // 1. Encontrar a venda para obter os itens e devolver ao estoque
-                const saleToDelete = sales.find(s => s.id === id);
-                if (!saleToDelete) {
-                    console.error('Sale not found in local state:', id);
-                    return;
-                }
-
-                console.log('🔄 Iniciando estorno da venda:', id, 'Itens:', saleToDelete.items);
-
-                // 2. Devolver itens ao estoque
-                if (saleToDelete.items && Array.isArray(saleToDelete.items)) {
-                    for (const item of saleToDelete.items) {
-                        // Buscar item no estado local atualizado
+                    // Update stock levels
+                    for (const item of cart) {
                         const stockItem = stock.find(s => s.id === item.productId);
-                        
                         if (stockItem) {
-                            const currentQty = Number(stockItem.quantity) || 0;
-                            const itemQty = Number(item.quantity) || 0;
-                            const newQuantity = currentQty + itemQty;
-                            
-                            console.log(`📦 Restaurando produto ${item.productId}: ${currentQty} + ${itemQty} = ${newQuantity}`);
-
-                            const { error: stockError } = await supabase
+                            const newQuantity = (Number(stockItem.quantity) || 0) - item.quantity;
+                            await supabase
                                 .from('stock_items')
                                 .update({ quantity: newQuantity })
                                 .eq('id', item.productId);
+
+                            // Log the movement in usage_logs
+                            const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
+                            await supabase.from('usage_logs').insert({
+                                stock_item_id: item.productId,
+                                quantity: item.quantity,
+                                type: 'VENDA',
+                                note: `Fiado para ${customerName} (R$ ${item.unitPrice.toFixed(2)}/un)`,
+                                date: new Date().toISOString()
+                            });
                             
-                            if (stockError) {
-                                console.error('Erro ao atualizar banco de dados para item:', item.productId, stockError);
-                                throw stockError;
-                            }
-                            
-                            // Atualizar estado local do estoque imediatamente
                             setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
-                        } else {
-                            console.warn('⚠️ Produto não encontrado no estoque local:', item.productId);
-                            // TENTATIVA DE RECUPERAÇÃO: Buscar diretamente no Supabase caso não esteja no estado local
-                            const { data: remoteItem } = await supabase.from('stock_items').select('quantity').eq('id', item.productId).single();
-                            if (remoteItem) {
-                                const newQuantity = (Number(remoteItem.quantity) || 0) + (Number(item.quantity) || 0);
+                        }
+                    }
+
+                    // Close and clean
+                    setIsModalOpen(false);
+                    resetSaleForm();
+                    
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'SUCCESS',
+                        title: 'Dívida Registrada',
+                        message: 'Venda registrada como dívida com sucesso! ✅'
+                    });
+                } catch (error: any) {
+                    console.error('Error creating sale debt:', error);
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'ERROR',
+                        title: 'Erro',
+                        message: `Não foi possível registrar a dívida: ${error.message}`
+                    });
+                }
+            }
+        });
+    };
+
+    const handleDeleteSale = async (id: string) => {
+        setPremiumAlert({
+            isOpen: true,
+            type: 'DELETE',
+            title: 'Estornar Venda',
+            message: 'Deseja estornar esta venda? O estoque será devolvido automaticamente.',
+            onConfirm: async () => {
+                try {
+                    const saleToDelete = sales.find(s => s.id === id);
+                    if (!saleToDelete) return;
+
+                    if (saleToDelete.items && Array.isArray(saleToDelete.items)) {
+                        for (const item of saleToDelete.items) {
+                            const stockItem = stock.find(s => s.id === item.productId);
+                            if (stockItem) {
+                                const newQuantity = (Number(stockItem.quantity) || 0) + (Number(item.quantity) || 0);
                                 await supabase.from('stock_items').update({ quantity: newQuantity }).eq('id', item.productId);
-                                console.log(`✅ Restaurado via Supabase (não estava no local): ${item.productId} -> ${newQuantity}`);
+                                setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
                             }
                         }
                     }
-                }
 
-                // 3. Excluir a venda
-                const { error } = await supabase.from('sales').delete().eq('id', id);
-                if (error) throw error;
-                
-                setSales(prev => prev.filter(s => s.id !== id));
-                console.log('✅ Venda excluída com sucesso:', id);
-            } catch (error) {
-                console.error('🚨 Erro crítico ao estornar venda:', error);
-                alert('Erro ao estornar venda e devolver estoque. Verifique o console para detatlhes.');
-            }
-        }
+                    const { error } = await supabase.from('sales').delete().eq('id', id);
+                    if (error) throw error;
+                    setSales(prev => prev.filter(s => s.id !== id));
+                    
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'SUCCESS',
+                        title: 'Venda Estornada',
+                        message: 'Estorno realizado e estoque restaurado.'
+                    });
+                } catch (error: any) {
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'ERROR',
+                        title: 'Erro no Estorno',
+                        message: error.message
+                    });
+                }
+            },
+        });
     };
 
     return (
@@ -1089,15 +1203,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     <img src="/logo.png" alt="Aminna Logo" className="h-14 w-auto object-contain dark:invert" />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Responsive Tab Switcher */}
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
-                        {(['ACTIVITY', 'CATALOG', 'ANALYSES', 'RESERVAS'] as const).map(tab => (
+                        {['ACTIVITY', 'CATALOG', 'ANALYSES', 'RESERVAS'].map((tab) => (
                             <button
                                 key={tab}
-                                onClick={() => setActiveMainTab(tab)}
-                                className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${activeMainTab === tab ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                onClick={() => setActiveMainTab(tab as any)}
+                                className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    activeMainTab === tab 
+                                        ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' 
+                                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                                }`}
                             >
-                                {tab === 'ACTIVITY' ? 'Atividade' : tab === 'CATALOG' ? 'Catálogo' : tab === 'RESERVAS' ? 'Reservas' : 'Análises'}
+                                {tab === 'ACTIVITY' ? 'Atividade' : (tab === 'CATALOG' ? 'Catálogo' : (tab === 'RESERVAS' ? 'Reservas' : 'Análises'))}
                             </button>
                         ))}
                     </div>
@@ -1497,7 +1614,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     </div>
                 </div>
             ) : activeMainTab === 'RESERVAS' ? (
-                <ReservationsManagement />
+                <ReservationsManagement onConvertToSale={handleSelectReservationForSale} />
             ) : (
                 <SalesAnalyses sales={filteredSales} stock={stock} customers={customers} />
             )}
@@ -1752,7 +1869,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <div className="flex justify-between items-center px-1">
                                             <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Itens no Carrinho</label>
                                             <button 
-                                                onClick={() => { if(confirm('Deseja limpar todos os itens da cesta?')) setCart([]); }}
+                                                onClick={() => { 
+                                                    setPremiumAlert({
+                                                        isOpen: true,
+                                                        type: 'CONFIRM',
+                                                        title: 'Limpar Cesta',
+                                                        message: 'Deseja remover todos os itens do carrinho?',
+                                                        onConfirm: () => setCart([])
+                                                    });
+                                                }}
                                                 className="text-[9px] font-black text-rose-500 uppercase tracking-widest hover:text-rose-700 transition-colors"
                                             >
                                                 Limpar Cesta
@@ -2347,6 +2472,67 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     animation: thumbsUp 1.5s cubic-bezier(0.17, 0.67, 0.83, 0.67) forwards;
                 }
             ` }} />
+
+            {/* Aminna Premium Alert Modal */}
+            {premiumAlert.isOpen && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-md border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto ${
+                                premiumAlert.type === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' :
+                                premiumAlert.type === 'DELETE' || premiumAlert.type === 'ERROR' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' :
+                                'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500'
+                            }`}>
+                                {premiumAlert.type === 'SUCCESS' && <CheckCircle2 size={40} />}
+                                {(premiumAlert.type === 'ERROR' || premiumAlert.type === 'DELETE') && <AlertCircle size={40} />}
+                                {premiumAlert.type === 'CONFIRM' && <Sparkles size={40} />}
+                                {premiumAlert.type === 'INFO' && <Info size={40} />}
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{premiumAlert.title}</h3>
+                                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    {premiumAlert.message}
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                {(premiumAlert.type === 'CONFIRM' || premiumAlert.type === 'DELETE') ? (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                premiumAlert.onCancel?.();
+                                                setPremiumAlert(prev => ({ ...prev, isOpen: false }));
+                                            }}
+                                            className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                premiumAlert.onConfirm?.();
+                                                setPremiumAlert(prev => ({ ...prev, isOpen: false }));
+                                            }}
+                                            className={`flex-1 py-4 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all ${
+                                                premiumAlert.type === 'DELETE' ? 'bg-rose-500 shadow-rose-500/20' : 'bg-indigo-600 shadow-indigo-500/20'
+                                            }`}
+                                        >
+                                            Confirmar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        onClick={() => setPremiumAlert(prev => ({ ...prev, isOpen: false }))}
+                                        className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        Entendido
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

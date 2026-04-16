@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { CatalogReservation } from '../types';
-import { Check, X, Clock, RefreshCw, Eye, Package, Trash2 } from 'lucide-react';
+import { Check, X, Clock, RefreshCw, Eye, Package, Trash2, ShoppingCart, ArrowRight, CheckCircle2, AlertCircle, Info, Sparkles } from 'lucide-react';
 import { formatDateBR } from '../services/financialService';
 
-export const ReservationsManagement: React.FC = () => {
+interface ReservationsManagementProps {
+    onConvertToSale?: (reservation: CatalogReservation) => void;
+}
+
+export const ReservationsManagement: React.FC<ReservationsManagementProps> = ({ onConvertToSale }) => {
     const [reservations, setReservations] = useState<CatalogReservation[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedReservation, setSelectedReservation] = useState<CatalogReservation | null>(null);
-    const [activeTab, setActiveTab] = useState<'PENDENTES' | 'APROVADAS' | 'REJEITADAS' | 'CONCLUÍDAS'>('PENDENTES');
+    const [activeTab, setActiveTab] = useState<'NOVAS' | 'AGUARDANDO' | 'FINALIZADAS' | 'CANCELADAS'>('NOVAS');
+
+    // Aminna Premium Alert State
+    const [premiumAlert, setPremiumAlert] = useState<{
+        isOpen: boolean;
+        type: 'INFO' | 'SUCCESS' | 'ERROR' | 'CONFIRM' | 'DELETE';
+        title: string;
+        message: string;
+        onConfirm?: () => void;
+        onCancel?: () => void;
+    }>({ isOpen: false, type: 'INFO', title: '', message: '' });
 
     const fetchReservations = async () => {
         setIsLoading(true);
@@ -37,40 +51,78 @@ export const ReservationsManagement: React.FC = () => {
     }, []);
 
     const updateStatus = async (id: string, newStatus: string) => {
-        if (!confirm(`Tem certeza que deseja mudar a reserva para ${newStatus}?`)) return;
-        
-        try {
-            const { error } = await supabase
-                .from('catalog_reservations')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            // Refresh local state
-            setReservations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus as any } : r));
-            setSelectedReservation(null);
-            
-            alert(`Reserva atualizada para ${newStatus}.`);
-
-            // If Rejected, trigger will restore stock automatically
-        } catch (error) {
-            console.error("Erro ao atualizar status:", error);
-            alert("Erro ao atualizar o status da reserva.");
-        }
+        setPremiumAlert({
+            isOpen: true,
+            type: 'CONFIRM',
+            title: 'Confirmar Alteração',
+            message: `Tem certeza que deseja mudar o status desta reserva para ${newStatus.toUpperCase()}?`,
+            onConfirm: async () => {
+                try {
+                    const { error } = await supabase
+                        .from('catalog_reservations')
+                        .update({ status: newStatus, updated_at: new Date().toISOString() })
+                        .eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    // Refresh local state
+                    setReservations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus as any } : r));
+                    setSelectedReservation(null);
+                    
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'SUCCESS',
+                        title: 'Sucesso',
+                        message: `Reserva atualizada para ${newStatus}.`
+                    });
+                } catch (error) {
+                    console.error("Erro ao atualizar status:", error);
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'ERROR',
+                        title: 'Erro',
+                        message: "Erro ao atualizar o status da reserva."
+                    });
+                }
+            }
+        });
     };
 
     const deleteReservation = async (id: string) => {
-        if (!confirm("Tem certeza que deseja excluir esta reserva permanentemente? Isto não afeta estoque, o estoque deve ter sido reposto verificando como Rejeitada antes de excluir.")) return;
+        setPremiumAlert({
+            isOpen: true,
+            type: 'DELETE',
+            title: 'Excluir Reserva',
+            message: "Tem certeza que deseja excluir esta reserva permanentemente? Isto não afeta o estoque.",
+            onConfirm: async () => {
+                try {
+                    const { error } = await supabase
+                        .from('catalog_reservations')
+                        .delete()
+                        .eq('id', id);
+                    
+                    if (error) throw error;
+                    
+                    setReservations(prev => prev.filter(r => r.id !== id));
+                    setSelectedReservation(null);
 
-        try {
-            const { error } = await supabase.from('catalog_reservations').delete().eq('id', id);
-            if (error) throw error;
-            setReservations(prev => prev.filter(r => r.id !== id));
-            setSelectedReservation(null);
-        } catch(error) {
-            console.error("Erro ao excluir", error);
-        }
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'SUCCESS',
+                        title: 'Excluída',
+                        message: "Reserva removida com sucesso."
+                    });
+                } catch (error) {
+                    console.error("Erro ao excluir reserva:", error);
+                    setPremiumAlert({
+                        isOpen: true,
+                        type: 'ERROR',
+                        title: 'Erro',
+                        message: "Erro ao excluir a reserva."
+                    });
+                }
+            }
+        });
     };
 
     const getStatusColor = (status: string) => {
@@ -84,10 +136,11 @@ export const ReservationsManagement: React.FC = () => {
     };
 
     const filteredReservations = reservations.filter(r => {
-        if (activeTab === 'PENDENTES') return r.status === 'Pendente';
-        if (activeTab === 'APROVADAS') return r.status === 'Aprovada';
-        if (activeTab === 'REJEITADAS') return r.status === 'Rejeitada';
-        if (activeTab === 'CONCLUÍDAS') return r.status === 'Concluída';
+        const normalizedStatus = (r.status || '').toUpperCase();
+        if (activeTab === 'NOVAS') return normalizedStatus === 'PENDENTE';
+        if (activeTab === 'AGUARDANDO') return normalizedStatus === 'APROVADA';
+        if (activeTab === 'CANCELADAS') return normalizedStatus === 'REJEITADA';
+        if (activeTab === 'FINALIZADAS') return normalizedStatus === 'CONCLUÍDA' || normalizedStatus === 'CONCLUIDA';
         return true;
     });
 
@@ -107,7 +160,7 @@ export const ReservationsManagement: React.FC = () => {
                 </div>
                 <button 
                     onClick={fetchReservations}
-                    className="p-3 bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-300 border-2 border-slate-200 dark:border-zinc-700 rounded-xl hover:border-slate-900 transition-all font-black uppercase tracking-widest text-[10px] flex gap-2 active:scale-95 shadow-sm"
+                    className="p-3 bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-2 border-slate-200 dark:border-zinc-800 rounded-xl hover:border-slate-900 transition-all font-black uppercase tracking-widest text-[10px] flex gap-2 active:scale-95 shadow-sm"
                 >
                     <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} /> Atualizar
                 </button>
@@ -116,8 +169,15 @@ export const ReservationsManagement: React.FC = () => {
             <div className="flex-1 overflow-auto p-4 md:p-8">
                 {/* Tabs */}
                 <div className="flex bg-white dark:bg-zinc-900 p-2 rounded-2xl border-2 border-slate-100 dark:border-zinc-800 mb-6 gap-2 overflow-x-auto scrollbar-hide shadow-sm max-w-fit">
-                    {(['PENDENTES', 'APROVADAS', 'CONCLUÍDAS', 'REJEITADAS'] as const).map(tab => {
-                        const count = reservations.filter(r => r.status.toUpperCase() === tab).length;
+                    {(['NOVAS', 'AGUARDANDO', 'FINALIZADAS', 'CANCELADAS'] as const).map(tab => {
+                        const count = reservations.filter(r => {
+                            const normalizedStatus = (r.status || '').toUpperCase();
+                            if (tab === 'NOVAS') return normalizedStatus === 'PENDENTE';
+                            if (tab === 'AGUARDANDO') return normalizedStatus === 'APROVADA';
+                            if (tab === 'FINALIZADAS') return normalizedStatus === 'CONCLUÍDA' || normalizedStatus === 'CONCLUIDA';
+                            if (tab === 'CANCELADAS') return normalizedStatus === 'REJEITADA';
+                            return false;
+                        }).length;
                         return (
                             <button
                                 key={tab}
@@ -128,7 +188,7 @@ export const ReservationsManagement: React.FC = () => {
                                         : 'text-slate-400 hover:text-slate-900 dark:hover:text-white active:scale-95'
                                 }`}
                             >
-                                {tab}
+                                {tab === 'NOVAS' ? 'Novas' : tab === 'AGUARDANDO' ? 'Aguardando' : tab === 'FINALIZADAS' ? 'Finalizadas' : 'Canceladas'}
                                 <span className={`px-2 py-0.5 rounded-md text-[9px] ${
                                     activeTab === tab 
                                         ? 'bg-white/20 dark:bg-zinc-900/20 text-current' 
@@ -251,6 +311,15 @@ export const ReservationsManagement: React.FC = () => {
                                     <p className="text-2xl font-black text-[#947c4c]">R$ {selectedReservation.total_amount.toFixed(2)}</p>
                                 </div>
 
+                                {onConvertToSale && (selectedReservation.status === 'Pendente' || selectedReservation.status === 'Aprovada') && (
+                                    <button 
+                                        onClick={() => onConvertToSale(selectedReservation)}
+                                        className="w-full flex items-center justify-center gap-2 p-4 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 active:scale-95 transition-all shadow-md shadow-indigo-500/20 mb-4"
+                                    >
+                                        <ShoppingCart size={16} /> Pagar e Finalizar Venda
+                                    </button>
+                                )}
+
                                 {/* Ações */}
                                 <div className="space-y-2">
                                     {selectedReservation.status === 'Pendente' && (
@@ -305,6 +374,67 @@ export const ReservationsManagement: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Aminna Premium Alert Modal */}
+            {premiumAlert.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-md border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center space-y-6">
+                            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto ${
+                                premiumAlert.type === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' :
+                                premiumAlert.type === 'DELETE' || premiumAlert.type === 'ERROR' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' :
+                                'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500'
+                            }`}>
+                                {premiumAlert.type === 'SUCCESS' && <CheckCircle2 size={40} />}
+                                {(premiumAlert.type === 'ERROR' || premiumAlert.type === 'DELETE') && <AlertCircle size={40} />}
+                                {premiumAlert.type === 'CONFIRM' && <Sparkles size={40} />}
+                                {premiumAlert.type === 'INFO' && <Info size={40} />}
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{premiumAlert.title}</h3>
+                                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    {premiumAlert.message}
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                {(premiumAlert.type === 'CONFIRM' || premiumAlert.type === 'DELETE') ? (
+                                    <>
+                                        <button 
+                                            onClick={() => {
+                                                premiumAlert.onCancel?.();
+                                                setPremiumAlert(prev => ({ ...prev, isOpen: false }));
+                                            }}
+                                            className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all"
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                premiumAlert.onConfirm?.();
+                                                setPremiumAlert(prev => ({ ...prev, isOpen: false }));
+                                            }}
+                                            className={`flex-1 py-4 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all ${
+                                                premiumAlert.type === 'DELETE' ? 'bg-rose-500 shadow-rose-500/20' : 'bg-indigo-600 shadow-indigo-500/20'
+                                            }`}
+                                        >
+                                            Confirmar
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        onClick={() => setPremiumAlert(prev => ({ ...prev, isOpen: false }))}
+                                        className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                    >
+                                        Entendido
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

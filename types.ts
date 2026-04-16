@@ -1,4 +1,4 @@
-﻿
+
 export enum ViewState {
   DASHBOARD = 'DASHBOARD',
   AGENDA = 'AGENDA',
@@ -680,7 +680,7 @@ export interface CatalogReservation {
   id: string;
   customer_name: string;
   customer_phone: string;
-  status: 'Pendente' | 'Aprovada' | 'Rejeitada' | 'Conclu�da';
+  status: 'Pendente' | 'Aprovada' | 'Rejeitada' | 'Concluída';
   total_amount: number;
   created_at: string;
   updated_at: string;

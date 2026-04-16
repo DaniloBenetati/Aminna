@@ -191,11 +191,11 @@ export const PublicCatalog: React.FC = () => {
 
             // Sucesso! Gerar WhatsApp
             const wpPhone = "5511941326490";
-            let wpText = `*NOVA RESERVA - AMINNA STORE*\n\n`;
-            wpText += `*Cliente:* ${checkoutName}\n`;
+            let wpText = `*NOVA RESERVA - AMINNA STORE* 💎\n\n`;
+            wpText += `*Cliente:* ${checkoutName.toUpperCase()}\n`;
             wpText += `*Telefone:* ${checkoutPhone}\n`;
-            wpText += `*Status:* ${isExisting ? '✅ CLIENTE JÁ CADASTRADA' : '✨ CLIENTE NOVA'}\n\n`;
-            wpText += `*Itens da Reserva:*\n`;
+            wpText += `*Status:* ${isExisting ? '✅ CLIENTE CADASTRADA' : '✨ CLIENTE NOVA'}\n\n`;
+            wpText += `*Itens da Reserva:* 🛍️\n`;
             
             cart.forEach((item, index) => {
                 wpText += `${index + 1}. ${item.product.name} (x${item.quantity}) - R$ ${((item.product.price || 0) * item.quantity).toFixed(2)}\n`;
