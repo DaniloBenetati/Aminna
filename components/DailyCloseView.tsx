@@ -966,7 +966,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             <div className="text-right flex-shrink-0">
                                                 <p className="text-sm font-black text-slate-950 dark:text-white">R$ {t.amount.toFixed(2)}</p>
                                                 <p className="text-[8px] font-black text-slate-400 uppercase leading-none mt-1">
-                                                    {t.status === 'Pago' ? 'Confirmado' : 'Pendente'}
+                                                    {(t.status === 'Pago' || t.status === 'Previsto') ? 'Confirmado' : 'Pendente'}
                                                 </p>
                                             </div>
                                         </div>
