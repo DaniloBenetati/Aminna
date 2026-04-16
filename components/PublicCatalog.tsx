@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../services/supabase';
-import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info, X, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { StockItem } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
 
@@ -24,6 +24,10 @@ export const PublicCatalog: React.FC = () => {
     const [previewProduct, setPreviewProduct] = useState<StockItem | null>(null);
     const [activeImageIndex, setActiveImageIndex] = useState(0);
     const touchStartRef = React.useRef<number | null>(null);
+
+    // Success State
+    const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
+    const [finalWpLink, setFinalWpLink] = useState('');
 
     useEffect(() => {
         const fetchCatalog = async () => {
@@ -141,10 +145,19 @@ export const PublicCatalog: React.FC = () => {
 
         setIsSubmitting(true);
         try {
+            // 1. Verificar se a cliente já existe via RPC
+            const cleanPhone = checkoutPhone.replace(/\D/g, '');
+            const { data: customerStatus, error: statusError } = await supabase.rpc('check_customer_exists', {
+                phone_text: cleanPhone
+            });
+
+            if (statusError) console.error("Erro check customer:", statusError);
+            const isExisting = customerStatus?.exists || false;
+
             // Criar Reserva no Supabase usando ANON Role!
             const { data: reservation, error: resError } = await supabase.from('catalog_reservations').insert({
                 customer_name: checkoutName,
-                customer_phone: checkoutPhone.replace(/\D/g, ''),
+                customer_phone: cleanPhone,
                 total_amount: cartTotal,
                 status: 'Pendente'
             }).select().single();
@@ -167,7 +180,8 @@ export const PublicCatalog: React.FC = () => {
             const wpPhone = "5511941326490";
             let wpText = `*NOVA RESERVA - AMINNA STORE*\n\n`;
             wpText += `*Cliente:* ${checkoutName}\n`;
-            wpText += `*Telefone:* ${checkoutPhone}\n\n`;
+            wpText += `*Telefone:* ${checkoutPhone}\n`;
+            wpText += `*Status:* ${isExisting ? '✅ CLIENTE JÁ CADASTRADA' : '✨ CLIENTE NOVA'}\n\n`;
             wpText += `*Itens da Reserva:*\n`;
             
             cart.forEach((item, index) => {
@@ -182,13 +196,13 @@ export const PublicCatalog: React.FC = () => {
             
             setCart([]);
             setIsCartOpen(false);
-            alert("Reserva enviada com sucesso! Você será redirecionado para o WhatsApp da loja.");
-            
-            window.location.href = wplink;
+            setFinalWpLink(wplink);
+            setIsSuccessModalOpen(true);
             
         } catch (error) {
             console.error("Erro no Checkout:", error);
-            alert("Ocorreu um erro ao processar sua reserva. Tente novamente.");
+            // Modal de erro simplificado ou alert (opcional manter alert para erro se preferir)
+            alert("Ocorreu um erro ao processar sua reserva. Por favor, verifique sua conexão ou tente novamente.");
         } finally {
             setIsSubmitting(false);
         }
@@ -558,6 +572,38 @@ export const PublicCatalog: React.FC = () => {
                                 </p>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+            {/* Modal de Sucesso - Padrão Aminna */}
+            {isSuccessModalOpen && (
+                <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-[3rem] p-8 md:p-12 w-full max-w-lg text-center shadow-2xl border border-white/10 animate-in zoom-in-95 duration-500">
+                        <div className="w-24 h-24 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-8 text-green-500 shadow-inner">
+                            <CheckCircle2 size={48} />
+                        </div>
+                        
+                        <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tighter mb-4 leading-none">
+                            Reserva Realizada!
+                        </h2>
+                        
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                            Sua peça já foi separada. Para concluir sua reserva, basta clicar no botão abaixo para confirmar os detalhes via WhatsApp com nossa equipe.
+                        </p>
+
+                        <button
+                            onClick={() => {
+                                window.location.href = finalWpLink;
+                                setIsSuccessModalOpen(false);
+                            }}
+                            className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-6 rounded-[2rem] text-sm font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3"
+                        >
+                            Confirmar no WhatsApp <ArrowRight size={20} />
+                        </button>
+
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-8">
+                            Obrigado por escolher a Aminna
+                        </p>
                     </div>
                 </div>
             )}
