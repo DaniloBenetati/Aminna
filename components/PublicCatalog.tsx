@@ -28,6 +28,8 @@ export const PublicCatalog: React.FC = () => {
     // Success State
     const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
     const [finalWpLink, setFinalWpLink] = useState('');
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchCatalog = async () => {
@@ -37,6 +39,9 @@ export const PublicCatalog: React.FC = () => {
                 const { data, error } = await supabase
                     .from('stock_items')
                     .select('*')
+                    .eq('active', true)
+                    .eq('category', 'Venda')
+                    .gt('quantity', 0)
                     .order('name', { ascending: true });
                 
                 if (error) {
@@ -66,6 +71,8 @@ export const PublicCatalog: React.FC = () => {
         fetchCatalog();
     }, []);
 
+
+
     const uniqueGroups = useMemo(() => {
         const groups = new Set(products.map(item => item.group).filter(Boolean));
         return Array.from(groups as Set<string>).sort();
@@ -81,6 +88,12 @@ export const PublicCatalog: React.FC = () => {
         );
         return Array.from(subGroups as Set<string>).sort();
     }, [products, selectedGroup]);
+
+    useEffect(() => {
+        if (uniqueGroups.length === 1 && selectedGroup === 'all') {
+            setSelectedGroup(uniqueGroups[0]);
+        }
+    }, [uniqueGroups, selectedGroup]);
 
     const filteredCatalog = useMemo(() => {
         return products.filter(item => {
@@ -239,40 +252,56 @@ export const PublicCatalog: React.FC = () => {
             </header>
 
             <main className="max-w-7xl mx-auto p-4 md:p-8">
-                {/* Search & Filters (Replicação visual exata) */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-2 border-2 border-slate-100 flex items-center gap-3 mb-6 shadow-sm focus-within:border-black transition-colors">
-                    <div className="pl-3">
-                        <Search size={18} className="text-slate-400" />
+                <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-8 scrollbar-hide no-scrollbar">
+                    {/* Botão de Busca Expansível */}
+                    <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchOpen ? 'bg-white dark:bg-zinc-800 border-2 border-zinc-950 dark:border-white w-full sm:w-64' : 'w-10'} rounded-full p-1`}>
+                        <button 
+                            onClick={() => setIsSearchOpen(!isSearchOpen)}
+                            className={`p-2 rounded-full transition-all ${isSearchOpen ? 'text-zinc-950' : 'bg-white dark:bg-zinc-900 border border-slate-200 text-slate-400 hover:text-zinc-950'}`}
+                        >
+                            <Search size={18} />
+                        </button>
+                        {isSearchOpen && (
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Buscar..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-zinc-950 dark:text-white px-2 w-full"
+                            />
+                        )}
                     </div>
-                    <input
-                        type="text"
-                        placeholder="Filtrar catálogo online por nome, tipo..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="flex-1 bg-transparent p-2 text-xs font-black text-slate-900 dark:text-white uppercase outline-none"
-                    />
-                </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide">
-                    <button
-                        onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
-                        className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 text-slate-500 border border-slate-200'}`}
-                    >
-                        TODOS
-                    </button>
+                    {uniqueGroups.length > 1 && (
+                        <button
+                            onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
+                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-900 shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-500 border border-slate-200'}`}
+                        >
+                            TODOS
+                        </button>
+                    )}
                     {uniqueGroups.map(group => (
                         <button
                             key={group}
-                            onClick={() => { setSelectedGroup(group); setSelectedSubGroup('all'); }}
-                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedGroup === group ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-900' : 'bg-white dark:bg-zinc-900 text-slate-500 border border-slate-200'}`}
+                            onClick={() => { 
+                                if (selectedGroup === group) {
+                                    setIsSubMenuOpen(!isSubMenuOpen);
+                                } else {
+                                    setSelectedGroup(group); 
+                                    setSelectedSubGroup('all');
+                                    setIsSubMenuOpen(true);
+                                }
+                            }}
+                            className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${selectedGroup === group ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-900 shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-500 border border-slate-200'}`}
                         >
                             {group}
                         </button>
                     ))}
                 </div>
 
-                {selectedGroup !== 'all' && uniqueSubGroups.length > 0 && (
-                    <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide -mt-2">
+                {selectedGroup !== 'all' && isSubMenuOpen && uniqueSubGroups.length > 0 && (
+                    <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-4 scrollbar-hide -mt-2 animate-in slide-in-from-top-2 duration-300">
                          <div className="w-4 flex-shrink-0" />
                         {uniqueSubGroups.map(subGroup => (
                             <button

@@ -65,7 +65,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
     const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG' | 'ANALYSES' | 'RESERVAS'>('ACTIVITY');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
-    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
 
     const [adjustmentAmount, setAdjustmentAmount] = useState(0);
     const [adjustmentReason, setAdjustmentReason] = useState('');
@@ -290,6 +291,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             return matchesGroup && matchesSubGroup && matchesSearch;
         });
     }, [saleProducts, selectedGroup, selectedSubGroup, productSearch]);
+
+    useEffect(() => {
+        if (uniqueGroups.length === 1 && selectedGroup === 'all') {
+            setSelectedGroup(uniqueGroups[0]);
+        }
+    }, [uniqueGroups, selectedGroup]);
 
     // Calculate selected product details for preview
     const selectedStockItem = saleProducts.find(p => p.id === currentProduct);
@@ -1098,21 +1105,21 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             </div>
 
             {/* Global Filters Section (Shared between Activity and Analytics, Search only for Catalog) */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4 mb-6">
-                {/* Search */}
-                <div className="flex-1 relative">
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
-                    <input
-                        type="text"
-                        placeholder={activeMainTab === 'CATALOG' ? "Filtrar catálogo por nome ou referência..." : "Buscar por cliente ou produto..."}
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
-                        value={activeMainTab === 'CATALOG' ? productSearch : searchTerm}
-                        onChange={e => activeMainTab === 'CATALOG' ? setProductSearch(e.target.value) : setSearchTerm(e.target.value)}
-                    />
-                </div>
+            {activeMainTab !== 'CATALOG' && (
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4 mb-6">
+                    {/* Search */}
+                    <div className="flex-1 relative animate-in fade-in duration-300">
+                        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Buscar por cliente ou produto..."
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
+                    </div>
 
-                {/* Date & Payment Controls - Only for Activity and Analyses */}
-                {activeMainTab !== 'CATALOG' && (
+                    {/* Date & Payment Controls */}
                     <div className="flex flex-col md:flex-row gap-3 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
                         {/* View Switcher */}
                         <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
@@ -1156,8 +1163,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <option value="Cartão">Cartão</option>
                         </select>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Main Tabs Content */}
             {activeMainTab === 'ACTIVITY' ? (
@@ -1337,18 +1344,48 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div className="flex items-center gap-4 w-full sm:w-auto overflow-hidden">
-                                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-                                    <button
-                                        onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
-                                        className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
-                                    >
-                                        Todos
-                                    </button>
+                            <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
+                                <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 no-scrollbar">
+                                    {/* Botão de Busca Expansível */}
+                                    <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchOpen ? 'bg-slate-50 dark:bg-zinc-800 border-2 border-zinc-950 dark:border-white w-full sm:min-w-[200px]' : 'w-10'} rounded-full p-0.5`}>
+                                        <button 
+                                            onClick={() => setIsSearchOpen(!isSearchOpen)}
+                                            className={`p-1.5 rounded-full transition-all ${isSearchOpen ? 'text-zinc-950 dark:text-white' : 'bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-zinc-950'}`}
+                                        >
+                                            <Search size={16} />
+                                        </button>
+                                        {isSearchOpen && (
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                placeholder="Buscar..."
+                                                value={productSearch}
+                                                onChange={(e) => setProductSearch(e.target.value)}
+                                                className="bg-transparent border-none outline-none text-[10px] font-black uppercase tracking-widest text-zinc-950 dark:text-white px-2 w-full"
+                                            />
+                                        )}
+                                    </div>
+
+                                    {uniqueGroups.length > 1 && (
+                                        <button
+                                            onClick={() => { setSelectedGroup('all'); setSelectedSubGroup('all'); }}
+                                            className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === 'all' ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
+                                        >
+                                            Todos
+                                        </button>
+                                    )}
                                     {uniqueGroups.map(group => (
                                         <button
                                             key={group}
-                                            onClick={() => { setSelectedGroup(group); setSelectedSubGroup('all'); }}
+                                            onClick={() => { 
+                                                if (selectedGroup === group) {
+                                                    setIsSubMenuOpen(!isSubMenuOpen);
+                                                } else {
+                                                    setSelectedGroup(group); 
+                                                    setSelectedSubGroup('all');
+                                                    setIsSubMenuOpen(true);
+                                                }
+                                            }}
                                             className={`flex-shrink-0 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${selectedGroup === group ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-lg' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
                                         >
                                             {group}
@@ -1371,7 +1408,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
 
 
-                            {uniqueSubGroups.length > 0 && (
+                            {selectedGroup !== 'all' && isSubMenuOpen && uniqueSubGroups.length > 0 && (
                                 <div className="flex flex-wrap gap-2 pt-0.5 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <button
                                         onClick={() => setSelectedSubGroup('all')}
