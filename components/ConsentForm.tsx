@@ -374,7 +374,13 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
               <SignatureCanvas 
                 ref={sigPad}
                 penColor="black"
-                canvasProps={{ className: 'w-full h-full' }}
+                velocityFilterWeight={0.1}
+                minDistance={0}
+                throttle={8}
+                canvasProps={{ 
+                  className: 'w-full h-full',
+                  style: { touchAction: 'none' }
+                }}
               />
             </div>
             <p className="text-[10px] text-slate-400 font-bold uppercase text-center tracking-widest">Assine dentro da área acima utilizando o dedo ou caneta stylus</p>
