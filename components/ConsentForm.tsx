@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import { supabase } from '../services/supabase';
 import { 
@@ -67,18 +67,39 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         list = extras ? `${main} + ${extras}` : main;
       }
       setProcedures(list);
-
-      // Aggregate professionals
-      const mainProv = providers.find(p => p.id === appt.providerId)?.name || '';
-      const extrasProvs = (appt.additionalServices || []).map(as => providers.find(p => p.id === as.providerId)?.name).filter(Boolean);
-      const uniqueProvs = Array.from(new Set([mainProv, ...extrasProvs])).filter(Boolean).join(', ');
-      setProfessionals(uniqueProvs);
+      setProfessionals('PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)');
     } else {
       setProcedures('TODOS OS PROCEDIMENTOS ESTÉTICOS');
       setProfessionals('PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)');
     }
     setStep('FORM');
   };
+
+  // Resize handler to fix iPad offset
+  useEffect(() => {
+    if (step === 'FORM') {
+      const resizeCanvas = () => {
+        if (sigPad.current) {
+          const canvas = sigPad.current.getCanvas();
+          const ratio = Math.max(window.devicePixelRatio || 1, 1);
+          const { width, height } = canvas.getBoundingClientRect();
+          canvas.width = width * ratio;
+          canvas.height = height * ratio;
+          canvas.getContext('2d')?.scale(ratio, ratio);
+          sigPad.current.clear(); // Recalibrar exige limpar para manter precisão
+        }
+      };
+
+      // Delay to ensure modal animation is finished
+      const timer = setTimeout(resizeCanvas, 350);
+      window.addEventListener('resize', resizeCanvas);
+      
+      return () => {
+        clearTimeout(timer);
+        window.removeEventListener('resize', resizeCanvas);
+      };
+    }
+  }, [step]);
 
   const clearSignature = () => sigPad.current?.clear();
 
@@ -231,12 +252,12 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-start md:items-center justify-center p-0 md:p-8 animate-in fade-in duration-200 overflow-y-auto">
       {renderToast()}
-      <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl min-h-full md:min-h-0 rounded-[2rem] md:rounded-[3rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden my-auto">
+      <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl min-h-screen md:min-h-0 rounded-none md:rounded-[3rem] shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 duration-300 overflow-hidden my-auto">
 
         {/* Header */}
-        <div className="p-6 md:p-10 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-10">
+        <div className="p-5 md:p-10 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center sticky top-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md z-10">
           <div className="flex items-center gap-6">
             <img src="/logo.png" alt="Aminna" className="w-16 h-16 md:w-20 md:h-20 object-contain" />
             <div className="h-12 w-[1px] bg-slate-200 dark:bg-zinc-800 hidden md:block" />
@@ -249,7 +270,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 no-scrollbar scroll-smooth">
+        <div className="flex-1 overflow-y-auto p-5 md:p-10 space-y-6 md:space-y-8 no-scrollbar scroll-smooth">
           
           {/* Declaration Section */}
           <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 md:p-8 rounded-[2rem] border-2 border-slate-200 dark:border-zinc-800">
