@@ -4,9 +4,11 @@ import {
   Search, Plus, MapPin, Phone, Mail, User, FileText, Check, X,
   Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar,
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
-  Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save
+  Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save,
+  ClipboardCheck, Eye, Trash2
 } from 'lucide-react';
-import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile } from '../types';
+import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile, ConsentForm as IConsentForm } from '../types';
+import { ConsentForm } from './ConsentForm';
 
 interface ClientsProps {
   customers: Customer[];
@@ -25,7 +27,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isNew, setIsNew] = useState(false);
-  const [activeTab, setActiveTab] = useState<'INFO' | 'PREFS' | 'HISTORY'>('INFO');
+  const [activeTab, setActiveTab] = useState<'INFO' | 'PREFS' | 'HISTORY' | 'CONSENT'>('INFO');
+  const [consentForms, setConsentForms] = useState<IConsentForm[]>([]);
+  const [isLoadingForms, setIsLoadingForms] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedConsentForm, setSelectedConsentForm] = useState<IConsentForm | null>(null);
 
   // Form States
   const [formData, setFormData] = useState<Partial<Customer>>({});
@@ -393,6 +399,53 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     setIsNew(false);
   };
 
+  const fetchConsentForms = async (customerId: string) => {
+    setIsLoadingForms(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_consent_forms')
+        .select('*')
+        .eq('customer_id', customerId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setConsentForms(data.map((f: any) => ({
+        id: f.id,
+        customerId: f.customer_id,
+        appointmentId: f.appointment_id,
+        dateTime: f.date_time,
+        procedures: f.procedures,
+        professionals: f.professionals,
+        anamneseData: f.anamnese_data,
+        allowImageUse: f.allow_image_use,
+        signatureData: f.signature_data,
+        createdAt: f.created_at
+      })));
+    } catch (err) {
+      console.error('Error fetching consent forms:', err);
+    } finally {
+      setIsLoadingForms(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (activeTab === 'CONSENT' && selectedCustomer) {
+      fetchConsentForms(selectedCustomer.id);
+    }
+  }, [activeTab, selectedCustomer]);
+
+  const handleDeleteConsentForm = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja excluir este termo?')) return;
+    try {
+      const { error } = await supabase.from('customer_consent_forms').delete().eq('id', id);
+      if (error) throw error;
+      setConsentForms(prev => prev.filter(f => f.id !== id));
+    } catch (err) {
+      console.error('Error deleting consent form:', err);
+      alert('Erro ao excluir termo.');
+    }
+  };
+
   const showDetail = selectedCustomer || isNew;
 
   return (
@@ -646,7 +699,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                   {[
                     { id: 'INFO', label: 'DADOS', icon: Contact },
                     { id: 'PREFS', label: 'PREFERÊNCIAS', icon: Sparkles },
-                    { id: 'HISTORY', label: 'HISTÓRICO', icon: History }
+                    { id: 'HISTORY', label: 'HISTÓRICO', icon: History },
+                    { id: 'CONSENT', label: 'TERMO', icon: ClipboardCheck }
                   ].map(tab => (
                     <button
                       key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)}
@@ -1033,6 +1087,85 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                     )}
                   </div>
                 )}
+
+                {activeTab === 'CONSENT' && selectedCustomer && (
+                  <div className="space-y-6 animate-in slide-in-from-bottom-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                        <History size={16} className="text-indigo-600" /> Histórico de Termos Assinados
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => setIsFormOpen(true)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg active:scale-95 transition-all"
+                      >
+                        <Plus size={14} /> Novo Termo
+                      </button>
+                    </div>
+
+                    {isLoadingForms ? (
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <Loader2 className="animate-spin text-indigo-600" size={32} />
+                        <p className="text-[10px] font-black text-slate-400 uppercase">Carregando termos...</p>
+                      </div>
+                    ) : consentForms.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {consentForms.map(form => (
+                          <div key={form.id} className="bg-white dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 shadow-sm relative group hover:border-indigo-200 transition-all">
+                            <div className="flex justify-between items-start mb-3">
+                              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                                <ClipboardCheck size={20} />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedConsentForm(form)}
+                                  className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-all"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteConsentForm(form.id)}
+                                  className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <p className="text-xs font-black text-slate-950 dark:text-white uppercase line-clamp-2">{form.procedures}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
+                                <Calendar size={12} /> {new Date(form.dateTime).toLocaleDateString()}
+                                <Clock size={12} className="ml-1" /> {new Date(form.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                              <p className="text-[9px] text-indigo-500 font-black uppercase">Prof: {form.professionals}</p>
+                            </div>
+
+                            {form.signatureData && (
+                              <div className="mt-4 pt-4 border-t border-slate-50 dark:border-zinc-700 flex justify-center">
+                                <img src={form.signatureData} alt="Assinatura" className="h-10 opacity-50 contrast-125 grayscale" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-20 text-center bg-slate-50/50 dark:bg-zinc-800/30 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                        <ClipboardCheck size={48} className="mx-auto mb-4 text-slate-200 dark:text-zinc-700" />
+                        <p className="text-xs font-black text-slate-400 uppercase">Nenhum termo assinado ainda</p>
+                        <button
+                          type="button"
+                          onClick={() => setIsFormOpen(true)}
+                          className="mt-4 text-[10px] font-black text-indigo-600 uppercase hover:underline"
+                        >
+                          Clique aqui para iniciar o primeiro
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </form>
           ) : (
@@ -1048,6 +1181,71 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
           )}
         </div>
       </div>
+
+      {/* Consent Form Modal */}
+      {isFormOpen && selectedCustomer && (
+        <ConsentForm
+          customer={selectedCustomer}
+          appointments={appointments}
+          services={services}
+          providers={providers}
+          onClose={() => setIsFormOpen(false)}
+          onSaved={(newTerm) => setConsentForms(prev => [newTerm, ...prev])}
+        />
+      )}
+
+      {/* Consent Form Viewer Modal */}
+      {selectedConsentForm && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
+             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
+               <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Visualizar Termo de Consentimento</h3>
+               <button onClick={() => setSelectedConsentForm(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-all"><X size={20} /></button>
+             </div>
+             <div className="p-8 max-h-[70vh] overflow-y-auto space-y-6 text-sm">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Procedimentos</span>
+                  <p className="font-black text-slate-900 dark:text-white uppercase">{selectedConsentForm.procedures}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profissionais</span>
+                  <p className="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{selectedConsentForm.professionals}</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
+                  <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Anamnese</p>
+                    <div className="space-y-1.5 text-[11px] font-bold uppercase">
+                      <div className="flex justify-between"><span>Alergias:</span> <span className={selectedConsentForm.anamneseData.allergies ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.allergies ? 'SIM' : 'NÃO'}</span></div>
+                      <div className="flex justify-between"><span>S. Ocular:</span> <span className={selectedConsentForm.anamneseData.eyeSensitivity ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.eyeSensitivity ? 'SIM' : 'NÃO'}</span></div>
+                      <div className="flex justify-between"><span>Saúde:</span> <span className={selectedConsentForm.anamneseData.healthConditions ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.healthConditions ? 'SIM' : 'NÃO'}</span></div>
+                    </div>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Imagem</p>
+                    <p className="text-[11px] font-black uppercase {selectedConsentForm.allowImageUse ? 'text-indigo-600' : 'text-slate-400'}">
+                       {selectedConsentForm.allowImageUse ? 'AUTORIZADO' : 'NÃO AUTORIZADO'}
+                    </p>
+                  </div>
+                </div>
+                {selectedConsentForm.anamneseData.observations && (
+                  <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Observações</p>
+                    <p className="text-xs italic">"{selectedConsentForm.anamneseData.observations}"</p>
+                  </div>
+                )}
+                <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
+                   <p className="text-[10px] font-black text-slate-400 uppercase text-center mb-4">Assinatura Digital</p>
+                   <div className="bg-white p-4 border border-slate-100 rounded-3xl flex justify-center">
+                     <img src={selectedConsentForm.signatureData} alt="Assinatura" className="max-h-32 contrast-125" />
+                   </div>
+                </div>
+             </div>
+             <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-100 dark:border-zinc-800 flex justify-end">
+                <button onClick={() => setSelectedConsentForm(null)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Fechar</button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

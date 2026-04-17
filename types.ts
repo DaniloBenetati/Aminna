@@ -686,3 +686,23 @@ export interface CatalogReservation {
   updated_at: string;
   items?: CatalogReservationItem[];
 }
+
+export interface ConsentForm {
+  id: string;
+  customerId: string;
+  appointmentId?: string;
+  dateTime: string;
+  procedures: string;
+  professionals: string;
+  anamneseData: {
+    allergies: boolean;
+    eyeSensitivity: boolean;
+    contactLenses: boolean;
+    nailSkinHealth: boolean;
+    healthConditions: boolean;
+    observations: string;
+  };
+  allowImageUse: boolean;
+  signatureData: string; // Base64
+  createdAt: string;
+}
