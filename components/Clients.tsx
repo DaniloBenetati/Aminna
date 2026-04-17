@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import {
   Search, Plus, MapPin, Phone, Mail, User, FileText, Check, X,
-  Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar,
+  Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar, Clock,
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
   Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save,
   ClipboardCheck, Eye, Trash2
@@ -416,8 +416,15 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         dateTime: f.date_time,
         procedures: f.procedures,
         professionals: f.professionals,
-        anamneseData: f.anamnese_data,
-        allowImageUse: f.allow_image_use,
+        anamneseData: f.anamnese_data || {
+          allergies: false,
+          eyeSensitivity: false,
+          contactLenses: false,
+          nailSkinHealth: false,
+          healthConditions: false,
+          observations: ''
+        },
+        allowImageUse: !!f.allow_image_use,
         signatureData: f.signature_data,
         createdAt: f.created_at
       })));
@@ -1137,10 +1144,16 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             <div className="space-y-2">
                               <p className="text-xs font-black text-slate-950 dark:text-white uppercase line-clamp-2">{form.procedures}</p>
                               <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
-                                <Calendar size={12} /> {new Date(form.dateTime).toLocaleDateString()}
-                                <Clock size={12} className="ml-1" /> {new Date(form.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                <Calendar size={12} /> {(() => {
+                                  const d = new Date(form.dateTime);
+                                  return isNaN(d.getTime()) ? 'Data Indisponível' : d.toLocaleDateString('pt-BR');
+                                })()}
+                                <Clock size={12} className="ml-1" /> {(() => {
+                                  const d = new Date(form.dateTime);
+                                  return isNaN(d.getTime()) ? '--:--' : d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                                })()}
                               </div>
-                              <p className="text-[9px] text-indigo-500 font-black uppercase">Prof: {form.professionals}</p>
+                              <p className="text-[9px] text-indigo-500 font-black uppercase">Prof: {form.professionals || 'N/A'}</p>
                             </div>
 
                             {form.signatureData && (
@@ -1194,57 +1207,17 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         />
       )}
 
-      {/* Consent Form Viewer Modal */}
-      {selectedConsentForm && (
-        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
-             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
-               <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Visualizar Termo de Consentimento</h3>
-               <button onClick={() => setSelectedConsentForm(null)} className="p-2 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-xl transition-all"><X size={20} /></button>
-             </div>
-             <div className="p-8 max-h-[70vh] overflow-y-auto space-y-6 text-sm">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Procedimentos</span>
-                  <p className="font-black text-slate-900 dark:text-white uppercase">{selectedConsentForm.procedures}</p>
-                </div>
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Profissionais</span>
-                  <p className="font-bold text-indigo-600 dark:text-indigo-400 uppercase">{selectedConsentForm.professionals}</p>
-                </div>
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
-                  <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Anamnese</p>
-                    <div className="space-y-1.5 text-[11px] font-bold uppercase">
-                      <div className="flex justify-between"><span>Alergias:</span> <span className={selectedConsentForm.anamneseData.allergies ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.allergies ? 'SIM' : 'NÃO'}</span></div>
-                      <div className="flex justify-between"><span>S. Ocular:</span> <span className={selectedConsentForm.anamneseData.eyeSensitivity ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.eyeSensitivity ? 'SIM' : 'NÃO'}</span></div>
-                      <div className="flex justify-between"><span>Saúde:</span> <span className={selectedConsentForm.anamneseData.healthConditions ? 'text-rose-600' : 'text-emerald-600'}>{selectedConsentForm.anamneseData.healthConditions ? 'SIM' : 'NÃO'}</span></div>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-2">Imagem</p>
-                    <p className="text-[11px] font-black uppercase {selectedConsentForm.allowImageUse ? 'text-indigo-600' : 'text-slate-400'}">
-                       {selectedConsentForm.allowImageUse ? 'AUTORIZADO' : 'NÃO AUTORIZADO'}
-                    </p>
-                  </div>
-                </div>
-                {selectedConsentForm.anamneseData.observations && (
-                  <div className="p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Observações</p>
-                    <p className="text-xs italic">"{selectedConsentForm.anamneseData.observations}"</p>
-                  </div>
-                )}
-                <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
-                   <p className="text-[10px] font-black text-slate-400 uppercase text-center mb-4">Assinatura Digital</p>
-                   <div className="bg-white p-4 border border-slate-100 rounded-3xl flex justify-center">
-                     <img src={selectedConsentForm.signatureData} alt="Assinatura" className="max-h-32 contrast-125" />
-                   </div>
-                </div>
-             </div>
-             <div className="p-6 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-100 dark:border-zinc-800 flex justify-end">
-                <button onClick={() => setSelectedConsentForm(null)} className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl">Fechar</button>
-             </div>
-          </div>
-        </div>
+      {/* Consent Form Viewer Modal (Reusing Unified Component) */}
+      {selectedConsentForm && selectedCustomer && (
+        <ConsentForm
+          customer={selectedCustomer}
+          appointments={appointments}
+          services={services}
+          providers={providers}
+          onClose={() => setSelectedConsentForm(null)}
+          onSaved={() => fetchConsentForms(selectedCustomer.id)}
+          initialTerm={selectedConsentForm}
+        />
       )}
     </div>
   );

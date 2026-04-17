@@ -15,6 +15,7 @@ interface ConsentFormProps {
   providers: Provider[];
   onClose: () => void;
   onSaved: (newTerm: IConsentForm) => void;
+  initialTerm?: IConsentForm;
 }
 
 export const ConsentForm: React.FC<ConsentFormProps> = ({ 
@@ -23,7 +24,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   services, 
   providers, 
   onClose,
-  onSaved 
+  onSaved,
+  initialTerm
 }) => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
@@ -103,11 +105,20 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
           createdAt: data.created_at
         });
         
-        // Populate anamnese data from existing term
-        setAnamnese(data.anamnese_data);
-        setAllowImageUse(data.allow_image_use);
-        setProcedures(data.procedures);
-        setProfessionals(data.professionals);
+        // Populate anamnese data from existing term - safely
+        const safeAnamnese = data.anamnese_data || {
+          allergies: false,
+          eyeSensitivity: false,
+          contactLenses: false,
+          nailSkinHealth: false,
+          healthConditions: false,
+          observations: ''
+        };
+        
+        setAnamnese(safeAnamnese);
+        setAllowImageUse(!!data.allow_image_use);
+        setProcedures(data.procedures || '');
+        setProfessionals(data.professionals || '');
       }
     } catch (err) {
       console.error("Erro ao buscar termo existente:", err);
@@ -115,6 +126,25 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
       setLoading(false);
     }
   };
+
+  // Pre-load initial term if provided
+  useEffect(() => {
+    if (initialTerm) {
+      setExistingTerm(initialTerm);
+      setAnamnese(initialTerm.anamneseData || {
+        allergies: false,
+        eyeSensitivity: false,
+        contactLenses: false,
+        nailSkinHealth: false,
+        healthConditions: false,
+        observations: ''
+      });
+      setAllowImageUse(!!initialTerm.allowImageUse);
+      setProcedures(initialTerm.procedures || '');
+      setProfessionals(initialTerm.professionals || '');
+      setStep('FORM');
+    }
+  }, [initialTerm]);
 
   const handleDownloadPDF = async () => {
     const dataToUse = existingTerm || {
@@ -127,55 +157,102 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
     };
 
     if (!dataToUse.signatureData) {
-       showToast("Assinatura necessária para gerar o PDF.");
-       return;
+      showToast("Assinatura necessária para gerar o PDF.");
+      return;
     }
 
     const doc = new jsPDF();
     const margin = 20;
-    let y = 30;
+    let y = 20;
 
-    // Header
+    // Helper to draw a fine line
+    const drawDivider = (currY: number) => {
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.1);
+      doc.line(margin, currY, 190, currY);
+    };
+
+    // 1. HEADER WITH LOGO
+    try {
+      // Add logo (logo.png must be in public folder)
+      doc.addImage('/logo.png', 'PNG', margin, y, 25, 25);
+    } catch (e) {
+      console.warn("Could not load logo in PDF", e);
+    }
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
-    doc.setFont("helvetica", "bold");
-    doc.text("AMINNA", margin, y);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text("GESTÃO INTELIGENTE DE BELEZA", margin, y + 6);
-    
-    y += 20;
-    doc.setFontSize(14);
-    doc.setFont("helvetica", "bold");
-    doc.text("TERMO DE CONSENTIMENTO E ANAMNESE DIGITAL", margin, y);
-    doc.setLineWidth(0.5);
-    doc.line(margin, y + 2, 190, y + 2);
-    
-    y += 15;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text("CLIENTE:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(customer.name.toUpperCase(), margin + 20, y);
-    
-    y += 6;
-    doc.setFont("helvetica", "bold");
-    doc.text("DATA:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(new Date(dataToUse.dateTime || '').toLocaleString('pt-BR'), margin + 20, y);
-
-    y += 12;
-    doc.setFont("helvetica", "bold");
-    doc.text("PROCEDIMENTOS:", margin, y);
+    doc.text("AMINNA", 50, y + 12);
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    const proceduresText = doc.splitTextToSize(dataToUse.procedures || '', 160);
-    doc.text(proceduresText, margin, y + 6);
-    y += 8 + (proceduresText.length * 4);
+    doc.setTextColor(100, 100, 100);
+    doc.text("GESTÃO INTELIGENTE DE BELEZA", 50, y + 18);
+    doc.text("FICHA DE ANAMNESE E CONSENTIMENTO DIGITAL", 50, y + 23);
 
-    y += 5;
+    y += 35;
+    drawDivider(y);
+    y += 10;
+
+    // 2. CLIENT DATA BLOCK
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("IDENTIFICAÇÃO DA CLIENTE", margin, y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("NOME:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(customer.name.toUpperCase(), margin + 15, y);
+
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("CPF:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(customer.cpf || "NÃO INFORMADO", margin + 12, y);
+
+    doc.setFont("helvetica", "bold");
+    doc.text("WHATSAPP:", margin + 80, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(customer.phone || "NÃO INFORMADO", margin + 105, y);
+
+    y += 10;
+    drawDivider(y);
+    y += 10;
+
+    // 3. SERVICE DETAILS
+    doc.setFont("helvetica", "bold");
+    doc.text("DETALHES DO ATENDIMENTO", margin, y);
+    y += 8;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("DATA/HORA:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date(dataToUse.dateTime || '').toLocaleString('pt-BR'), margin + 25, y);
+
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("PROCEDIMENTOS:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const procText = doc.splitTextToSize(dataToUse.procedures || 'TODOS OS PROCEDIMENTOS ESTÉTICOS', 160);
+    doc.text(procText, margin, y + 5);
+    y += 5 + (procText.length * 5);
+
+    y += 2;
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
-    doc.text("AVALIAÇÃO DE SAÚDE (ANAMNESE):", margin, y);
+    doc.text("PROFISSIONAIS:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(dataToUse.professionals || 'Equipe Aminna', margin + 32, y);
+
+    y += 10;
+    drawDivider(y);
+    y += 10;
+
+    // 4. ANAMNESE CHECKLIST
+    doc.setFont("helvetica", "bold");
+    doc.text("AVALIAÇÃO DE SAÚDE (ANAMNESE)", margin, y);
     y += 8;
 
     const questions = [
@@ -188,44 +265,86 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
 
     questions.forEach(item => {
       doc.setFont("helvetica", "normal");
-      doc.text(`• ${item.q}`, margin + 5, y);
+      doc.setFontSize(9);
+      doc.text(item.q.toUpperCase(), margin + 2, y);
       doc.setFont("helvetica", "bold");
-      doc.text(item.a ? "[ SIM ]" : "[ NÃO ]", 170, y);
+      const resp = item.a ? "SIM" : "NÃO";
+      doc.text(`[ ${resp} ]`, 175, y);
       y += 6;
     });
 
     if (dataToUse.anamneseData.observations) {
       y += 4;
       doc.setFont("helvetica", "bold");
-      doc.text("OBSERVAÇÕES:", margin, y);
+      doc.text("OBSERVAÇÕES ADICIONAIS:", margin, y);
       doc.setFont("helvetica", "normal");
-      const obs = doc.splitTextToSize(dataToUse.anamneseData.observations, 160);
-      doc.text(obs, margin, y + 6);
-      y += 10 + (obs.length * 4);
+      const obsText = doc.splitTextToSize(dataToUse.anamneseData.observations, 165);
+      doc.text(obsText, margin + 2, y + 5);
+      y += 5 + (obsText.length * 5);
     }
 
-    y += 10;
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "italic");
-    const declaration = "Eu declaro que as informações prestadas são verdadeiras e estou ciente das orientações e responsabilidades referentes aos procedimentos realizados. Autorizo também o uso de imagem para fins de portfólio e marketing: " + (dataToUse.allowImageUse ? "SIM" : "NÃO");
-    const declText = doc.splitTextToSize(declaration, 170);
-    doc.text(declText, margin, y);
-    y += 10 + (declText.length * 4);
-
-    // Signature Area
-    y += 10;
+    y += 5;
     doc.setFont("helvetica", "bold");
-    doc.text("ASSINATURA DIGITAL:", margin, y);
+    doc.text("USO DE IMAGEM:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(dataToUse.allowImageUse ? "AUTORIZADO" : "NÃO AUTORIZADO", margin + 33, y);
+
+    y += 12;
     
-    try {
-      if (dataToUse.signatureData) {
-        doc.addImage(dataToUse.signatureData, 'PNG', margin, y + 5, 60, 30);
-      }
-    } catch (e) {
-      console.error("Logo or Signature error:", e);
+    // 5. TERMO DE RESPONSABILIDADE E CIÊNCIA
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("II. TERMO DE RESPONSABILIDADE E CIÊNCIA", margin, y);
+    y += 6;
+
+    const terms = [
+      { t: '1. PROCEDIMENTO:', d: 'Declaro estar ciente de que procedimentos como banho de gel, alongamento e extensão de cílios exigem manutenção periódica para preservar a saúde das unhas e fios naturais.' },
+      { t: '2. CUIDADOS:', d: 'Comprometo-me a seguir todas as orientações, evitando remover o material de forma inadequada e seguindo as recomendações de pós-procedimento.' },
+      { t: '3. RISCOS:', d: 'Estou ciente de que podem ocorrer reações alérgicas ou sensibilidades individuais, mesmo com técnicas e materiais adequados.' }
+    ];
+
+    terms.forEach(item => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.text(item.t, margin + 2, y);
+      doc.setFont("helvetica", "normal");
+      const descSplit = doc.splitTextToSize(item.d, 145);
+      doc.text(descSplit, margin + 27, y);
+      y += (descSplit.length * 4) + 1;
+    });
+    
+    y += 5;
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7);
+    doc.text("Este documento possui validade jurídica como termo de consentimento livre e esclarecido.", margin, y);
+    
+    y += 10;
+
+    // 6. SIGNATURE AREA
+    drawDivider(y);
+    y += 10;
+    
+    if (dataToUse.signatureData) {
+      const sigW = 60;
+      const sigH = 30;
+      doc.addImage(dataToUse.signatureData, 'PNG', (210 - sigW) / 2, y, sigW, sigH);
+      y += sigH + 5;
     }
 
-    doc.save(`Termo_Aminna_${customer.name.replace(/\s+/g, '_')}.pdf`);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(customer.name.toUpperCase(), 105, y, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text("ASSINATURA DIGITAL DO CLIENTE", 105, y + 5, { align: 'center' });
+    doc.text(`REGISTRADO EM: ${new Date(dataToUse.dateTime || '').toLocaleString('pt-BR')}`, 105, y + 10, { align: 'center' });
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text("Documento gerado digitalmente por AMINNA - Gestão Inteligente de Beleza", 105, 285, { align: 'center' });
+
+    doc.save(`Termo_${customer.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
     showToast("PDF gerado com sucesso!", "info");
   };
 
@@ -335,13 +454,18 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         createdAt: data.created_at
       };
 
-      onSaved(newTerm);
-      onClose();
+      showToast("Termo assinado com sucesso!", "info");
+      
+      // Pequeno delay para o usuário ver o aviso de sucesso antes de fechar
+      setTimeout(() => {
+        onSaved(newTerm);
+        onClose();
+      }, 1500);
     } catch (error) {
       console.error("Erro ao salvar termo:", error);
       showToast("Erro ao salvar o termo. Tente novamente.");
     } finally {
-      setLoading(false);
+      // O loading só deve ser falso se der erro, senão o modal fecha
     }
   };
 
@@ -578,7 +702,11 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         <div className="p-6 md:p-8 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4">
           <p className="flex-1 text-[10px] text-slate-500 font-bold uppercase leading-relaxed text-center md:text-left">
             {existingTerm 
-              ? `Este termo foi registrado em ${new Date(existingTerm.dateTime).toLocaleString('pt-BR')} e possui validade jurídica.`
+              ? (() => {
+                  const d = new Date(existingTerm.dateTime);
+                  const dateStr = isNaN(d.getTime()) ? 'Data Indisponível' : d.toLocaleString('pt-BR');
+                  return `Este termo foi registrado em ${dateStr} e possui validade jurídica.`;
+                })()
               : "Ao clicar em finalizar, você confirma que leu e concorda com todos os termos e que os dados informados são verdadeiros."}
           </p>
           <div className="flex gap-3">
