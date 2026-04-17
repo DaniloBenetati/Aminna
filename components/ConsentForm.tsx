@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import SignatureCanvas from 'react-signature-canvas';
+import { jsPDF } from 'jspdf';
 import { supabase } from '../services/supabase';
 import { 
   X, Check, AlertTriangle, Sparkles,
-  ClipboardCheck, Palette, Eye, Trash2, Loader2, Plus
+  ClipboardCheck, Palette, Eye, Trash2, Loader2, Plus, Download, FileText
 } from 'lucide-react';
 import { Customer, Appointment, Service, Provider, ConsentForm as IConsentForm } from '../types';
 
@@ -26,6 +27,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
+  const [existingTerm, setExistingTerm] = useState<IConsentForm | null>(null);
 
   const showToast = (message: string, type: 'error' | 'info' = 'error') => {
     setToast({ message, type });
@@ -68,11 +70,163 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
       }
       setProcedures(list);
       setProfessionals('PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)');
+      
+      // Auto-check for existing term when starting form for an appt
+      checkExistingTerm(appt.id);
     } else {
       setProcedures('TODOS OS PROCEDIMENTOS ESTÉTICOS');
       setProfessionals('PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)');
     }
     setStep('FORM');
+  };
+
+  const checkExistingTerm = async (apptId: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('customer_consent_forms')
+        .select('*')
+        .eq('appointment_id', apptId)
+        .maybeSingle();
+      
+      if (data) {
+        setExistingTerm({
+          id: data.id,
+          customerId: data.customer_id,
+          appointmentId: data.appointment_id,
+          dateTime: data.date_time,
+          procedures: data.procedures,
+          professionals: data.professionals,
+          anamneseData: data.anamnese_data,
+          allowImageUse: data.allow_image_use,
+          signatureData: data.signature_data,
+          createdAt: data.created_at
+        });
+        
+        // Populate anamnese data from existing term
+        setAnamnese(data.anamnese_data);
+        setAllowImageUse(data.allow_image_use);
+        setProcedures(data.procedures);
+        setProfessionals(data.professionals);
+      }
+    } catch (err) {
+      console.error("Erro ao buscar termo existente:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    const dataToUse = existingTerm || {
+      procedures,
+      professionals,
+      anamneseData: anamnese,
+      allowImageUse,
+      signatureData: sigPad.current?.getTrimmedCanvas().toDataURL('image/png'),
+      dateTime: new Date().toISOString()
+    };
+
+    if (!dataToUse.signatureData) {
+       showToast("Assinatura necessária para gerar o PDF.");
+       return;
+    }
+
+    const doc = new jsPDF();
+    const margin = 20;
+    let y = 30;
+
+    // Header
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "bold");
+    doc.text("AMINNA", margin, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("GESTÃO INTELIGENTE DE BELEZA", margin, y + 6);
+    
+    y += 20;
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text("TERMO DE CONSENTIMENTO E ANAMNESE DIGITAL", margin, y);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y + 2, 190, y + 2);
+    
+    y += 15;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("CLIENTE:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(customer.name.toUpperCase(), margin + 20, y);
+    
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("DATA:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(new Date(dataToUse.dateTime || '').toLocaleString('pt-BR'), margin + 20, y);
+
+    y += 12;
+    doc.setFont("helvetica", "bold");
+    doc.text("PROCEDIMENTOS:", margin, y);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    const proceduresText = doc.splitTextToSize(dataToUse.procedures || '', 160);
+    doc.text(proceduresText, margin, y + 6);
+    y += 8 + (proceduresText.length * 4);
+
+    y += 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("AVALIAÇÃO DE SAÚDE (ANAMNESE):", margin, y);
+    y += 8;
+
+    const questions = [
+      { q: 'Possui alergia a esmaltes, colas ou produtos?', a: dataToUse.anamneseData.allergies },
+      { q: 'Possui sensibilidade ocular ou irritação?', a: dataToUse.anamneseData.eyeSensitivity },
+      { q: 'Uso de lentes de contato no momento?', a: dataToUse.anamneseData.contactLenses },
+      { q: 'Possui micose ou ferimentos em mãos/pés?', a: dataToUse.anamneseData.nailSkinHealth },
+      { q: 'Gestante, diabética ou em tratamento médico?', a: dataToUse.anamneseData.healthConditions },
+    ];
+
+    questions.forEach(item => {
+      doc.setFont("helvetica", "normal");
+      doc.text(`• ${item.q}`, margin + 5, y);
+      doc.setFont("helvetica", "bold");
+      doc.text(item.a ? "[ SIM ]" : "[ NÃO ]", 170, y);
+      y += 6;
+    });
+
+    if (dataToUse.anamneseData.observations) {
+      y += 4;
+      doc.setFont("helvetica", "bold");
+      doc.text("OBSERVAÇÕES:", margin, y);
+      doc.setFont("helvetica", "normal");
+      const obs = doc.splitTextToSize(dataToUse.anamneseData.observations, 160);
+      doc.text(obs, margin, y + 6);
+      y += 10 + (obs.length * 4);
+    }
+
+    y += 10;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "italic");
+    const declaration = "Eu declaro que as informações prestadas são verdadeiras e estou ciente das orientações e responsabilidades referentes aos procedimentos realizados. Autorizo também o uso de imagem para fins de portfólio e marketing: " + (dataToUse.allowImageUse ? "SIM" : "NÃO");
+    const declText = doc.splitTextToSize(declaration, 170);
+    doc.text(declText, margin, y);
+    y += 10 + (declText.length * 4);
+
+    // Signature Area
+    y += 10;
+    doc.setFont("helvetica", "bold");
+    doc.text("ASSINATURA DIGITAL:", margin, y);
+    
+    try {
+      if (dataToUse.signatureData) {
+        doc.addImage(dataToUse.signatureData, 'PNG', margin, y + 5, 60, 30);
+      }
+    } catch (e) {
+      console.error("Logo or Signature error:", e);
+    }
+
+    doc.save(`Termo_Aminna_${customer.name.replace(/\s+/g, '_')}.pdf`);
+    showToast("PDF gerado com sucesso!", "info");
   };
 
   // Resize handler to fix iPad offset
@@ -350,6 +504,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
                   placeholder="DIGITE AQUI SE HOUVER ALGUMA OBSERVAÇÃO IMPORTANTE..."
                   value={anamnese.observations}
                   onChange={e => setAnamnese(prev => ({ ...prev, observations: e.target.value }))}
+                  disabled={!!existingTerm}
                 />
               </div>
             </div>
@@ -374,8 +529,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
               </div>
               <button
                 type="button"
-                onClick={() => setAllowImageUse(!allowImageUse)}
-                className={`w-14 h-8 rounded-full transition-all relative ${allowImageUse ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                onClick={() => !existingTerm && setAllowImageUse(!allowImageUse)}
+                className={`w-14 h-8 rounded-full transition-all relative ${allowImageUse ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
               >
                 <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all ${allowImageUse ? 'right-1' : 'left-1'}`} />
               </button>
@@ -388,49 +543,73 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <Palette size={16} className="text-indigo-600" /> III. ASSINATURA DIGITAL NO TABLET
               </h4>
-              <button type="button" onClick={clearSignature} className="text-[10px] font-black text-rose-600 uppercase flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors"><Trash2 size={12} /> Limpar</button>
+              {!existingTerm && (
+                <button type="button" onClick={clearSignature} className="text-[10px] font-black text-rose-600 uppercase flex items-center gap-1 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors">
+                  <Trash2 size={12} /> Limpar
+                </button>
+              )}
             </div>
             
-            <div className="border-2 border-slate-200 dark:border-zinc-700 bg-white rounded-3xl overflow-hidden h-64 md:h-80 shadow-inner relative">
-              <SignatureCanvas 
-                ref={sigPad}
-                penColor="black"
-                velocityFilterWeight={0.1}
-                minDistance={0}
-                throttle={8}
-                canvasProps={{ 
-                  className: 'w-full h-full',
-                  style: { touchAction: 'none' }
-                }}
-              />
+            <div className={`border-2 border-slate-200 dark:border-zinc-700 bg-white rounded-3xl overflow-hidden h-64 md:h-80 shadow-inner relative ${existingTerm ? 'bg-slate-50' : ''}`}>
+              {existingTerm ? (
+                <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-zinc-800/50">
+                   <img src={existingTerm.signatureData} alt="Assinatura" className="max-h-full object-contain mix-blend-multiply dark:invert-0 pointer-events-none" />
+                   <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[8px] font-black px-3 py-1 rounded-full uppercase shadow-lg">Documento Assinado</div>
+                </div>
+              ) : (
+                <SignatureCanvas 
+                  ref={sigPad}
+                  penColor="black"
+                  velocityFilterWeight={0.1}
+                  minDistance={0}
+                  throttle={8}
+                  canvasProps={{ 
+                    className: 'w-full h-full',
+                    style: { touchAction: 'none' }
+                  }}
+                />
+              )}
             </div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase text-center tracking-widest">Assine dentro da área acima utilizando o dedo ou caneta stylus</p>
+            {!existingTerm && <p className="text-[10px] text-slate-400 font-bold uppercase text-center tracking-widest">Assine dentro da área acima utilizando o dedo ou caneta stylus</p>}
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-6 md:p-8 bg-slate-50 dark:bg-zinc-800/50 border-t border-slate-100 dark:border-zinc-800 flex flex-col md:flex-row gap-4">
           <p className="flex-1 text-[10px] text-slate-500 font-bold uppercase leading-relaxed text-center md:text-left">
-            Ao clicar em finalizar, você confirma que leu e concorda com todos os termos e que os dados informados são verdadeiros.
+            {existingTerm 
+              ? `Este termo foi registrado em ${new Date(existingTerm.dateTime).toLocaleString('pt-BR')} e possui validade jurídica.`
+              : "Ao clicar em finalizar, você confirma que leu e concorda com todos os termos e que os dados informados são verdadeiros."}
           </p>
           <div className="flex gap-3">
+             {existingTerm && (
+               <button
+                 type="button"
+                 onClick={handleDownloadPDF}
+                 className="flex-1 md:flex-none px-8 py-4 bg-emerald-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                 <Download size={16} /> Baixar PDF
+               </button>
+             )}
              <button
                type="button"
                onClick={onClose}
                className="flex-1 md:flex-none px-8 py-4 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all"
                disabled={loading}
              >
-               Cancelar
+               {existingTerm ? 'Sair' : 'Cancelar'}
              </button>
-             <button
-               type="button"
-               onClick={handleFinish}
-               disabled={loading}
-               className="flex-1 md:flex-none px-12 py-4 bg-slate-950 dark:bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-             >
-               {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
-               {loading ? 'SALVANDO...' : 'FINALIZAR ASSINATURA'}
-             </button>
+             {!existingTerm && (
+               <button
+                 type="button"
+                 onClick={handleFinish}
+                 disabled={loading}
+                 className="flex-1 md:flex-none px-12 py-4 bg-slate-950 dark:bg-indigo-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                 {loading ? <Loader2 className="animate-spin" size={18} /> : <Check size={18} />}
+                 {loading ? 'SALVANDO...' : 'FINALIZAR ASSINATURA'}
+               </button>
+             )}
           </div>
         </div>
       </div>
