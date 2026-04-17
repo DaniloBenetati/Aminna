@@ -1407,14 +1407,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <div className="flex items-center gap-4 w-full md:w-auto">
                         <button
                             onClick={() => {
-                                // On large screens toggle sidebar; on small screens open mobile drawer
+                                // On large screens >= 1024px toggle sidebar; on smaller screens (including iPad portrait) open drawer
                                 if (window.innerWidth >= 1024) {
                                     setIsSidebarOpen(!isSidebarOpen);
                                 } else {
                                     setIsMobileDrawerOpen(true);
                                 }
                             }}
-                            className={`hidden md:flex p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'}`}
+                            className={`flex p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'} ${isSidebarOpen ? 'lg:flex' : ''}`}
                             title="Alternar Filtros"
                         >
                             <Filter size={18} />
@@ -1475,8 +1475,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                             )}
                         </div>
 
-                        {/* Zoom Controls */}
-                        <div className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                        {/* Zoom Controls (Available on large screens only) */}
+                        <div className="hidden xl:flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
                             <button
                                 onClick={() => setRowHeight(prev => Math.max(40, prev - 10))}
                                 className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
@@ -1555,9 +1555,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                 {/* Agenda Grid */}
                 <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col relative transition-colors">
 
-                    {/* Mobile Day List — visible only on < md */}
+                    {/* Mobile Day List — visible only on < lg (including iPad Portrait) */}
                     {timeView === 'day' && (
-                        <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-4">
+                        <div className="lg:hidden flex-1 overflow-y-auto p-3 space-y-4">
                             {activeVisibileProviders.length === 0 ? (
                                 <div className="text-center py-16 text-slate-400">
                                     <CalendarIcon size={40} className="mx-auto mb-3 opacity-20" />
@@ -1655,8 +1655,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     )}
 
-                    {/* Agenda Content Container — hidden on mobile when in day view (uses list above) */}
-                    <div ref={gridScrollRef} className={`flex-1 overflow-auto scrollbar-hide relative ${timeView === 'day' ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
+                    {/* Agenda Content Container — hidden on < lg when in day view (uses list above) */}
+                    <div ref={gridScrollRef} className={`flex-1 overflow-auto scrollbar-hide relative ${timeView === 'day' ? 'hidden lg:flex lg:flex-col' : 'flex flex-col'}`}>
                         {/* Day View Grid */}
                         {timeView === 'day' && (
                             <DndContext
