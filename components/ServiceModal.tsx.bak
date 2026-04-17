@@ -476,8 +476,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 }
             }
         };
+        fetchNFSe();
 
-        const checkConsentForm = async () => {
+        // Verificar Termo de Consentimento
+        const fetchConsent = async () => {
             if (!appointment.id || !isUUID(appointment.id)) return;
             const { data } = await supabase
                 .from('customer_consent_forms')
@@ -487,9 +489,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             
             setHasConsentForm(!!data);
         };
-
-        fetchNFSe();
-        checkConsentForm();
+        fetchConsent();
     }, [appointment, latestAppointment, services, campaigns, source]);
 
     const totalPaid = useMemo(() => {
@@ -2502,6 +2502,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     >
                                         <span className="text-xs">📲</span> Lembrete
                                     </button>
+
                                     {showWhatsAppOptions && (
                                         <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
                                             <button 
@@ -2526,17 +2527,17 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
                                     )}
                                 </div>
-
+                                
                                 <button 
                                     onClick={() => setShowConsentFormModal(true)}
                                     className={`ml-2 flex items-center gap-1.5 px-3 py-1 border rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md ${
                                         hasConsentForm 
-                                        ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/20' 
-                                        : 'bg-rose-500 border-rose-400 shadow-rose-500/20'
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 border-emerald-400 shadow-emerald-500/20' 
+                                        : 'bg-rose-500 hover:bg-rose-600 border-rose-400 shadow-rose-500/20'
                                     }`}
-                                    title={hasConsentForm ? "Termo Assinado" : "Termo Não Assinado"}
+                                    title="Termo de Consentimento"
                                 >
-                                    <FileText size={10} /> {hasConsentForm ? 'Termo Assinado' : 'Termo Pendente'}
+                                    <ClipboardCheck size={10} /> Termo
                                 </button>
                             </div>
                         </div>
@@ -4347,220 +4348,124 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
             {
                 showHistoryPopup && (
-                    <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
-                            <div className="px-8 py-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
-                                        <History size={24} />
-                                    </div>
+                    <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
+                        <div className="bg-white dark:bg-zinc-950 w-full max-w-xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
+                            <div className="p-8 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
+                                <div className="flex items-center gap-4">
+                                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner"><History size={24} /></div>
                                     <div>
-                                        <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
-                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{customer.name}</p>
+                                        <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
+                                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mt-1.5">{customer.name.toUpperCase()}</p>
                                     </div>
                                 </div>
-                                <button onClick={() => setShowHistoryPopup(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-zinc-800 rounded-full transition-colors text-slate-500">
-                                    <X size={24} />
-                                </button>
+                                <button onClick={() => setShowHistoryPopup(false)} className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"><X size={20} className="text-slate-400" /></button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 bg-white dark:bg-zinc-950 scrollbar-hide">
-                                {isLoadingHistory ? (
-                                    <div className="flex flex-col items-center justify-center py-20 gap-4">
-                                        <RefreshCw size={32} className="text-indigo-500 animate-spin" />
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregando histórico...</p>
-                                    </div>
-                                ) : customerHistory.length === 0 ? (
-                                    <div className="text-center py-20 bg-slate-50 dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-zinc-800">
-                                        <div className="bg-white dark:bg-zinc-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
-                                            <Calendar size={32} />
-                                        </div>
-                                        <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Nenhum histórico disponível</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        {customerHistory.map((item: CustomerHistoryItem) => (
-                                            <div key={item.id} className="group flex items-start gap-6">
-                                                <div className="flex flex-col items-center flex-shrink-0 pt-2">
-                                                    <div className={`w-3 h-3 rounded-full border-2 ${item.type === 'VISIT' ? 'bg-indigo-600 border-indigo-200' :
-                                                        item.type === 'PURCHASE' ? 'bg-emerald-500 border-emerald-200' :
-                                                            'bg-rose-500 border-rose-200'
-                                                        }`} />
-                                                    <div className="w-0.5 h-full min-h-[40px] bg-slate-100 dark:bg-zinc-800 mt-2 rounded-full" />
-                                                </div>
+                            <div className="flex-1 overflow-y-auto p-8 space-y-4 bg-white dark:bg-zinc-950 scrollbar-hide">
+                                {(() => {
+                                    // Combinar Histórico JSON (DB) com Atendimentos Reais (allAppointments)
+                                    const appointmentsHistory = (allAppointments || [])
+                                        .filter(a => a.customerId === customer.id && a.status === 'Concluído')
+                                        .map(a => {
+                                            const svc = services.find(s => s.id === a.serviceId);
+                                            const prov = providers.find(p => p.id === a.providerId);
+                                            return {
+                                                id: a.id,
+                                                date: a.date,
+                                                description: a.combinedServiceNames || svc?.name || 'Serviço',
+                                                details: `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}`,
+                                                type: 'VISIT' as const,
+                                                price: a.pricePaid || a.amount || 0,
+                                                method: a.paymentMethod || 'Não informado',
+                                                feedback: a.feedback,
+                                                providerName: prov?.name || a.providerName || 'Não informado'
+                                            };
+                                        });
 
-                                                <div className="flex-1 bg-slate-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all hover:shadow-md">
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white dark:bg-zinc-800 px-3 py-1 rounded-lg border border-slate-100 dark:border-zinc-700">
-                                                                {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
-                                                            </span>
-                                                            <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${item.type === 'VISIT' ? 'bg-indigo-50 text-indigo-700' :
-                                                                item.type === 'PURCHASE' ? 'bg-emerald-50 text-emerald-700' :
-                                                                    'bg-rose-50 text-rose-700'
-                                                                }`}>
-                                                                {item.type === 'VISIT' ? 'VISITA' : item.type === 'PURCHASE' ? 'COMPRA' : item.type === 'CANCELLATION' ? 'CANCELAMENTO' : item.type === 'RESTRICTION' ? 'RESTRIÇÃO' : item.type}
-                                                            </span>
+                                    const dbHistoryItems = (customerHistory || []).map(h => ({
+                                        ...h,
+                                        isDb: true
+                                    }));
+
+                                    const combined = [...appointmentsHistory, ...dbHistoryItems].sort((a,b) => 
+                                        new Date(b.date + (b.date.includes('T') ? '' : 'T12:00:00')).getTime() - 
+                                        new Date(a.date + (a.date.includes('T') ? '' : 'T12:00:00')).getTime()
+                                    );
+
+                                    if (combined.length === 0 && !isLoadingHistory) {
+                                        return (
+                                            <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                                <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm"><Calendar size={32} /></div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum histórico disponível</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    if (isLoadingHistory && combined.length === 0) {
+                                        return <div className="text-center py-20 text-slate-400 font-black animate-pulse uppercase text-[10px]">Carregando histórico...</div>;
+                                    }
+
+                                    return (
+                                        <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-zinc-800 before:to-transparent">
+                                            {combined.map((item: any, idx) => (
+                                                <div key={idx} className="relative flex items-start gap-6 group">
+                                                    {/* Timeline Circle Overlay */}
+                                                    <div className="absolute left-0 mt-1.5 w-10 flex items-center justify-center">
+                                                        <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-950 border-2 border-indigo-500 flex items-center justify-center shadow-md animate-in zoom-in duration-300">
+                                                            <CircleCheck size={18} className="text-indigo-500" />
                                                         </div>
-                                                        {item.providerId && (
-                                                            <div className="flex items-center gap-2">
-                                                                <Avatar size="w-5 h-5" name={providers.find(p => p.id === item.providerId)?.name || ''} src={providers.find(p => p.id === item.providerId)?.avatar} />
-                                                                <span className="text-[10px] font-black text-slate-600 dark:text-zinc-400 uppercase">{providers.find(p => p.id === item.providerId)?.name}</span>
-                                                            </div>
-                                                        )}
                                                     </div>
 
-                                                    <h5 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight mb-1">{item.description}</h5>
-                                                    {!!item.details && <p className="text-[11px] font-bold text-slate-400 dark:text-zinc-500 leading-relaxed">{item.details}</p>}
+                                                    {/* Card Content */}
+                                                    <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="space-y-1.5 flex-1 pr-4">
+                                                                <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{new Date(item.date + (item.date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                                                                <h4 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight group-hover:text-indigo-600 transition-colors">{item.description}</h4>
+                                                                
+                                                                {(item.providerName || item.provider) && (
+                                                                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
+                                                                        PROFISSIONAL: <span className="text-indigo-600 dark:text-indigo-400">{item.providerName || item.provider}</span>
+                                                                    </p>
+                                                                )}
 
-                                                    {item.rating !== undefined && item.rating !== null && item.rating > 0 && (
-                                                        <div className="flex items-center gap-4 mt-4 pt-4 border-t border-slate-200 dark:border-zinc-800">
-                                                            <div className="flex gap-0.5">
-                                                                {[1, 2, 3, 4, 5].map(star => (
-                                                                    <Star key={star} size={10} className={star <= item.rating! ? "fill-amber-400 text-amber-400" : "text-slate-200 dark:text-zinc-700"} />
-                                                                ))}
+                                                                <p className="text-[10px] font-bold text-slate-500 mt-2">
+                                                                    Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
+                                                                </p>
+
+                                                                {(item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">"{item.feedback}"</p>}
                                                             </div>
-                                                            {!!item.feedback && <span className="text-[10px] text-slate-400 italic font-medium">"{item.feedback}"</span>}
+                                                            <div className="text-right">
+                                                                <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase truncate max-w-[80px] inline-block shadow-sm">
+                                                                    {item.isDb ? 'REGISTRO' : 'SISTEMA'}
+                                                                </span>
+                                                            </div>
                                                         </div>
-                                                    )}
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
                             </div>
-                            
-                            <div className="p-6 bg-slate-50 dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800">
+
+                            <div className="p-8 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/50">
                                 <button 
-                                    onClick={() => setShowHistoryPopup(false)}
-                                    className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
+                                    onClick={() => { setShowHistoryPopup(false); setMode('EDIT_CUSTOMER'); }}
+                                    className="w-full py-5 bg-slate-950 dark:bg-zinc-800 text-white rounded-3xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
                                 >
-                                    FECHAR HISTÓRICO
+                                    <User size={18} /> Gerenciar Cliente Completo
                                 </button>
                             </div>
                         </div>
                     </div>
                 )
             }
-            {/* Histórico Pop-up Overlay */}
-            {showHistoryPopup && (
-                <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-950 w-full max-w-xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
-                        <div className="p-8 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner"><History size={24} /></div>
-                                <div>
-                                    <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
-                                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mt-1.5">{customer.name.toUpperCase()}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setShowHistoryPopup(false)} className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"><X size={20} className="text-slate-400" /></button>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-8 space-y-4 bg-white dark:bg-zinc-950 scrollbar-hide">
-                            {(() => {
-                                // Combinar Histórico JSON (DB) com Atendimentos Reais (allAppointments)
-                                const appointmentsHistory = (allAppointments || [])
-                                    .filter(a => a.customerId === customer.id && a.status === 'Concluído')
-                                    .map(a => {
-                                        const svc = services.find(s => s.id === a.serviceId);
-                                        const prov = providers.find(p => p.id === a.providerId);
-                                        return {
-                                            id: a.id,
-                                            date: a.date,
-                                            description: a.combinedServiceNames || svc?.name || 'Serviço',
-                                            details: `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}`,
-                                            type: 'VISIT' as const,
-                                            price: a.pricePaid || a.amount || 0,
-                                            method: a.paymentMethod || 'Não informado',
-                                            feedback: a.feedback,
-                                            providerName: prov?.name || a.providerName || 'Não informado'
-                                        };
-                                    });
-
-                                const dbHistoryItems = (customerHistory || []).map(h => ({
-                                    ...h,
-                                    isDb: true
-                                }));
-
-                                const combined = [...appointmentsHistory, ...dbHistoryItems].sort((a,b) => 
-                                    new Date(b.date + (b.date.includes('T') ? '' : 'T12:00:00')).getTime() - 
-                                    new Date(a.date + (a.date.includes('T') ? '' : 'T12:00:00')).getTime()
-                                );
-
-                                if (combined.length === 0 && !isLoadingHistory) {
-                                    return (
-                                        <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
-                                            <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm"><Calendar size={32} /></div>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum histórico disponível</p>
-                                        </div>
-                                    );
-                                }
-
-                                if (isLoadingHistory && combined.length === 0) {
-                                    return <div className="text-center py-20 text-slate-400 font-black animate-pulse uppercase text-[10px]">Carregando histórico...</div>;
-                                }
-
-                                return (
-                                    <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-zinc-800 before:to-transparent">
-                                        {combined.map((item: any, idx) => (
-                                            <div key={idx} className="relative flex items-start gap-6 group">
-                                                {/* Timeline Circle Overlay */}
-                                                <div className="absolute left-0 mt-1.5 w-10 flex items-center justify-center">
-                                                    <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-950 border-2 border-indigo-500 flex items-center justify-center shadow-md animate-in zoom-in duration-300">
-                                                        <CircleCheck size={18} className="text-indigo-500" />
-                                                    </div>
-                                                </div>
-
-                                                {/* Card Content */}
-                                                <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
-                                                    <div className="flex justify-between items-start">
-                                                        <div className="space-y-1.5 flex-1 pr-4">
-                                                            <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{new Date(item.date + (item.date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
-                                                            <h4 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight group-hover:text-indigo-600 transition-colors">{item.description}</h4>
-                                                            
-                                                            {(item.providerName || item.provider) && (
-                                                                <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
-                                                                    PROFISSIONAL: <span className="text-indigo-600 dark:text-indigo-400">{item.providerName || item.provider}</span>
-                                                                </p>
-                                                            )}
-
-                                                            <p className="text-[10px] font-bold text-slate-500 mt-2">
-                                                                Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
-                                                            </p>
-
-                                                            {(item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">"{item.feedback}"</p>}
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase truncate max-w-[80px] inline-block shadow-sm">
-                                                                {item.isDb ? 'REGISTRO' : 'SISTEMA'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                );
-                            })()}
-                        </div>
-
-                        <div className="p-8 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/50">
-                            <button 
-                                onClick={() => { setShowHistoryPopup(false); setMode('EDIT_CUSTOMER'); }}
-                                className="w-full py-5 bg-slate-950 dark:bg-zinc-800 text-white rounded-3xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
-                            >
-                                <User size={18} /> Gerenciar Cliente Completo
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {showConsentFormModal && (
-                <ConsentForm 
+                <ConsentForm
                     customer={customer}
-                    appointments={[appointment, ...allAppointments.filter(a => a.customerId === customer.id && a.id !== appointment.id)]}
+                    appointments={allAppointments}
                     services={services}
                     providers={providers}
                     onClose={() => setShowConsentFormModal(false)}
