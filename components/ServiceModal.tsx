@@ -77,6 +77,7 @@ interface ServiceModalProps {
     customers: Customer[];
     onNavigate?: (view: ViewState, payload?: any) => void;
     allSales?: Sale[];
+    partners?: any[];
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -95,7 +96,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     stock,
     customers,
     onNavigate,
-    allSales = []
+    allSales = [],
+    partners = []
 }) => {
     if (!appointment) return null;
 
@@ -4578,6 +4580,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         setHasConsentForm(true);
                         setShowConsentFormModal(false);
                     }}
+                    partners={partners}
                 />
             )}
         </div >

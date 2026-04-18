@@ -20,9 +20,10 @@ interface ClientsProps {
   returnView?: ViewState | null;
   onNavigate?: (view: ViewState, payload?: any) => void;
   providers?: Provider[];
+  partners?: Partner[];
 }
 
-export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [] }) => {
+export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [], partners = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -833,6 +834,73 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         </div>
                       </div>
 
+                      {/* ORIGEM DA CLIENTE */}
+                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
+                        <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2">
+                          <Megaphone size={16} className="text-emerald-600 dark:text-emerald-400" /> Origem da Cliente
+                        </h4>
+                        <div className="space-y-3">
+                          <label className="block">
+                            <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Como conheceu o Aminna?</span>
+                            {isEditing ? (
+                              <div className="space-y-3">
+                                <select
+                                  className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-zinc-950 dark:focus:border-white uppercase"
+                                  value={(() => {
+                                    const channel = formData.acquisitionChannel || '';
+                                    if (channel.startsWith('INFLUENCERS')) return 'Influencers';
+                                    if (['INSTAGRAM', 'GOOGLE', 'INDICAÇÃO', 'OUTROS'].includes(channel.toUpperCase())) return channel.charAt(0) + channel.slice(1).toLowerCase();
+                                    return channel || '';
+                                  })()}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData({ ...formData, acquisitionChannel: val === 'Influencers' ? 'Influencers' : val.toUpperCase() });
+                                  }}
+                                >
+                                  <option value="">Selecione...</option>
+                                  <option value="Instagram">Instagram</option>
+                                  <option value="Google">Google</option>
+                                  <option value="Indicação">Indicação</option>
+                                  <option value="Influencers">Influencers / Parceiros</option>
+                                  <option value="Outros">Outros</option>
+                                </select>
+
+                                {(formData.acquisitionChannel === 'Influencers' || (formData.acquisitionChannel || '').startsWith('INFLUENCERS')) && (
+                                  <select
+                                    className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-emerald-100 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-emerald-500 uppercase animate-in slide-in-from-top-2"
+                                    value={(() => {
+                                      const channel = (formData.acquisitionChannel || '').toUpperCase();
+                                      if (channel.includes('-')) {
+                                        const pName = channel.split('-')[1].trim();
+                                        return partners.find(p => p.name.toUpperCase() === pName)?.id || 'outros';
+                                      }
+                                      return '';
+                                    })()}
+                                    onChange={(e) => {
+                                      const partnerId = e.target.value;
+                                      if (partnerId === 'outros') {
+                                        setFormData({ ...formData, acquisitionChannel: 'INFLUENCERS - OUTROS' });
+                                      } else {
+                                        const pName = partners.find(p => p.id === partnerId)?.name || 'PARCEIRO';
+                                        setFormData({ ...formData, acquisitionChannel: `INFLUENCERS - ${pName.toUpperCase()}` });
+                                      }
+                                    }}
+                                  >
+                                    <option value="">Selecione o parceiro...</option>
+                                    {partners.filter(p => p.active).map(p => (
+                                      <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                    <option value="outros">Outros parceiros / Não listado</option>
+                                  </select>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm font-black text-slate-950 dark:text-white uppercase">{formData.acquisitionChannel || 'Não informado'}</p>
+                            )}
+                          </label>
+                        </div>
+                      </div>
+
                       {/* CONTATOS */}
                       <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2"><Smartphone size={16} className="text-indigo-600 dark:text-indigo-400" /> Contatos</h4>
@@ -1257,6 +1325,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
           providers={providers}
           onClose={() => setIsFormOpen(false)}
           onSaved={(newTerm) => setConsentForms(prev => [newTerm, ...prev])}
+          partners={partners}
         />
       )}
 
@@ -1270,6 +1339,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
           onClose={() => setSelectedConsentForm(null)}
           onSaved={() => fetchConsentForms(selectedCustomer.id)}
           initialTerm={selectedConsentForm}
+          partners={partners}
         />
       )}
     </div>

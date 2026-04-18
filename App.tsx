@@ -638,7 +638,8 @@ const App: React.FC = () => {
           isVip: c.is_vip,
           vipDiscountPercent: c.vip_discount_percent,
           creditBalance: c.credit_balance,
-          lastMarketingContact: c.last_marketing_contact
+          lastMarketingContact: c.last_marketing_contact,
+          acquisitionChannel: c.acquisition_channel
         }));
 
         // Frontend Deduplication
@@ -749,6 +750,7 @@ const App: React.FC = () => {
             returnView={returnView}
             onNavigate={setCurrentView}
             providers={providers}
+            partners={partners}
           />
         );
       case ViewState.CRM:
@@ -795,6 +797,7 @@ const App: React.FC = () => {
             nfseRecords={nfseRecords}
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
+            partners={partners}
             onNavigate={(view, payload) => {
               if (view === ViewState.CLIENTES) {
                 if (typeof payload === 'string') {
@@ -826,6 +829,7 @@ const App: React.FC = () => {
             userProfile={simulatedProfile || userProfile}
             isLoadingData={isLoadingData}
             sales={sales}
+            partners={partners}
             onNavigate={(view, payload) => {
               if (view === ViewState.CLIENTES) {
                 if (typeof payload === 'string') {

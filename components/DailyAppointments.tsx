@@ -24,9 +24,10 @@ interface DailyAppointmentsProps {
   isLoadingData?: boolean;
   onNavigate?: (view: ViewState, payload?: any) => void;
   sales: Sale[];
+  partners?: Partner[];
 }
 
-export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, userProfile, isLoadingData, onNavigate, sales }) => {
+export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers, setCustomers, appointments, setAppointments, services, campaigns, paymentSettings, providers, stock, nfseRecords, userProfile, isLoadingData, onNavigate, sales, partners = [] }) => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -415,6 +416,7 @@ export const DailyAppointments: React.FC<DailyAppointmentsProps> = ({ customers,
           customers={customers}
           onNavigate={onNavigate}
           allSales={sales}
+          partners={partners}
         />
       )}
     </div>

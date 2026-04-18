@@ -16,6 +16,7 @@ interface ConsentFormProps {
   onClose: () => void;
   onSaved: (newTerm: IConsentForm) => void;
   initialTerm?: IConsentForm;
+  partners?: any[];
 }
 
 export const ConsentForm: React.FC<ConsentFormProps> = ({ 
@@ -25,7 +26,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   providers, 
   onClose,
   onSaved,
-  initialTerm
+  initialTerm,
+  partners = []
 }) => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'info' } | null>(null);
@@ -54,6 +56,24 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   const [procedures, setProcedures] = useState('');
   const [professionals, setProfessionals] = useState('');
 
+  // Marketing Survey State
+  const [acquisitionChannel, setAcquisitionChannel] = useState(() => {
+    const channel = customer.acquisitionChannel || '';
+    if (channel.toUpperCase().startsWith('INFLUENCERS')) return 'Influencers';
+    return channel;
+  });
+  const [selectedInfluencerId, setSelectedInfluencerId] = useState(() => {
+    const channel = customer.acquisitionChannel || '';
+    if (channel.toUpperCase().startsWith('INFLUENCERS - ')) {
+      const namePart = channel.split(' - ')[1];
+      const partner = partners.find(p => p.name.toUpperCase() === namePart.toUpperCase());
+      return partner ? partner.id : '';
+    } else if (channel.toUpperCase() === 'INFLUENCERS - OUTROS') {
+      return 'outros';
+    }
+    return '';
+  });
+
   // Find recent appointments for this customer
   const customerAppts = appointments
     .filter(a => a.customerId === customer.id)
@@ -71,9 +91,20 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         list = extras ? `${main} + ${extras}` : main;
       }
       setProcedures(list);
-      setProfessionals('PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)');
-      
-      // Auto-check for existing term when starting form for an appt
+
+      // AUTO-POPULATE PROFESSIONALS
+      // Find main provider name
+      const mainProv = providers.find(p => p.id === appt.providerId)?.name || '';
+      // Find extra providers names
+      const extraProvs = (appt.additionalServices || [])
+        .map(as => providers.find(p => p.id === as.providerId)?.name)
+        .filter(Boolean);
+      const allProvs = Array.from(new Set([mainProv, ...extraProvs])).filter(Boolean);
+      const profsText = allProvs.length > 0
+        ? allProvs.join(' / ').toUpperCase()
+        : 'PROFISSIONAIS SALÃO PARCEIRO (LEI 13.352/2016)';
+
+      setProfessionals(profsText);
       checkExistingTerm(appt.id);
     } else {
       setProcedures('TODOS OS PROCEDIMENTOS ESTÉTICOS');
@@ -441,6 +472,24 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
           .eq('id', customer.id);
       }
 
+      // 4. Update Acquisition Channel if selected
+      if (acquisitionChannel) {
+        let finalChannel = acquisitionChannel;
+        if (acquisitionChannel === 'Influencers') {
+          if (selectedInfluencerId === 'outros') {
+            finalChannel = 'Influencers - Outros';
+          } else if (selectedInfluencerId) {
+            const partnerName = partners.find(p => p.id === selectedInfluencerId)?.name || '';
+            finalChannel = partnerName ? `Influencers - ${partnerName}` : 'Influencers';
+          }
+        }
+
+        await supabase
+          .from('customers')
+          .update({ acquisition_channel: finalChannel.toUpperCase() })
+          .eq('id', customer.id);
+      }
+
       const newTerm: IConsentForm = {
         id: data.id,
         customerId: data.customer_id,
@@ -516,9 +565,9 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
               ))}
               <button
                 onClick={() => startForm(null)}
-                className="w-full p-4 border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-all text-xs font-black uppercase tracking-widest"
+                className="w-full p-4 bg-indigo-600 border-2 border-indigo-700 text-white rounded-2xl hover:bg-indigo-700 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none active:scale-[0.98]"
               >
-                Continuar sem vincular atendimento
+                <Plus size={16} /> Continuar sem vincular atendimento
               </button>
             </div>
 
@@ -631,6 +680,56 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
                   disabled={!!existingTerm}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* PESQUISA DE ORIGEM (COMO CONHECEU) */}
+          <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
+              <Plus size={16} className="text-emerald-600" /> COMO CONHECEU O AMINNA?
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Selecione uma opção</span>
+                <select
+                  value={acquisitionChannel}
+                  onChange={(e) => {
+                    setAcquisitionChannel(e.target.value);
+                    if (e.target.value !== 'Influencers') setSelectedInfluencerId('');
+                  }}
+                  className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all uppercase appearance-none"
+                  disabled={!!existingTerm}
+                >
+                  <option value="">Selecione...</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="Google">Google</option>
+                  <option value="Indicação">Indicação</option>
+                  <option value="Influencers">Influencers / Parceiros</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+
+              {acquisitionChannel === 'Influencers' && (
+                <div className="space-y-2 animate-in slide-in-from-top-2">
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Qual Influencer / Parceiro?</span>
+                  <select
+                    value={selectedInfluencerId}
+                    onChange={(e) => setSelectedInfluencerId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-emerald-100 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 transition-all uppercase appearance-none"
+                    disabled={!!existingTerm}
+                  >
+                    <option value="">Selecione o parceiro...</option>
+                    {partners
+                      .filter(p => p.active)
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    <option value="outros">Outros parceiros / Não listado</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

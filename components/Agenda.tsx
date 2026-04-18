@@ -179,12 +179,13 @@ interface AgendaProps {
     setFinancialConfigs: React.Dispatch<React.SetStateAction<FinancialConfig[]>>;
     isLoadingData?: boolean;
     onNavigate?: (view: ViewState, payload?: any) => void;
+    partners?: Partner[];
 }
 
 export const Agenda: React.FC<AgendaProps> = ({
     customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings,
     commissionSettings, providers, stock, sales, expenses, nfseRecords, fiscalConfig, userProfile,
-    financialConfigs, setFinancialConfigs, isLoadingData, onNavigate
+    financialConfigs, setFinancialConfigs, isLoadingData, onNavigate, partners = []
 }) => {
     // Date & View States
     const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
@@ -2542,6 +2543,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         customers={customers}
                         onNavigate={onNavigate}
                         allSales={sales}
+                        partners={partners}
                     />
                 )
             }
