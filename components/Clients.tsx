@@ -24,6 +24,7 @@ interface ClientsProps {
 
 export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -59,7 +60,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const clientStats = useMemo(() => {
     const totalSpent = customers.reduce((acc, c) => acc + (c.totalSpent || 0), 0);
     const avgSpent = customers.length > 0 ? totalSpent / customers.length : 0;
-    const vips = customers.filter(c => c.status === 'VIP').length;
+    const vips = customers.filter(c => c.isVip || c.status === 'VIP').length;
     const churnRisk = customers.filter(c => c.status === 'Risco de Churn').length;
     
     const now = new Date();
@@ -85,17 +86,32 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     return { avgSpent, vips, churnRisk, newThisMonth };
   }, [customers, appointments]);
 
-  const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.phone.includes(searchTerm)
-  );
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(c => {
+      const matchesSearch = 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phone.includes(searchTerm);
+      
+      if (!matchesSearch) return false;
+
+      if (filterType === 'vip') {
+        return c.isVip || c.status === 'VIP';
+      }
+
+      if (filterType === 'credit') {
+        return (c.creditBalance || 0) > 0;
+      }
+
+      return true;
+    });
+  }, [customers, searchTerm, filterType]);
 
   const customerTimeline = useMemo(() => {
     if (!selectedCustomer) return [];
 
     // Convert appointments to history items
     const appointmentHistory: CustomerHistoryItem[] = appointments
-      .filter(a => a.customerId === selectedCustomer.id && (a.status === 'Concluído' || a.status === 'Confirmado'))
+      .filter(a => a.customerId === selectedCustomer.id) // Include ALL for this customer
       .map(a => {
         const service = services.find(s => s.id === a.serviceId);
 
@@ -118,8 +134,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
             : (a.paymentMethod || 'Não informado');
 
           details = `Valor: ${price} | Pagamento: ${payment}`;
+        } else if (a.status === 'Cancelado') {
+            details = 'STATUS: CANCELADO';
+            if (a.observation) details += ` | NOTA: ${a.observation}`;
         } else {
-          details = `Status: ${a.status}`;
+          details = `STATUS: ${a.status.toUpperCase()} | HORÁRIO: ${a.time}`;
         }
 
         // Collect Products
@@ -128,7 +147,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return {
           id: a.id,
           date: a.date,
-          type: 'VISIT',
+          type: a.status === 'Cancelado' ? 'CANCELLATION' : 'VISIT',
           description: description,
           providerId: a.providerId,
           details: details,
@@ -139,8 +158,17 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       });
 
     // Merge with manual history and sort by date descending
+    // Filter out duplicates: if we have a cancellation entry in history that matches the date and description of a cancelled appointment, we might want to consolidate.
     const merged = [...appointmentHistory, ...(selectedCustomer.history || [])];
-    return merged.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Simple deduplication for CANCELLATION type based on date (very rough)
+    // Actually, manual history entries already contain the justification.
+    
+    return merged.sort((a, b) => {
+      const dateA = new Date(a.date + (a.date.includes('T') ? '' : 'T12:00:00')).getTime();
+      const dateB = new Date(b.date + (b.date.includes('T') ? '' : 'T12:00:00')).getTime();
+      return dateB - dateA;
+    });
   }, [selectedCustomer, appointments, services]);
 
   const handleSelectCustomer = (customer: Customer) => {
@@ -473,20 +501,43 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
             </button>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {[
-              { label: 'Base Total', val: customers.length, icon: Users, color: 'text-blue-700 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
-              { label: 'Ticket Médio', val: `R$ ${clientStats.avgSpent.toFixed(2)}`, icon: TrendingUp, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
-              { label: 'Membros VIP', val: clientStats.vips, icon: Crown, color: 'text-indigo-700 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
-              { label: 'Risco Churn', val: clientStats.churnRisk, icon: Target, color: 'text-rose-700 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-900/30' },
-              { label: 'Novas (Mês)', val: `+${clientStats.newThisMonth}`, icon: Zap, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' }
-            ].map((kpi, i) => (
-              <div key={i} className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                <div className={`p-2 ${kpi.bg} ${kpi.color} rounded-xl w-fit mb-2`}><kpi.icon size={18} /></div>
-                <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase">{kpi.label}</p>
-                <p className="text-base md:text-xl font-black text-slate-950 dark:text-white leading-tight">{kpi.val}</p>
-              </div>
-            ))}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-1">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+              {[
+                { id: 'all', label: 'Todos', icon: Users, color: 'indigo' },
+                { id: 'vip', label: 'VIPs', icon: Crown, color: 'amber', count: customers.filter(c => c.isVip || c.status === 'VIP').length },
+                { id: 'credit', label: 'Com Crédito', icon: Wallet, color: 'emerald', count: customers.filter(c => (c.creditBalance || 0) > 0).length }
+              ].map((btn) => {
+                const isActive = filterType === btn.id;
+                const colorClasses = {
+                  indigo: isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-800',
+                  amber: isActive ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-amber-300 dark:hover:border-amber-800',
+                  emerald: isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-800'
+                };
+
+                return (
+                  <button
+                    key={btn.id}
+                    onClick={() => setFilterType(btn.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-full border text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-95 ${colorClasses[btn.color as keyof typeof colorClasses]}`}
+                  >
+                    <btn.icon size={14} className={isActive ? 'text-white' : ''} />
+                    {btn.label}
+                    {btn.count !== undefined && (
+                      <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[9px] ${isActive ? 'bg-white/20' : 'bg-slate-100 dark:bg-zinc-800'}`}>
+                        {btn.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <div className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-zinc-900/50 rounded-2xl border border-slate-200/50 dark:border-zinc-800/50">
+              <span className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest">Base Total:</span>
+              <span className="text-sm font-black text-slate-900 dark:text-white">{customers.length}</span>
+              <span className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase">clientes</span>
+            </div>
           </div>
 
           <div className="relative group">
@@ -576,8 +627,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                   <div className="min-w-0 flex-1">
                     <p className="font-black text-slate-950 dark:text-white truncate leading-tight uppercase text-sm md:text-sm tracking-tight">{customer.name}</p>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${customer.status === 'VIP' ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>
+                      <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${(customer.isVip || customer.status === 'VIP') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>
                         {(() => {
+                          if (customer.isVip || customer.status === 'VIP') return 'VIP';
                           const completedCount = (appointments || []).filter(a => a.customerId === customer.id && a.status === 'Concluído').length;
                           if (completedCount === 0) return 'LEAD';
                           if (completedCount === 1) return 'NOVO';
@@ -649,8 +701,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       <h3 className="text-lg md:text-2xl font-black text-slate-950 dark:text-white truncate leading-tight uppercase tracking-tight">{formData.name}</h3>
                     )}
                     <div className="mt-1 flex items-center gap-2">
-                      <span className="text-[9px] font-black text-slate-400 uppercase border border-slate-200 dark:border-zinc-700 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-zinc-800">
+                      <span className={`text-[9px] font-black uppercase border px-2 py-0.5 rounded-full ${(formData.isVip || formData.status === 'VIP') ? 'text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-400 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800'}`}>
                         {(() => {
+                          if (formData.isVip || formData.status === 'VIP') return 'VIP';
                           const completedCount = (appointments || []).filter(a => a.customerId === formData.id && a.status === 'Concluído').length;
                           if (completedCount === 0) return 'LEAD';
                           if (completedCount === 1) return 'NOVO';

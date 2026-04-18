@@ -4461,16 +4461,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             {(() => {
                                 // Combinar Histórico JSON (DB) com Atendimentos Reais (allAppointments)
                                 const appointmentsHistory = (allAppointments || [])
-                                    .filter(a => a.customerId === customer.id && a.status === 'Concluído')
+                                    .filter(a => a.customerId === customer.id)
                                     .map(a => {
                                         const svc = services.find(s => s.id === a.serviceId);
                                         const prov = providers.find(p => p.id === a.providerId);
+                                        
+                                        let details = '';
+                                        if (a.status === 'Concluído') {
+                                            details = `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}`;
+                                        } else if (a.status === 'Cancelado') {
+                                            details = `STATUS: CANCELADO${a.observation ? ` | JUSTIFICATIVA: ${a.observation}` : ''}`;
+                                        } else {
+                                            details = `STATUS: ${a.status.toUpperCase()} | HORÁRIO: ${a.time}`;
+                                        }
+
                                         return {
                                             id: a.id,
                                             date: a.date,
                                             description: a.combinedServiceNames || svc?.name || 'Serviço',
-                                            details: `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}`,
-                                            type: 'VISIT' as const,
+                                            details: details,
+                                            type: (a.status === 'Cancelado' ? 'CANCELLATION' : 'VISIT') as any,
                                             price: a.pricePaid || a.amount || 0,
                                             method: a.paymentMethod || 'Não informado',
                                             feedback: a.feedback,

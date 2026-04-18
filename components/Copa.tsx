@@ -332,7 +332,9 @@ export const Copa: React.FC<CopaProps> = ({
                             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Coffee size={64} className="text-indigo-600" /></div>
 
                             <div className="relative z-10">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{app.time}</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                    {new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {app.time}
+                                </p>
                                 <h4 className="text-lg font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name}</h4>
                                 <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5 uppercase">Prof: {provider?.name.split(' ')[0]}</p>
 

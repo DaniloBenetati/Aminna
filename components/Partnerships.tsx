@@ -517,7 +517,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       {activeSubTab === 'INFLUENCERS' ? (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 lg:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
             <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
               <div className="p-3 md:p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-2xl shadow-inner flex-shrink-0"><TrendingUp size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
@@ -532,7 +532,14 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                 <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">{totalPartnerAppointments}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all sm:col-span-2 lg:col-span-1">
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
+              <div className="p-3 md:p-4 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-2xl shadow-inner flex-shrink-0"><DollarSign size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+              <div className="min-w-0">
+                <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Investimento Total</p>
+                <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">R$ {totalInvestment.toFixed(2)}</p>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
               <div className="p-3 md:p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-2xl shadow-inner flex-shrink-0"><Handshake size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Top Parceiro</p>
