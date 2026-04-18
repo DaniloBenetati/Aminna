@@ -480,14 +480,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         };
 
         const checkConsentForm = async () => {
-            if (!appointment.id || !isUUID(appointment.id)) return;
-            const { data } = await supabase
+            if (!customer.id) return;
+            const { count } = await supabase
                 .from('customer_consent_forms')
-                .select('id')
-                .eq('appointment_id', appointment.id)
-                .maybeSingle();
+                .select('id', { count: 'exact', head: true })
+                .eq('customer_id', customer.id);
             
-            setHasConsentForm(!!data);
+            setHasConsentForm(!!count && count > 0);
         };
 
         fetchNFSe();

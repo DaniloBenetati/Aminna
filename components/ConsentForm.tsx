@@ -339,8 +339,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
       doc.setFontSize(8);
       doc.text(item.t, margin + 2, y);
       doc.setFont("helvetica", "normal");
-      const descSplit = doc.splitTextToSize(item.d, 145);
-      doc.text(descSplit, margin + 27, y);
+      const descSplit = doc.splitTextToSize(item.d, 137);
+      doc.text(descSplit, margin + 33, y);
       y += (descSplit.length * 4) + 1;
     });
     
@@ -653,15 +653,15 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
                   <div className="flex gap-2">
                     <button
                       type="button"
-                      onClick={() => setAnamnese(prev => ({ ...prev, [item.key]: true }))}
-                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese[item.key] ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'}`}
+                      onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: true }))}
+                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese[item.key] ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
                     >
                       SIM
                     </button>
                     <button
                       type="button"
-                      onClick={() => setAnamnese(prev => ({ ...prev, [item.key]: false }))}
-                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${!anamnese[item.key] ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'}`}
+                      onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: false }))}
+                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${!anamnese[item.key] ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
                     >
                       NÃO
                     </button>
@@ -686,7 +686,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
           {/* PESQUISA DE ORIGEM (COMO CONHECEU) */}
           <div className="space-y-6 animate-in slide-in-from-bottom-2">
             <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
-              <Plus size={16} className="text-emerald-600" /> COMO CONHECEU O AMINNA?
+              COMO CONHECEU O AMINNA?
             </h4>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
