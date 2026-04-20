@@ -2436,9 +2436,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const service = services.find(s => s.id === line.serviceId);
             const provider = providers.find(p => p.id === line.providerId);
             const time = line.startTime || appointmentTime;
-            const hour = time.split(':')[0];
+            const [hour, minute] = time.split(':');
+            const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
             
-            return `${hour}H | ${service?.name || 'Serviço'}\n*Agendamento com preferência | ${provider?.name || 'Equipe'}*`;
+            return `${displayTime} | ${service?.name || 'Serviço'}\n*Agendamento com preferência | ${provider?.name || 'Equipe'}*`;
         }).join('\n\n');
 
         const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${serviceDetails}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
