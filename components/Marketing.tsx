@@ -831,14 +831,15 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     <div className="space-y-8 pb-12">
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
+        <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
+        <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
         <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
         <KPICard label="CTR Médio" value={fmt.percent(avgCTR)} icon={MousePointer} color="rose" danger={avgCTR < 1} />
         <KPICard label="CPC Médio" value={fmt.currency(avgCPC)} icon={DollarSign} color="emerald" warning={avgCPC > 3} />
-        <KPICard label="CPM" value={fmt.currency(avgCPM)} icon={Layers} color="amber" />
         
         <KPICard label="Conversões" value={fmt.number(totalConversions, 0)} icon={Target} color="emerald" />
         <KPICard label="CPA Médio" value={fmt.currency(avgCPA)} icon={DollarSign} color="indigo" />
-        <KPICard label="ROAS" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
+        <KPICard label="CPM" value={fmt.currency(avgCPM)} icon={Layers} color="amber" />
         <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
         <KPICard label="Cliques Totais" value={fmt.number(totalClicks, 0)} icon={MousePointer} color="indigo" />
       </div>
