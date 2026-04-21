@@ -213,6 +213,10 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
           <div className="space-y-1">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Nível: Novos Clientes</p>
             <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Clientes:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value || 0}</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
               <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Valor:</span>
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
             </div>
@@ -318,7 +322,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
 const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
-export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [] }) => {
+export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [] }) => {
   const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic'>(() => 
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'organic') || 'paid'
   );
@@ -750,42 +754,60 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     }
   }, [token, adAccountId, fetchAll, activeMarketingTab]);
 
-  const activeCampaigns = campaigns.filter(c => c.status === 'ACTIVE');
-  const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
-  const totalImpressions = campaigns.reduce((s, c) => s + c.impressions, 0);
-  const totalClicks = campaigns.reduce((s, c) => s + c.clicks, 0);
-  const totalConversions = campaigns.reduce((s, c) => {
-    const matchingCouponAppts = appointments.filter(a => 
-        a.status === 'Concluído' && 
-        a.appliedCoupon && (
-           c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
-           (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
-        ) &&
-        isAppointmentInMarketingPeriod(a.date)
-    );
+  const getMatchingCouponAppts = (cName: string) => {
+    return appointments.filter(a => {
+        if (a.status !== 'Concluído' || !isAppointmentInMarketingPeriod(a.date)) return false;
+        const coupon = a.appliedCoupon ? a.appliedCoupon.toLowerCase() : '';
+        const nameLower = cName.toLowerCase();
+        
+        if (coupon && nameLower.includes(coupon)) return true;
+        
+        if (nameLower.includes('cupom agendamento') || nameLower.includes('trafego')) {
+            const isNewCustomer = firstVisits[a.customerId]?.date === a.date;
+            if (isNewCustomer) {
+                const isPartnerCoupon = coupon && partnerCampaigns.some((pc: any) => pc.couponCode && pc.couponCode.toLowerCase() === coupon);
+                if (!isPartnerCoupon) return true;
+            }
+        }
+        return false;
+    });
+  };
+
+  const campaignsWithCRM = useMemo(() => {
+    return campaigns.map(c => {
+      const matchingCouponAppts = getMatchingCouponAppts(c.name);
+      const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
+        const svc = services.find(s => s.id === a.serviceId);
+        const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
+        return sum + rev;
+      }, 0);
+      return { ...c, crmRevenue, crmROI: c.spend > 0 ? crmRevenue / c.spend : 0 };
+    });
+  }, [campaigns, appointments, services, firstVisits, partnerCampaigns]);
+
+  const activeCampaigns = campaignsWithCRM.filter(c => c.status === 'ACTIVE');
+  const totalSpend = campaignsWithCRM.reduce((s, c) => s + c.spend, 0);
+  const totalImpressions = campaignsWithCRM.reduce((s, c) => s + c.impressions, 0);
+  const totalClicks = campaignsWithCRM.reduce((s, c) => s + c.clicks, 0);
+  const totalConversions = campaignsWithCRM.reduce((s, c) => {
+    const matchingCouponAppts = getMatchingCouponAppts(c.name);
     return s + matchingCouponAppts.length;
   }, 0);
   const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
   const avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
   const avgCPA = totalConversions > 0 ? totalSpend / totalConversions : 0;
-  const totalROAS = campaigns.filter(c => c.roas > 0).reduce((s, c) => s + c.roas * c.spend, 0) / (totalSpend || 1);
+  const totalCRMRevenue = campaignsWithCRM.reduce((s, c) => s + c.crmRevenue, 0);
+  const totalROAS = totalSpend > 0 ? totalCRMRevenue / totalSpend : 0;
 
-  const highFrequency = campaigns.filter(c => c.frequency > 3 && c.status === 'ACTIVE');
-  const lowCTR = campaigns.filter(c => c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
-  const highCPA = campaigns.filter(c => c.cpa > avgCPA * 2 && c.cpa > 0 && c.status === 'ACTIVE');
-  const zeroConversions = campaigns.filter(c => {
-    const matchingCouponAppts = appointments.filter(a => 
-        a.status === 'Concluído' && 
-        a.appliedCoupon && (
-           c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
-           (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
-        ) &&
-        isAppointmentInMarketingPeriod(a.date)
-    );
+  const highFrequency = campaignsWithCRM.filter(c => c.frequency > 3 && c.status === 'ACTIVE');
+  const lowCTR = campaignsWithCRM.filter(c => c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
+  const highCPA = campaignsWithCRM.filter(c => c.cpa > avgCPA * 2 && c.cpa > 0 && c.status === 'ACTIVE');
+  const zeroConversions = campaignsWithCRM.filter(c => {
+    const matchingCouponAppts = getMatchingCouponAppts(c.name);
     return matchingCouponAppts.length === 0 && c.spend > 50 && c.status === 'ACTIVE';
   });
-  const topPerformers = campaigns.filter(c => c.roas > 2 && c.status === 'ACTIVE').sort((a, b) => b.roas - a.roas);
+  const topPerformers = campaignsWithCRM.filter(c => c.crmROI > 2 && c.status === 'ACTIVE').sort((a, b) => b.crmROI - a.crmROI);
   const problems = [...highFrequency.map(c => ({ type: 'frequency', campaign: c })),
     ...lowCTR.map(c => ({ type: 'ctr', campaign: c })),
     ...highCPA.map(c => ({ type: 'cpa', campaign: c })),
@@ -827,10 +849,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
              <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
                 <SectionTitle sub="Campanhas com ROAS acima de 2x">🚀 OPORTUNIDADES — ESCALAR</SectionTitle>
                 <div className="space-y-3 mt-4">
-                  {topPerformers.length > 0 ? topPerformers.slice(0, 3).map(c => (
+                  {topPerformers.length > 0 ? topPerformers.slice(0, 3).map((c: any) => (
                     <div key={c.id} className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
                       <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 truncate max-w-[150px]">{c.name}</span>
-                      <span className="text-xs font-black text-emerald-600">{fmt.number(c.roas, 2)}x ROAS</span>
+                      <span className="text-xs font-black text-emerald-600">{fmt.number(c.crmROI, 2)}x ROAS</span>
                     </div>
                   )) : (
                     <p className="text-xs text-slate-400 italic">Nenhuma campanha com ROAS {'>'} 2x no período.</p>
@@ -950,26 +972,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
-            {campaigns.map(c => {
+            {campaignsWithCRM.map(c => {
                const isActive = c.status === 'ACTIVE';
                const hasProblem = problems.find(p => p.campaign.id === c.id);
                
-               const matchingCouponAppts = appointments.filter(a => 
-                  a.status === 'Concluído' && 
-                  a.appliedCoupon && (
-                     c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
-                     (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
-                  ) &&
-                  isAppointmentInMarketingPeriod(a.date)
-               );
-               
-               const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
-                  const svc = services.find(s => s.id === a.serviceId);
-                  const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
-                  return sum + rev;
-               }, 0);
-               
-               const crmROI = c.spend > 0 ? crmRevenue / c.spend : 0;
+               const matchingCouponAppts = getMatchingCouponAppts(c.name);
+               const crmRevenue = c.crmRevenue;
+               const crmROI = c.crmROI;
 
                return (
                  <tr key={c.id} className="hover:bg-indigo-50/50 dark:hover:bg-indigo-900/5 transition-colors group cursor-default h-14">
@@ -1051,14 +1060,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
            const hasProblem = problems.find(p => p.campaign.id === c.id);
 
            // Calculate Retorno CRM and ROI CRM for mobile
-           const matchingCouponAppts = appointments.filter(a => 
-              a.status === 'Concluído' && 
-              a.appliedCoupon && (
-                 c.name.toLowerCase().includes(a.appliedCoupon.toLowerCase()) ||
-                 (c.name.toLowerCase().includes('cupom agendamento') && a.appliedCoupon.toLowerCase() === 'aminnavip')
-              ) &&
-              isAppointmentInMarketingPeriod(a.date)
-           );
+           const matchingCouponAppts = getMatchingCouponAppts(c.name);
            
            const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
               const svc = services.find(s => s.id === a.serviceId);
