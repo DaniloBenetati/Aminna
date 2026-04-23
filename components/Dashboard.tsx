@@ -683,7 +683,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             let totalSpent = 0;
             
             customerApps.forEach(a => {
-                totalSpent += (a.pricePaid ?? a.bookedPrice ?? 0);
+                const svc = services.find(s => s.id === a.serviceId);
+                const basePrice = a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0;
+                const extrasPrice = (a.additionalServices || []).reduce((sum: number, extra: any) => {
+                    return sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0);
+                }, 0);
+                totalSpent += (basePrice + extrasPrice);
             });
 
             if (appCount > 1) {
@@ -2810,7 +2815,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -2826,6 +2831,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={DollarSign}
                                     color="text-emerald-700"
                                     lightColor="bg-emerald-50"
+                                />
+                                <KPICard
+                                    title="Ticket Médio"
+                                    value={`R$ ${(recurringStats.recurringAppointments > 0 ? recurringStats.recurringRevenue / recurringStats.recurringAppointments : 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                                    sub="Gasto por visita"
+                                    icon={Ticket}
+                                    color="text-teal-700"
+                                    lightColor="bg-teal-50"
                                 />
                                 <KPICard
                                     title="Frequência Média"
@@ -3377,7 +3390,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                     <div>
                                                         <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Gasto Médio</p>
                                                         <p className="text-[10px] font-black text-slate-900 dark:text-white">
-                                                            R$ {client.avgTicket.toLocaleString('pt-BR')}
+                                                            R$ {client.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -3459,7 +3472,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <p className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {client.avgTicket.toLocaleString('pt-BR')}</p>
+                                                            <p className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {client.avgTicket.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                                                         </td>
                                                         <td className="px-6 py-4 text-center">
                                                             {isAlreadyMessaged ? (

@@ -480,13 +480,42 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const isAppointmentInMarketingPeriod = useCallback((dateStr: string) => {
     if (!dateStr) return false;
     const cleanDate = dateStr.split('T')[0];
+    
     if (datePreset === 'lifetime') return true;
-    if (datePreset === 'custom') {
-      return cleanDate >= customStartDate && cleanDate <= customEndDate;
+    
+    let start = datePreset === 'custom' ? customStartDate : dateRange.start;
+    let end = datePreset === 'custom' ? customEndDate : dateRange.stop;
+    
+    if (datePreset !== 'custom') {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      if (datePreset === 'last_7d') {
+        const d = new Date(); d.setDate(d.getDate() - 7); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_30d') {
+        const d = new Date(); d.setDate(d.getDate() - 30); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_90d') {
+        const d = new Date(); d.setDate(d.getDate() - 90); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'this_month') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_month') {
+        const d = new Date(); d.setDate(0);
+        end = d.toISOString().split('T')[0];
+        start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+      } else if (datePreset === 'this_year') {
+        start = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+        end = todayStr;
+      }
     }
-    if (dateRange.start && dateRange.stop) {
-      return cleanDate >= dateRange.start && cleanDate <= dateRange.stop;
+    
+    if (start && end) {
+      return cleanDate >= start && cleanDate <= end;
     }
+    
     return true;
   }, [datePreset, customStartDate, customEndDate, dateRange]);
 
@@ -534,8 +563,37 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       }
     });
 
-    const start = dateRange.start || customStartDate;
-    const end = dateRange.stop || customEndDate;
+    let start = datePreset === 'custom' ? customStartDate : dateRange.start;
+    let end = datePreset === 'custom' ? customEndDate : dateRange.stop;
+    
+    if (datePreset !== 'custom') {
+      const today = new Date();
+      const todayStr = today.toISOString().split('T')[0];
+      
+      if (datePreset === 'last_7d') {
+        const d = new Date(); d.setDate(d.getDate() - 7); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_30d') {
+        const d = new Date(); d.setDate(d.getDate() - 30); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_90d') {
+        const d = new Date(); d.setDate(d.getDate() - 90); start = d.toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'this_month') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'last_month') {
+        const d = new Date(); d.setDate(0);
+        end = d.toISOString().split('T')[0];
+        start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+      } else if (datePreset === 'this_year') {
+        start = new Date(today.getFullYear(), 0, 1).toISOString().split('T')[0];
+        end = todayStr;
+      } else if (datePreset === 'lifetime') {
+        end = todayStr;
+      }
+    }
+
     if (!start || !end) return [];
 
     const data = [];
@@ -757,17 +815,18 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const getMatchingCouponAppts = (cName: string) => {
     return appointments.filter(a => {
         if (a.status !== 'Concluído' || !isAppointmentInMarketingPeriod(a.date)) return false;
-        const coupon = a.appliedCoupon ? a.appliedCoupon.toLowerCase() : '';
+        
+        const isNewCustomer = firstVisits[a.customerId]?.date === a.date;
+        if (!isNewCustomer) return false; // Apenas novos clientes geram retorno de CRM para as campanhas
+
+        const coupon = a.appliedCoupon ? a.appliedCoupon.toLowerCase().trim() : '';
         const nameLower = cName.toLowerCase();
         
         if (coupon && nameLower.includes(coupon)) return true;
         
         if (nameLower.includes('cupom agendamento') || nameLower.includes('trafego')) {
-            const isNewCustomer = firstVisits[a.customerId]?.date === a.date;
-            if (isNewCustomer) {
-                const isPartnerCoupon = coupon && partnerCampaigns.some((pc: any) => pc.couponCode && pc.couponCode.toLowerCase() === coupon);
-                if (!isPartnerCoupon) return true;
-            }
+            const isPartnerCoupon = coupon && partnerCampaigns.some((pc: any) => pc.couponCode && pc.couponCode.toLowerCase().trim() === coupon);
+            if (!isPartnerCoupon || coupon === 'aminnavip') return true;
         }
         return false;
     });
