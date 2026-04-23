@@ -4827,6 +4827,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                     <span className="text-emerald-500">{formatCurrency(currentRealizedData[currentMonthIndex].services)}</span>
                                                                 </div>
                                                                 <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-zinc-800/50 pb-1">
+                                                                    <span>Serviços (Previsto)</span>
+                                                                    <span className="text-indigo-500">{formatCurrency(currentRealizedData[currentMonthIndex].projectedServices)}</span>
+                                                                </div>
+                                                                <div className="flex justify-between text-[10px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-zinc-800/50 pb-1">
                                                                     <span>Produtos</span>
                                                                     <span className="text-amber-500">{formatCurrency(currentRealizedData[currentMonthIndex].products)}</span>
                                                                 </div>
@@ -4834,16 +4838,22 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </div>
                                                         </div>
                                                         
-                                                        <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-3 mt-3 flex relative overflow-hidden shadow-inner">
-                                                            {/* Realized Progress */}
-                                                            <div 
-                                                                className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-1000 relative z-10" 
-                                                                style={{ width: `${Math.min(100, (realizedValue / targetToBeat) * 100)}%` }}
-                                                            ></div>
+                                                            <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-3 mt-3 flex relative overflow-hidden shadow-inner">
+                                                                {/* Realized Progress */}
+                                                                <div 
+                                                                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full transition-all duration-1000 relative z-10" 
+                                                                    style={{ width: `${Math.min(100, (realizedValue / targetToBeat) * 100)}%` }}
+                                                                ></div>
+
+                                                                {/* Projected Progress */}
+                                                                <div 
+                                                                    className="bg-indigo-300 dark:bg-indigo-400 h-full transition-all duration-1000 relative z-0" 
+                                                                    style={{ width: `${Math.max(0, Math.min(100 - (realizedValue / targetToBeat) * 100, (currentRealizedData[currentMonthIndex].projectedServices / targetToBeat) * 100))}%` }}
+                                                                ></div>
 
                                                             
-                                                            <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white drop-shadow-sm uppercase z-20">
-                                                                {percentageAchieved.toFixed(1)}% Realizado
+                                                            <div className="absolute inset-0 flex items-center justify-center text-[7px] font-black text-white shadow-sm uppercase z-20">
+                                                                {percentageAchieved.toFixed(1)}% Realizado {currentRealizedData[currentMonthIndex].projectedServices > 0 && `(+${((currentRealizedData[currentMonthIndex].projectedServices / targetToBeat) * 100).toFixed(1)}% Previsto)`}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -4853,6 +4863,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-amber-100 text-amber-700">
                                                                     Faltam R$ {gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta
                                                                 </p>
+                                                                {currentRealizedData[currentMonthIndex].projectedServices > 0 && gapToTarget > 0 && (
+                                                                    <p className="text-[8px] font-bold text-slate-400 uppercase italic pl-1">
+                                                                        Considerando agendados: Faltam {formatCurrency(Math.max(0, gapToTarget - currentRealizedData[currentMonthIndex].projectedServices))}
+                                                                    </p>
+                                                                )}
 
                                                             </div>
                                                         ) : (
