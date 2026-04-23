@@ -5,7 +5,7 @@ import {
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
-  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight
+  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
@@ -164,21 +164,21 @@ const KPICard = ({
   };
   const grad = danger ? 'from-rose-500 to-rose-700' : warning ? 'from-amber-500 to-orange-600' : colorMap[color] || colorMap.indigo;
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-4 sm:p-5 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-3 sm:p-4 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-6 translate-x-6 group-hover:opacity-10 transition-opacity`} />
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
-          <Icon size={16} className="text-white sm:w-[18px] sm:h-[18px]" />
+      <div className="flex items-start justify-between mb-2">
+        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
+          <Icon size={14} className="text-white sm:w-[16px] sm:h-[16px]" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-bold px-2 py-1 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
+          <div className={`flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
             {trend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
             {Math.abs(trend).toFixed(1)}%
           </div>
         )}
       </div>
-      <p className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1 truncate">{value}</p>
-      <p className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
+      <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight mb-1 truncate">{value}</p>
+      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
       {sub && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
       {trendLabel && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
     </div>
@@ -858,6 +858,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const avgCPA = totalConversions > 0 ? totalSpend / totalConversions : 0;
   const totalCRMRevenue = campaignsWithCRM.reduce((s, c) => s + c.crmRevenue, 0);
   const totalROAS = totalSpend > 0 ? totalCRMRevenue / totalSpend : 0;
+  
+  const totalMessageStarts = campaignsWithCRM.reduce((s, c) => s + (c.results?.count || 0), 0);
+  const avgCostPerResult = totalMessageStarts > 0 ? totalSpend / totalMessageStarts : 0;
+  const totalNewCustomersCRM = totalConversions;
+  const avgTicketMarketing = totalNewCustomersCRM > 0 ? totalCRMRevenue / totalNewCustomersCRM : 0;
 
   const highFrequency = campaignsWithCRM.filter(c => c.frequency > 3 && c.status === 'ACTIVE');
   const lowCTR = campaignsWithCRM.filter(c => c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
@@ -888,19 +893,22 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderOverview = () => (
     <div className="space-y-8 pb-12">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
         <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
         <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
-        <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
+        <KPICard label="Ticket Médio" value={fmt.currency(avgTicketMarketing)} icon={DollarSign} color="emerald" />
+        <KPICard label="Novos Clientes (CRM)" value={fmt.number(totalNewCustomersCRM, 0)} icon={Users} color="emerald" />
+
+        <KPICard label="Conversas Iniciadas" value={fmt.number(totalMessageStarts, 0)} icon={MessageSquare} color="sky" />
+        <KPICard label="Custo p/ Resultado" value={fmt.currency(avgCostPerResult)} icon={Zap} color="indigo" />
         <KPICard label="CTR Médio" value={fmt.percent(avgCTR)} icon={MousePointer} color="rose" danger={avgCTR < 1} />
         <KPICard label="CPC Médio" value={fmt.currency(avgCPC)} icon={DollarSign} color="emerald" warning={avgCPC > 3} />
-        
-        <KPICard label="Conversões" value={fmt.number(totalConversions, 0)} icon={Target} color="emerald" />
-        <KPICard label="CPA Médio" value={fmt.currency(avgCPA)} icon={DollarSign} color="indigo" />
         <KPICard label="CPM" value={fmt.currency(avgCPM)} icon={Layers} color="amber" />
-        <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
+
+        <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
         <KPICard label="Cliques Totais" value={fmt.number(totalClicks, 0)} icon={MousePointer} color="indigo" />
+        <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
