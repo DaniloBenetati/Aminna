@@ -3313,6 +3313,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             >
                                                                 <Coins size={16} />
                                                             </button>
+                                                            {(!appointment.isRemake && appointment.paymentMethod !== 'Refazer') && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleRemakeService}
+                                                                    className="py-4 px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                                                                    title="Transformar em Refazer (Zerar)"
+                                                                >
+                                                                    <RefreshCw size={16} />
+                                                                </button>
+                                                            )}
                                                             <button
                                                                 type="button"
                                                                 onClick={() => {
@@ -3941,16 +3951,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>))}
                                 </button>
 
-                                {appointment.status !== 'Concluído' && (
-                                    <button
-                                        type="button"
-                                        onClick={handleRemakeService}
-                                        className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
-                                        title="Zerar o valor e refazer o atendimento (Sem cobrança e sem comissão)"
-                                    >
-                                        <RefreshCw size={14} /> REFAZER ATENDIMENTO (ZERAR AGENDA)
-                                    </button>
-                                )}
 
                                 <button onClick={() => setMode(appointment.status === 'Concluído' ? 'HISTORY' : 'VIEW')} className="w-full py-1 text-slate-400 font-bold uppercase text-[9px] tracking-widest">
                                     {appointment.status === 'Concluído' ? 'CANCELAR EDIÇÃO' : 'REVISAR DADOS'}
@@ -4142,15 +4142,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <Edit3 size={18} /> EDITAR ATENDIMENTO
                                 </button>
 
-                                {(!appointment.isRemake && appointment.paymentMethod !== 'Refazer') && (
-                                    <button
-                                        type="button"
-                                        onClick={handleRemakeService}
-                                        className="w-full py-3 bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
-                                    >
-                                        <RefreshCw size={14} /> TRANSFORMAR EM REFAZER (ZERAR)
-                                    </button>
-                                )}
 
                                 <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
                                     Fechar Histórico
