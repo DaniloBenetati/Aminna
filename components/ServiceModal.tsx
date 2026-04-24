@@ -138,6 +138,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
     const [whatsappResponseNeeded, setWhatsappResponseNeeded] = useState(appointment?.whatsappResponseNeeded || false);
     const [includeDebt, setIncludeDebt] = useState(false);
+    const [restrictionAlert, setRestrictionAlert] = useState<{
+        open: boolean;
+        providerName: string;
+        reason: string;
+    }>({ open: false, providerName: '', reason: '' });
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
     const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
 
@@ -1376,8 +1381,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
 
             if (handleCheckConflict()) {
-                console.log('Conflict detected in handleSave');
                 alert('⚠️ CONFLITO DE HORÁRIO\n\nEste(a) profissional já possui um agendamento no mesmo horário. Por favor, ajuste o horário ou escolha outro(a) profissional.');
+                return;
+            }
+
+            if (restrictionData.isRestricted) {
+                setRestrictionAlert({ open: true, providerName: restrictionData.providerName, reason: restrictionData.reason });
                 return;
             }
 
@@ -4573,6 +4582,47 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     }}
                     partners={partners}
                 />
+            )}
+            {/* Custom Restriction Alert Modal */}
+            {restrictionAlert.open && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <ShieldAlert size={40} className="text-amber-600 dark:text-amber-400" />
+                            </div>
+                            
+                            <h3 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tighter mb-2">
+                                Bloqueio de Segurança
+                            </h3>
+                            
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-6">
+                                Profissional Restrito: <span className="text-rose-600 dark:text-rose-400 font-black">{restrictionAlert.providerName}</span>
+                            </p>
+                            
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-slate-100 dark:border-zinc-800 mb-6 text-left">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Detalhes da Restrição:</p>
+                                <p className="text-xs font-black text-slate-800 dark:text-slate-200 italic leading-relaxed">
+                                    "{restrictionAlert.reason}"
+                                </p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-900/50 mb-8 text-center">
+                                <Ban size={14} className="text-rose-600" />
+                                <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest leading-tight">
+                                    Ação bloqueada. Altere o profissional para salvar o registro.
+                                </p>
+                            </div>
+                            
+                            <button
+                                onClick={() => setRestrictionAlert({ ...restrictionAlert, open: false })}
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                            >
+                                Entendi e vou ajustar
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
         </div >
     );

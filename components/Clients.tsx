@@ -42,6 +42,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [localPrefDays, setLocalPrefDays] = useState('');
   const [localPrefNotes, setLocalPrefNotes] = useState('');
   const [localAssignedProviderIds, setLocalAssignedProviderIds] = useState<string[]>([]);
+  const [localRestrictedProviderIds, setLocalRestrictedProviderIds] = useState<string[]>([]);
+  const [localRestrictionReasons, setLocalRestrictionReasons] = useState<Record<string, string>>({});
 
   // Quick Registration State
   const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
@@ -187,6 +189,19 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     setLocalPrefDays((customer.preferences?.preferredDays as any || []).join(', ') || '');
     setLocalPrefNotes(customer.preferences?.notes || '');
     setLocalAssignedProviderIds(customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : []));
+    setLocalRestrictedProviderIds(customer.restrictedProviderIds || []);
+    
+    // Get latest reason for each restricted provider from history
+    const reasons: Record<string, string> = {};
+    if (customer.history) {
+      customer.history
+        .filter(h => h.type === 'RESTRICTION')
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .forEach(h => {
+          if (h.providerId) reasons[h.providerId] = h.details || '';
+        });
+    }
+    setLocalRestrictionReasons(reasons);
   };
 
   const handleNewCustomer = () => {
@@ -200,7 +215,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
     setLocalRestrictions(''); setLocalFavServices(''); setLocalPrefDays(''); setLocalPrefNotes('');
     setLocalAssignedProviderIds([]);
-    setSelectedCustomer(null); setIsEditing(true); setIsNew(true); setActiveTab('INFO');
+    setLocalRestrictedProviderIds([]);
+    setLocalRestrictionReasons({});
+    setIsEditing(true); setIsNew(true); setActiveTab('INFO');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -247,11 +264,24 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return;
       }
 
+      let initialHistory: CustomerHistoryItem[] = [];
+      localRestrictedProviderIds.forEach(pid => {
+        const p = providers.find(pr => pr.id === pid);
+        initialHistory.push({
+          id: Math.random().toString(36).substr(2, 9),
+          date: new Date().toISOString(),
+          type: 'RESTRICTION',
+          description: `Restrição de Profissional: ${p?.name || 'Profissional'}`,
+          providerId: pid,
+          details: localRestrictionReasons[pid] || 'Razão inicial de restrição.'
+        });
+      });
+
       const newItem = {
         ...formData,
         id: Date.now().toString(),
         registrationDate: new Date().toISOString().split('T')[0],
-        history: [],
+        history: initialHistory,
         totalSpent: 0,
         preferences: updatedPreferences
       } as Customer;
@@ -272,9 +302,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         block_reason: formData.blockReason,
         status: 'Novo',
         registration_date: newItem.registrationDate,
+        history: initialHistory,
         total_spent: 0,
         assigned_provider_ids: localAssignedProviderIds,
-        restricted_provider_ids: formData.restrictedProviderIds || [],
+        restricted_provider_ids: localRestrictedProviderIds,
         is_vip: formData.isVip || false,
         vip_discount_percent: formData.vipDiscountPercent || 0
       }).select().single();
@@ -285,7 +316,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return;
       }
 
-      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds, restrictedProviderIds: formData.restrictedProviderIds || [], isVip: formData.isVip || false, vipDiscountPercent: formData.vipDiscountPercent || 0 };
+      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds, restrictedProviderIds: localRestrictedProviderIds, isVip: formData.isVip || false, vipDiscountPercent: formData.vipDiscountPercent || 0 };
       setCustomers(prev => [...prev, clientWithId]);
       setSelectedCustomer(clientWithId);
 
@@ -293,14 +324,50 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         onNavigate(returnView);
       }
     } else if (selectedCustomer) {
+      // Logic for restriction history
+      let finalHistory = [...(selectedCustomer.history || [])];
+      localRestrictedProviderIds.forEach(pid => {
+        const wasRestricted = selectedCustomer.restrictedProviderIds?.includes(pid);
+        const currentReason = localRestrictionReasons[pid] || '';
+        
+        if (!wasRestricted) {
+          const p = providers.find(pr => pr.id === pid);
+          finalHistory.push({
+            id: Math.random().toString(36).substr(2, 9),
+            date: new Date().toISOString(),
+            type: 'RESTRICTION',
+            description: `Restrição de Profissional: ${p?.name || 'Profissional'}`,
+            providerId: pid,
+            details: currentReason || 'Razão não informada.'
+          });
+        } else {
+          // Check if reason changed significantly
+          const restrictionEntries = finalHistory.filter(h => h.type === 'RESTRICTION' && h.providerId === pid);
+          const lastEntry = restrictionEntries.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+          
+          if (lastEntry && lastEntry.details !== currentReason && currentReason !== '') {
+            const p = providers.find(pr => pr.id === pid);
+            finalHistory.push({
+              id: Math.random().toString(36).substr(2, 9),
+              date: new Date().toISOString(),
+              type: 'RESTRICTION',
+              description: `Atualização de Restrição: ${p?.name || 'Profissional'}`,
+              providerId: pid,
+              details: currentReason
+            });
+          }
+        }
+      });
+
       const updatedCustomer = {
         ...selectedCustomer,
         ...formData,
+        history: finalHistory,
         preferences: updatedPreferences,
         isBlocked: formData.isBlocked,
         blockReason: formData.blockReason,
         assignedProviderIds: localAssignedProviderIds,
-        restrictedProviderIds: formData.restrictedProviderIds || [],
+        restrictedProviderIds: localRestrictedProviderIds || [],
         isVip: formData.isVip || false,
         vipDiscountPercent: formData.vipDiscountPercent || 0
       } as Customer;
@@ -321,6 +388,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         block_reason: formData.blockReason,
         assigned_provider_ids: localAssignedProviderIds,
         assigned_provider_id: localAssignedProviderIds?.[0] || null,
+        restricted_provider_ids: localRestrictedProviderIds,
+        history: finalHistory,
         is_vip: formData.isVip,
         vip_discount_percent: formData.vipDiscountPercent,
         credit_balance: formData.creditBalance || 0
@@ -1153,6 +1222,76 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             })
                           ) : (
                             <p className="text-sm font-black text-slate-400 dark:text-slate-600 italic">Nenhum profissional preferencial atribuído.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PROFISSIONAIS RESTRITOS */}
+                    <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700 shadow-sm space-y-4">
+                      <label className="block text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-[0.1em] mb-2 flex items-center gap-2">
+                        <Ban size={18} className="text-rose-600" /> PROFISSIONAIS RESTRITOS (BLOQUEADOS)
+                      </label>
+                      {isEditing ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {providers.filter(p => p.active).map(provider => {
+                            const isRestricted = localRestrictedProviderIds.includes(provider.id);
+                            return (
+                              <div key={provider.id} className="space-y-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (isRestricted) {
+                                      setLocalRestrictedProviderIds(prev => prev.filter(id => id !== provider.id));
+                                    } else {
+                                      setLocalRestrictedProviderIds(prev => [...prev, provider.id]);
+                                    }
+                                  }}
+                                  className={`w-full p-3 rounded-xl border-2 transition-all flex items-center gap-3 ${isRestricted ? 'border-rose-600 bg-rose-50 dark:bg-rose-900/30' : 'border-slate-100 dark:border-zinc-700 hover:border-slate-300'}`}
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-zinc-700 overflow-hidden flex-shrink-0">
+                                    {provider.avatar ? <img src={provider.avatar} alt={provider.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-black">{provider.name.charAt(0)}</div>}
+                                  </div>
+                                  <div className="text-left min-w-0 flex-1">
+                                    <p className={`text-xs font-black uppercase truncate ${isRestricted ? 'text-rose-700 dark:text-rose-300' : 'text-slate-900 dark:text-gray-400'}`}>{provider.name}</p>
+                                    <p className="text-[9px] text-slate-500 uppercase">{provider.specialty}</p>
+                                  </div>
+                                  {isRestricted && <div className="w-4 h-4 rounded-full bg-rose-600 text-white flex items-center justify-center ml-auto"><Check size={8} /></div>}
+                                </button>
+                                
+                                {isRestricted && (
+                                  <div className="px-1 animate-in slide-in-from-top-1">
+                                    <input
+                                      type="text"
+                                      className="w-full bg-white dark:bg-zinc-900 border border-rose-200 dark:border-rose-800 rounded-lg p-2 text-[10px] font-bold text-rose-900 dark:text-rose-200 outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-rose-300"
+                                      placeholder="Motivo da restrição..."
+                                      value={localRestrictionReasons[provider.id] || ''}
+                                      onChange={e => setLocalRestrictionReasons(prev => ({ ...prev, [provider.id]: e.target.value }))}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {localRestrictedProviderIds.length > 0 ? (
+                            localRestrictedProviderIds.map(pid => {
+                              const p = providers.find(pr => pr.id === pid);
+                              if (!p) return null;
+                              const reason = localRestrictionReasons[pid];
+                              return (
+                                <div key={pid} className="flex flex-col gap-1 items-start">
+                                  <div className="flex items-center px-4 py-1 bg-rose-600 rounded-full shadow-sm" title={p.name}>
+                                    <span className="text-[10px] font-black uppercase text-white py-1">{p.name}</span>
+                                  </div>
+                                  {reason && <span className="text-[9px] font-bold text-rose-500 dark:text-rose-400 italic px-2">"{reason}"</span>}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="text-sm font-black text-slate-400 dark:text-slate-600 italic">Nenhuma restrição registrada para este cliente.</p>
                           )}
                         </div>
                       )}

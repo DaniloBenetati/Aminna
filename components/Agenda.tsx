@@ -249,11 +249,17 @@ export const Agenda: React.FC<AgendaProps> = ({
     }>({
         providerId: '',
         name: '',
-        reason: 'Motivo pessoal',
+        reason: '',
         type: 'full',
         startTime: '09:00',
         endTime: '18:00'
     });
+
+    const [restrictionAlert, setRestrictionAlert] = useState<{
+        open: boolean;
+        providerName: string;
+        reason: string;
+    }>({ open: false, providerName: '', reason: '' });
     const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
     const [sidebarSearch, setSidebarSearch] = useState('');
@@ -889,7 +895,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             const reason = restrictionEntry?.details || "Motivo não registrado.";
 
             // ALERT THE USER, BUT DO NOT BLOCK
-            alert(`⚠️ RESTRIÇÃO DE ATENDIMENTO\n\nA cliente possui restrição com ${providerName}.\n${reason}\n\nO sistema selecionará outra profissional disponível automaticamente.`);
+            setRestrictionAlert({ open: true, providerName, reason });
 
             // Auto-switch to a valid provider (First active provider not in restriction list)
             const fallbackProvider = activeProviders.find(p =>
@@ -2699,6 +2705,47 @@ export const Agenda: React.FC<AgendaProps> = ({
                     </div>
                 </div>
             )}
-        </div >
+            {/* Custom Restriction Alert Modal */}
+            {restrictionAlert.open && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <ShieldAlert size={40} className="text-amber-600 dark:text-amber-400" />
+                            </div>
+                            
+                            <h3 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tighter mb-2">
+                                Restrição Detectada
+                            </h3>
+                            
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-6">
+                                Profissional: <span className="text-rose-600 dark:text-rose-400 font-black">{restrictionAlert.providerName}</span>
+                            </p>
+                            
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-slate-100 dark:border-zinc-800 mb-6">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Motivo da Restrição:</p>
+                                <p className="text-xs font-black text-slate-800 dark:text-slate-200 italic leading-relaxed">
+                                    "{restrictionAlert.reason}"
+                                </p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-900/50 mb-8">
+                                <Sparkles size={14} className="text-emerald-600" />
+                                <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest text-center leading-tight">
+                                    Redirecionando para outra profissional disponível...
+                                </p>
+                            </div>
+                            
+                            <button
+                                onClick={() => setRestrictionAlert({ ...restrictionAlert, open: false })}
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                            >
+                                Prosseguir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
