@@ -547,11 +547,13 @@ export const Agenda: React.FC<AgendaProps> = ({
             
             const getPrefLabel = (providerId: string) => {
                 const pid = String(providerId).trim().toLowerCase();
+                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                const nameToUse = prof ? (prof.nickname || prof.name.split(' ')[0]) : 'Equipe';
+                
                 if (prefIds.includes(pid)) {
-                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
-                    return prof ? prof.nickname || prof.name : 'Equipe';
+                    return nameToUse;
                 }
-                return 'Equipe';
+                return nameToUse; // Return name anyway, but the caller handles the label
             };
 
             // Lista de todos os serviços (Principal + Adicionais)
@@ -572,10 +574,18 @@ export const Agenda: React.FC<AgendaProps> = ({
             allServices.forEach(srvItem => {
                 const [h, m] = srvItem.time.split(':');
                 const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
-                const prefName = getPrefLabel(srvItem.providerId);
+                
+                const pid = String(srvItem.providerId).trim().toLowerCase();
+                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                const isPref = prefIds.includes(pid);
+                const nameToUse = (isPref && prof) ? (prof.nickname || prof.name.split(' ')[0]) : 'Equipe';
                 
                 message += `${displayTime} | ${srvItem.name}\n`;
-                message += `*Agendamento com preferência | ${prefName}*\n\n`;
+                if (isPref) {
+                    message += `*Agendamento com preferência | ${nameToUse}*\n\n`;
+                } else {
+                    message += `*Agendamento confirmado | Equipe*\n\n`;
+                }
             });
         });
 

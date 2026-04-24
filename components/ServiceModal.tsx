@@ -2440,6 +2440,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const dateObj = new Date(appointmentDate + 'T12:00:00');
         const formattedDate = `${weekdays[dateObj.getDay()]} ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
 
+        const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
+
         // Service details list
         const serviceDetails = lines.map(line => {
             const service = services.find(s => s.id === line.serviceId);
@@ -2448,7 +2450,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const [hour, minute] = time.split(':');
             const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
             
-            return `${displayTime} | ${service?.name || 'Serviço'}\n*Agendamento com preferência | ${provider?.name || 'Equipe'}*`;
+            const pid = String(line.providerId).trim().toLowerCase();
+            const isPref = prefIds.includes(pid);
+            const nameToUse = (isPref && provider) ? (provider.nickname || provider.name.split(' ')[0]) : 'Equipe';
+            
+            let labelLine = '';
+            if (isPref) {
+                labelLine = `*Agendamento com preferência | ${nameToUse}*`;
+            } else {
+                labelLine = `*Agendamento confirmado | Equipe*`;
+            }
+
+            return `${displayTime} | ${service?.name || 'Serviço'}\n${labelLine}`;
         }).join('\n\n');
 
         const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${serviceDetails}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
