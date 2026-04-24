@@ -7,6 +7,7 @@ import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
 import { isFirstAppointment } from '../services/financialService';
 import { ConsentForm } from './ConsentForm';
+import { Toast } from './Toast';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
@@ -138,6 +139,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
     const [whatsappResponseNeeded, setWhatsappResponseNeeded] = useState(appointment?.whatsappResponseNeeded || false);
     const [includeDebt, setIncludeDebt] = useState(false);
+    const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+        show: false,
+        message: '',
+        type: 'success'
+    });
+
+    const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+        setToast({ show: true, message, type });
+    };
+
     const [restrictionAlert, setRestrictionAlert] = useState<{
         open: boolean;
         providerName: string;
@@ -1360,7 +1371,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // --- VALIDATE SELECTION ---
             for (const line of linesToUse) {
                 if (!line.serviceId) {
-                    alert('⚠️ OPS! SELECIONE O SERVIÇO\n\nPor favor, escolha o serviço desejado para cada procedimento antes de salvar.');
+                    showToast('Selecione o serviço para cada procedimento.', 'warning');
                     return;
                 }
             }
@@ -1368,20 +1379,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // --- VALIDATE SERVICES VS PROFESSIONALS ---
             for (const line of linesToUse) {
                 if (!isServiceAllowed(line.serviceId, line.providerId)) {
-                    const srv = services.find(s => s.id === line.serviceId);
-                    const pro = providers.find(p => p.id === line.providerId);
-                    alert(`⚠️ SERVIÇO INVÁLIDO\n\nO serviço "${srv?.name || 'Selecionado'}" não está habilitado para o(a) profissional "${pro?.name || 'Selecionado'}".\n\nPor favor, verifique as especialidades da profissional ou altere o serviço.`);
+                    showToast('O serviço selecionado não é permitido para este profissional.', 'error');
                     return;
                 }
             }
 
             if (customer.isBlocked) {
-                alert('⚠️ Cliente Bloqueada\n\nEsta cliente possui um bloqueio administrativo.');
+                showToast('Esta cliente possui um bloqueio administrativo.', 'error');
                 return;
             }
 
             if (handleCheckConflict()) {
-                alert('⚠️ CONFLITO DE HORÁRIO\n\nEste(a) profissional já possui um agendamento no mesmo horário. Por favor, ajuste o horário ou escolha outro(a) profissional.');
+                showToast('Conflito de horário detectado.', 'warning');
                 return;
             }
 
@@ -2468,10 +2477,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
-                alert('Mensagem copiada para a área de transferência!');
+                showToast('Mensagem copiada com sucesso!');
             }).catch(err => {
                 console.error('Erro ao copiar mensagem:', err);
-                alert('Erro ao copiar mensagem.');
+                showToast('Erro ao copiar mensagem.', 'error');
             });
         } else {
             // Open WhatsApp (and copy for safety)
@@ -4637,6 +4646,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     </div>
                 </div>
             )}
-        </div >
+
+            <Toast 
+                show={toast.show}
+                message={toast.message}
+                type={toast.type}
+                onClose={() => setToast(prev => ({ ...prev, show: false }))}
+            />
+        </div>
     );
 };
