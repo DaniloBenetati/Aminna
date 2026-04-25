@@ -42,15 +42,19 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   // Selection state
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   
+  type FormType = 'GENERAL' | 'LASH_LIFTING' | 'BROW_LAMINATION';
+  const [formType, setFormType] = useState<FormType>('GENERAL');
+  
   // Form state
   const [step, setStep] = useState<'SELECTION' | 'FORM'>('SELECTION');
-  const [anamnese, setAnamnese] = useState({
+  const [anamnese, setAnamnese] = useState<any>({
     allergies: false,
     eyeSensitivity: false,
     contactLenses: false,
     nailSkinHealth: false,
     healthConditions: false,
-    observations: ''
+    observations: '',
+    // Specialized fields will be added dynamically or stored here
   });
   const [allowImageUse, setAllowImageUse] = useState(false);
   const [procedures, setProcedures] = useState('');
@@ -137,14 +141,10 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         });
         
         // Populate anamnese data from existing term - safely
-        const safeAnamnese = data.anamnese_data || {
-          allergies: false,
-          eyeSensitivity: false,
-          contactLenses: false,
-          nailSkinHealth: false,
-          healthConditions: false,
-          observations: ''
-        };
+        const safeAnamnese = data.anamnese_data || {};
+        if (data.anamnese_data?.formType) {
+          setFormType(data.anamnese_data.formType);
+        }
         
         setAnamnese(safeAnamnese);
         setAllowImageUse(!!data.allow_image_use);
@@ -162,14 +162,9 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
   useEffect(() => {
     if (initialTerm) {
       setExistingTerm(initialTerm);
-      setAnamnese(initialTerm.anamneseData || {
-        allergies: false,
-        eyeSensitivity: false,
-        contactLenses: false,
-        nailSkinHealth: false,
-        healthConditions: false,
-        observations: ''
-      });
+      const safeAnamnese = initialTerm.anamneseData || {};
+      setAnamnese(safeAnamnese);
+      if (safeAnamnese.formType) setFormType(safeAnamnese.formType);
       setAllowImageUse(!!initialTerm.allowImageUse);
       setProcedures(initialTerm.procedures || '');
       setProfessionals(initialTerm.professionals || '');
@@ -205,11 +200,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
 
     // 1. HEADER WITH LOGO
     try {
-      // Add logo (logo.png must be in public folder)
       doc.addImage('/logo.png', 'PNG', margin, y, 25, 25);
-    } catch (e) {
-      console.warn("Could not load logo in PDF", e);
-    }
+    } catch (e) { console.warn("Could not load logo in PDF", e); }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
@@ -218,7 +210,8 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 100, 100);
     doc.text("GESTÃO INTELIGENTE DE BELEZA", 50, y + 18);
-    doc.text("FICHA DE ANAMNESE E CONSENTIMENTO DIGITAL", 50, y + 23);
+    const titleText = formType === 'LASH_LIFTING' ? "FICHA DE ANAMNESE - LASH LIFTING" : formType === 'BROW_LAMINATION' ? "FICHA DE ANAMNESE - BROW LAMINATION" : "FICHA DE ANAMNESE E CONSENTIMENTO DIGITAL";
+    doc.text(titleText, 50, y + 23);
 
     y += 35;
     drawDivider(y);
@@ -243,79 +236,179 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
     doc.text(customer.cpf || "NÃO INFORMADO", margin + 12, y);
 
     doc.setFont("helvetica", "bold");
-    doc.text("WHATSAPP:", margin + 80, y);
+    doc.text("DATA NASC.:", margin + 80, y);
     doc.setFont("helvetica", "normal");
-    doc.text(customer.phone || "NÃO INFORMADO", margin + 105, y);
-
-    y += 10;
-    drawDivider(y);
-    y += 10;
-
-    // 3. SERVICE DETAILS
-    doc.setFont("helvetica", "bold");
-    doc.text("DETALHES DO ATENDIMENTO", margin, y);
-    y += 8;
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DATA/HORA:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(new Date(dataToUse.dateTime || '').toLocaleString('pt-BR'), margin + 25, y);
+    doc.text(customer.birthDate ? new Date(customer.birthDate + 'T12:00:00').toLocaleDateString('pt-BR') : "NÃO INFORMADO", margin + 105, y);
 
     y += 6;
     doc.setFont("helvetica", "bold");
-    doc.text("PROCEDIMENTOS:", margin, y);
+    doc.text("ENDEREÇO:", margin, y);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    const procText = doc.splitTextToSize(dataToUse.procedures || 'TODOS OS PROCEDIMENTOS ESTÉTICOS', 160);
-    doc.text(procText, margin, y + 5);
-    y += 5 + (procText.length * 5);
+    doc.text(customer.address || "NÃO INFORMADO", margin + 25, y);
 
-    y += 2;
-    doc.setFontSize(10);
+    y += 6;
     doc.setFont("helvetica", "bold");
-    doc.text("PROFISSIONAIS:", margin, y);
+    doc.text("CONTATO:", margin, y);
     doc.setFont("helvetica", "normal");
-    doc.text(dataToUse.professionals || 'Equipe Aminna', margin + 32, y);
+    doc.text(customer.phone || "NÃO INFORMADO", margin + 22, y);
 
-    y += 10;
+    y += 8;
     drawDivider(y);
     y += 10;
 
-    // 4. ANAMNESE CHECKLIST
-    doc.setFont("helvetica", "bold");
-    doc.text("AVALIAÇÃO DE SAÚDE (ANAMNESE)", margin, y);
-    y += 8;
+    if (formType === 'GENERAL') {
+      // 3. SERVICE DETAILS
+      doc.setFont("helvetica", "bold");
+      doc.text("DETALHES DO ATENDIMENTO", margin, y);
+      y += 8;
 
-    const questions = [
-      { q: 'Possui alergia a esmaltes, colas ou produtos?', a: dataToUse.anamneseData.allergies },
-      { q: 'Possui sensibilidade ocular ou irritação?', a: dataToUse.anamneseData.eyeSensitivity },
-      { q: 'Uso de lentes de contato no momento?', a: dataToUse.anamneseData.contactLenses },
-      { q: 'Possui micose ou ferimentos em mãos/pés?', a: dataToUse.anamneseData.nailSkinHealth },
-      { q: 'Gestante, diabética ou em tratamento médico?', a: dataToUse.anamneseData.healthConditions },
-    ];
+      doc.setFont("helvetica", "bold");
+      doc.text("DATA/HORA:", margin, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(new Date(dataToUse.dateTime || '').toLocaleString('pt-BR'), margin + 25, y);
 
-    questions.forEach(item => {
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text("PROCEDIMENTOS:", margin, y);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
-      doc.text(item.q.toUpperCase(), margin + 2, y);
+      const procText = doc.splitTextToSize(dataToUse.procedures || 'TODOS OS PROCEDIMENTOS ESTÉTICOS', 160);
+      doc.text(procText, margin, y + 5);
+      y += 5 + (procText.length * 5);
+
+      y += 10;
+      drawDivider(y);
+      y += 10;
+
+      // 4. ANAMNESE CHECKLIST
       doc.setFont("helvetica", "bold");
-      const resp = item.a ? "SIM" : "NÃO";
-      doc.text(`[ ${resp} ]`, 175, y);
+      doc.text("AVALIAÇÃO DE SAÚDE (ANAMNESE)", margin, y);
+      y += 8;
+
+      const questions = [
+        { q: 'Possui alergia a esmaltes, colas ou produtos?', a: dataToUse.anamneseData.allergies },
+        { q: 'Possui sensibilidade ocular ou irritação?', a: dataToUse.anamneseData.eyeSensitivity },
+        { q: 'Uso de lentes de contato no momento?', a: dataToUse.anamneseData.contactLenses },
+        { q: 'Possui micose ou ferimentos em mãos/pés?', a: dataToUse.anamneseData.nailSkinHealth },
+        { q: 'Gestante, diabética ou em tratamento médico?', a: dataToUse.anamneseData.healthConditions },
+      ];
+
+      questions.forEach(item => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.text(item.q.toUpperCase(), margin + 2, y);
+        doc.setFont("helvetica", "bold");
+        const resp = item.a ? "SIM" : "NÃO";
+        doc.text(`[ ${resp} ]`, 175, y);
+        y += 6;
+      });
+    } else if (formType === 'LASH_LIFTING') {
+      doc.setFont("helvetica", "bold");
+      doc.text("CONTRAINDICAÇÕES E AVALIAÇÃO", margin, y);
+      y += 8;
+
+      const items = [
+        { l: 'Gestante/Lactante', v: dataToUse.anamneseData.gestanteLactante },
+        { l: 'Histórico alérgico', v: dataToUse.anamneseData.historicoAlergico },
+        { l: 'Infecções oculares', v: dataToUse.anamneseData.infeccoesOculares },
+        { l: 'Lesões/cirurgias recentes', v: dataToUse.anamneseData.lesoesCirurgias },
+        { l: 'Síndrome do olho seco', v: dataToUse.anamneseData.olhoSeco },
+        { l: 'Rádio/Quimioterapia', v: dataToUse.anamneseData.radioQuimio },
+        { l: 'Queda de fios', v: dataToUse.anamneseData.quedaFios },
+        { l: 'Doença autoimune', v: dataToUse.anamneseData.autoimune },
+        { l: 'Procedimento estético recente', v: dataToUse.anamneseData.esteticoRecente },
+        { l: 'Uso de medicamentos fortes', v: dataToUse.anamneseData.medicamentosFortes },
+        { l: 'Imunidade baixa', v: dataToUse.anamneseData.imunidadeBaixa },
+        { l: 'Olhos sensíveis', v: dataToUse.anamneseData.olhosSensiveis },
+        { l: 'Ansiedade (olhos fechados)', v: dataToUse.anamneseData.ansiedade },
+        { l: 'Tricotilomania', v: dataToUse.anamneseData.tricotilomania },
+        { l: 'Usa lente de contato', v: dataToUse.anamneseData.usaLente },
+      ];
+
+      doc.setFontSize(8);
+      items.forEach((item, i) => {
+        const col = i % 2;
+        const row = Math.floor(i / 2);
+        const curY = y + (row * 6);
+        doc.setFont("helvetica", "normal");
+        doc.text(item.l.toUpperCase(), margin + (col * 85), curY);
+        doc.setFont("helvetica", "bold");
+        doc.text(item.v ? "[ SIM ]" : "[ NÃO ]", margin + (col * 85) + 65, curY);
+      });
+      y += (Math.ceil(items.length / 2) * 6) + 5;
+
+      const qas = [
+        { q: '1. Já fez Lash Lifting antes? Se sim, quanto tempo?', a: dataToUse.anamneseData.lashLiftingAntes },
+        { q: '2. Já fez Extensão de Cílios antes? Se sim, quanto tempo?', a: dataToUse.anamneseData.extensaoAntes },
+        { q: '3. Possui o hábito de usar rímel diariamente?', a: dataToUse.anamneseData.rimelDiario ? "SIM" : "NÃO" },
+      ];
+
+      qas.forEach(item => {
+        doc.setFont("helvetica", "bold");
+        doc.text(item.q.toUpperCase(), margin, y);
+        y += 5;
+        doc.setFont("helvetica", "normal");
+        doc.text(String(item.a || "---").toUpperCase(), margin + 5, y);
+        y += 7;
+      });
+    } else if (formType === 'BROW_LAMINATION') {
+      doc.setFont("helvetica", "bold");
+      doc.text("AVALIAÇÃO DOS FIOS E PELE", margin, y);
+      y += 8;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.text(`SAÚDE DOS FIOS: ${String(dataToUse.anamneseData.saudeFios || '---').toUpperCase()}`, margin, y);
+      doc.text(`ESPESSURA: ${String(dataToUse.anamneseData.espessura || '---').toUpperCase()}`, margin + 80, y);
       y += 6;
-    });
+      doc.text(`FALHAS: ${String(dataToUse.anamneseData.falhas || '---').toUpperCase()}`, margin, y);
+      doc.text(`PELE: ${String(dataToUse.anamneseData.pele || '---').toUpperCase()}`, margin + 80, y);
+      y += 10;
+      doc.setFont("helvetica", "bold");
+      doc.text("PRODUTOS E TÉCNICA", margin, y);
+      y += 8;
+      const prods = [
+        { l: 'HIGIENIZANTE:', v: dataToUse.anamneseData.higienizante },
+        { l: 'KIT USADO:', v: dataToUse.anamneseData.kit },
+        { l: 'TEMPO PASSO 1:', v: dataToUse.anamneseData.tempoPasso1 },
+        { l: 'TEMPO PASSO 2:', v: dataToUse.anamneseData.tempoPasso2 },
+        { l: 'TINTURA:', v: dataToUse.anamneseData.tintura },
+        { l: 'TRATAMENTO:', v: dataToUse.anamneseData.tratamento },
+      ];
+      prods.forEach(item => {
+        doc.setFont("helvetica", "bold");
+        doc.text(item.l, margin, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(String(item.v || '---').toUpperCase(), margin + 40, y);
+        y += 6;
+      });
+      y += 5;
+      doc.setFont("helvetica", "bold");
+      doc.text("ACOMPANHAMENTO DE RETORNOS", margin, y);
+      y += 6;
+      doc.setDrawColor(200, 200, 200);
+      for(let i=0; i<5; i++) {
+        doc.rect(margin, y, 170, 12);
+        doc.setFontSize(6);
+        doc.text("DATA: ____/____/____   OBS: __________________________________________________________________  ASSINATURA: ____________________", margin + 2, y + 8);
+        y += 12;
+      }
+    }
 
     if (dataToUse.anamneseData.observations) {
-      y += 4;
+      y += 8;
       doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
       doc.text("OBSERVAÇÕES ADICIONAIS:", margin, y);
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
       const obsText = doc.splitTextToSize(dataToUse.anamneseData.observations, 165);
       doc.text(obsText, margin + 2, y + 5);
       y += 5 + (obsText.length * 5);
     }
 
-    y += 5;
+    y += 10;
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
     doc.text("USO DE IMAGEM:", margin, y);
     doc.setFont("helvetica", "normal");
     doc.text(dataToUse.allowImageUse ? "AUTORIZADO" : "NÃO AUTORIZADO", margin + 33, y);
@@ -325,13 +418,13 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
     // 5. TERMO DE RESPONSABILIDADE E CIÊNCIA
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("II. TERMO DE RESPONSABILIDADE E CIÊNCIA", margin, y);
+    doc.text("TERMO DE RESPONSABILIDADE E CIÊNCIA", margin, y);
     y += 6;
 
     const terms = [
-      { t: '1. PROCEDIMENTO:', d: 'Declaro estar ciente de que procedimentos como banho de gel, alongamento e extensão de cílios exigem manutenção periódica para preservar a saúde das unhas e fios naturais.' },
-      { t: '2. CUIDADOS:', d: 'Comprometo-me a seguir todas as orientações, evitando remover o material de forma inadequada e seguindo as recomendações de pós-procedimento.' },
-      { t: '3. RISCOS:', d: 'Estou ciente de que podem ocorrer reações alérgicas ou sensibilidades individuais, mesmo com técnicas e materiais adequados.' }
+      { t: '1. PROCEDIMENTO:', d: 'Declaro estar ciente dos cuidados e manutenções necessárias para o procedimento realizado.' },
+      { t: '2. CUIDADOS:', d: 'Comprometo-me a seguir todas as orientações de pós-procedimento fornecidas pela profissional.' },
+      { t: '3. RISCOS:', d: 'Estou ciente de que podem ocorrer reações individuais e que os dados aqui prestados são verdadeiros.' }
     ];
 
     terms.forEach(item => {
@@ -343,11 +436,6 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
       doc.text(descSplit, margin + 33, y);
       y += (descSplit.length * 4) + 1;
     });
-    
-    y += 5;
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(7);
-    doc.text("Este documento possui validade jurídica como termo de consentimento livre e esclarecido.", margin, y);
     
     y += 10;
 
@@ -373,7 +461,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
     // Footer
     doc.setFontSize(7);
     doc.setTextColor(150, 150, 150);
-    doc.text("Documento gerado digitalmente por AMINNA - Gestão Inteligente de Beleza", 105, 285, { align: 'center' });
+    doc.text("Documento gerado digitalmente por AMINNA", 105, 285, { align: 'center' });
 
     doc.save(`Termo_${customer.name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
     showToast("PDF gerado com sucesso!", "info");
@@ -424,12 +512,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
         date_time: new Date().toISOString(),
         procedures,
         professionals,
-        anamnese_data: anamnese,
-        has_allergies: anamnese.allergies,
-        has_eye_sensitivity: anamnese.eyeSensitivity,
-        has_contact_lenses: anamnese.contactLenses,
-        has_nail_issues: anamnese.nailSkinHealth,
-        has_health_conditions: anamnese.healthConditions,
+        anamnese_data: { ...anamnese, formType },
         allow_image_use: allowImageUse,
         signature_data: signatureData
       };
@@ -548,27 +631,47 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
             </div>
 
             <div className="w-full space-y-3">
-              {customerAppts.map(appt => (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <button
-                  key={appt.id}
-                  onClick={() => startForm(appt)}
-                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 border border-slate-100 dark:border-zinc-700 rounded-2xl transition-all text-left flex justify-between items-center group"
+                  onClick={() => { setFormType('GENERAL'); startForm(null); }}
+                  className="p-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl hover:opacity-90 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
                 >
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{appt.combinedServiceNames || 'Serviços'}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-                      {new Date(appt.date + 'T' + appt.time).toLocaleDateString()} às {appt.time}
-                    </p>
-                  </div>
-                  <Plus size={18} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                  <FileText size={16} /> Termo Geral
                 </button>
-              ))}
-              <button
-                onClick={() => startForm(null)}
-                className="w-full p-4 bg-indigo-600 border-2 border-indigo-700 text-white rounded-2xl hover:bg-indigo-700 transition-all text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none active:scale-[0.98]"
-              >
-                <Plus size={16} /> Continuar sem vincular atendimento
-              </button>
+                <button
+                  onClick={() => { setFormType('LASH_LIFTING'); startForm(null); }}
+                  className="p-4 bg-indigo-600 text-white rounded-2xl hover:bg-indigo-700 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
+                >
+                  <Eye size={16} /> Lash Lifting
+                </button>
+                <button
+                  onClick={() => { setFormType('BROW_LAMINATION'); startForm(null); }}
+                  className="p-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-[0.98]"
+                >
+                  <Palette size={16} /> Brow Lamination
+                </button>
+              </div>
+              
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Ou vincule a um atendimento recente</p>
+                <div className="space-y-2">
+                  {customerAppts.map(appt => (
+                    <button
+                      key={appt.id}
+                      onClick={() => { setFormType('GENERAL'); startForm(appt); }}
+                      className="w-full p-4 bg-slate-50 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 border border-slate-100 dark:border-zinc-700 rounded-2xl transition-all text-left flex justify-between items-center group"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-900 dark:text-white uppercase truncate">{appt.combinedServiceNames || 'Serviços'}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
+                          {new Date(appt.date + 'T' + appt.time).toLocaleDateString()} às {appt.time}
+                        </p>
+                      </div>
+                      <Plus size={18} className="text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-black uppercase transition-colors pt-2">Cancelar</button>
@@ -631,56 +734,187 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
             </div>
           </div>
 
-          {/* I. AVALIAÇÃO DE SAÚDE (ANAMNESE) */}
-          <div className="space-y-6">
-            <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
-              <ClipboardCheck size={16} className="text-rose-600" /> I. AVALIAÇÃO DE SAÚDE (ANAMNESE)
-            </h4>
-            
-            <div className="space-y-4">
-              {[
-                { label: 'Alergias', question: 'Possui alergia a esmaltes, colas, solventes ou produtos?', key: 'allergies' as const },
-                { label: 'Saúde Ocular', question: 'Possui sensibilidade ocular, olho seco ou irritação frequente?', key: 'eyeSensitivity' as const },
-                { label: 'Lente de Contato', question: 'Está fazendo uso de lentes de contato neste momento?', key: 'contactLenses' as const },
-                { label: 'Unhas & Pele', question: 'Possui micose, fungos ou algum ferimento nas mãos ou pés?', key: 'nailSkinHealth' as const },
-                { label: 'Geral', question: 'Gestante, diabética ou em tratamento médico que interfira?', key: 'healthConditions' as const },
-              ].map(item => (
-                <div key={item.key} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-white dark:bg-zinc-800 rounded-3xl border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-all shadow-sm gap-4">
-                  <div className="flex-1">
-                    <p className="text-xs font-black text-slate-950 dark:text-white uppercase">{item.label}</p>
-                    <p className="text-[11px] text-slate-500 font-bold uppercase mt-1">{item.question}</p>
+          {/* FORM CONTENT BASED ON TYPE */}
+          {formType === 'GENERAL' && (
+            <div className="space-y-6">
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
+                <ClipboardCheck size={16} className="text-rose-600" /> I. AVALIAÇÃO DE SAÚDE (ANAMNESE)
+              </h4>
+              
+              <div className="space-y-4">
+                {[
+                  { label: 'Alergias', question: 'Possui alergia a esmaltes, colas, solventes ou produtos?', key: 'allergies' as const },
+                  { label: 'Saúde Ocular', question: 'Possui sensibilidade ocular, olho seco ou irritação frequente?', key: 'eyeSensitivity' as const },
+                  { label: 'Lente de Contato', question: 'Está fazendo uso de lentes de contato neste momento?', key: 'contactLenses' as const },
+                  { label: 'Unhas & Pele', question: 'Possui micose, fungos ou algum ferimento nas mãos ou pés?', key: 'nailSkinHealth' as const },
+                  { label: 'Geral', question: 'Gestante, diabética ou em tratamento médico que interfira?', key: 'healthConditions' as const },
+                ].map(item => (
+                  <div key={item.key} className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-white dark:bg-zinc-800 rounded-3xl border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-all shadow-sm gap-4">
+                    <div className="flex-1">
+                      <p className="text-xs font-black text-slate-950 dark:text-white uppercase">{item.label}</p>
+                      <p className="text-[11px] text-slate-500 font-bold uppercase mt-1">{item.question}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: true }))}
+                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese[item.key] ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
+                      >
+                        SIM
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: false }))}
+                        className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${!anamnese[item.key] ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
+                      >
+                        NÃO
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: true }))}
-                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese[item.key] ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
-                    >
-                      SIM
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: false }))}
-                      className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${!anamnese[item.key] ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'} ${existingTerm ? 'opacity-70 cursor-default' : ''}`}
-                    >
-                      NÃO
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Observações / Informações Complementares</label>
-                <textarea
-                  rows={3}
-                  className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all resize-none uppercase placeholder:text-slate-300"
-                  placeholder="DIGITE AQUI SE HOUVER ALGUMA OBSERVAÇÃO IMPORTANTE..."
-                  value={anamnese.observations}
-                  onChange={e => setAnamnese(prev => ({ ...prev, observations: e.target.value }))}
-                  disabled={!!existingTerm}
-                />
+                ))}
               </div>
             </div>
+          )}
+
+          {formType === 'LASH_LIFTING' && (
+            <div className="space-y-6">
+              <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
+                <Eye size={16} className="text-indigo-600" /> CONTRAINDICAÇÕES LASH LIFTING
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  { label: 'Gestante/Lactante', key: 'gestanteLactante' },
+                  { label: 'Histórico alérgico', key: 'historicoAlergico' },
+                  { label: 'Infecções oculares', key: 'infeccoesOculares' },
+                  { label: 'Lesões/cirurgias recentes', key: 'lesoesCirurgias' },
+                  { label: 'Síndrome do olho seco', key: 'olhoSeco' },
+                  { label: 'Rádio/Quimioterapia', key: 'radioQuimio' },
+                  { label: 'Queda de fios', key: 'quedaFios' },
+                  { label: 'Doença autoimune', key: 'autoimune' },
+                  { label: 'Procedimento estético recente', key: 'esteticoRecente' },
+                  { label: 'Uso de medicamentos fortes', key: 'medicamentosFortes' },
+                  { label: 'Imunidade baixa', key: 'imunidadeBaixa' },
+                  { label: 'Olhos extremamente sensíveis', key: 'olhosSensiveis' },
+                  { label: 'Ansiedade (olhos fechados)', key: 'ansiedade' },
+                  { label: 'Tricotilomania', key: 'tricotilomania' },
+                  { label: 'Usa lente de contato', key: 'usaLente' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                    <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{item.label}</span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: true }))}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all ${anamnese[item.key] ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'}`}
+                      >SIM</button>
+                      <button
+                        type="button"
+                        onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: false }))}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black transition-all ${!anamnese[item.key] ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-zinc-700 text-slate-400'}`}
+                      >NÃO</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-zinc-800">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">1. Já fez Lash Lifting antes? Se sim, quanto tempo?</label>
+                  <input
+                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black uppercase outline-none focus:border-indigo-500"
+                    value={anamnese.lashLiftingAntes || ''}
+                    onChange={e => setAnamnese(prev => ({ ...prev, lashLiftingAntes: e.target.value }))}
+                    disabled={!!existingTerm}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">2. Já fez Extensão de Cílios antes? Se sim, quanto tempo?</label>
+                  <input
+                    className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black uppercase outline-none focus:border-indigo-500"
+                    value={anamnese.extensaoAntes || ''}
+                    onChange={e => setAnamnese(prev => ({ ...prev, extensaoAntes: e.target.value }))}
+                    disabled={!!existingTerm}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900">
+                  <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase">3. Possui o hábito de usar rímel diariamente?</span>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, rimelDiario: true }))} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese.rimelDiario ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-zinc-800 text-indigo-400'}`}>SIM</button>
+                    <button type="button" onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, rimelDiario: false }))} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${!anamnese.rimelDiario ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-zinc-800 text-indigo-400'}`}>NÃO</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {formType === 'BROW_LAMINATION' && (
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-800 pb-2">
+                  <Palette size={16} className="text-emerald-600" /> AVALIAÇÃO DOS FIOS E PELE
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {[
+                    { label: 'Saúde dos Fios', key: 'saudeFios', options: ['Saudáveis', 'Frágeis'] },
+                    { label: 'Espessura', key: 'espessura', options: ['Finos', 'Médios', 'Grossos'] },
+                    { label: 'Falhas', key: 'falhas', options: ['Presentes', 'Ausentes'] },
+                    { label: 'Tipo de Pele', key: 'pele', options: ['Normal', 'Oleosa', 'Mista', 'Seca'] },
+                  ].map(item => (
+                    <div key={item.key} className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</label>
+                      <div className="flex flex-wrap gap-2">
+                        {item.options.map(opt => (
+                          <button
+                            key={opt} type="button"
+                            onClick={() => !existingTerm && setAnamnese(prev => ({ ...prev, [item.key]: opt }))}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${anamnese[item.key] === opt ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-zinc-800 text-slate-400'}`}
+                          >{opt}</button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-xs font-black text-slate-500 uppercase tracking-widest border-b border-slate-50 dark:border-zinc-800 pb-2">PRODUTOS E TÉCNICA</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { label: 'Higienizante Usado', key: 'higienizante' },
+                    { label: 'Kit Usado', key: 'kit' },
+                    { label: 'Tempo Passo 1', key: 'tempoPasso1' },
+                    { label: 'Tempo Passo 2', key: 'tempoPasso2' },
+                    { label: 'Tintura e Tempo', key: 'tintura' },
+                    { label: 'Tratamento Usado', key: 'tratamento' },
+                  ].map(item => (
+                    <div key={item.key} className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.label}</label>
+                      <input
+                        className="w-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-xs font-black uppercase outline-none focus:border-emerald-500"
+                        value={anamnese[item.key] || ''}
+                        onChange={e => setAnamnese(prev => ({ ...prev, [item.key]: e.target.value }))}
+                        disabled={!!existingTerm}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="pt-8 border-t border-slate-100 dark:border-zinc-800 space-y-4">
+            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <ClipboardCheck size={16} className="text-indigo-600" /> OBSERVAÇÕES ADICIONAIS
+            </h4>
+            <textarea
+              rows={3}
+              className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all resize-none uppercase placeholder:text-slate-300"
+              placeholder="DIGITE AQUI SE HOUVER ALGUMA OBSERVAÇÃO IMPORTANTE..."
+              value={anamnese.observations}
+              onChange={e => setAnamnese(prev => ({ ...prev, observations: e.target.value }))}
+              disabled={!!existingTerm}
+            />
           </div>
 
           {/* PESQUISA DE ORIGEM (COMO CONHECEU) */}
