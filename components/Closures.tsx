@@ -518,7 +518,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           </div>
           <div className="text-right">
             <p className="text-[10px] font-black uppercase text-slate-900 tracking-[0.25em] mb-1">
-              {type === 'summary' ? 'Recibo de Pagamento' : 'Detalhamento de Serviços'}
+              {type === 'summary' ? 'Recibo de Pagamento' : 'Recibo - Detalhamento de Serviços'}
             </p>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest italic opacity-60">Via {copyNum === 1 ? 'Contabilidade' : 'Profissional'}</p>
           </div>
@@ -663,7 +663,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           <Copy copyNum={1} />
           {type === 'summary' && printMode !== 'auditoria' && <Copy copyNum={2} />}
         </div>
-        {type === 'details' && printMode !== 'auditoria' && (
+        {type === 'details' && (
           <div className="receipt-card w-[210mm] block min-h-[297mm] h-auto detailed-report bg-white text-black print:break-after-page shadow-2xl mx-auto my-8 print:my-0 relative shrink-0">
             <Copy copyNum={2} />
           </div>
@@ -679,7 +679,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     message += `* Período:* ${new Date(startDate + 'T12:00:00').toLocaleDateString('pt-BR')} a ${new Date(endDate + 'T12:00:00').toLocaleDateString('pt-BR')}\n\n`;
 
     if (includeDetails && data.details && data.details.length > 0) {
-      message += `* DETALHAMENTO DE SERVIÇOS:*\n`;
+      message += `* RECIBO - DETALHAMENTO DE SERVIÇOS:*\n`;
       data.details.forEach((item: any) => {
         const itemVal = item.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
         let dateLabel = item.date || '';

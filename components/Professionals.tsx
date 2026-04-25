@@ -175,7 +175,32 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                             <section>
                                 <h3 class="text-xs font-black uppercase tracking-tight mb-2 border-b border-slate-100 pb-1">9. RESCISÃO DA PARCERIA</h3>
-                                <p class="text-[10px] leading-relaxed">A rescisão voluntária deverá respeitar o aviso prévio de <span class="font-black">30 dias</span>, salvo hipóteses de falta grave previstas no contrato sindical.</p>
+                                <p class="text-[10px] leading-relaxed mb-2">A rescisão da parceria poderá ocorrer nas seguintes hipóteses, sempre em conformidade com o contrato homologado junto ao sindicato:</p>
+                                
+                                <div class="space-y-3">
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase mb-0.5">9.1 Rescisão voluntária por iniciativa da profissional parceira</p>
+                                        <p class="text-[10px] font-bold text-slate-600">Mediante aviso prévio mínimo de 30 (trinta) dias, por escrito.</p>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase mb-0.5">9.2 Rescisão voluntária por iniciativa da esmalteria</p>
+                                        <p class="text-[10px] font-bold text-slate-600">Mediante aviso prévio mínimo de 30 (trinta) dias, por escrito, observadas as condições contratuais.</p>
+                                    </div>
+
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase mb-0.5">9.3 Rescisão imediata por falta grave</p>
+                                        <p class="text-[10px] font-bold text-slate-600 mb-1">Poderá ocorrer de forma imediata em casos de descumprimento grave das normas internas ou do contrato, incluindo, mas não se limitando a:</p>
+                                        <ul class="text-[9px] font-bold text-slate-500 pl-4 space-y-0.5">
+                                            <li>• captação indevida de clientes da casa;</li>
+                                            <li>• recebimento de valores fora do sistema;</li>
+                                            <li>• quebra das normas sanitárias;</li>
+                                            <li>• conduta desrespeitosa com clientes, equipe ou gestão;</li>
+                                            <li>• uso indevido de materiais e equipamentos;</li>
+                                            <li>• fraude, omissão de informações ou concorrência desleal.</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </section>
                         </div>
                         <div class="absolute bottom-8 left-0 right-0 text-center border-t border-slate-100 pt-4 mx-20">
@@ -185,27 +210,8 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                     <div class="a4-container ${idx === 1 ? '' : 'page-break'}">
                         <div class="space-y-6 text-slate-800">
-                            <section>
-                                <h3 class="text-xs font-black uppercase tracking-tight mb-2 border-b border-slate-100 pb-1">10. ABANDONO DA PARCERIA</h3>
-                                <p class="text-[10px] mb-2">Será considerado abandono a ausência superior a <span class="font-black">7 dias corridos</span>, sem justificativa formal e sem comunicação com a gestão.</p>
-                                <p class="text-[10px] mb-1 font-bold">Entre o 3º e o 5º dia, a empresa poderá:</p>
-                                <ul class="text-[10px] space-y-1 font-bold text-slate-600 pl-4">
-                                    <li>• notificar formalmente a profissional;</li>
-                                    <li>• bloquear preventivamente a agenda;</li>
-                                    <li>• remanejar as clientes.</li>
-                                </ul>
-                                <p class="text-[10px] mt-2">Ultrapassado o 7º dia, poderá ocorrer rescisão imediata por abandono.</p>
-                            </section>
-
-                            <section>
-                                <h3 class="text-xs font-black uppercase tracking-tight mb-2 border-b border-slate-100 pb-1">11. AFASTAMENTO TEMPORÁRIO POR GESTAÇÃO OU RECOMENDAÇÃO MÉDICA</h3>
-                                <p class="text-[10px] mb-2 leading-relaxed">Em caso de gestação, gravidez de risco ou recomendação médica, a profissional poderá solicitar <span class="font-black">afastamento temporário da agenda</span>, sem rescisão da parceria.</p>
-                                <p class="text-[10px] mb-2 leading-relaxed">Durante o período, a empresa poderá remanejar as clientes para outras profissionais.</p>
-                                <p class="text-[10px] leading-relaxed">O retorno ocorrerá mediante comunicação formal e, quando necessário, liberação médica.</p>
-                            </section>
-
                             <div class="pt-8 mt-4 border-t-2 border-slate-900">
-                                <h3 class="text-xs font-black uppercase tracking-tight mb-4 text-center">12. TERMO DE CIÊNCIA E ACEITE</h3>
+                                <h3 class="text-xs font-black uppercase tracking-tight mb-4 text-center">10. TERMO DE CIÊNCIA E ACEITE</h3>
                                 <p class="text-[10px] text-center mb-8">Declaro que li, compreendi e concordo com todas as disposições deste Regulamento Interno e do Contrato de Parceria.</p>
                                 
                                 <div class="space-y-6 max-w-md mx-auto">
@@ -1374,35 +1380,52 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
                                                 9. RESCISÃO DA PARCERIA
                                             </h3>
-                                            <p className="text-[11px]">A rescisão voluntária deverá respeitar o aviso prévio de <span className="font-black text-slate-950 dark:text-white">30 dias</span>, salvo hipóteses de falta grave previstas no contrato sindical.</p>
-                                        </section>
+                                            <p className="text-[11px] mb-4">A rescisão da parceria poderá ocorrer nas seguintes hipóteses, sempre em conformidade com o contrato homologado junto ao sindicato:</p>
+                                            
+                                            <div className="space-y-6">
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.1 Rescisão voluntária por iniciativa da profissional parceira</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400">Mediante aviso prévio mínimo de 30 (trinta) dias, por escrito.</p>
+                                                </div>
 
-                                        <section>
-                                            <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
-                                                10. ABANDONO DA PARCERIA
-                                            </h3>
-                                            <p className="text-[11px] mb-4">Será considerado abandono a ausência superior a <span className="font-black">7 dias corridos</span>, sem justificativa formal e sem comunicação com a gestão.</p>
-                                            <p className="text-[11px] mb-3">Entre o <span className="font-black">3º e o 5º dia</span>, a empresa poderá:</p>
-                                            <ul className="text-[10px] space-y-2 list-none pl-4 font-bold text-slate-600 dark:text-slate-400">
-                                                <li className="flex gap-2"><span>•</span> notificar formalmente a profissional;</li>
-                                                <li className="flex gap-2"><span>•</span> bloquear preventivamente a agenda;</li>
-                                                <li className="flex gap-2"><span>•</span> remanejar as clientes.</li>
-                                            </ul>
-                                            <p className="text-[10px] mt-4 font-bold text-slate-500 italic">Ultrapassado o 7º dia, poderá ocorrer rescisão imediata por abandono.</p>
-                                        </section>
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.2 Rescisão voluntária por iniciativa da esmalteria</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400">Mediante aviso prévio mínimo de 30 (trinta) dias, por escrito, observadas as condições contratuais.</p>
+                                                </div>
 
-                                        <section>
-                                            <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 border-b border-slate-100 dark:border-zinc-800 pb-2">
-                                                11. AFASTAMENTO TEMPORÁRIO POR GESTAÇÃO OU RECOMENDAÇÃO MÉDICA
-                                            </h3>
-                                            <p className="text-[11px] mb-4">Em caso de gestação, gravidez de risco ou recomendação médica, a profissional poderá solicitar <span className="font-black text-slate-950 dark:text-white">afastamento temporário da agenda</span>, sem rescisão da parceria.</p>
-                                            <p className="text-[11px] mb-4">Durante o período, a empresa poderá remanejar as clientes para outras profissionais.</p>
-                                            <p className="text-[11px] font-bold italic text-slate-500">O retorno ocorrerá mediante comunicação formal e, quando necessário, liberação médica.</p>
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.3 Rescisão imediata por falta grave</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400 mb-2">Poderá ocorrer de forma imediata em casos de descumprimento grave das normas internas ou do contrato, incluindo, mas não se limitando a:</p>
+                                                    <ul className="text-[10px] space-y-2 list-none pl-4 font-bold text-slate-500">
+                                                        <li className="flex gap-2"><span>•</span> captação indevida de clientes da casa;</li>
+                                                        <li className="flex gap-2"><span>•</span> recebimento de valores fora do sistema;</li>
+                                                        <li className="flex gap-2"><span>•</span> quebra das normas sanitárias;</li>
+                                                        <li className="flex gap-2"><span>•</span> conduta desrespeitosa com clientes, equipe ou gestão;</li>
+                                                        <li className="flex gap-2"><span>•</span> uso indevido de materiais e equipamentos;</li>
+                                                        <li className="flex gap-2"><span>•</span> fraude, omissão de informações ou concorrência desleal.</li>
+                                                    </ul>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.4 Rescisão por abandono da parceria</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400">Conforme cláusula específica deste regulamento e do contrato sindical, após ausência superior a 7 dias corridos sem justificativa e sem comunicação formal.</p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.5 Rescisão por comum acordo</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400">A parceria poderá ser encerrada por consenso entre as partes, mediante formalização por escrito.</p>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[11px] font-black uppercase text-slate-900 dark:text-white mb-1">9.6 Suspensão temporária sem rescisão</p>
+                                                    <p className="text-[11px] text-slate-600 dark:text-zinc-400">Nos casos de gestação, recomendação médica, licença pessoal ou impedimento temporário, poderá haver suspensão da agenda sem encerramento da parceria.</p>
+                                                </div>
+                                            </div>
                                         </section>
 
                                         <section className="pt-12 border-t-2 border-slate-900 dark:border-white">
                                             <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight mb-6 text-center">
-                                                12. TERMO DE CIÊNCIA E ACEITE
+                                                10. TERMO DE CIÊNCIA E ACEITE
                                             </h3>
                                             <p className="text-[11px] text-center mb-12">Declaro que li, compreendi e concordo com todas as disposições deste Regulamento Interno e do Contrato de Parceria.</p>
                                             
