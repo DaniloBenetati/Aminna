@@ -1028,8 +1028,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             }, 0);
             const totalBooked = mainBooked + extraBooked;
             const tipAmount = a.tipAmount || 0;
-            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
-                ? (a.pricePaid - tipAmount)
+            const actualTotalRevenue = (a.status === 'Concluído' && (a.pricePaid || 0) > 0)
+                ? ((a.pricePaid || 0) - tipAmount)
                 : totalBooked;
 
             if (!stats[a.providerId]) stats[a.providerId] = { faturamento: 0, atendimentos: 0 };
@@ -1073,8 +1073,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             }, 0);
             const totalBooked = mainBooked + extraBooked;
             const tipAmount = a.tipAmount || 0;
-            const actualTotalRevenue = (a.status === 'Concluído' && a.pricePaid !== undefined && a.pricePaid !== null)
-                ? (a.pricePaid - tipAmount)
+            const actualTotalRevenue = (a.status === 'Concluído' && (a.pricePaid || 0) > 0)
+                ? ((a.pricePaid || 0) - tipAmount)
                 : totalBooked;
 
             if (!stats[a.serviceId]) stats[a.serviceId] = { faturamento: 0, qtd: 0 };
