@@ -5,7 +5,7 @@ import {
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
-  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare
+  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare, ShieldCheck
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
@@ -406,6 +406,23 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     setHasFetched(false);
   };
 
+  const [permissions, setPermissions] = useState<any[]>([]);
+  const [checkingPerms, setCheckingPerms] = useState(false);
+
+  const checkPermissions = async () => {
+    if (!token) return;
+    setCheckingPerms(true);
+    try {
+      const resp = await fetch(`${META_GRAPH_URL}/me/permissions?access_token=${token}`);
+      const data = await resp.json();
+      setPermissions(data.data || []);
+    } catch (e) {
+      console.error("Perms check failed", e);
+    } finally {
+      setCheckingPerms(false);
+    }
+  };
+
   const clearToken = () => {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(ACCOUNT_STORAGE_KEY);
@@ -483,13 +500,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     
     if (datePreset === 'lifetime') return true;
     
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
     let start = datePreset === 'custom' ? customStartDate : dateRange.start;
-    let end = datePreset === 'custom' ? customEndDate : dateRange.stop;
+    let end = datePreset === 'custom' ? customEndDate : todayStr; // Default to today for appointments
     
     if (datePreset !== 'custom') {
-      const today = new Date();
-      const todayStr = today.toISOString().split('T')[0];
-      
       if (datePreset === 'last_7d') {
         const d = new Date(); d.setDate(d.getDate() - 7); start = d.toISOString().split('T')[0];
         end = todayStr;
@@ -517,7 +534,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     }
     
     return true;
-  }, [datePreset, customStartDate, customEndDate, dateRange]);
+  }, [datePreset, customStartDate, customEndDate, dateRange.start]);
 
   const firstVisits = useMemo(() => {
     const visits: Record<string, { date: string }> = {};
@@ -719,8 +736,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       });
       setCampaigns(parsedCampaigns);
 
+      const adSetFields = [
+        'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting',
+        `insights${dailyPreset}${timeRange ? `.time_range(${timeRange})` : ''}{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,frequency}`
+      ].join(',');
+
       const adsetData = await fetchFromMeta(token, `${adAccountId}/adsets`, {
-        fields: ADSET_FIELDS,
+        fields: adSetFields,
         limit: '200',
       });
 
@@ -748,8 +770,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       });
       setAdSets(parsedAdSets);
 
+      const adFields = [
+        'id', 'name', 'status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
+        `insights${dailyPreset}${timeRange ? `.time_range(${timeRange})` : ''}{spend,impressions,clicks,ctr,conversions,cost_per_conversion,quality_ranking,engagement_rate_ranking}`,
+        'creative{thumbnail_url}'
+      ].join(',');
+
       const adData = await fetchFromMeta(token, `${adAccountId}/ads`, {
-        fields: AD_FIELDS,
+        fields: adFields,
         limit: '200',
       });
 
@@ -813,19 +841,32 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   }, [token, adAccountId, fetchAll, activeMarketingTab]);
 
   const getMatchingCouponAppts = (cName: string) => {
+    const nameLower = cName.toLowerCase();
+    
+    // Only conversation/lead/booking campaigns should have CRM revenue
+    const isConversionCampaign = nameLower.includes('conversas') || 
+                                 nameLower.includes('lead') || 
+                                 nameLower.includes('cupom agendamento') ||
+                                 (nameLower.includes('trafego') && !nameLower.includes('manicures') && !nameLower.includes('seguidores'));
+
+    if (!isConversionCampaign) return [];
+
     return appointments.filter(a => {
         if (a.status !== 'Concluído' || !isAppointmentInMarketingPeriod(a.date)) return false;
         
         const isNewCustomer = firstVisits[a.customerId]?.date === a.date;
-        if (!isNewCustomer) return false; // Apenas novos clientes geram retorno de CRM para as campanhas
+        if (!isNewCustomer) return false; // Only new customers generate CRM return for campaigns
 
         const coupon = a.appliedCoupon ? a.appliedCoupon.toLowerCase().trim() : '';
-        const nameLower = cName.toLowerCase();
         
+        // Match specific coupons if they are in the campaign name
         if (coupon && nameLower.includes(coupon)) return true;
         
+        // Generic matching for booking campaigns
         if (nameLower.includes('cupom agendamento') || nameLower.includes('trafego')) {
             const isPartnerCoupon = coupon && partnerCampaigns.some((pc: any) => pc.couponCode && pc.couponCode.toLowerCase().trim() === coupon);
+            // If it's not a partner coupon and we have a generic traffic campaign, we count it
+            // but we avoid including it if it's clearly another type of campaign
             if (!isPartnerCoupon || coupon === 'aminnavip') return true;
         }
         return false;
@@ -834,13 +875,32 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const campaignsWithCRM = useMemo(() => {
     return campaigns.map(c => {
+      const nameLower = c.name.toLowerCase();
       const matchingCouponAppts = getMatchingCouponAppts(c.name);
+      
       const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
         const svc = services.find(s => s.id === a.serviceId);
         const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
         return sum + rev;
       }, 0);
-      return { ...c, crmRevenue, crmROI: c.spend > 0 ? crmRevenue / c.spend : 0 };
+
+      // Classification
+      const isFollower = nameLower.includes('seguidores');
+      const isManicure = nameLower.includes('manicures');
+      const isConversation = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+
+      // Override result name for specific campaigns
+      const updatedResults = c.results ? {
+        ...c.results,
+        name: isFollower ? 'Seguidores Novos' : isManicure ? 'Candidatas' : c.results.name
+      } : undefined;
+
+      return { 
+        ...c, 
+        results: updatedResults,
+        crmRevenue: isConversation ? crmRevenue : 0, 
+        crmROI: (isConversation && c.spend > 0) ? crmRevenue / c.spend : 0
+      };
     });
   }, [campaigns, appointments, services, firstVisits, partnerCampaigns]);
 
@@ -859,8 +919,25 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const totalCRMRevenue = campaignsWithCRM.reduce((s, c) => s + c.crmRevenue, 0);
   const totalROAS = totalSpend > 0 ? totalCRMRevenue / totalSpend : 0;
   
-  const totalMessageStarts = campaignsWithCRM.reduce((s, c) => s + (c.results?.count || 0), 0);
-  const avgCostPerResult = totalMessageStarts > 0 ? totalSpend / totalMessageStarts : 0;
+  const totalMessageStarts = campaignsWithCRM.reduce((s, c) => {
+    const nameLower = c.name.toLowerCase();
+    const isFollower = nameLower.includes('seguidores');
+    const isManicure = nameLower.includes('manicures');
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+    
+    return isLeadConversion ? s + (c.results?.count || 0) : s;
+  }, 0);
+
+  const conversionSpend = campaignsWithCRM.reduce((s, c) => {
+    const nameLower = c.name.toLowerCase();
+    const isFollower = nameLower.includes('seguidores');
+    const isManicure = nameLower.includes('manicures');
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+    
+    return isLeadConversion ? s + c.spend : s;
+  }, 0);
+
+  const avgCostPerResult = totalMessageStarts > 0 ? conversionSpend / totalMessageStarts : 0;
   const totalNewCustomersCRM = totalConversions;
   const avgTicketMarketing = totalNewCustomersCRM > 0 ? totalCRMRevenue / totalNewCustomersCRM : 0;
 
@@ -1040,7 +1117,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800/50">
-            {campaignsWithCRM.map(c => {
+            {campaignsWithCRM.filter(c => c.status === 'ACTIVE').map(c => {
                const isActive = c.status === 'ACTIVE';
                const hasProblem = problems.find(p => p.campaign.id === c.id);
                
@@ -1107,12 +1184,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       <span className="text-[12px] text-slate-900 dark:text-white">{fmt.currency(c.spend)}</span>
                    </td>
                     <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">
-                      <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>{fmt.currency(crmRevenue)}</span>
+                      {c.crmRevenue > 0 ? (
+                        <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>{fmt.currency(crmRevenue)}</span>
+                      ) : (
+                        <span className="text-slate-300 dark:text-zinc-700">—</span>
+                      )}
                    </td>
                    <td className="px-6 py-4 text-right">
-                      <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-300 dark:text-zinc-700'}`}>
-                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
-                      </span>
+                      {crmROI > 0 ? (
+                        <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                           {fmt.number(crmROI, 1)}x
+                        </span>
+                      ) : (
+                        <span className="text-slate-300 dark:text-zinc-700">—</span>
+                      )}
                    </td>
                  </tr>
                );
@@ -1123,20 +1208,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       {/* Mobile/Tablet Card View */}
       <div className="lg:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
-        {campaigns.map(c => {
+        {campaignsWithCRM.filter(c => c.status === 'ACTIVE').map(c => {
            const isActive = c.status === 'ACTIVE';
            const hasProblem = problems.find(p => p.campaign.id === c.id);
 
-           // Calculate Retorno CRM and ROI CRM for mobile
-           const matchingCouponAppts = getMatchingCouponAppts(c.name);
-           
-           const crmRevenue = matchingCouponAppts.reduce((sum, a) => {
-              const svc = services.find(s => s.id === a.serviceId);
-              const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
-              return sum + rev;
-           }, 0);
-           
-           const crmROI = c.spend > 0 ? crmRevenue / c.spend : 0;
+           const crmRevenue = c.crmRevenue;
+           const crmROI = c.crmROI;
 
            return (
              <div key={c.id} className="p-5 space-y-4">
@@ -1166,18 +1243,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                          {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
                       </p>
                    </div>
-                   <div className="space-y-0.5">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
-                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
-                         {fmt.currency(crmRevenue)}
-                      </p>
-                   </div>
-                   <div className="space-y-0.5 text-right">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
-                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
-                      </p>
-                   </div>
+
                    <div className="space-y-0.5">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Orçamento</p>
                       <p className="text-[11px] font-black text-slate-900 dark:text-white">
@@ -1185,10 +1251,24 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                          <span className="text-[8px] text-slate-400 font-bold ml-1">{c.daily_budget ? 'DIA' : 'VIT.'}</span>
                       </p>
                    </div>
+
                    <div className="space-y-0.5 text-right">
                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Investido</p>
                       <p className="text-[11px] font-black text-slate-900 dark:text-white">
                          {fmt.currency(c.spend)}
+                      </p>
+                   </div>
+
+                   <div className="space-y-0.5">
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
+                      <p className={`text-[11px] font-black ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                         {crmRevenue > 0 ? fmt.currency(crmRevenue) : '—'}
+                      </p>
+                   </div>
+                   <div className="space-y-0.5 text-right">
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
+                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
                       </p>
                    </div>
                 </div>
@@ -1205,7 +1285,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       </div>
       
       <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
-         <span className="text-slate-900 dark:text-white">Resultados de {campaigns.length} campanhas</span>
+         <span className="text-slate-900 dark:text-white">Resultados de {campaignsWithCRM.filter(c => c.status === 'ACTIVE').length} campanhas ativas</span>
          <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
             <Info size={14} /> Detalhes do Gerenciador
          </button>
@@ -1221,23 +1301,23 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
-              <th className="px-6 py-4 text-left">Conjunto</th>
-              <th className="px-6 py-4 text-left">Campanha</th>
-              <th className="px-6 py-4 text-left">Gasto</th>
-              <th className="px-6 py-4 text-left">Conv.</th>
+            <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
+              <th className="px-4 py-2 text-left">Conjunto</th>
+              <th className="px-4 py-2 text-left">Campanha</th>
+              <th className="px-4 py-2 text-left">Gasto</th>
+              <th className="px-4 py-2 text-left">Conv.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
             {activeAdSets.map(a => (
-              <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
-                <td className="px-6 py-4">
-                  <p className="font-bold text-xs truncate max-w-[200px] text-slate-900 dark:text-white">{a.name}</p>
-                  <p className="text-[10px] text-indigo-500 font-bold mt-1 truncate max-w-[200px]">{a.targeting_desc || '—'}</p>
+              <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors border-b border-slate-100 dark:border-zinc-800 last:border-0">
+                <td className="px-4 py-2">
+                  <p className="font-bold text-[10px] text-slate-900 dark:text-white leading-tight">{a.name}</p>
+                  <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
                 </td>
-                <td className="px-6 py-4 text-[11px] text-slate-500">{a.campaign_name}</td>
-                <td className="px-6 py-4 font-black text-xs">{fmt.currency(a.spend)}</td>
-                <td className="px-6 py-4 font-bold text-xs">{a.conversions}</td>
+                <td className="px-4 py-2 text-[10px] text-slate-500">{a.campaign_name}</td>
+                <td className="px-4 py-2 font-black text-[10px]">{fmt.currency(a.spend)}</td>
+                <td className="px-4 py-2 font-bold text-[10px] text-right">{a.conversions}</td>
               </tr>
             ))}
           </tbody>
@@ -1277,7 +1357,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           <div className="flex gap-4 mb-4">
              {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-16 h-16 rounded-xl object-cover" alt="" />}
              <div className="min-w-0">
-                <p className="font-black text-xs truncate text-slate-900 dark:text-white mb-1 uppercase tracking-tight">{ad.name}</p>
+                <p className="font-black text-xs text-slate-900 dark:text-white mb-1 uppercase tracking-tight leading-tight">{ad.name}</p>
                 <div className="flex gap-2 items-center">
                    <StatusBadge status={ad.status} />
                    {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
@@ -1527,6 +1607,28 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     <button onClick={saveToken} className="px-4 py-2 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 transition-colors">Salvar</button>
                     {token && <button onClick={clearToken} className="px-4 py-2 text-rose-500 text-xs font-black hover:text-rose-600 transition-colors">Remover</button>}
                   </div>
+
+                  {token && (
+                    <div className="mt-4 pt-4 border-t border-amber-100 dark:border-amber-800">
+                      <button 
+                        onClick={checkPermissions}
+                        disabled={checkingPerms}
+                        className="text-[10px] font-black text-amber-600 hover:text-amber-700 flex items-center gap-2 uppercase tracking-widest"
+                      >
+                        {checkingPerms ? <RefreshCw size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                        Verificar Permissões Reais do Token
+                      </button>
+                      {permissions.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {permissions.map((p: any) => (
+                            <div key={p.permission} className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${p.status === 'granted' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                              {p.permission}: {p.status}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
