@@ -1,0 +1,14 @@
+{
+  "name": "meta-mcp",
+  "version": "1.0.0",
+  "description": "Servidor MCP para acessar dados orgânicos e de tráfego pago da Meta (Facebook/Instagram)",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "axios": "^1.6.8"
+  }
+}

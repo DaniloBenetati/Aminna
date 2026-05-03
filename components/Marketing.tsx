@@ -5,10 +5,11 @@ import {
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
-  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare, ShieldCheck
+  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare, ShieldCheck, Presentation
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
+import { MarketingReports } from './MarketingReports';
 import { supabase } from '../services/supabase';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
@@ -323,8 +324,8 @@ const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
 export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [] }) => {
-  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic'>(() => 
-    (localStorage.getItem('active_marketing_tab') as 'paid' | 'organic') || 'paid'
+  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'organic' | 'reports'>(() => 
+    (localStorage.getItem('active_marketing_tab') as 'paid' | 'organic' | 'reports') || 'paid'
   );
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -835,7 +836,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   }, [adAccountId, token, datePreset, customStartDate, customEndDate]);
 
   useEffect(() => {
-    if (token && adAccountId && activeMarketingTab === 'paid') {
+    if (token && adAccountId && (activeMarketingTab === 'paid' || activeMarketingTab === 'reports')) {
       fetchAll();
     }
   }, [token, adAccountId, fetchAll, activeMarketingTab]);
@@ -1449,6 +1450,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         >
           Orgânico
         </button>
+        <button
+          onClick={() => setActiveMarketingTab('reports')}
+          className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          Apresentações
+        </button>
       </div>
 
       <div className="flex-1 overflow-auto flex flex-col min-h-0">
@@ -1456,11 +1463,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                {activeMarketingTab === 'paid' ? <Megaphone size={20} /> : <Instagram size={20} />}
+                {activeMarketingTab === 'paid' ? <Megaphone size={20} /> : activeMarketingTab === 'reports' ? <Presentation size={20} /> : <Instagram size={20} />}
               </div>
               <div>
                 <h1 className="text-sm md:text-base font-black text-slate-900 dark:text-white tracking-tight uppercase leading-none">
-                  {activeMarketingTab === 'organic' ? 'Orgânico' : 'Tráfego Pago'}
+                  {activeMarketingTab === 'organic' ? 'Orgânico' : activeMarketingTab === 'reports' ? 'Apresentações' : 'Tráfego Pago'}
                 </h1>
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                   Análise estratégica · {
@@ -1491,7 +1498,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           {isFiltersVisible && (
             <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in slide-in-from-top-2 duration-300">
               <div className="flex flex-col md:flex-row gap-4 items-center">
-                {activeMarketingTab === 'paid' && (
+                {(activeMarketingTab === 'paid' || activeMarketingTab === 'reports') && (
                   <div className="flex flex-col">
                     <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Conta de Anúncios</span>
                     <select
@@ -1569,10 +1576,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
               <button
                 onClick={() => {
-                  if (activeMarketingTab === 'paid') fetchAll();
+                  if (activeMarketingTab === 'paid' || activeMarketingTab === 'reports') fetchAll();
                   else setRefreshKey(prev => prev + 1);
                 }}
-                disabled={loading || (activeMarketingTab === 'paid' && !adAccountId) || !token}
+                disabled={loading || ((activeMarketingTab === 'paid' || activeMarketingTab === 'reports') && !adAccountId) || !token}
                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] md:text-xs font-black rounded-xl shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -1636,7 +1643,28 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         </div>
 
         <div className="flex-1 p-4 md:p-8">
-          {activeMarketingTab === 'organic' ? (
+          {activeMarketingTab === 'reports' ? (
+            <MarketingReports 
+              campaigns={campaignsWithCRM}
+              totalSpend={totalSpend}
+              totalRevenue={totalCRMRevenue}
+              totalROAS={totalROAS}
+              totalConversions={totalConversions}
+              avgCPA={avgCPA}
+              avgCTR={avgCTR}
+              dateLabel={
+                datePreset === 'last_7d' ? 'Últimos 7 dias' : 
+                datePreset === 'last_30d' ? 'Últimos 30 dias' : 
+                datePreset === 'last_90d' ? 'Últimos 90 dias' :
+                datePreset === 'this_month' ? 'Este mês' :
+                datePreset === 'last_month' ? 'Mês anterior' :
+                datePreset === 'this_year' ? 'Este ano' :
+                datePreset === 'custom' ? `${customStartDate.split('-').reverse().join('/')} até ${customEndDate.split('-').reverse().join('/')}` :
+                'Período selecionado'
+              }
+              dailyData={dailyTimeSeries}
+            />
+          ) : activeMarketingTab === 'organic' ? (
             <InstagramOrganic 
               token={token} 
               datePreset={datePreset} 
