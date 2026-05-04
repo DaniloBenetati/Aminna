@@ -468,7 +468,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         usageHistory: [],
                         priceHistory: [],
                     };
-                    setStock([...stock, newItem]);
+                    setStock([newItem, ...stock]);
                     createdId = data[0].id;
                 }
             }

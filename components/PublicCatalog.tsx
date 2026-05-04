@@ -42,7 +42,7 @@ export const PublicCatalog: React.FC = () => {
                     .eq('active', true)
                     .eq('category', 'Venda')
                     .gt('quantity', 0)
-                    .order('name', { ascending: true });
+                    .order('created_at', { ascending: false });
                 
                 if (error) {
                     console.error("Error fetching catalog:", error);
