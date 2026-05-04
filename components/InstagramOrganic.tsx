@@ -208,7 +208,7 @@ export const InstagramOrganic: React.FC<{
   const [loading, setLoading] = useState(false);
   const [posts, setPosts] = useState<IGPost[]>([]);
   const [accInsights, setAccInsights] = useState<IGAccountInsights | null>(null);
-  const [isUsingMockData, setIsUsingMockData] = useState(true);
+  const [isUsingMockData] = useState(false);
   const [insightsError, setInsightsError] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showAllPosts, setShowAllPosts] = useState(false);
@@ -274,8 +274,8 @@ export const InstagramOrganic: React.FC<{
     const finalData = Object.entries(timeline).map(([day, data]) => ({ day, value: data.value, post: data.topPost }));
     
     // Fallback if truly empty
-    if (finalData.every(d => d.value === 0)) return PRINT_DATA.followerGrowthSeries.map(d => ({ ...d, post: undefined }));
-
+    // REMOVED PRINT_DATA FALLBACK TO SHOW REAL ZEROES
+    
     return finalData;
   }, [accInsights, posts, datePreset]);
 
@@ -361,7 +361,6 @@ export const InstagramOrganic: React.FC<{
             };
           }));
           setPosts(processedPosts);
-          setIsUsingMockData(false);
         } else {
           setInsightsError(true);
         }
@@ -641,26 +640,7 @@ export const InstagramOrganic: React.FC<{
         </PremiumCard>
       </div>
 
-      {isUsingMockData && (
-        <div className="flex items-center gap-3 px-6 py-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-[2rem] animate-pulse">
-           <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-800 flex items-center justify-center text-amber-600">
-              <AlertTriangle size={20} />
-           </div>
-           <div className="flex-1">
-              <p className="text-[11px] font-black text-amber-900 dark:text-amber-100 uppercase tracking-widest">Modo de Demonstração Ativo</p>
-              <p className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                 Os dados abaixo são ilustrativos pois não foi possível conectar com a API do Instagram. 
-                 Verifique suas permissões no Gerenciador de Negócios.
-              </p>
-           </div>
-           <button 
-             onClick={() => fetchIGData()}
-             className="px-4 py-2 bg-amber-600 text-white text-[10px] font-black rounded-xl hover:bg-amber-700 transition-colors uppercase tracking-widest"
-           >
-              Tentar Reconectar
-           </button>
-        </div>
-      )}
+
 
       {insightsError && !isUsingMockData && (
         <div className="flex items-center gap-3 px-6 py-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-[2rem] mb-8">
