@@ -4101,6 +4101,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
                                     </div>
                                 )}
+                                {appointment.observation && (
+                                    <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-zinc-700 mt-1">
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Observações do Atendimento</p>
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-slate-200 dark:border-zinc-700 leading-relaxed">
+                                            {appointment.observation}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* NFSe Section */}
@@ -4510,7 +4518,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         
                                         let details = '';
                                         if (a.status === 'Concluído') {
-                                            details = `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}`;
+                                            details = `R$ ${(a.pricePaid || a.amount || 0).toFixed(2)} | ${a.paymentMethod || 'A Confirmar'}${a.observation ? ` | Obs: ${a.observation}` : ''}`;
                                         } else if (a.status === 'Cancelado') {
                                             details = `STATUS: CANCELADO${a.observation ? ` | JUSTIFICATIVA: ${a.observation}` : ''}`;
                                         } else {
@@ -4525,6 +4533,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             type: (a.status === 'Cancelado' ? 'CANCELLATION' : 'VISIT') as any,
                                             price: a.pricePaid || a.amount || 0,
                                             method: a.paymentMethod || 'Não informado',
+                                            observation: a.observation,
                                             feedback: a.feedback,
                                             providerName: prov?.name || a.providerName || 'Não informado'
                                         };
@@ -4577,9 +4586,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 </p>
                                                             )}
 
-                                                            <p className="text-[10px] font-bold text-slate-500 mt-2">
-                                                                Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
-                                                            </p>
+                                                            {item.isDb ? (
+                                                                <p className="text-[10px] font-bold text-slate-500 mt-2 leading-relaxed">
+                                                                    {item.details}
+                                                                </p>
+                                                            ) : (
+                                                                <>
+                                                                    <p className="text-[10px] font-bold text-slate-500 mt-2">
+                                                                        Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
+                                                                    </p>
+                                                                    {item.observation && (
+                                                                        <p className="text-[10px] font-black text-indigo-600/70 dark:text-indigo-400/70 mt-1 uppercase tracking-tight bg-indigo-50/50 dark:bg-indigo-900/10 px-3 py-2 rounded-xl border border-indigo-100/50 dark:border-indigo-900/20">
+                                                                            Nota: {item.observation}
+                                                                        </p>
+                                                                    )}
+                                                                </>
+                                                            )}
 
                                                             {(item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">"{item.feedback}"</p>}
                                                         </div>
