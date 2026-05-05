@@ -714,14 +714,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     lastMarketingContact: c.lastMarketingContact
                 };
 
-                const isAlreadyMessaged = c.lastMarketingContact && 
-                    new Date(c.lastMarketingContact).toLocaleDateString() === now.toLocaleDateString();
+                // Check for future appointments (not cancelled, not completed, date >= today)
+                const todayStr = toLocalDateStr(now);
+                const hasFutureAppointment = appointments.some(a => 
+                    a.customerId === c.id && 
+                    a.status !== 'Cancelado' && 
+                    a.status !== 'Concluído' &&
+                    a.date >= todayStr
+                );
 
-                if (appCount > 1 && diff > churnThreshold) {
-                    stats.churnRiskCount++;
-                    stats.churnRiskClients.push(clientData);
-                } else if (appCount === 1 && diff > oneTimeThreshold) {
-                    stats.oneTimeOnlyClients.push(clientData);
+                if (!hasFutureAppointment) {
+                    if (appCount > 1 && diff > churnThreshold) {
+                        stats.churnRiskCount++;
+                        stats.churnRiskClients.push(clientData);
+                    } else if (appCount === 1 && diff > oneTimeThreshold) {
+                        stats.oneTimeOnlyClients.push(clientData);
+                    }
                 }
             }
         });
