@@ -134,6 +134,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [cancellationReason, setCancellationReason] = useState('');
     const [isZeroing, setIsZeroing] = useState(false);
     const [zeroOutReason, setZeroOutReason] = useState('');
+    const [selectedLineIdsForZeroing, setSelectedLineIdsForZeroing] = useState<string[]>([]);
     const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
@@ -2019,21 +2020,56 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return;
         }
 
+        if (selectedLineIdsForZeroing.length === 0) {
+            alert('Por favor, selecione ao menos um profissional/serviço para zerar.');
+            return;
+        }
+
         setIsSaving(true);
 
         try {
             const dischargeDate = appointment.date || formatLocalDate(new Date());
             const zeroPaymentMethod = 'Justificativa: ' + zeroOutReason;
 
-            // 1. Prepare data with 0 values
-            const updatedLines = lines.map(l => ({
-                ...l,
-                unitPrice: 0,
-                discount: 0,
-                bookedPrice: 0,
-                status: 'Concluído' as const
-            }));
+            // 1. Prepare data - only zero out selected lines
+            const updatedLines = lines.map(l => {
+                if (selectedLineIdsForZeroing.includes(l.id)) {
+                    return {
+                        ...l,
+                        unitPrice: 0,
+                        discount: 0,
+                        bookedPrice: 0,
+                        isCourtesy: true,
+                        status: 'Concluído' as const
+                    };
+                }
+                return l;
+            });
 
+            // Calculate if there's anything left to pay
+            const remainingSubtotal = updatedLines.reduce((acc, l) => {
+                if (l.isCourtesy) return acc;
+                const price = Number(l.unitPrice) || 0;
+                const discount = Number(l.discount) || 0;
+                const qty = Number(l.quantity) || 1;
+                return acc + Math.max(0, (price * qty) - discount);
+            }, 0);
+
+            const isFullyZeroed = remainingSubtotal <= 0;
+
+            if (!isFullyZeroed) {
+                // PARTIAL ZERO OUT: Just update local state and go to checkout
+                setLines(updatedLines);
+                setObservation((prev) => (prev ? prev + '\n' : '') + `JUSTIFICATIVA ZERAR (${selectedLineIdsForZeroing.length} itens): ${zeroOutReason.toUpperCase()}`);
+                setIsZeroing(false);
+                setZeroOutReason('');
+                setMode('CHECKOUT');
+                showToast('Serviços selecionados foram zerados. Prossiga com o pagamento do restante.', 'success');
+                setIsSaving(false);
+                return;
+            }
+
+            // FULL ZERO OUT: Original logic to close the appointment
             const serviceNamesArray = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).filter(Boolean);
             const uniqueNames = Array.from(new Set(serviceNamesArray));
             const combinedNames = uniqueNames.join(' + ');
@@ -2042,8 +2078,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 serviceId: l.serviceId,
                 providerId: l.providerId,
                 isCourtesy: l.isCourtesy,
-                discount: 0,
-                bookedPrice: 0,
+                discount: l.discount,
+                bookedPrice: l.bookedPrice,
                 products: l.products,
                 startTime: l.startTime,
                 endTime: l.endTime,
@@ -3271,6 +3307,40 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <h4 className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
                                                                 <Coins size={12} /> Zerar Comanda (Justificativa)
                                                             </h4>
+
+                                                            <div className="flex flex-col gap-2 mb-1">
+                                                                <label className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">Selecionar para Zerar:</label>
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {lines.map((line) => {
+                                                                        const provider = providers.find(p => p.id === line.providerId);
+                                                                        const service = services.find(s => s.id === line.serviceId);
+                                                                        const isSelected = selectedLineIdsForZeroing.includes(line.id);
+                                                                        return (
+                                                                            <button
+                                                                                key={line.id}
+                                                                                type="button"
+                                                                                onClick={() => {
+                                                                                    if (isSelected) {
+                                                                                        setSelectedLineIdsForZeroing(selectedLineIdsForZeroing.filter(id => id !== line.id));
+                                                                                    } else {
+                                                                                        setSelectedLineIdsForZeroing([...selectedLineIdsForZeroing, line.id]);
+                                                                                    }
+                                                                                }}
+                                                                                className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-2 ${
+                                                                                    isSelected
+                                                                                        ? 'bg-amber-100 border-amber-500 text-amber-700 dark:bg-amber-900/40 dark:border-amber-500 dark:text-amber-300'
+                                                                                        : 'bg-white border-slate-200 text-slate-400 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-500'
+                                                                                }`}
+                                                                            >
+                                                                                <div className={`w-3 h-3 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-amber-500 border-amber-500' : 'border-slate-300'}`}>
+                                                                                    {isSelected && <Check size={8} className="text-white" />}
+                                                                                </div>
+                                                                                {provider?.name || 'Profissional'} ({service?.name || 'Serviço'})
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
                                                             <textarea
                                                                 className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
                                                                 placeholder="Descreva o motivo para zerar esta comanda..."
@@ -3344,7 +3414,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setIsZeroing(true)}
+                                                                onClick={() => {
+                                                                    setSelectedLineIdsForZeroing(lines.map(l => l.id));
+                                                                    setIsZeroing(true);
+                                                                }}
                                                                 className="py-4 px-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                                                                 title="Zerar Comanda (Justificativa)"
                                                             >
