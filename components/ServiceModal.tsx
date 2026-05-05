@@ -138,6 +138,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
     const [whatsappResponseNeeded, setWhatsappResponseNeeded] = useState(appointment?.whatsappResponseNeeded || false);
+    const [observation, setObservation] = useState(appointment?.observation || '');
     const [includeDebt, setIncludeDebt] = useState(false);
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
         show: false,
@@ -329,6 +330,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setAppointmentTime(apptToUse.time);
         setAppointmentDate(apptToUse.date);
         setWhatsappResponseNeeded(apptToUse.whatsappResponseNeeded || false);
+        setObservation(apptToUse.observation || '');
         setCouponCode(apptToUse.appliedCoupon || '');
         setAppliedCampaign(campaigns.find(c => c.couponCode === apptToUse.appliedCoupon) || null);
         setIsCancelling(false);
@@ -948,7 +950,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             end_time: updatedLines[0].endTime,
             tip_amount: updatedLines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             quantity: updatedLines[0].quantity || 1,
-            start_time_actual: updatedLines[0].startTimeActual
+            start_time_actual: updatedLines[0].startTimeActual,
+            observation: observation
         };
 
         try {
@@ -1115,7 +1118,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             end_time: lines[0].endTime,
             tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             quantity: lines[0].quantity || 1,
-            start_time_actual: lines[0].startTimeActual
+            start_time_actual: lines[0].startTimeActual,
+            observation: observation
         };
 
         try {
@@ -1226,7 +1230,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             date: dischargeDate,
                             type: 'VISIT' as 'VISIT',
                             description: `Serviço: ${s?.name} ${appliedCampaign ? `(Cupom: ${appliedCampaign.couponCode})` : ''}`,
-                            details: `Valor: R$ ${price.toFixed(2)} | Pagamento: ${paymentStr}`,
+                            details: `Valor: R$ ${price.toFixed(2)} | Pagamento: ${paymentStr}${observation ? ` | Obs: ${observation}` : ''}`,
                             rating: line.rating,
                             feedback: line.feedback,
                             providerId: line.providerId,
@@ -1496,7 +1500,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 recurrence_id: recId,
                 quantity: linesToUseForSave[0].quantity || 1,
                 start_time_actual: linesToUseForSave[0].startTimeActual,
-                whatsapp_response_needed: whatsappResponseNeeded
+                whatsapp_response_needed: whatsappResponseNeeded,
+                observation: observation
             };
 
             // 0. Identify secondary appointments to "cancel/merge"
@@ -1705,7 +1710,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 applied_coupon: appliedCampaign?.couponCode,
                 discount_amount: couponDiscountAmount,
                 payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }],
-                tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0)
+                tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
+                observation: observation
             };
 
             // 0. Identify secondary appointments to "cancel/merge"
@@ -1787,7 +1793,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         date: dischargeDate,
                         type: 'VISIT',
                         description: `Serviço (Fiado): ${services.find(s => s.id === line.serviceId)?.name}`,
-                        details: `Dívida Criada: R$ ${totalValue.toFixed(2)}`,
+                        details: `Dívida Criada: R$ ${totalValue.toFixed(2)}${observation ? ` | Obs: ${observation}` : ''}`,
                         rating: line.rating,
                         feedback: line.feedback,
                         providerId: line.providerId
@@ -2078,7 +2084,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
                 is_remake: true,
-                observation: (appointment.observation ? appointment.observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`
+                observation: (observation ? observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`
             };
 
             // Identify secondary appointments to "cancel/merge"
@@ -3855,6 +3861,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     )}
                                 </div>
 
+                                {/* Observation Field */}
+                                <div className="mt-4">
+                                    <label className="block text-[8px] font-black text-slate-400 uppercase mb-2 tracking-widest">Observações do Agendamento</label>
+                                    <textarea
+                                        value={observation}
+                                        onChange={(e) => setObservation(e.target.value)}
+                                        placeholder="Adicione observações importantes sobre este atendimento..."
+                                        rows={2}
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 placeholder-slate-300 resize-none transition-all"
+                                    />
+                                </div>
+
                                 {/* Coupon / Campaign Input */}
                                 <div className="mt-3">
                                     {appliedCampaign ? (
@@ -4496,7 +4514,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         } else if (a.status === 'Cancelado') {
                                             details = `STATUS: CANCELADO${a.observation ? ` | JUSTIFICATIVA: ${a.observation}` : ''}`;
                                         } else {
-                                            details = `STATUS: ${a.status.toUpperCase()} | HORÁRIO: ${a.time}`;
+                                            details = `STATUS: ${a.status.toUpperCase()} | HORÁRIO: ${a.time}${a.observation ? ` | Obs: ${a.observation}` : ''}`;
                                         }
 
                                         return {
