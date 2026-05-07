@@ -39,6 +39,8 @@ interface BankReconciliationProps {
     paymentSettings: PaymentSetting[];
     financialConfigs: FinancialConfig[];
     employees: any[];
+    startDate?: string;
+    endDate?: string;
     onClose: () => void;
 }
 
@@ -217,7 +219,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     customers, setCustomers, categories, setExpenseCategories, suppliers, setSuppliers,
     providers,
     employees,
-    paymentSettings, financialConfigs, onClose
+    paymentSettings, financialConfigs, onClose,
+    startDate, endDate
 }) => {
     const [rawText, setRawText] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
@@ -233,6 +236,15 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
     const [searchTerm, setSearchTerm] = useState('');
     const [targetDate, setTargetDate] = useState<string | null>(null);
+
+    // Sync targetDate with startDate prop whenever startDate changes
+    useEffect(() => {
+        if (startDate) {
+            // startDate is usually 'YYYY-MM-DD'
+            setTargetDate(startDate.substring(0, 7) + '-01');
+            console.log('📅 [RECON] targetDate synchronized with startDate:', startDate.substring(0, 7) + '-01');
+        }
+    }, [startDate]);
     const [transactionTypeFilter, setTransactionTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [learningMap, setLearningMap] = useState<Record<string, string>>({});
     const [linkingSourceIds, setLinkingSourceIds] = useState<string[]>([]);
@@ -581,36 +593,47 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     const formatDateDisplay = (dateStr: string | null) => {
         if (!dateStr) return 'FILTRAR POR DATA';
         const d = new Date(dateStr + 'T12:00:00');
-        const day = d.getDate();
         const month = d.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
         const year = d.getFullYear();
-        return `${day} DE ${month} DE ${year}`;
+        return `${month} DE ${year}`;
     };
 
     const parseBankText = async (text: string) => {
         setIsProcessing(true);
         try {
-            const lines = text.split('\n');
+            // NOVO MOTOR DE PROCESSAMENTO: Robusto para multi-linhas e colagens complexas
+            const datePattern = /(\d{2}\/\d{2}\/\d{4})/g;
+            const allMatches = Array.from(text.matchAll(datePattern));
             const parsedTransactions: Omit<ReconciledRow, 'id' | 'status'>[] = [];
             const counts: Record<string, number> = {};
+            const currencyRegex = /(?:[R$\+\s]*[-–—]?\s?\d{1,3}(?:\.\d{3})*,\d{2})/g;
 
-            // Sicredi PDF-to-text pattern matcher
-            // Matches: 02/01/2026 COMPRAS NACIONAIS TOULOUSE SAO PAULO BR VE0621684 -49,68 101.130,30
-            // Improved regex to be more flexible (at least for balance)
-            const regex = /^(\d{2}\/\d{2}\/\d{4})\s+(.*?)\s+(-?\d{1,3}(?:\.\d{3})*,\d{2})(?:\s+(-?\d{1,3}(?:\.\d{3})*,\d{2}))?/;
+            console.log(`🔍 [RECON] Iniciando processamento de ${allMatches.length} possíveis datas encontradas.`);
 
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                const match = line.match(regex);
-                if (match) {
-                    const [_, dateStr, descRaw, valueStr] = match;
+            for (let i = 0; i < allMatches.length; i++) {
+                const start = allMatches[i].index!;
+                const end = (i + 1 < allMatches.length) ? allMatches[i + 1].index : text.length;
+                const block = text.substring(start, end).replace(/\n/g, ' ').trim();
+                
+                const dateStr = allMatches[i][0];
+                const rest = block.substring(dateStr.length).trim();
+                const currencyMatches = Array.from(rest.matchAll(currencyRegex));
+
+                if (currencyMatches.length === 0) {
+                    console.warn(`⚠️ [RECON] Data ${dateStr} encontrada mas nenhum valor detectado no bloco: "${block.substring(0, 50)}..."`);
+                    continue;
+                }
+
+                // O valor da transação é o primeiro bloco de moeda encontrado após a data
+                const valueStr = currencyMatches[0][0];
+                const descRaw = rest.substring(0, currencyMatches[0].index).trim();
 
                     // Convert dates like 02/01/2026 -> 2026-01-02
                     const [day, month, year] = dateStr.split('/');
                     const isoDate = `${year}-${month}-${day}`;
 
-                    // Parse Brazilian currency format
-                    const cleanValStr = valueStr.replace(/\./g, '').replace(',', '.');
+                    // Parse Brazilian currency format, normalizing dashes and removing signs/spaces
+                    const cleanValStr = valueStr.replace(/[R$+\s]/g, '').replace(/[–—]/g, '-').replace(/\./g, '').replace(',', '.');
                     const amount = parseFloat(cleanValStr);
 
                     if (isNaN(amount) || amount === 0) continue;
@@ -644,10 +667,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         amount: Math.abs(amount),
                         type: txType,
                         fingerprint: fingerprint,
-                        originalLines: [line]
+                        originalLines: [block]
                     });
                 }
-            }
 
             // Consultar DB para ver quais fingerprints já existem
             const fingerprints = parsedTransactions.map(t => t.fingerprint).filter(Boolean) as string[];
@@ -661,7 +683,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     const { data, error } = await supabase
                         .from('bank_transactions')
                         .select('fingerprint')
-                        .in('fingerprint', chunk);
+                        .in('fingerprint', chunk)
+                        .limit(5000);
 
                     if (!error && data) {
                         existingFingerprints.push(...data.map(d => d.fingerprint));
@@ -1400,10 +1423,15 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
     const handleResetMonth = async () => {
         if (!targetDate) {
-            alert("Por favor, selecione um dia no mês que deseja limpar usando o filtro de data.");
+            alert("⚠️ Por favor, selecione um mês para limpar. Use o filtro de data no topo da tela.");
             return;
         }
+        
         const [year, month] = targetDate.split('-');
+        if (!year || !month) {
+            alert("⚠️ Formato de data inválido. Selecione o mês novamente.");
+            return;
+        }
         const dateObj = new Date(parseInt(year), parseInt(month) - 1, 1);
         const monthName = dateObj.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
 
@@ -1449,7 +1477,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             if (searchTerm && !r.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
 
             if (targetDate) {
-                if (r.date !== targetDate) return false;
+                if (r.date.substring(0, 7) !== targetDate.substring(0, 7)) return false;
             }
 
             if (transactionTypeFilter !== 'ALL') {
@@ -1716,11 +1744,16 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     <button
                                         onClick={handleResetMonth}
                                         disabled={isProcessing || isCleaning || !targetDate}
-                                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-sm border border-rose-200 transition-all flex items-center gap-2"
-                                        title="Limpar toda a conciliação deste mês para refazer"
+                                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-sm border border-rose-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group relative"
+                                        title={!targetDate ? "Selecione um mês para habilitar a limpeza" : "Limpar toda a conciliação deste mês para refazer"}
                                     >
                                         <Trash2 className="w-4 h-4" />
                                         Limpar Mês
+                                        {!targetDate && (
+                                            <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                                Selecione um mês primeiro
+                                            </span>
+                                        )}
                                     </button>
                                     <button
                                         onClick={handleApproveSelected}

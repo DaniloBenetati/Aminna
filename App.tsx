@@ -584,7 +584,7 @@ const App: React.FC = () => {
           anticipationRate: f.anticipation_rate,
           anticipationEnabled: f.anticipation_enabled,
           validFrom: f.valid_from,
-          initialBalance: f.initial_balance || 0,
+          initialBalance: Number(f.initial_balance) || 0,
           cashFlowReserveRate: f.cash_flow_reserve_rate || 0,
           createdAt: f.created_at,
           updatedAt: f.updated_at

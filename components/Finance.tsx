@@ -769,17 +769,35 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             bufferStart.setDate(bufferStart.getDate() - 45);
             const bufferStartStr = toLocalDateStr(bufferStart);
 
-            // 1. Fetch historical sum for Opening Balance (everything strictly before startDate)
+            // 1. Find the best anchor config for this startDate
+            // We want the most recent config that is <= startDate
+            const bestConfig = [...financialConfigs]
+                .sort((a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime())
+                .find(c => c.validFrom <= startDate);
+
+            const anchorBalance = Number(bestConfig?.initialBalance || 0);
+            const anchorDate = bestConfig?.validFrom || '1970-01-01';
+
+            console.log('📊 [AUDIT] Opening Balance Calculation:', {
+                startDate,
+                anchorDate,
+                anchorBalance,
+                configFound: !!bestConfig
+            });
+
+            // 2. Fetch historical sum since the anchor date (everything from anchorDate to before startDate)
             const { data: historyData, error: historyError } = await supabase
                 .from('bank_transactions')
                 .select('amount, type')
-                .lt('date', startDate);
+                .gte('date', anchorDate)
+                .lt('date', startDate)
+                .limit(10000);
 
             if (!historyError && historyData) {
-                const oldestConfig = financialConfigs[financialConfigs.length - 1];
-                const initialBalance = oldestConfig?.initialBalance || 0;
                 const historicalSum = historyData.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
-                setOpeningBalance(initialBalance + historicalSum);
+                const finalOpening = Number(anchorBalance) + historicalSum;
+                console.log('📊 [AUDIT] Historical Sum since anchor:', { historicalSum, finalOpening });
+                setOpeningBalance(finalOpening);
             }
 
             // 2. Fetch with buffer to ensure context for splits is not lost if the parent transaction is older
@@ -788,7 +806,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 .select('*')
                 .gte('date', bufferStartStr)
                 .lte('date', endDate)
-                .order('date', { ascending: true });
+                .order('date', { ascending: true })
+                .limit(5000);
 
             if (error) throw error;
             if (data) {
@@ -2265,7 +2284,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const fetchExpenses = async () => {
-        const { data } = await supabase.from('expenses').select('*');
+        const { data } = await supabase.from('expenses').select('*').limit(10000);
         if (data) {
             setExpenses(data.map((e: any) => ({
                 id: e.id,
@@ -6315,6 +6334,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         employees={employees}
                         paymentSettings={paymentSettings}
                         financialConfigs={financialConfigs}
+                        startDate={startDate}
+                        endDate={endDate}
                         onClose={() => setIsReconciliationOpen(false)}
                     />
                 )
