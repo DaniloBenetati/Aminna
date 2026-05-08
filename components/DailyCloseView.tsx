@@ -47,7 +47,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         (t.type === 'RECEITA' || (t.type === 'DESPESA' && t.category === 'Ajuste de Valor'))
     );
 
-    const { totalServices, totalProducts, totalAjustes, totalTips, totalRevenue, servicesWithTips } = calculateDailySummary(dailyRelTrans);
+    const { totalServices, totalProducts, totalAjustes, totalTips, totalDebtsColl, totalDebtsGen, totalRevenue, servicesWithTips } = calculateDailySummary(dailyRelTrans);
     const discountsData = useMemo(() => {
         const dailyApps = appointments.filter(app => app.date === dateStr && app.status === 'Concluído');
         let total = 0;
@@ -95,6 +95,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     // Grouping by Professional -> Customer -> Transactions
     const groupedByProviderAndCustomer = dailyRelTrans.reduce((acc: Record<string, any>, t: FinancialTransaction) => {
         const pName = t.providerName || 'Não atribuído';
+        if (pName === 'Saldo Cliente') return acc; // Exclude debt movements from professional list
+        
         const cName = t.customerName || 'Cliente Avulso';
         const cid = (t as any).customerId;
 
@@ -159,7 +161,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         const breakdown: Record<string, { count: number, total: number, values: number[], brands?: Record<string, { count: number, total: number, values: number[] }> }> = {};
 
         dailyRelTrans.forEach(t => {
-            const method = t.paymentMethod || 'Outros';
+            const method = (t.paymentMethod || 'Outros').trim().toUpperCase();
             if (!breakdown[method]) {
                 breakdown[method] = { count: 0, total: 0, values: [], brands: {} };
             }
@@ -270,6 +272,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
                 <div class="row"><span>SERVIÇOS:</span> <span>R$ ${servicesWithTips.toFixed(2)}</span></div>
                 <div class="row"><span>PRODUTOS:</span> <span>R$ ${totalProducts.toFixed(2)}</span></div>
+                ${totalDebtsColl > 0 ? `<div class="row" style="color: #10b981; font-size: 10px;"><span>RECEBIMENTO DÍVIDAS:</span> <span>+ R$ ${totalDebtsColl.toFixed(2)}</span></div>` : ''}
+                ${Math.abs(totalDebtsGen) > 0 ? `<div class="row" style="color: #ef4444; font-size: 10px;"><span>DÍVIDAS GERADAS (FIADO):</span> <span>- R$ ${Math.abs(totalDebtsGen).toFixed(2)}</span></div>` : ''}
                 <div class="row total-row"><span>FATURAMENTO BRUTO:</span> <span>R$ ${totalRevenue.toFixed(2)}</span></div>
 
                 <div class="divider"></div>
@@ -314,6 +318,22 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div class="row"><span>CORTESIAS / VIP:</span> <span>${vipMetrics.count}x (R$ ${vipMetrics.value.toFixed(2)})</span></div>
 
                 <div class="divider"></div>
+
+                ${(totalDebtsColl > 0 || Math.abs(totalDebtsGen) > 0) ? `
+                    <div class="section-title">DETALHAMENTO DE DÍVIDAS:</div>
+                    <div style="font-size: 10px; margin-bottom: 10px;">
+                        ${dailyRelTrans.filter(t => t.category === 'Recebimento de Dívida' || t.category === 'Dívida Gerada').map(t => `
+                            <div class="row" style="margin-bottom: 2px;">
+                                <span style="flex: 2;">${t.customerName?.toUpperCase()} (${t.category.toUpperCase()})</span>
+                                <span style="flex: 1; text-align: center; color: #999;">${t.paymentMethod}</span>
+                                <span style="flex: 1; text-align: right; font-weight: bold; color: ${t.amount < 0 ? '#ef4444' : '#10b981'};">
+                                    ${t.amount < 0 ? '-' : '+'} R$ ${Math.abs(t.amount).toFixed(2)}
+                                </span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="divider"></div>
+                ` : ''}
 
                 <div class="section-title">EXTRATO POR PROFISSIONAL:</div>
                 <div style="font-size: 10px;">
@@ -396,6 +416,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
         message += `*RESUMO GERAL:*\n`;
         message += `\u2728 Serviços: R$ ${(totalServices).toFixed(2)}\n`;
         message += `\uD83D\uDECD️ Produtos: R$ ${totalProducts.toFixed(2)}\n`;
+        if (totalDebtsColl > 0) message += `\uD83D\uDCC8 Rec. Dívidas: R$ ${totalDebtsColl.toFixed(2)}\n`;
+        if (Math.abs(totalDebtsGen) > 0) message += `\uD83D\uDCC9 Dívidas Geradas: -R$ ${Math.abs(totalDebtsGen).toFixed(2)}\n`;
         message += `\uD83C\uDFAB Descontos: R$ ${discountsData.total.toFixed(2)}\n`;
         message += `\uD83D\uDCA0 *FATURAMENTO BRUTO: R$ ${totalRevenue.toFixed(2)}*\n\n`;
 
@@ -495,7 +517,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 </div>
                 <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
                     <div className="p-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><Info size={14} /></div>
-                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Ajustes</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalAjustes.toFixed(2)}</p></div>
+                    <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Dívidas / Ajustes</p><p className="text-xs lg:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {(totalAjustes + totalDebtsColl + totalDebtsGen).toFixed(2)}</p></div>
                 </div>
             </div>
 
@@ -505,7 +527,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
                     <div className="p-2 overflow-y-auto max-h-[750px]">
-                        {Object.entries(groupedByProviderAndCustomer).sort((a, b) => b[1].amount - a[1].amount).map(([providerName, pData]) => {
+                        {Object.entries(groupedByProviderAndCustomer).filter(([pName]) => pName !== 'Saldo Cliente').sort((a, b) => b[1].amount - a[1].amount).map(([providerName, pData]) => {
                             const isProvExpanded = expandedProvider === providerName;
                             return (
                                 <div key={providerName} className="border-b border-slate-5 dark:border-zinc-800 last:border-none">
@@ -579,6 +601,33 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             );
                         })}
                     </div>
+                    
+                    {/* Dedicated Debt Section */}
+                    {(totalDebtsColl > 0 || Math.abs(totalDebtsGen) > 0) && (
+                        <>
+                            <div className="p-4 border-t border-slate-100 dark:border-zinc-800 bg-amber-50/30 dark:bg-amber-900/10">
+                                <h4 className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
+                                    <Info size={14} /> Detalhamento de Dívidas
+                                </h4>
+                            </div>
+                            <div className="p-2 space-y-2">
+                                {dailyRelTrans.filter(t => t.category === 'Recebimento de Dívida' || t.category === 'Dívida Gerada').map((t, idx) => (
+                                    <div key={t.id || idx} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 p-2.5 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{t.customerName}</p>
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">{t.category}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-xs font-black ${t.amount < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                {t.amount < 0 ? '-' : '+'} R$ {Math.abs(t.amount).toFixed(2)}
+                                            </p>
+                                            <p className="text-[7px] text-slate-400 font-black uppercase">{t.paymentMethod}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {showControls && (
@@ -950,7 +999,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
                         <div className="flex-1 overflow-y-auto p-4 space-y-3">
                             {dailyRelTrans
-                                .filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA')
+                                .filter(t => (t.paymentMethod || 'Outros').trim().toUpperCase() === selectedMethodDetails && t.type === 'RECEITA')
                                 .sort((a, b) => b.amount - a.amount)
                                 .map((t, idx) => (
                                     <div key={t.id || idx} className="p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all">
@@ -973,7 +1022,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     </div>
                                 ))}
                             
-                            {dailyRelTrans.filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA').length === 0 && (
+                            {dailyRelTrans.filter(t => (t.paymentMethod || 'Outros').trim().toUpperCase() === selectedMethodDetails && t.type === 'RECEITA').length === 0 && (
                                 <div className="text-center py-12 opacity-50">
                                     <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
                                         <History size={20} />
@@ -989,7 +1038,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Acumulado</span>
                                 <span className="text-lg font-black text-slate-950 dark:text-white">
                                     R$ {dailyRelTrans
-                                        .filter(t => t.paymentMethod === selectedMethodDetails && t.type === 'RECEITA')
+                                        .filter(t => (t.paymentMethod || 'Outros').trim().toUpperCase() === selectedMethodDetails && t.type === 'RECEITA')
                                         .reduce((acc, curr) => acc + curr.amount, 0)
                                         .toFixed(2)}
                                 </span>

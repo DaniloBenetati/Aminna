@@ -221,8 +221,14 @@ export const generateFinancialTransactions = (
 
         // --- SPLIT PAYMENT HANDLING ---
         const appPayments = app.payments || rawApp.payments || [];
-        const totalValue = actualTotalRevenue + tipAmount; // Total money flowing in
-        const confirmedTotalPaid = appPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+        const discountAmount = Number(app.discountAmount ?? rawApp.discount_amount ?? 0);
+        const totalValue = actualTotalRevenue + tipAmount - discountAmount; // Expected money after discount
+        
+        let confirmedTotalPaid = appPayments.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0);
+        // Fallback for appointments without detailed payments array (legacy or basic)
+        if (appPayments.length === 0) {
+            confirmedTotalPaid = Number(app.pricePaid ?? rawApp.price_paid ?? 0);
+        }
         
         // Determine the distribution weights
         // If payments array exists and has valid amounts, use them. Otherwise fallback to the single method.
@@ -232,6 +238,33 @@ export const generateFinancialTransactions = (
                 method: p.method || 'Outros',
                 proportion: Number(p.amount || 0) / confirmedTotalPaid
             }));
+        }
+
+        // --- DEBT / EXCESS HANDLING ---
+        // 1. Debt Collection (Recebimento de Dívida) - Occurs when paid > service total
+        if (confirmedTotalPaid > totalValue && app.status === 'Concluído') {
+            const debtCollectionAmount = confirmedTotalPaid - totalValue;
+            paymentBreakdown.forEach((pb, pIdx) => {
+                const pbSuffix = paymentBreakdown.length > 1 ? `-debt-${pIdx}` : '';
+                allTrans.push({
+                    id: `app-debt-coll-${app.id}${pbSuffix}`,
+                    date: settlementDate,
+                    type: 'RECEITA',
+                    category: 'Recebimento de Dívida',
+                    description: `Recebimento de Dívida - ${customer?.name}${paymentBreakdown.length > 1 ? ` (${pb.method})` : ''}`,
+                    amount: debtCollectionAmount * pb.proportion,
+                    status: status,
+                    paymentMethod: pb.method,
+                    origin: 'Outro',
+                    customerOrProviderName: customer?.name || 'Cliente',
+                    providerName: 'Saldo Cliente',
+                    customerName: customer?.name || 'Desconhecido',
+                    serviceName: 'Recebimento de Dívida',
+                    appointmentDate: app.date,
+                    isReconciled: app.isReconciled,
+                    customerId: app.customerId
+                });
+            });
         }
 
         // Filter: If actualTotalRevenue is 0 (due to status or remake), we skip the revenue lines but might still have expenses
@@ -494,14 +527,18 @@ export const calculateDailySummary = (dailyRelTrans: FinancialTransaction[]) => 
     const totalProducts = dailyRelTrans.filter(t => t.origin === 'Produto').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalAjustes = dailyRelTrans.filter(t => t.category === 'Ajuste de Valor').reduce((acc, t) => acc + (t.type === 'RECEITA' ? t.amount : -t.amount), 0);
     const totalTips = dailyRelTrans.filter(t => t.category === 'Caixinha').reduce((acc, t) => acc + t.amount, 0);
+    const totalDebtsColl = dailyRelTrans.filter(t => t.category === 'Recebimento de Dívida').reduce((acc, t) => acc + t.amount, 0);
+    const totalDebtsGen = dailyRelTrans.filter(t => t.category === 'Dívida Gerada').reduce((acc, t) => acc + t.amount, 0);
     const totalAnticipationFees = 0;
-    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes;
+    const totalRevenue = totalServices + totalProducts + totalTips + totalAjustes + totalDebtsColl + totalDebtsGen;
 
     return {
         totalServices,
         totalProducts,
         totalAjustes,
         totalTips,
+        totalDebtsColl,
+        totalDebtsGen,
         totalAnticipationFees,
         totalRevenue,
         servicesWithTips: totalServices + totalTips

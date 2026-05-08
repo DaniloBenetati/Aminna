@@ -573,6 +573,7 @@ export interface Employee {
   active: boolean;
   avatar?: string;
   bankInfo?: string;
+  resignationDate?: string;
 }
 
 export interface PayrollRecord {

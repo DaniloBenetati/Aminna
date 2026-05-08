@@ -681,20 +681,23 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             // Consultar DB para ver quais fingerprints já existem
             const fingerprints = parsedTransactions.map(t => t.fingerprint).filter(Boolean) as string[];
             let existingFingerprints: string[] = [];
+            const existingTransactionsMap = new Map<string, any>();
 
             if (fingerprints.length > 0) {
-                // Chunk queries to avoid URI too long errors from Supabase/PostgREST
                 const chunkSize = 100;
                 for (let i = 0; i < fingerprints.length; i += chunkSize) {
                     const chunk = fingerprints.slice(i, i + chunkSize);
                     const { data, error } = await supabase
                         .from('bank_transactions')
-                        .select('fingerprint')
+                        .select('fingerprint, system_matches, system_category, system_entity_name, system_payment_method')
                         .in('fingerprint', chunk)
                         .limit(5000);
 
                     if (!error && data) {
-                        existingFingerprints.push(...data.map(d => d.fingerprint));
+                        data.forEach(d => {
+                            existingTransactionsMap.set(d.fingerprint, d);
+                            existingFingerprints.push(d.fingerprint);
+                        });
                     }
                 }
             }
@@ -725,7 +728,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             }
 
             // Etapa 2 e 3: Comparação e Classificação apenas para os novos
-            const processed = runReconciliationEngine(newTransactions);
+            const processed = runReconciliationEngine(newTransactions, existingTransactionsMap);
             setReconciledRows(processed);
 
         } catch (err) {
@@ -741,7 +744,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     };
 
-    const runReconciliationEngine = (rawRows: Omit<ReconciledRow, 'id' | 'status'>[]): ReconciledRow[] => {
+    const runReconciliationEngine = (rawRows: Omit<ReconciledRow, 'id' | 'status'>[], existingDbMap?: Map<string, any>): ReconciledRow[] => {
         const results: ReconciledRow[] = [];
         const systemExpenses = [...expenses]; // Somente válidas
         const systemSales = [...sales];
@@ -758,6 +761,34 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         
         const intermediateRows = rawRows.map((bankTx, index) => {
             const rowId = `bank_${index}_${bankTx.date}_${bankTx.amount}_${bankTx.description.substring(0, 10)}`;
+            
+            // Verificação de persistência: Se já existe no banco com matches, restaura
+            if (existingDbMap && bankTx.fingerprint && existingDbMap.has(bankTx.fingerprint)) {
+                const dbData = existingDbMap.get(bankTx.fingerprint);
+                if (dbData.system_matches && dbData.system_matches.length > 0) {
+                    const matches = dbData.system_matches;
+                    // Tenta resolver o ID do favorecido pelo nome salvo no banco
+                    let resolvedProviderId = undefined;
+                    if (dbData.system_entity_name) {
+                        const prov = providers.find(p => p.name === dbData.system_entity_name);
+                        const sup = suppliers.find(s => s.name === dbData.system_entity_name);
+                        const emp = employees.find(e => e.name === dbData.system_entity_name);
+                        resolvedProviderId = prov ? `prov_${prov.id}` : (emp ? `emp_${emp.id}` : sup?.id);
+                    }
+
+                    return {
+                        ...bankTx,
+                        id: rowId,
+                        status: 'CONCILIADOS' as const,
+                        matchId: matches[0].id,
+                        matchType: matches[0].type,
+                        linkedMatches: matches,
+                        suggestedCategory: dbData.system_category,
+                        suggestedProvider: resolvedProviderId
+                    };
+                }
+            }
+
             const bankDate = parseDateSafe(bankTx.date);
             const dStart = new Date(bankDate); dStart.setDate(dStart.getDate() - 2);
             const dEnd = new Date(bankDate); dEnd.setDate(dEnd.getDate() + 2);
@@ -1359,6 +1390,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
             if (updatesToExecute.length > 0) {
                 const updatePromises = updatesToExecute.map(u => {
+                    if (u.id.startsWith('comm-')) return Promise.resolve();
                     if (u.type === 'SALE') {
                         return supabase.from('sales').update({ is_reconciled: true, date: u.date }).eq('id', u.id);
                     } else if (u.type === 'APPOINTMENT') {

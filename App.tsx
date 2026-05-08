@@ -325,7 +325,8 @@ const App: React.FC = () => {
           admissionDate: e.admission_date,
           active: e.active,
           avatar: e.avatar,
-          bankInfo: e.bank_info
+          bankInfo: e.bank_info,
+          resignationDate: e.resignation_date
         })));
       }
       if (payrollDataRaw) {

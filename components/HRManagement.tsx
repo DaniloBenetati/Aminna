@@ -163,7 +163,16 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         return employees.filter(e => {
             const isActive = e.active;
             const isAdmitted = !e.admissionDate || e.admissionDate <= lastDayOfMonth;
-            return isActive && isAdmitted;
+            
+            // Verificação de Rescisão: Não mostrar se a rescisão foi antes do mês de referência
+            let isResigned = false;
+            if (e.resignationDate) {
+                const resDate = new Date(e.resignationDate + "T23:59:59");
+                const firstDayOfTargetMonth = new Date(targetYear, targetMonth - 1, 1);
+                if (resDate < firstDayOfTargetMonth) isResigned = true;
+            }
+
+            return isActive && isAdmitted && !isResigned;
         }).map(emp => {
             const existing = payroll.find(p => p.employeeId === emp.id && p.month === targetMonth && p.year === targetYear);
             
@@ -228,7 +237,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
         active: true,
         phone: '',
         email: '',
-        pixKey: ''
+        pixKey: '',
+        resignationDate: ''
     });
 
     const filteredEmployees = employees.filter(e => 
@@ -274,6 +284,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         base_salary: employeeForm.baseSalary,
                         admission_date: employeeForm.admissionDate,
                         active: employeeForm.active,
+                        resignation_date: employeeForm.resignationDate || null,
                         phone: employeeForm.phone,
                         email: employeeForm.email,
                         pix_key: employeeForm.pixKey
@@ -294,6 +305,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         base_salary: employeeForm.baseSalary,
                         admission_date: employeeForm.admissionDate,
                         active: employeeForm.active,
+                        resignation_date: employeeForm.resignationDate || null,
                         phone: employeeForm.phone,
                         email: employeeForm.email,
                         pix_key: employeeForm.pixKey
@@ -309,6 +321,7 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                         baseSalary: data[0].base_salary,
                         admissionDate: data[0].admission_date,
                         active: data[0].active,
+                        resignationDate: data[0].resignation_date,
                         phone: data[0].phone,
                         email: data[0].email,
                         pixKey: data[0].pix_key
@@ -340,7 +353,8 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             active: true,
             phone: '',
             email: '',
-            pixKey: ''
+            pixKey: '',
+            resignationDate: ''
         });
         setIsEmployeeModalOpen(true);
     };
@@ -557,7 +571,17 @@ export const HRManagement: React.FC<HRManagementProps> = ({
             if (!e.active) return false;
             if (!e.admissionDate) return true; // Fallback if no date
             const admDate = new Date(e.admissionDate + "T12:00:00");
-            return admDate <= lastDayOfMonth;
+            const isAdmitted = admDate <= lastDayOfMonth;
+
+            // Verificação de Rescisão: Não processar se a rescisão foi antes do mês de referência
+            let isResigned = false;
+            if (e.resignationDate) {
+                const resDate = new Date(e.resignationDate + "T23:59:59");
+                const firstDayOfTargetMonth = new Date(targetYear, targetMonth - 1, 1);
+                if (resDate < firstDayOfTargetMonth) isResigned = true;
+            }
+
+            return isAdmitted && !isResigned;
         });
         
         try {
@@ -1914,6 +1938,27 @@ export const HRManagement: React.FC<HRManagementProps> = ({
                                         value={employeeForm.pixKey}
                                         onChange={e => setEmployeeForm({...employeeForm, pixKey: e.target.value})}
                                     />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Data de Rescisão (Opcional)</label>
+                                    <input 
+                                        type="date" 
+                                        className="w-full bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border-none outline-none font-bold text-slate-950 dark:text-white focus:ring-2 focus:ring-zinc-950 dark:focus:ring-white transition-all"
+                                        value={employeeForm.resignationDate || ''}
+                                        onChange={e => setEmployeeForm({...employeeForm, resignationDate: e.target.value})}
+                                    />
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl">
+                                        <input 
+                                            type="checkbox"
+                                            id="emp-active"
+                                            className="w-5 h-5 rounded border-none bg-white dark:bg-zinc-700"
+                                            checked={employeeForm.active}
+                                            onChange={e => setEmployeeForm({...employeeForm, active: e.target.checked})}
+                                        />
+                                        <label htmlFor="emp-active" className="text-xs font-black text-slate-950 dark:text-white uppercase tracking-widest">Colaborador Ativo</label>
+                                    </div>
                                 </div>
                             </div>
 

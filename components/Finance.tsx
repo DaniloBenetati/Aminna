@@ -1074,6 +1074,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // REGIME DE CAIXA: For EXPENSES, we update the date to match the bank transaction date
             const linkPromises = finalMatches.map(m => {
                 if (m.type === 'EXPENSE') {
+                    if (m.id.startsWith('comm-')) return Promise.resolve();
                     return supabase.from('expenses').update({ 
                         is_reconciled: true, 
                         status: 'Pago',
@@ -1089,6 +1090,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             // 4. Update status of UNLINKED items
             const unlinkPromises = unlinkedItems.map(m => {
                 if (m.type === 'EXPENSE') {
+                    if (m.id.startsWith('comm-')) return Promise.resolve();
                     return supabase.from('expenses').update({ is_reconciled: false, status: 'Pendente' }).eq('id', m.id);
                 } else if (m.type === 'SALE') {
                     return supabase.from('sales').update({ is_reconciled: false }).eq('id', m.id);
@@ -1469,7 +1471,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     }, [timeView, dateRef]);
 
     const transactions = useMemo(() => {
-        return generateFinancialTransactions(
+        const rawTrans = generateFinancialTransactions(
             appointments,
             sales,
             expenses,
@@ -1478,11 +1480,32 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             providers,
             suppliers,
             employees,
-            commissionSettings || [],
+            commissionSettings,
             paymentSettings,
             financialConfigs
         );
-    }, [appointments, sales, expenses, services, customers, providers, suppliers, employees, commissionSettings, paymentSettings, financialConfigs]);
+
+        // Enrich transactions with reconciliation status from bank transactions
+        const reconciledIds = new Set<string>();
+        bankTransactions.forEach(bt => {
+            if (bt.systemMatches) {
+                bt.systemMatches.forEach(m => reconciledIds.add(m.id));
+            }
+        });
+
+        return rawTrans.map(t => {
+            if (reconciledIds.has(t.id)) {
+                return { ...t, isReconciled: true };
+            }
+            // Also try matching without prefix for flexibility
+            const bareId = t.id.replace(/^([a-z0-9]+-)+/i, '');
+            const matchedByBareId = Array.from(reconciledIds).some(rid => rid.replace(/^([a-z0-9]+-)+/i, '') === bareId);
+            if (matchedByBareId) {
+                return { ...t, isReconciled: true };
+            }
+            return t;
+        });
+    }, [appointments, sales, expenses, services, customers, providers, suppliers, employees, commissionSettings, paymentSettings, financialConfigs, bankTransactions]);
 
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
@@ -1642,9 +1665,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             if (t.date >= startDate && t.date <= endDate && t.systemMatches) {
                 const isSplit = t.systemMatches.length > 1;
                 t.systemMatches.forEach(m => {
+                    const bareMatchId = m.id.replace(/^([a-z0-9]+-)+/i, '');
                     forcedTxIds.add(m.id);
-                    // Robust matching: strip all segments of the prefix to find the underlying ID
-                    const bareMatchId = m.id.replace(/^([a-z0-9]+-)+/, '');
                     forcedTxIds.add(bareMatchId);
                     
                     if (isSplit) {
@@ -3277,6 +3299,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             }`}>
                                                             {t.status}
                                                         </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-center">
+                                                        <div className="flex items-center justify-center">
+                                                            {t.isReconciled && <CircleCheck size={16} className="text-emerald-500" title="Conciliado" />}
+                                                        </div>
                                                     </td>
                                                     <td className={`px-6 py-4 text-right font-black text-sm whitespace-nowrap ${t.type === 'RECEITA' ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
                                                         <div className="flex items-center justify-end gap-2">
