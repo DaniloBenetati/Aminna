@@ -800,11 +800,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 setOpeningBalance(finalOpening);
             }
 
-            // 2. Fetch with buffer to ensure context for splits is not lost if the parent transaction is older
+            // 2. Fetch exactly the selected range to avoid hitting limits
             const { data, error } = await supabase
                 .from('bank_transactions')
                 .select('*')
-                .gte('date', bufferStartStr)
+                .gte('date', startDate)
                 .lte('date', endDate)
                 .order('date', { ascending: true })
                 .limit(5000);
@@ -3302,7 +3302,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             // openingBalance is now fetched directly from the DB in a useEffect and stored in state
 
                             let currentBal = openingBalance;
-                            const expandedRows: { t: BankTransaction; delta: number; balance: number; match?: { id: string, type: string, amount: number }; isSplit?: boolean }[] = [];
+                            const expandedRows: { t: BankTransaction; delta: number; balance: number; match?: { id: string, type: string, amount: number }; isSplit?: boolean; isResidual?: boolean }[] = [];
 
                             bankTransactions
                                 .filter(t => {
@@ -3320,11 +3320,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     });
 
                                     // Expand into multiple rows
+                                    let matchedSum = 0;
                                     uniqueMatches.forEach(m => {
-                                        const delta = t.type === 'RECEITA' ? Math.abs(m.amount) : -Math.abs(m.amount);
+                                        const mAmount = Math.abs(m.amount);
+                                        matchedSum += mAmount;
+                                        const delta = t.type === 'RECEITA' ? mAmount : -mAmount;
                                         currentBal += delta;
                                         expandedRows.push({ t, delta, balance: currentBal, match: m, isSplit: true });
                                     });
+
+                                    // Add residual row if there's a difference between bank and system matches
+                                    // This ensures the running balance always aligns with the bank's truth
+                                    const tAbsAmount = Math.abs(t.amount);
+                                    const residual = tAbsAmount - matchedSum;
+                                    if (Math.abs(residual) > 0.01) {
+                                        const delta = t.type === 'RECEITA' ? residual : -residual;
+                                        currentBal += delta;
+                                        expandedRows.push({ t, delta, balance: currentBal, isSplit: true, isResidual: true });
+                                    }
                                 } else {
                                     // Single row (Not linked)
                                     const delta = t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount);
@@ -3645,8 +3658,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                      <td colSpan={2} className="hidden md:table-cell"></td>
                                                  </tr>
 
-                                                {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance, match, isSplit }) => {
-                                                    let displayDesc = t.description;
+                                                {paginatedRows.length > 0 ? paginatedRows.map(({ t, delta, balance, match, isSplit, isResidual }) => {
+                                                    let displayDesc = isResidual ? 'AJUSTE DE CONCILIAÇÃO (RESIDUAL BANCÁRIO)' : t.description;
                                                     let displayCat = t.systemCategory || '';
                                                     let displayEnt = t.systemEntityName || '';
 
@@ -3703,6 +3716,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                             {isSplit && (
                                                                                 <span className="text-[8px] font-black uppercase bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit">Desmembrado</span>
                                                                             )}
+                                                                            {isResidual && (
+                                                                                <span className="text-[8px] font-black uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md w-fit">Divergência de Valor</span>
+                                                                            )}
                                                                         </div>
                                                                     );
                                                                 })()}
@@ -3710,7 +3726,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-full md:w-[200px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Categoria</span>
                                                                 {isSplit ? (
-                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayCat}</span>
+                                                                    <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{isResidual ? 'Saldo Bancário' : displayCat}</span>
                                                                 ) : (
                                                                     <div className="relative">
                                                                         <select

@@ -655,6 +655,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     description = description.replace(/VE\d{7}.*$/, '').trim(); // Remove Sicredi Document code
                     description = description.replace(/PIX_CRED|PIX_DEB|CAPITA/, '').trim(); // Remove tags
 
+                    // Ignorar linhas de saldo (headers/footers) que podem vir no PDF
+                    const upperDesc = description.toUpperCase();
+                    if (upperDesc.includes('SALDO') || upperDesc.includes('DOCUMENTO') || upperDesc.includes('VALOR (R$)')) {
+                        console.log(`🚫 [RECON] Ignorando linha de cabeçalho/saldo: "${description}"`);
+                        continue;
+                    }
+
                     const txType = amount < 0 ? 'DESPESA' : 'RECEITA';
                     const baseHash = `${isoDate}_${description}_${Math.abs(amount)}_${txType}_${document}`;
                     counts[baseHash] = (counts[baseHash] || 0) + 1;
