@@ -2286,29 +2286,50 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             if (tx.type === 'DESPESA') {
                 const catName = tx.systemCategory || 'Despesas Diversas';
                 const catDef = expenseCategories.find(c => c.name === catName);
-                const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
-                    description: name,
-                    amount: tx.amount,
-                    date: tx.date,
-                    category: catName,
-                    supplier_id: id,
-                    status: 'Pago',
-                    payment_method: 'Transferência',
-                    is_reconciled: true,
-                    dre_class: catDef?.dreClass || 'EXPENSE_ADM'
-                }).select().single();
+                const txDateMs = new Date(tx.date + 'T12:00:00').getTime();
 
-                if (expErr) throw expErr;
+                // === SMART LINK: Check for an existing manual expense before creating a new one ===
+                const existingMatch = expenses.find(e =>
+                    Math.abs(e.amount - tx.amount) < 0.01 &&
+                    Math.abs(new Date(e.date + 'T12:00:00').getTime() - txDateMs) <= 3 * 24 * 60 * 60 * 1000 &&
+                    !e.isReconciled && // only link if not already linked elsewhere
+                    (e.supplierId === id || e.description?.toLowerCase().includes(name.split(' ')[0]?.toLowerCase()))
+                );
 
-                const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
-                setExpenses((prev: Expense[]) => [...prev, {
-                    id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
-                    category: newExp.category, status: newExp.status, isReconciled: true,
-                    supplierId: newExp.supplier_id || undefined,
-                    paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
-                }]);
-                await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', tx.id);
-                setBankTransactions((prev: BankTransaction[]) => prev.map(bt => bt.id === tx.id ? { ...bt, systemMatches: newMatches } : bt));
+                if (existingMatch) {
+                    // Link the existing expense to this bank transaction
+                    await supabase.from('expenses').update({ is_reconciled: true, status: 'Pago' }).eq('id', existingMatch.id);
+                    setExpenses((prev: Expense[]) => prev.map(e => e.id === existingMatch.id ? { ...e, isReconciled: true, status: 'Pago' } : e));
+
+                    const newMatches = [{ id: existingMatch.id, type: 'EXPENSE' as const, amount: existingMatch.amount }];
+                    await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', tx.id);
+                    setBankTransactions((prev: BankTransaction[]) => prev.map(bt => bt.id === tx.id ? { ...bt, systemMatches: newMatches } : bt));
+                } else {
+                    // No existing match found — create a new expense
+                    const { data: newExp, error: expErr } = await supabase.from('expenses').insert({
+                        description: name,
+                        amount: tx.amount,
+                        date: tx.date,
+                        category: catName,
+                        supplier_id: id,
+                        status: 'Pago',
+                        payment_method: 'Transferência',
+                        is_reconciled: true,
+                        dre_class: catDef?.dreClass || 'EXPENSE_ADM'
+                    }).select().single();
+
+                    if (expErr) throw expErr;
+
+                    const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                    setExpenses((prev: Expense[]) => [...prev, {
+                        id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
+                        category: newExp.category, status: newExp.status, isReconciled: true,
+                        supplierId: newExp.supplier_id || undefined,
+                        paymentMethod: newExp.payment_method, dreClass: newExp.dre_class
+                    }]);
+                    await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', tx.id);
+                    setBankTransactions((prev: BankTransaction[]) => prev.map(bt => bt.id === tx.id ? { ...bt, systemMatches: newMatches } : bt));
+                }
             } else {
                 // For Receita, we might just update the transaction identification for now
                 // or create a sale/appointment link if the system supports it.
@@ -4477,10 +4498,33 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <td className="px-6 py-4 text-center">
                                                                 <div className="flex items-center justify-center">
                                                                     {exp.isReconciled ? (() => {
-                                                                    const linkedBankTx = bankTransactions.find(bt =>
+                                                                    // Strategy 1: exact ID match in system_matches
+                                                                    let linkedBankTx = bankTransactions.find(bt =>
                                                                         bt.systemMatches && Array.isArray(bt.systemMatches) &&
                                                                         bt.systemMatches.some((m: any) => m.id === exp.id)
                                                                     );
+
+                                                                    // Strategy 2: fallback by amount + date (within 3 days) when any system_match exists
+                                                                    if (!linkedBankTx && exp.isReconciled) {
+                                                                        const expDateMs = parseDateSafe(exp.date).getTime();
+                                                                        linkedBankTx = bankTransactions.find(bt =>
+                                                                            bt.systemMatches && bt.systemMatches.length > 0 &&
+                                                                            bt.type === 'DESPESA' &&
+                                                                            Math.abs((bt.amount || 0) - exp.amount) < 0.01 &&
+                                                                            Math.abs(parseDateSafe(bt.date).getTime() - expDateMs) <= 3 * 24 * 60 * 60 * 1000
+                                                                        );
+                                                                    }
+
+                                                                    // Strategy 3: fallback by beneficiary name in bank description + same amount
+                                                                    if (!linkedBankTx && exp.isReconciled && supplierName) {
+                                                                        const nameKeyword = supplierName.split(' ')[0]?.toLowerCase();
+                                                                        linkedBankTx = nameKeyword ? bankTransactions.find(bt =>
+                                                                            bt.systemMatches && bt.systemMatches.length > 0 &&
+                                                                            bt.type === 'DESPESA' &&
+                                                                            Math.abs((bt.amount || 0) - exp.amount) < 0.01 &&
+                                                                            bt.description?.toLowerCase().includes(nameKeyword)
+                                                                        ) : undefined;
+                                                                    }
                                                                     return (
                                                                         <div className="relative group/tooltip flex items-center justify-center">
                                                                             <CircleCheck size={16} className={`cursor-pointer ${linkedBankTx ? 'text-emerald-500' : 'text-sky-400'}`} />
