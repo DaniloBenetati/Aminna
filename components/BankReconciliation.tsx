@@ -100,10 +100,37 @@ const ReconciliationRow = React.memo(({
                 </div>
             </td>
             <td className="p-4 align-top">
-                <p className="text-sm font-bold text-slate-800 uppercase leading-snug">{row.description}</p>
+                <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm font-bold text-slate-800 uppercase leading-snug">{row.description}</p>
+                    {row.linkedMatches && row.linkedMatches.length > 1 && (
+                        <span className="shrink-0 bg-indigo-100 text-indigo-700 text-[8px] font-black uppercase px-1.5 py-0.5 rounded border border-indigo-200">
+                            Desmembrado
+                        </span>
+                    )}
+                </div>
                 {row.document && (
                     <p className="text-[11px] text-slate-500 font-medium mt-0.5">Doc/Aut: {row.document}</p>
                 )}
+
+                {/* Lista de Itens Vinculados (para Desmembramentos) */}
+                {row.linkedMatches && row.linkedMatches.length > 0 && (
+                    <div className="mt-2 space-y-1 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                        <p className="text-[9px] font-black text-slate-400 uppercase mb-1 flex items-center gap-1">
+                            <Link2 size={10} /> Itens Vinculados:
+                        </p>
+                        {row.linkedMatches.map((m, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-[10px] gap-2">
+                                <span className="font-bold text-slate-600 truncate max-w-[150px]">
+                                    {m.type === 'DESPESA' ? 'Despesa' : m.type === 'RECEITA' ? 'Receita' : 'Serviço'} #{m.id.slice(-4)}
+                                </span>
+                                <span className="font-black text-indigo-600 shrink-0">
+                                    R$ {m.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {row.type === 'RECEITA' && (
                     <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">
                         <DollarSign className="w-3 h-3 stroke-[3]" />
@@ -188,15 +215,38 @@ const ReconciliationRow = React.memo(({
                         </div>
                     </div>
                 )}
-                {row.status === 'A_LANCAR' && isLinkingActive && (
-                    <div className="mt-2">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onCompleteLinking?.(row.id); }}
-                            className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 animate-pulse"
-                        >
-                            <Check className="w-4 h-4" />
-                            Confirmar Vínculo aqui
-                        </button>
+                {row.status === 'A_LANCAR' && (
+                    <div className="flex flex-col gap-2 mt-1">
+                        {isLinkingActive ? (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onCompleteLinking?.(row.id); }}
+                                className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 animate-pulse"
+                            >
+                                <Check className="w-4 h-4" />
+                                Confirmar Vínculo aqui
+                            </button>
+                        ) : (
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onStartLinking?.(row.id); }}
+                                    className="px-2 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase rounded-md border border-indigo-100 transition-all flex items-center justify-center gap-1.5"
+                                    title="Vincular este lançamento com itens existentes no sistema (Muitos para um)"
+                                >
+                                    <Link2 className="w-3.5 h-3.5" />
+                                    Vincular
+                                </button>
+                                {row.linkedMatches && row.linkedMatches.length > 0 && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onManualConfirm?.(row.id); }}
+                                        className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-md shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                        title="Confirmar os vínculos atuais e conciliar"
+                                    >
+                                        <Check className="w-3.5 h-3.5" />
+                                        Conciliar
+                                    </button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
                 {row.status === 'CONCILIADOS' && (
@@ -464,6 +514,11 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     suggestedProvider: sysProv,
                     divergenceReason: linkedMatches.length > 1 ? `Vínculo múltiplo: ${linkedMatches.length} itens (Total R$ ${totalAmount.toFixed(2)})` : undefined
                 } : r);
+        });
+        setApprovalQueue(prev => {
+            const next = new Set(prev);
+            next.add(bankRowId);
+            return next;
         });
         setLinkingSourceIds([]);
     }, [linkingSourceIds]);
@@ -1122,8 +1177,22 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 // is_reconciled=false: these are new launches, NOT reconciled matches.
                 // They appear in the regular flow (Extrato/Fluxo), not in CONCILIADOS.
                 if (row.type === 'DESPESA') {
-                    // PREVENÇÃO DE DUPLICADOS: Antes de lançar como novo, verifica se já não existe uma despesa idêntica manualmente no sistema
-                    // que o motor de busca pode ter perdido por causa da janela de 2 dias.
+                    // PREVENÇÃO PRIMÁRIA: Verifica se o banco já tem um vínculo salvo para este fingerprint
+                    // Isso evita criar despesas duplicadas para SAQUEs que já foram processados anteriormente
+                    const existingBankMatch = row.fingerprint
+                        ? bankTransactions.find(bt => bt.fingerprint === row.fingerprint && bt.systemMatches && bt.systemMatches.length > 0)
+                        : null;
+
+                    if (existingBankMatch && existingBankMatch.systemMatches) {
+                        // Already linked — just re-use the existing match, don't create anything new
+                        existingBankMatch.systemMatches.forEach((m: any) => {
+                            if (m.type === 'EXPENSE' && !m.id.startsWith('comm-')) {
+                                toUpdateExpenseStatus.push(m.id);
+                                updatesToExecute.push({ type: 'EXPENSE', id: m.id, date: row.date });
+                            }
+                        });
+                    } else {
+                    // PREVENÇÃO SECUNDÁRIA: Busca por despesa idêntica (descrição + valor + data)
                     const existingExp = expenses.find(e =>
                         e.description === row.description &&
                         Math.abs(e.amount - row.amount) < 0.01 &&
@@ -1175,6 +1244,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             isReconciled: true
                         });
                     }
+                    } // end else (no existing bank match)
                 } else if (row.type === 'RECEITA') {
                     // PREVENÇÃO DE DUPLICADOS PARA RECEITA: Evita criar duplicatas de entradas manuais ou re-processamento
                     const existingExp = expenses.find(e =>
@@ -1322,6 +1392,42 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 });
             }
         }
+
+        // ===== UNLINK STEP: Find expense IDs that were previously linked but are no longer =====
+        // This fixes the bug where old linked expenses still show as 'Conciliado' after being replaced
+        const expenseIdsToUnlink: string[] = [];
+        for (const row of newBankTransactions) {
+            if (!row.fingerprint) continue;
+            // Fetch current system_matches from DB for this bank transaction
+            const { data: currentTx } = await supabase
+                .from('bank_transactions')
+                .select('system_matches')
+                .eq('fingerprint', row.fingerprint)
+                .single();
+            
+            if (currentTx?.system_matches && Array.isArray(currentTx.system_matches)) {
+                const newMatchIds = (row.system_matches || []).map((m: any) => m.id);
+                const oldExpenseIds = currentTx.system_matches
+                    .filter((m: any) => m.type === 'EXPENSE' || m.type === 'DESPESA')
+                    .map((m: any) => m.id);
+                // Items in old matches but NOT in new matches → need to be unlinked
+                oldExpenseIds.forEach((id: string) => {
+                    if (!newMatchIds.includes(id) && !id.startsWith('comm-')) {
+                        expenseIdsToUnlink.push(id);
+                    }
+                });
+            }
+        }
+        // Apply unlink to removed expenses
+        if (expenseIdsToUnlink.length > 0) {
+            await Promise.all(expenseIdsToUnlink.map(id =>
+                supabase.from('expenses').update({ is_reconciled: false, status: 'Pendente' }).eq('id', id)
+            ));
+            setExpenses(prev => prev.map(e =>
+                expenseIdsToUnlink.includes(e.id) ? { ...e, isReconciled: false, status: 'Pendente' } : e
+            ));
+        }
+        // ===== END UNLINK STEP =====
 
         try {
             console.log('Starting Batch Approval:', {

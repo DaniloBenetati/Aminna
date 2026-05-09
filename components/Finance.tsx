@@ -10,7 +10,7 @@ import {
     Download, AlertTriangle, Target, Files, Save, List, ArrowRight, Sparkles, MessageCircle, Lock,
     PenTool, FolderPlus, CalendarRange, ChevronUp, Menu, TrendingDown, Paperclip, Stamp,
     ShieldCheck, Share2, Copy, Send, Percent, Crown, BarChart2, Zap, Link2, FilePlus,
-    Scissors, Truck
+    Scissors, Truck, ListChecks
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, LineChart, Line, ComposedChart } from 'recharts';
 import { Service, FinancialTransaction, BankTransaction, Expense, Appointment, Sale, ExpenseCategory, PaymentSetting, CommissionSetting, Supplier, Provider, Customer, StockItem, Partner, Campaign, FinancialConfig, Employee, PayrollRecord } from '../types';
@@ -1301,6 +1301,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [payablesStatusFilter, setPayablesStatusFilter] = useState<'ALL' | 'Pago' | 'Pendente' | 'Atrasado'>('ALL');
     const [payablesSupplierFilter, setPayablesSupplierFilter] = useState('ALL');
     const [payablesSplitFilter, setPayablesSplitFilter] = useState<'ALL' | 'YES' | 'NO'>('ALL');
+    const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
 
     // Filter States for Detailed View
     const [detailedFilter, setDetailedFilter] = useState('');
@@ -1763,8 +1764,42 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         });
 
         const unique = Array.from(new Map(identified.map(t => [t.id, t])).values());
-        return unique.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sorted = unique.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        // When duplicate filter is active, it's applied after the main memo (uses duplicateExpenseIds from sibling memo)
+        // We return all and filter at render time using showDuplicatesOnly + duplicateExpenseIds
+        return sorted;
     }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions, payablesSplitFilter]);
+
+    // Detects duplicate expense IDs: same beneficiary + same amount within 3 days
+    const duplicateExpenseIds = useMemo(() => {
+        const allPayables = expenses; // Use full list, not filtered, to find duplicates
+        const duplicateSet = new Set<string>();
+
+        for (let i = 0; i < allPayables.length; i++) {
+            for (let j = i + 1; j < allPayables.length; j++) {
+                const a = allPayables[i];
+                const b = allPayables[j];
+                if (Math.abs(a.amount - b.amount) > 0.01) continue;
+
+                // Same beneficiary check
+                const sameSupplier = a.supplierId && a.supplierId === b.supplierId;
+                const sameProvider = a.providerId && a.providerId === b.providerId;
+                const sameEmployee = a.employeeId && a.employeeId === b.employeeId;
+                const sameDesc = a.description && b.description &&
+                    a.description.toLowerCase().trim() === b.description.toLowerCase().trim();
+                if (!sameSupplier && !sameProvider && !sameEmployee && !sameDesc) continue;
+
+                // Within 3 days
+                const dateA = parseDateSafe(a.date).getTime();
+                const dateB = parseDateSafe(b.date).getTime();
+                if (Math.abs(dateA - dateB) > 3 * 24 * 60 * 60 * 1000) continue;
+
+                duplicateSet.add(a.id);
+                duplicateSet.add(b.id);
+            }
+        }
+        return duplicateSet;
+    }, [expenses]);
 
     const dreData = useMemo(() => {
         const getSnapshot = (start: string, end: string) => {
@@ -2532,6 +2567,37 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 const newExpenses = [];
                 const rId = recurrenceMonths > 1 ? crypto.randomUUID() : null;
 
+                // ===== DUPLICATE PREVENTION: warn before inserting =====
+                const supplierId = expenseForm.supplierId?.startsWith('prov_') ? null : (expenseForm.supplierId || null);
+                const providerId = expenseForm.supplierId?.startsWith('prov_') ? expenseForm.supplierId.replace('prov_', '') : null;
+                const employeeId = expenseForm.supplierId?.startsWith('emp_') ? expenseForm.supplierId.replace('emp_', '') : null;
+                const targetDate = parseDateSafe(expenseForm.date!);
+                const threeDay = 3 * 24 * 60 * 60 * 1000;
+
+                const potentialDupe = expenses.find(e => {
+                    if (Math.abs(e.amount - finalAmount) > 0.01) return false;
+                    const sameBeneficiary = (supplierId && e.supplierId === supplierId) ||
+                        (providerId && e.providerId === providerId) ||
+                        (employeeId && e.employeeId === employeeId);
+                    if (!sameBeneficiary) return false;
+                    return Math.abs(parseDateSafe(e.date).getTime() - targetDate.getTime()) <= threeDay;
+                });
+
+                if (potentialDupe) {
+                    const dupeDate = parseDateSafe(potentialDupe.date).toLocaleDateString('pt-BR');
+                    const confirmed = window.confirm(
+                        `⚠️ POSSÍVEL DUPLICIDADE DETECTADA!\n\n` +
+                        `Já existe um lançamento semelhante:\n` +
+                        `• Descrição: ${potentialDupe.description}\n` +
+                        `• Valor: R$ ${potentialDupe.amount.toFixed(2)}\n` +
+                        `• Data: ${dupeDate}\n` +
+                        `• Status: ${potentialDupe.status}\n\n` +
+                        `Deseja continuar e criar mesmo assim?`
+                    );
+                    if (!confirmed) return;
+                }
+                // ===== END DUPLICATE PREVENTION =====
+
                 for (let i = 0; i < recurrenceMonths; i++) {
                     const d = parseDateSafe(expenseForm.date!);
                     d.setMonth(d.getMonth() + i);
@@ -2573,6 +2639,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         // Use current date if paying, otherwise keep same date
         const newDate = newStatus === 'Pago' ? new Date().toISOString().split('T')[0] : expense.date;
 
+        if (expense.isReconciled && newStatus === 'Pendente') {
+            alert("⚠️ Esta despesa está conciliada com o banco. Para alterá-la para Pendente, você deve primeiro desvincular a conciliação bancária correspondente no extrato bancário.");
+            return;
+        }
+
         try {
             const { error } = await supabase
                 .from('expenses')
@@ -2582,8 +2653,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 })
                 .eq('id', id);
 
-            if (error) throw error;
-
+            if (error) {
+                console.error("Supabase Error:", error);
+                throw error;
+            }
+            
             // Bidirectional Sync: If linked to payroll, update payroll status too
             if (expense.payroll_id) {
                 await supabase
@@ -2596,14 +2670,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             }
 
             // Update local state
-            setTransactions(prev => prev.map(t => t.id === id ? { ...t, status: newStatus, date: newDate } : t));
-            // Also update expenses state if it exists separately
+            setTransactions((prev: FinancialTransaction[]) => prev.map(t => t.id === id ? { ...t, status: newStatus, date: newDate } : t));
             if (typeof setExpenses === 'function') {
-                setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: newStatus, date: newDate } : e));
+                setExpenses((prev: Expense[]) => prev.map(e => e.id === id ? { ...e, status: newStatus, date: newDate } : e));
             }
         } catch (err) {
             console.error("Erro ao alterar status da despesa:", err);
-            alert("Erro ao alterar status.");
+            alert("Erro ao alterar status. Verifique se o lançamento possui dependências ou vínculos bancários.");
         }
     };
 
@@ -3351,9 +3424,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     uniqueMatches.forEach(m => {
                                         const mAmount = Math.abs(m.amount);
                                         matchedSum += mAmount;
+                                    });
+
+                                    const isActuallySplit = uniqueMatches.length > 1 || Math.abs(Math.abs(t.amount) - matchedSum) > 0.01;
+
+                                    uniqueMatches.forEach(m => {
+                                        const mAmount = Math.abs(m.amount);
                                         const delta = t.type === 'RECEITA' ? mAmount : -mAmount;
                                         currentBal += delta;
-                                        expandedRows.push({ t, delta, balance: currentBal, match: m, isSplit: true });
+                                        expandedRows.push({ t, delta, balance: currentBal, match: m, isSplit: isActuallySplit });
                                     });
 
                                     // Add residual row if there's a difference between bank and system matches
@@ -3363,7 +3442,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     if (Math.abs(residual) > 0.01) {
                                         const delta = t.type === 'RECEITA' ? residual : -residual;
                                         currentBal += delta;
-                                        expandedRows.push({ t, delta, balance: currentBal, isSplit: true, isResidual: true });
+                                        expandedRows.push({ t, delta, balance: currentBal, isSplit: isActuallySplit, isResidual: true });
                                     }
                                 } else {
                                     // Single row (Not linked)
@@ -3432,7 +3511,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 );
 
                                 const matchesType = conciliadoTypeFilter === 'ALL' || t.type === conciliadoTypeFilter;
-                                const matchesSplit = conciliadoSplitFilter === 'ALL' || (conciliadoSplitFilter === 'SPLIT' ? isSplit : !isSplit);
+                                const isMatched = !!match;
+                                const matchesSplit = conciliadoSplitFilter === 'ALL' || (conciliadoSplitFilter === 'SPLIT' ? isMatched : !isMatched);
 
                                 return matchesSearch && matchesType && matchesSplit;
                             });
@@ -3752,7 +3832,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </td>
                                                             <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase max-w-full md:w-[200px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Categoria</span>
-                                                                {isSplit ? (
+                                                                {match ? (
                                                                     <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{isResidual ? 'Saldo Bancário' : displayCat}</span>
                                                                 ) : (
                                                                     <div className="relative">
@@ -3803,7 +3883,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </td>
                                                             <td className="block md:table-cell md:px-5 md:py-3.5 text-[10px] font-bold text-slate-600 dark:text-slate-400 max-w-full md:w-[250px] w-full mb-3 md:mb-0 border-b border-slate-50 dark:border-zinc-800 md:border-0 pb-3 md:pb-0">
                                                                 <span className="md:hidden text-[9px] font-black uppercase text-slate-400 block mb-1">Favorecido / Cliente</span>
-                                                                {isSplit ? (
+                                                                {match ? (
                                                                     <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded text-[10px] font-bold block w-fit">{displayEnt || '-'}</span>
                                                                 ) : (
                                                                     <div className="relative">
@@ -3879,15 +3959,18 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         };
 
                                                                                         if (!match) {
-                                                                                            const candidate = expenses.find(exp =>
-                                                                                                Math.abs(exp.amount - t.amount) < 0.01 &&
-                                                                                                Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 7 * 24 * 60 * 60 * 1000 &&
-                                                                                                !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id)) &&
-                                                                                                (
-                                                                                                    (exp.description || '').toLowerCase().includes((newName || '').toLowerCase()) ||
-                                                                                                    (newName || '').toLowerCase().includes((exp.description || '').toLowerCase())
-                                                                                                )
-                                                                                            );
+                                                                                            const candidate = [...expenses]
+                                                                                                .sort((a, b) => (a.status === 'Pendente' ? -1 : 1))
+                                                                                                .find(exp =>
+                                                                                                    Math.abs(exp.amount - t.amount) < 0.01 &&
+                                                                                                    Math.abs(new Date(exp.date).getTime() - new Date(t.date).getTime()) <= 7 * 24 * 60 * 60 * 1000 &&
+                                                                                                    !bankTransactions.some(bt => bt.systemMatches?.some(m => m.id === exp.id)) &&
+                                                                                                    (
+                                                                                                        ((exp.description || '').toLowerCase().includes((newName || '').toLowerCase()) ||
+                                                                                                        (newName || '').toLowerCase().includes((exp.description || '').toLowerCase())) ||
+                                                                                                        (exp.providerId === realId || exp.supplierId === realId || exp.employeeId === realId)
+                                                                                                    )
+                                                                                                );
 
                                                                                             if (candidate) {
                                                                                                 setReconcileConfirm({
@@ -4228,6 +4311,42 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </div>
 
                                             <button onClick={handlePrintPayablesReport} className="flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"><Printer size={12} /> Relatório</button>
+
+                                            <button 
+                                                onClick={() => {
+                                                    const nonReconciledPaid = filteredPayables
+                                                        .filter(p => (p.status || '').toUpperCase() === 'PAGO' && !p.isReconciled)
+                                                        .map(p => p.id);
+                                                    if (nonReconciledPaid.length === 0) {
+                                                        alert("Nenhuma despesa paga sem conciliação encontrada nesta visualização.");
+                                                        return;
+                                                    }
+                                                    setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...nonReconciledPaid])));
+                                                    alert(`${nonReconciledPaid.length} despesas (pagas mas não conciliadas) foram selecionadas. Você pode excluí-las usando o menu flutuante abaixo.`);
+                                                }}
+                                                className="flex text-[10px] font-black uppercase text-amber-700 bg-amber-50 border-2 border-amber-200 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"
+                                                title="Seleciona itens que estão como PAGO mas não têm vínculo bancário"
+                                            >
+                                                <ListChecks size={12} /> Selecionar Não-Conciliados
+                                            </button>
+
+                                            <button
+                                                onClick={() => setShowDuplicatesOnly(v => !v)}
+                                                className={`relative flex text-[10px] font-black uppercase px-4 py-2 rounded-xl items-center gap-1.5 shadow-sm active:scale-95 transition-all w-fit border-2 ${
+                                                    showDuplicatesOnly
+                                                        ? 'bg-orange-500 text-white border-orange-500'
+                                                        : 'text-orange-700 bg-orange-50 border-orange-200'
+                                                }`}
+                                                title="Filtra e destaca lançamentos com possível duplicidade (mesmo valor + favorecido em até 3 dias)"
+                                            >
+                                                <AlertTriangle size={12} />
+                                                Duplicadas
+                                                {duplicateExpenseIds.size > 0 && (
+                                                    <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center">
+                                                        {duplicateExpenseIds.size > 9 ? '9+' : duplicateExpenseIds.size}
+                                                    </span>
+                                                )}
+                                            </button>
                                         </div>
                                     </div>
 
@@ -4314,12 +4433,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <th className="px-6 py-4 min-w-[150px]">Favorecido</th>
                                                     <th className="px-6 py-4 min-w-[150px]">Categoria</th>
                                                     <th className="px-6 py-4 text-center">Status</th>
+                                                    <th className="px-6 py-4 text-center whitespace-nowrap">Conciliado</th>
                                                     <th className="px-6 py-4 text-right">Valor</th>
                                                     <th className="px-6 py-4 text-center">Ações</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                                {filteredPayables.length > 0 ? filteredPayables.map(exp => {
+                                                {(showDuplicatesOnly ? filteredPayables.filter(e => duplicateExpenseIds.has(e.id)) : filteredPayables).length > 0 ? (showDuplicatesOnly ? filteredPayables.filter(e => duplicateExpenseIds.has(e.id)) : filteredPayables).map(exp => {
                                                     const isUUID = (val: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
                                                     const rawName = exp.customerOrProviderName || exp.providerName || '';
                                                     const supplierName = (isUUID(rawName) || !rawName)
@@ -4330,14 +4450,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         : rawName;
                                                     const normalizedStatus = (exp.status || '').toUpperCase();
                                                     const isOverdue = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
+                                                    const isDuplicate = duplicateExpenseIds.has(exp.id);
                                                     return (
-                                                        <tr key={exp.id} className={`group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors ${selectedExpenseIds.includes(exp.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}`}>
+                                                        <tr key={exp.id} className={`group hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 transition-colors ${
+                                                            isDuplicate
+                                                                ? 'bg-orange-50/60 dark:bg-orange-900/10 border-l-4 border-orange-400'
+                                                                : selectedExpenseIds.includes(exp.id) ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''
+                                                        }`}>
                                                             <td className="px-4 py-4">
                                                                 <input type="checkbox" className="w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer" checked={selectedExpenseIds.includes(exp.id)} onChange={() => toggleSelectExpense(exp.id)} />
                                                             </td>
                                                             <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300 whitespace-nowrap">
                                                                 {exp.date ? parseDateSafe(exp.date).toLocaleDateString('pt-BR') : '-'}
                                                                 {isOverdue && <span className="ml-1 text-[8px] font-black text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-full uppercase">Atrasado</span>}
+                                                                {isDuplicate && <span className="ml-1 text-[8px] font-black text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded-full uppercase" title="Possível duplicidade detectada">⚠ Duplic.</span>}
                                                             </td>
                                                             <td className="px-6 py-4 font-bold text-[11px] text-slate-900 dark:text-white max-w-[200px] truncate">{exp.description}</td>
                                                             <td className="px-6 py-4 text-[11px] font-bold text-slate-500 dark:text-slate-300">{exp.invoiceNumber || '-'}</td>
@@ -4347,6 +4473,44 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <button onClick={() => toggleExpenseStatus(exp.id)} className={`text-[9px] font-black px-3 py-1.5 rounded-full uppercase transition-colors ${exp.status === 'Pago' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 hover:bg-amber-100'}`}>
                                                                     {exp.status}
                                                                 </button>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center">
+                                                                <div className="flex items-center justify-center">
+                                                                    {exp.isReconciled ? (() => {
+                                                                    const linkedBankTx = bankTransactions.find(bt =>
+                                                                        bt.systemMatches && Array.isArray(bt.systemMatches) &&
+                                                                        bt.systemMatches.some((m: any) => m.id === exp.id)
+                                                                    );
+                                                                    return (
+                                                                        <div className="relative group/tooltip flex items-center justify-center">
+                                                                            <CircleCheck size={16} className={`cursor-pointer ${linkedBankTx ? 'text-emerald-500' : 'text-sky-400'}`} />
+                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover/tooltip:block w-64 pointer-events-none">
+                                                                                <div className="bg-zinc-900 text-white text-[10px] rounded-xl p-3 shadow-2xl border border-white/10">
+                                                                                    {linkedBankTx ? (
+                                                                                        <>
+                                                                                            <p className="font-black uppercase tracking-widest text-emerald-400 mb-1.5 flex items-center gap-1"><Link2 size={10}/> Vínculo Bancário</p>
+                                                                                            <p className="font-bold text-slate-300 leading-snug line-clamp-2">{linkedBankTx.description}</p>
+                                                                                            <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
+                                                                                                <span className="text-slate-400">{linkedBankTx.date ? new Date(linkedBankTx.date + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}</span>
+                                                                                                <span className="font-black text-rose-400">R$ {linkedBankTx.amount?.toFixed(2)}</span>
+                                                                                            </div>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <p className="font-black uppercase tracking-widest text-sky-400 mb-1.5 flex items-center gap-1"><CreditCard size={10}/> Outra Fonte de Pagamento</p>
+                                                                                            <p className="text-slate-300 leading-snug">Este pagamento não passou pelo extrato bancário importado.</p>
+                                                                                            <p className="text-slate-400 mt-1.5 pt-1.5 border-t border-white/10">Pode ser: <span className="text-white font-bold">à vista · cartão de crédito · reembolso</span></p>
+                                                                                        </>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div className="w-2 h-2 bg-zinc-900 border-b border-r border-white/10 rotate-45 mx-auto -mt-1"></div>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })() : (
+                                                                    <div className="w-4 h-4 rounded-full border-2 border-slate-100 dark:border-zinc-800" title="Não conciliado" />
+                                                                )}
+                                                                </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td>
                                                             <td className="px-6 py-4 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
