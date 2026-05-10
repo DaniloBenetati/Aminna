@@ -1624,8 +1624,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             </div>
 
             {/* --- CONTROL BAR --- */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col lg:flex-row items-center justify-between gap-4 sticky top-0 z-20">
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col xl:flex-row items-center justify-between gap-4 sticky top-0 z-20">
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button
@@ -1658,7 +1658,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 </div>
 
                 {/* Filters Trigger & Active Filters */}
-                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
+                <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
@@ -1769,7 +1769,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <>
 
                             {/* 1. KPIs Operacionais */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
                                     value={new Set(filteredAppointments.map(a => a.customerId)).size}
@@ -1883,7 +1883,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* General Insight 1: Saúde Financeira */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -2003,7 +2003,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                                 {/* Top Dias da Semana */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2091,7 +2091,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* Insight: Horários */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                 <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -2202,7 +2202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Profissionais por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2263,7 +2263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : activeSubTab === 'ausencias' ? (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Ausências KPIs */}
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                 <KPICard 
                                     title="Ausências" 
                                     value={absenceMetrics.totalAbsences} 
@@ -2512,7 +2512,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
                                 {/* Professional Insight 1: Liderança */}
                                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                     <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
@@ -2665,7 +2665,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Serviços por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2823,7 +2823,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -2867,7 +2867,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                             {/* Tráfego de Novos Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
                                     <div>
                                         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                                             <TrendingUp size={16} className="text-emerald-500" /> Tráfego e Performance de Período
@@ -2970,7 +2970,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Frequência Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -3160,7 +3160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Campanhas Uso */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">

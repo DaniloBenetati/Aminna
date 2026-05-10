@@ -54,28 +54,6 @@ export const Layout: React.FC<LayoutProps> = ({
     return saved === 'true';
   });
 
-  // JS-based desktop detection — bypasses CSS media queries entirely
-  // Works correctly on Galaxy Fold open screen, tablets, and all foldables
-  const DESKTOP_BREAKPOINT = 680;
-  const [isDesktop, setIsDesktop] = useState(() => window.innerWidth >= DESKTOP_BREAKPOINT);
-
-  useEffect(() => {
-    const checkWidth = () => {
-      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
-      // Close mobile menu when switching to desktop
-      if (window.innerWidth >= DESKTOP_BREAKPOINT) {
-        setIsMobileMenuOpen(false);
-      }
-    };
-    window.addEventListener('resize', checkWidth);
-    // Also listen for screen change events (foldable devices)
-    window.screen?.addEventListener?.('change', checkWidth);
-    return () => {
-      window.removeEventListener('resize', checkWidth);
-      window.screen?.removeEventListener?.('change', checkWidth);
-    };
-  }, []);
-
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
@@ -131,8 +109,8 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-zinc-950 overflow-hidden text-slate-950 dark:text-slate-100 font-sans transition-colors duration-300">
-      {/* Sidebar - Desktop (JS-controlled, not CSS media query) */}
-      <aside className={`bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 flex-col flex-shrink-0 transition-all duration-300 border-r border-slate-200 dark:border-zinc-800 ${isDesktop ? 'flex' : 'hidden'} ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      {/* Sidebar - Desktop */}
+      <aside className={`bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 flex flex-col hidden md:flex flex-shrink-0 transition-all duration-300 border-r border-slate-200 dark:border-zinc-800 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-6 border-b border-slate-100 dark:border-zinc-800 flex flex-col items-center text-center relative transition-all duration-300 ${isSidebarCollapsed ? 'px-2' : ''}`}>
           <Logo collapsed={isSidebarCollapsed} className={isSidebarCollapsed ? "h-10 w-10" : "h-20 w-auto mb-2"} />
           {!isSidebarCollapsed && (
@@ -216,8 +194,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </aside>
 
-      {/* Mobile Sidebar (JS-controlled) */}
-      <aside className={`fixed top-0 left-0 bottom-0 w-72 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 z-50 flex-col transition-transform duration-300 ease-out border-r border-slate-200 dark:border-zinc-800 shadow-2xl ${!isDesktop ? 'flex' : 'hidden'} ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Mobile Sidebar */}
+      <aside className={`fixed top-0 left-0 bottom-0 w-72 bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-300 z-50 flex flex-col md:hidden transition-transform duration-300 ease-out border-r border-slate-200 dark:border-zinc-800 shadow-2xl ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
           <Logo className="h-12" />
           <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-500 hover:text-slate-950 dark:hover:text-white">
@@ -275,8 +253,8 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
       </aside>
 
-      {/* Mobile Header (JS-controlled) */}
-      <div className={`${isDesktop ? 'hidden' : 'flex'} fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-40 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800`}>
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-40 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
         <div className="flex justify-start">
           <button
             onClick={toggleTheme}
@@ -301,11 +279,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${
-        [ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView)
-          ? `overflow-hidden p-0 ${isDesktop ? 'pt-0' : 'pt-20'}`
-          : `overflow-auto ${isDesktop ? 'pt-10 px-8 pb-8' : 'p-4 pt-20'}`
-      }`}>
+      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0 pt-20 md:pt-0' : 'overflow-auto md:pt-10 md:px-8 md:pb-8 p-4 pt-20'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
