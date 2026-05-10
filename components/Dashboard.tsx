@@ -1624,8 +1624,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             </div>
 
             {/* --- CONTROL BAR --- */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col xl:flex-row items-center justify-between gap-4 sticky top-0 z-20">
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col lg:flex-row items-center justify-between gap-4 sticky top-0 z-20">
+                <div className="flex flex-col md:flex-row items-center gap-4 w-full lg:w-auto">
                     <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button
@@ -1658,7 +1658,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 </div>
 
                 {/* Filters Trigger & Active Filters */}
-                <div className="flex items-center gap-3 w-full xl:w-auto justify-end">
+                <div className="flex items-center gap-3 w-full lg:w-auto justify-end">
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
@@ -2003,7 +2003,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* Top Dias da Semana */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2202,7 +2202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                             {/* Profissionais por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
