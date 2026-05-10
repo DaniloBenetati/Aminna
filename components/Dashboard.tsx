@@ -1769,7 +1769,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <>
 
                             {/* 1. KPIs Operacionais */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
                                     value={new Set(filteredAppointments.map(a => a.customerId)).size}
@@ -1883,7 +1883,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* General Insight 1: Saúde Financeira */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                 <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -2091,7 +2091,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* Insight: Horários */}
                             <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
                                 <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -2263,7 +2263,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : activeSubTab === 'ausencias' ? (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {/* Ausências KPIs */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                                 <KPICard 
                                     title="Ausências" 
                                     value={absenceMetrics.totalAbsences} 
