@@ -1770,7 +1770,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         return sorted;
     }, [transactions, startDate, endDate, payablesSearch, payablesStatusFilter, payablesSupplierFilter, suppliers, providers, payablesIgnoreDateFilter, bankTransactions, payablesSplitFilter]);
 
-    // Detects duplicate expense IDs: same beneficiary + same amount within 3 days
+    // Detects duplicate expense IDs: ALL fields must match — description, beneficiary, category AND amount
     const duplicateExpenseIds = useMemo(() => {
         const allPayables = expenses; // Use full list, not filtered, to find duplicates
         const duplicateSet = new Set<string>();
@@ -1779,20 +1779,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             for (let j = i + 1; j < allPayables.length; j++) {
                 const a = allPayables[i];
                 const b = allPayables[j];
+
+                // 1. Valor idêntico (tolerância de 1 centavo)
                 if (Math.abs(a.amount - b.amount) > 0.01) continue;
 
-                // Same beneficiary check
+                // 2. Descrição idêntica
+                const sameDesc = a.description && b.description &&
+                    a.description.toLowerCase().trim() === b.description.toLowerCase().trim();
+                if (!sameDesc) continue;
+
+                // 3. Categoria idêntica
+                const sameCat = (a.category || '').toLowerCase().trim() === (b.category || '').toLowerCase().trim();
+                if (!sameCat) continue;
+
+                // 4. Favorecido idêntico (supplierId, providerId ou employeeId devem coincidir)
                 const sameSupplier = a.supplierId && a.supplierId === b.supplierId;
                 const sameProvider = a.providerId && a.providerId === b.providerId;
                 const sameEmployee = a.employeeId && a.employeeId === b.employeeId;
-                const sameDesc = a.description && b.description &&
-                    a.description.toLowerCase().trim() === b.description.toLowerCase().trim();
-                if (!sameSupplier && !sameProvider && !sameEmployee && !sameDesc) continue;
-
-                // Within 3 days
-                const dateA = parseDateSafe(a.date).getTime();
-                const dateB = parseDateSafe(b.date).getTime();
-                if (Math.abs(dateA - dateB) > 3 * 24 * 60 * 60 * 1000) continue;
+                if (!sameSupplier && !sameProvider && !sameEmployee) continue;
 
                 duplicateSet.add(a.id);
                 duplicateSet.add(b.id);
