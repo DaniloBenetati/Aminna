@@ -200,7 +200,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           isDebt,
           isCourtesy,
           isRemake,
-          isSemCupom: !hasCoupon
+          isSemCupom: !hasCoupon,
+          observation: app.observation
         });
       }
 
@@ -243,7 +244,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             isDebt,
             isCourtesy: extraIsCourtesy,
             isRemake,
-            isSemCupom: !hasCoupon
+            isSemCupom: !hasCoupon,
+            observation: app.observation
           });
         }
       });
@@ -581,6 +583,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       </td>
                       <td className="py-1">
                         <p className="font-black text-slate-900 uppercase tracking-tight text-[9px]">{item.serviceName}</p>
+                        {item.observation && (item.isRemake || item.isCourtesy) && (
+                          <p className="text-[7px] font-bold text-rose-500 uppercase leading-tight mt-0.5">
+                            {item.observation.includes('JUSTIFICATIVA') 
+                              ? item.observation.substring(item.observation.indexOf('JUSTIFICATIVA')) 
+                              : item.observation}
+                          </p>
+                        )}
                       </td>
                       <td className="py-1">
                         <p className="text-slate-500 font-bold uppercase tracking-tight text-[9px]">{item.clientName}</p>
@@ -689,6 +698,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           if (parts.length === 3) dateLabel = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
         message += `* ${dateLabel} - ${item.serviceName} (${item.clientName}): R$ ${itemVal}\n`;
+        if (item.observation && (item.isRemake || item.isCourtesy)) {
+          const just = item.observation.includes('JUSTIFICATIVA') 
+            ? item.observation.substring(item.observation.indexOf('JUSTIFICATIVA')) 
+            : item.observation;
+          message += `  _Motivo: ${just}_\n`;
+        }
       });
       message += `\n`;
     }
