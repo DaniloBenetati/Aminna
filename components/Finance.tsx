@@ -237,7 +237,17 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
 
     if (!isOpen || !bankTx) return null;
 
-    const pendingExpenses = (expenses || []).filter(e => !e.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'EXPENSE' && m.id === e.id));
+    // Show expenses that are: (a) not reconciled yet, OR (b) already linked to THIS bank tx, OR (c) reconciled but still Pending/Overdue (inconsistent state — allow relinking)
+    const pendingExpenses = (expenses || []).filter(e => {
+        const alreadyLinkedHere = (bankTx.systemMatches || []).some(m => m.type === 'EXPENSE' && m.id === e.id);
+        if (alreadyLinkedHere) return true;
+        if (!e.isReconciled) return true;
+        // Include reconciled expenses that are still not "Pago" — they may be incorrectly flagged
+        const status = (e.status || '').toLowerCase();
+        const isPago = status === 'pago' || status === 'paid';
+        if (!isPago) return true;
+        return false;
+    });
     const pendingSales = (sales || []).filter(s => !s.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'SALE' && m.id === s.id));
     const pendingAppointments = (appointments || []).filter(a => !a.isReconciled || (bankTx.systemMatches || []).some(m => m.type === 'APPOINTMENT' && m.id === a.id));
     
@@ -1681,6 +1691,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
         // We filter ALL transactions of type DESPESA, plus those that are forced (multi-category splits etc)
         const filtered = transactions.filter(t => {
             if (t.type !== 'DESPESA') return false;
+
+            // Exclude revenue-classified entries (bank credits stored in expenses table)
+            const tAny = t as any;
+            const dreClass = tAny.dreClass || '';
+            if (dreClass === 'REVENUE' || dreClass === 'OTHER_INCOME') return false;
 
             const bareId = t.id.replace(/^([a-z0-9]+-)+/, '');
             const isForced = forcedTxIds.has(t.id) || forcedTxIds.has(bareId);

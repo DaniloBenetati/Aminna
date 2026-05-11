@@ -491,8 +491,9 @@ export const generateFinancialTransactions = (
             providerId: exp.providerId,
             employeeId: exp.employeeId,
             isReconciled: exp.isReconciled,
-            invoiceNumber: exp.invoiceNumber
-        });
+            invoiceNumber: exp.invoiceNumber,
+            dreClass: (exp as any).dreClass || ''
+        } as any);
     });
 
     // --- AGGREGATE COMMISSIONS ---
