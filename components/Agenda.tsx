@@ -2581,41 +2581,42 @@ export const Agenda: React.FC<AgendaProps> = ({
                 isFinanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
                         <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-6xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
-                            <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
-                                <div className="flex items-center gap-6">
-                                    <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
-                                        <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro - {dateRef.toLocaleDateString('pt-BR')}
+                            <div className="px-4 md:px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
+                                <div className="flex flex-wrap items-center gap-2 md:gap-6">
+                                    <h3 className="font-black text-[10px] md:text-base uppercase tracking-widest flex items-center gap-2">
+                                        <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro <span className="hidden md:inline">- {dateRef.toLocaleDateString('pt-BR')}</span>
                                     </h3>
 
-                                    <div className="flex items-center gap-2 bg-white/5 p-1 rounded-2xl border border-white/10 ml-4">
+                                    <div className="flex items-center gap-1 md:gap-2 bg-white/5 p-1 rounded-2xl border border-white/10">
                                         <button
                                             onClick={() => {
                                                 const newDate = new Date(dateRef);
                                                 newDate.setDate(dateRef.getDate() - 1);
                                                 setDateRef(newDate);
                                             }}
-                                            className="p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
                                             title="Dia Anterior"
                                         >
-                                            <ChevronLeft size={18} />
+                                            <ChevronLeft size={16} />
                                         </button>
-                                        <div className="w-px h-4 bg-white/10 mx-1" />
+                                        <span className="md:hidden text-[9px] font-bold text-white/50">{dateRef.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                                        <div className="hidden md:block w-px h-4 bg-white/10 mx-1" />
                                         <button
                                             onClick={() => {
                                                 const newDate = new Date(dateRef);
                                                 newDate.setDate(dateRef.getDate() + 1);
                                                 setDateRef(newDate);
                                             }}
-                                            className="p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
                                             title="Próximo Dia"
                                         >
-                                            <ChevronRight size={18} />
+                                            <ChevronRight size={16} />
                                         </button>
                                     </div>
                                 </div>
                                 <button onClick={() => setIsFinanceModalOpen(false)} className="text-white hover:text-slate-300 transition-colors"><X size={24} /></button>
                             </div>
-                            <div className="p-0 max-h-[90vh] overflow-y-auto overflow-x-hidden scrollbar-hide">
+                            <div className="p-0 max-h-[90vh] overflow-y-auto overflow-x-auto scrollbar-hide">
                                 <DailyCloseView
                                     transactions={dailyTransactions}
                                     physicalCash={physicalCash}
