@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered, Monitor, Smartphone } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
@@ -9,6 +9,8 @@ interface LayoutProps {
   onLogout: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  isDesktopMode: boolean;
+  setIsDesktopMode: (val: boolean) => void;
   userProfile?: UserProfile | null;
   isSimulating?: boolean;
   onStopSimulation?: () => void;
@@ -43,6 +45,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   isDarkMode,
   toggleTheme,
+  isDesktopMode,
+  setIsDesktopMode,
   userProfile,
   isSimulating,
   onStopSimulation,
