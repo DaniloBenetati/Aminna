@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered, Monitor, Smartphone } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
@@ -9,6 +9,8 @@ interface LayoutProps {
   onLogout: () => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  isDesktopMode: boolean;
+  setIsDesktopMode: (val: boolean) => void;
   userProfile?: UserProfile | null;
   isSimulating?: boolean;
   onStopSimulation?: () => void;
@@ -43,6 +45,8 @@ export const Layout: React.FC<LayoutProps> = ({
   onLogout,
   isDarkMode,
   toggleTheme,
+  isDesktopMode,
+  setIsDesktopMode,
   userProfile,
   isSimulating,
   onStopSimulation,
@@ -110,7 +114,7 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-zinc-950 overflow-hidden text-slate-950 dark:text-slate-100 font-sans transition-colors duration-300">
       {/* Sidebar - Desktop */}
-      <aside className={`bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 flex flex-col hidden md:flex flex-shrink-0 transition-all duration-300 border-r border-slate-200 dark:border-zinc-800 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
+      <aside className={`bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 flex flex-col ${isDesktopMode ? 'flex fixed inset-y-0 left-0 w-64 z-[60] border-r border-slate-200 dark:border-zinc-800' : 'hidden md:flex flex-shrink-0 transition-all duration-300 border-r border-slate-200 dark:border-zinc-800'} ${isSidebarCollapsed && !isDesktopMode ? 'w-20' : 'w-64'}`}>
         <div className={`p-6 border-b border-slate-100 dark:border-zinc-800 flex flex-col items-center text-center relative transition-all duration-300 ${isSidebarCollapsed ? 'px-2' : ''}`}>
           <Logo collapsed={isSidebarCollapsed} className={isSidebarCollapsed ? "h-10 w-10" : "h-20 w-auto mb-2"} />
           {!isSidebarCollapsed && (
@@ -160,6 +164,15 @@ export const Layout: React.FC<LayoutProps> = ({
           >
             {isDarkMode ? <Sun size={18} className="flex-shrink-0" /> : <Moon size={18} className="flex-shrink-0" />}
             {!isSidebarCollapsed && (isDarkMode ? 'Modo Claro' : 'Modo Escuro')}
+          </button>
+
+          <button
+            onClick={() => setIsDesktopMode(!isDesktopMode)}
+            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-xl ${isDesktopMode ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+            title={isSidebarCollapsed ? (isDesktopMode ? 'Modo Mobile' : 'Modo Desktop') : ''}
+          >
+            {isDesktopMode ? <Smartphone size={18} className="flex-shrink-0" /> : <Monitor size={18} className="flex-shrink-0" />}
+            {!isSidebarCollapsed && (isDesktopMode ? 'Modo Mobile' : 'Modo Desktop')}
           </button>
 
           <button
@@ -233,6 +246,17 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
 
           <button
+            onClick={() => {
+              setIsDesktopMode(!isDesktopMode);
+              setIsMobileMenuOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${isDesktopMode ? 'text-indigo-600 active:bg-indigo-50' : 'text-slate-600 dark:text-slate-400 active:bg-slate-50'}`}
+          >
+            {isDesktopMode ? <Smartphone size={20} /> : <Monitor size={20} />}
+            {isDesktopMode ? 'Modo Mobile' : 'Modo Desktop'}
+          </button>
+
+          <button
             onClick={() => handleNavigate(ViewState.SETTINGS)}
             className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${currentView === ViewState.SETTINGS
               ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
@@ -256,12 +280,20 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Mobile Header */}
       <div className="md:hidden fixed top-0 w-full bg-white dark:bg-zinc-900 text-slate-950 dark:text-white z-40 p-4 grid grid-cols-3 items-center shadow-sm border-b border-slate-100 dark:border-zinc-800">
         <div className="flex justify-start">
-          <button
-            onClick={toggleTheme}
-            className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
+            >
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <button
+              onClick={() => setIsDesktopMode(!isDesktopMode)}
+              className={`p-2 rounded-xl transition-colors border ${isDesktopMode ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-50 border-slate-100 text-slate-500'}`}
+            >
+              {isDesktopMode ? <Smartphone size={20} /> : <Monitor size={20} />}
+            </button>
+          </div>
         </div>
 
         <div className="flex justify-center">

@@ -89,6 +89,21 @@ const App: React.FC = () => {
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
+  // DESKTOP MODE STATE
+  const [isDesktopMode, setIsDesktopMode] = useState(() => {
+    return localStorage.getItem('desktopMode') === 'true';
+  });
+
+  useEffect(() => {
+    if (isDesktopMode) {
+      document.documentElement.classList.add('force-desktop');
+      localStorage.setItem('desktopMode', 'true');
+    } else {
+      document.documentElement.classList.remove('force-desktop');
+      localStorage.setItem('desktopMode', 'false');
+    }
+  }, [isDesktopMode]);
+
   useEffect(() => {
     // Check current session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -930,6 +945,8 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       isDarkMode={isDarkMode}
       toggleTheme={toggleTheme}
+      isDesktopMode={isDesktopMode}
+      setIsDesktopMode={setIsDesktopMode}
       userProfile={simulatedProfile || userProfile}
       isSimulating={!!simulatedProfile}
       onStopSimulation={() => setSimulatedProfile(null)}

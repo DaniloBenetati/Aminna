@@ -200,7 +200,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           isDebt,
           isCourtesy,
           isRemake,
-          isSemCupom: !hasCoupon
+          isSemCupom: !hasCoupon,
+          observation: app.observation
         });
       }
 
@@ -243,7 +244,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             isDebt,
             isCourtesy: extraIsCourtesy,
             isRemake,
-            isSemCupom: !hasCoupon
+            isSemCupom: !hasCoupon,
+            observation: app.observation
           });
         }
       });
@@ -581,6 +583,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       </td>
                       <td className="py-1">
                         <p className="font-black text-slate-900 uppercase tracking-tight text-[9px]">{item.serviceName}</p>
+                        {item.observation && (item.isRemake || item.isCourtesy) && (
+                          <p className="text-[7px] font-bold text-rose-500 uppercase leading-tight mt-0.5">
+                            {item.observation.includes('JUSTIFICATIVA') 
+                              ? item.observation.substring(item.observation.indexOf('JUSTIFICATIVA')) 
+                              : item.observation}
+                          </p>
+                        )}
                       </td>
                       <td className="py-1">
                         <p className="text-slate-500 font-bold uppercase tracking-tight text-[9px]">{item.clientName}</p>
@@ -689,6 +698,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           if (parts.length === 3) dateLabel = `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
         message += `* ${dateLabel} - ${item.serviceName} (${item.clientName}): R$ ${itemVal}\n`;
+        if (item.observation && (item.isRemake || item.isCourtesy)) {
+          const just = item.observation.includes('JUSTIFICATIVA') 
+            ? item.observation.substring(item.observation.indexOf('JUSTIFICATIVA')) 
+            : item.observation;
+          message += `  _Motivo: ${just}_\n`;
+        }
       });
       message += `\n`;
     }
@@ -788,46 +803,46 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-2xl border border-slate-200 shadow-sm"><Calendar size={16} className="text-slate-400" /><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /><span className="text-slate-300 font-black">-</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /></div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Faturamento Bruto</p><p className="text-xl font-black">R$ {totals.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl text-slate-400"><Files size={20} /></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Faturamento Bruto</p><p className="text-sm md:text-xl font-black">R$ {totals.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-slate-400"><Files size={18} /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total para Nota</p><p className="text-xl font-black text-indigo-600">R$ {totals.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl text-indigo-400"><FileText size={20} /></div>
+        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total para Nota</p><p className="text-sm md:text-xl font-black text-indigo-600">R$ {totals.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-indigo-400"><FileText size={18} /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Caixinhas</p><p className="text-xl font-black text-rose-600">R$ {totals.tips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-3 rounded-xl text-rose-400"><Heart size={20} /></div>
+        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Caixinhas</p><p className="text-sm md:text-xl font-black text-rose-600">R$ {totals.tips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-rose-400"><Heart size={18} /></div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-5 rounded-[1.5rem] border border-emerald-100 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total a Repassar</p><p className="text-xl font-black text-emerald-700">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl text-emerald-600"><CircleCheck size={20} /></div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 md:p-5 rounded-[1.5rem] border border-emerald-100 shadow-sm flex items-center justify-between">
+          <div><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total a Repassar</p><p className="text-sm md:text-xl font-black text-emerald-700">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-xl text-emerald-600"><CircleCheck size={18} /></div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-slate-200 shadow-sm gap-4">
-        <div className="relative flex-1 md:min-w-[250px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="Buscar profissional..." className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-xs font-black outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-        <div className="flex gap-2 w-full lg:w-auto">
-          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all active:scale-95">
-            <Printer size={16} /> Auditoria
+      <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-slate-200 shadow-sm gap-4">
+        <div className="relative flex-1 w-full md:min-w-[250px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="Buscar profissional..." className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-xs font-black outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+        <div className="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
+          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all active:scale-95">
+            <Printer size={14} /> Auditoria
           </button>
-          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
-            <Printer size={16} /> Recibos Profissionais
+          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
+            <Printer size={14} /> Recibos
           </button>
-          <button onClick={() => setIsProvisionModalOpen(true)} className="w-full lg:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border-2 border-slate-200 dark:border-zinc-700 px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all active:scale-95">
-            <FileSpreadsheet size={16} className="text-emerald-500" /> Provisão de Pagamento
+          <button onClick={() => setIsProvisionModalOpen(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border-2 border-slate-200 dark:border-zinc-700 px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+            <FileSpreadsheet size={14} className="text-emerald-500" /> Provisão
           </button>
         </div>
       </div>
 
       <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
-        <div className="overflow-auto flex-1 text-slate-900 dark:text-white">
-          <table className="w-full text-left text-sm relative">
+        <div className="overflow-x-auto flex-1 text-slate-900 dark:text-white scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
+          <table className="w-full text-left text-sm relative min-w-[1000px] lg:min-w-0">
             <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black border-b sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-6 py-4">Profissional</th>
+                <th className="px-6 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-20">Profissional</th>
                 <th className="px-6 py-4 text-center">Serviços</th>
                 <th className="px-6 py-4 text-right">Faturamento</th>
                 <th className="px-6 py-4 text-center">Comissão</th>
@@ -836,13 +851,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <th className="px-6 py-4 text-right text-rose-500 whitespace-nowrap">DAS</th>
                 <th className="px-6 py-4 text-right text-rose-600 whitespace-nowrap">Descontos</th>
                 <th className="px-6 py-4 text-right underline decoration-emerald-200 whitespace-nowrap">Total à Repassar</th>
-                <th className="px-6 py-4 text-center">Ações</th>
+                <th className="px-6 py-4 text-center sticky right-0 bg-slate-50 dark:bg-zinc-800 z-20">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
               {reportData.map(data => (
                 <tr key={data.provider?.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <td className="px-6 py-4 font-black">{data.provider?.name}</td>
+                  <td className="px-6 py-4 font-black sticky left-0 bg-white dark:bg-zinc-900 z-10">{data.provider?.name}</td>
                   <td className="px-6 py-4 text-center font-bold">{data.count}</td>
                   <td className="px-6 py-4 text-right text-slate-500 font-bold">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-6 py-4 text-center font-black">{((data.provider?.commissionRate || 0) * 100).toFixed(0)}%</td>
@@ -881,7 +896,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     />
                   </td>
                   <td className="px-6 py-4 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 sticky right-0 bg-white dark:bg-zinc-900 z-10">
                     <div className="flex items-center justify-center gap-2">
                        <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
                         <FileText size={18} />
