@@ -50,6 +50,28 @@
         }
       }
 
+      /* Force Desktop Mode Overrides */
+      .force-desktop .hidden.md\:flex, 
+      .force-desktop .hidden.lg\:flex { display: flex !important; }
+      
+      .force-desktop .hidden.md\:block,
+      .force-desktop .hidden.lg\:block { display: block !important; }
+
+      .force-desktop .md\:hidden,
+      .force-desktop .lg\:hidden { display: none !important; }
+
+      /* Aspect Ratio Optimization - Square screens (Fold open) */
+      @media (min-aspect-ratio: 1/1) and (max-aspect-ratio: 1.1/1) and (max-width: 1100px) {
+        .force-desktop .grid-cols-5,
+        .grid-cols-5 {
+          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        }
+        .force-desktop .grid-cols-4,
+        .grid-cols-4 {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+        }
+      }
+
       /* On narrow foldable screens (cover display ~400px): show mobile layout */
       @media (max-width: 599px) {
         .fold-force-mobile { display: block !important; }
