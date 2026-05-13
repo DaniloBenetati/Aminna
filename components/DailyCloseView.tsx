@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
     Users, Wallet, Lock, Sparkles, ShoppingBag, Target, Info, CircleCheck,
     ChevronUp, ChevronDown, Crown, Printer, MessageCircle, PenTool, X, Copy, Send, History, FileText,
-    ShieldAlert
+    ShieldAlert, Heart
 } from 'lucide-react';
 import { Appointment, Service, FinancialTransaction } from '../types';
 import { toLocalDateStr, calculateDailySummary, isFirstAppointment } from '../services/financialService';
