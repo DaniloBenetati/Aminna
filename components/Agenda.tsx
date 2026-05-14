@@ -342,6 +342,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [zoomLevel, setZoomLevel] = useState(() => Number(localStorage.getItem('agenda_zoom_level')) || 1);
     const [rowHeight, setRowHeight] = useState(() => Number(localStorage.getItem('agenda_row_height')) || 100);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
 
     // Scroll synchronization refs
@@ -1502,59 +1503,60 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 </div>
                             )}
                         </div>
+                    </div>
 
-                        {/* Zoom Controls (Available on large screens only) */}
-                        <div className="hidden xl:flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                    <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
+                        <div className={`relative transition-all duration-300 ${isSearchExpanded ? 'flex-1 md:min-w-[250px]' : 'w-12'}`}>
+                            <button 
+                                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
+                                className={`flex items-center justify-center rounded-2xl transition-all ${isSearchExpanded ? 'absolute left-0 top-0 bottom-0 w-10 text-slate-400' : 'w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 text-slate-500 shadow-sm active:scale-95'}`}
+                            >
+                                <Search size={18} />
+                            </button>
+                            {isSearchExpanded && (
+                                <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Filtrar cliente..."
+                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onBlur={() => !searchTerm && setIsSearchExpanded(false)}
+                                />
+                            )}
+                        </div>
+                        
+                        {/* Zoom Controls (Visible on Tablets and Desktop) */}
+                        <div className="hidden lg:flex items-center gap-1 bg-white dark:bg-zinc-900 p-1 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-sm">
                             <button
                                 onClick={() => setRowHeight(prev => Math.max(40, prev - 10))}
-                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                                 title="Diminuir Altura"
                             >
                                 <ZoomOut size={16} />
                             </button>
                             <button
                                 onClick={() => setRowHeight(prev => Math.min(200, prev + 10))}
-                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                                 title="Aumentar Altura"
                             >
                                 <ZoomIn size={16} />
                             </button>
-                            <div className="h-4 w-px bg-slate-300 dark:bg-zinc-600 mx-1"></div>
+                            <div className="h-4 w-px bg-slate-100 dark:bg-zinc-700 mx-1"></div>
                             <button
                                 onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
-                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                                 title="Estreitar Colunas"
                             >
                                 <ChevronLeft size={16} />
                             </button>
                             <button
                                 onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
-                                className="p-2 hover:bg-white dark:hover:bg-zinc-900 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
                                 title="Alargar Colunas"
                             >
                                 <ChevronRight size={16} />
                             </button>
-                            <div className="h-4 w-px bg-slate-300 dark:bg-zinc-600 mx-1"></div>
-                            <button
-                                onClick={() => setIsFinanceModalOpen(true)}
-                                className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/40 rounded-xl text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all group"
-                                title="Resumo Financeiro do Dia"
-                            >
-                                <Wallet size={16} className="group-hover:scale-110 transition-transform" />
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
-                        <div className="relative flex-1 md:min-w-[200px]">
-                            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <input
-                                type="text"
-                                placeholder="Filtrar cliente..."
-                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
                         </div>
 
 
