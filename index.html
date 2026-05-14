@@ -21,8 +21,8 @@
           // ou se for uma tela muito larga (como o Fold aberto em modo tablet), forçamos o modo desktop
           if (!isMobileUA || window.innerWidth > 1024) {
             if (viewport) {
-              // Forçar uma largura fixa de desktop para que o navegador mobile aplique o zoom-out automático
-              viewport.setAttribute('content', 'width=1280');
+              // Forçar uma largura de 1024px (padrão desktop seguro) para zoom-out automático
+              viewport.setAttribute('content', 'width=1024, initial-scale=0.1, maximum-scale=5.0, user-scalable=yes');
             }
             document.documentElement.classList.add('force-desktop');
           } else {
@@ -72,11 +72,13 @@
       .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
       /* ===== Samsung Galaxy Fold / Foldable Support ===== */
-      /* No modo desktop forçado, garantimos que o container aceite a largura maior */
-      .force-desktop body { min-width: 1280px; overflow-x: auto; }
-      .force-desktop #root { width: 1280px; margin: 0 auto; }
+      /* No modo desktop forçado, removemos restrições de largura para evitar cortes laterais */
+      .force-desktop body { min-width: 1024px; width: 100%; overflow-x: auto; }
+      .force-desktop #root { width: 100%; min-width: 1024px; margin: 0; }
 
       html, body, #root { max-width: 100vw; overflow-x: hidden; }
+      
+      /* No modo desktop, o overflow deve ser visível para permitir zoom-out do navegador */
       .force-desktop html, .force-desktop body { max-width: none; overflow-x: auto; }
 
       /* Safe area padding for fold hinge and notch */
@@ -100,16 +102,10 @@
       .force-desktop .md\:hidden,
       .force-desktop .lg\:hidden { display: none !important; }
 
-      /* Aspect Ratio Optimization - Square screens (Fold open) */
-      @media (min-aspect-ratio: 1/1) and (max-aspect-ratio: 1.1/1) and (max-width: 1100px) {
-        .force-desktop .grid-cols-5,
-        .grid-cols-5 {
-          grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        }
-        .force-desktop .grid-cols-4,
-        .grid-cols-4 {
-          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-        }
+      /* Ajuste fino para o Fold aberto (aspect ratio quase quadrado) */
+      @media (min-aspect-ratio: 1/1) and (max-aspect-ratio: 1.1/1) {
+        .force-desktop .grid-cols-5 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+        .force-desktop .grid-cols-4 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
       }
 
       /* On narrow foldable screens (cover display ~400px): show mobile layout */
