@@ -707,3 +707,50 @@ export interface ConsentForm {
   signatureData: string; // Base64
   createdAt: string;
 }
+
+export interface MetaCampaign {
+  id: string;
+  name: string;
+  status: string;
+  objective: string;
+  daily_budget?: number;
+  lifetime_budget?: number;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  cpa: number;
+  roas: number;
+  frequency: number;
+  reach: number;
+  date_start: string;
+  results?: {
+    count: number;
+    name: string;
+  };
+  result_name?: string;
+  cost_per_result?: number;
+}
+
+export interface AdSet {
+  id: string;
+  campaign_id: string;
+  campaign_name: string;
+  name: string;
+  targeting_desc: string;
+  status: string;
+  spend: number;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  cpc: number;
+  cpm: number;
+  conversions: number;
+  cpa: number;
+  roas: number;
+  frequency: number;
+  reach: number;
+}

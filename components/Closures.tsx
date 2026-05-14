@@ -88,6 +88,8 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
   }, [providers]);
 
   const [isProvisionModalOpen, setIsProvisionModalOpen] = useState(false);
+  const [isAccountingModalOpen, setIsAccountingModalOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const persistDiscount = async (providerId: string, type: 'das' | 'discount', value: number) => {
     try {
@@ -803,36 +805,63 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-2xl border border-slate-200 shadow-sm"><Calendar size={16} className="text-slate-400" /><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /><span className="text-slate-300 font-black">-</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /></div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Faturamento Bruto</p><p className="text-sm md:text-xl font-black">R$ {totals.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-slate-400"><Files size={18} /></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Faturamento Bruto</p><p className="text-[10px] md:text-[11px] font-black whitespace-nowrap">R$ {totals.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-slate-400 flex-shrink-0 ml-1"><Files size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total para Nota</p><p className="text-sm md:text-xl font-black text-indigo-600">R$ {totals.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-indigo-400"><FileText size={18} /></div>
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Total para Nota</p><p className="text-[10px] md:text-[11px] font-black text-indigo-600 whitespace-nowrap">R$ {totals.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-indigo-400 flex-shrink-0 ml-1"><FileText size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-3 md:p-5 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Caixinhas</p><p className="text-sm md:text-xl font-black text-rose-600">R$ {totals.tips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-2 md:p-3 rounded-xl text-rose-400"><Heart size={18} /></div>
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+          <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Total Caixinhas</p><p className="text-[10px] md:text-[11px] font-black text-rose-600 whitespace-nowrap">R$ {totals.tips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-rose-400 flex-shrink-0 ml-1"><Heart size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-3 md:p-5 rounded-[1.5rem] border border-emerald-100 shadow-sm flex items-center justify-between">
-          <div><p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Total a Repassar</p><p className="text-sm md:text-xl font-black text-emerald-700">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-xl text-emerald-600"><CircleCheck size={18} /></div>
+        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 md:p-2.5 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
+          <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-emerald-600 uppercase tracking-widest mb-0.5 truncate">Total a Repassar</p><p className="text-[10px] md:text-[11px] font-black text-emerald-700 whitespace-nowrap">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
+          <div className="bg-white dark:bg-zinc-900 p-1 md:p-1.5 rounded-lg text-emerald-600 flex-shrink-0 ml-1"><CircleCheck size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-[2rem] border border-slate-200 shadow-sm gap-4">
-        <div className="relative flex-1 w-full md:min-w-[250px]"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="Buscar profissional..." className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-xs font-black outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-        <div className="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
-          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-slate-800 transition-all active:scale-95">
-            <Printer size={14} /> Auditoria
+      <div className="flex flex-row justify-between items-center bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl border border-slate-200 shadow-sm gap-2">
+        <div className={`relative transition-all duration-300 flex items-center ${isSearchOpen ? 'flex-1 min-w-[150px]' : 'w-9'}`}>
+          {isSearchOpen ? (
+            <div className="relative w-full flex items-center">
+              <Search size={14} className="absolute left-3 text-slate-400" />
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="Buscar profissional..." 
+                className="w-full pl-9 pr-8 py-1.5 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-[10px] font-black outline-none animate-in slide-in-from-left-1 duration-200" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+              <button onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}} className="absolute right-2 p-1 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-md transition-colors"><X size={12} className="text-slate-400" /></button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setIsSearchOpen(true)}
+              className="flex items-center justify-center w-9 h-9 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl hover:bg-slate-100 transition-colors"
+              title="Buscar"
+            >
+              <Search size={16} className="text-slate-500" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="flex items-center justify-center gap-1.5 bg-slate-950 dark:bg-white text-white dark:text-black px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-slate-800 transition-all active:scale-95">
+            <Printer size={12} /> <span className="hidden sm:inline">Auditoria</span>
           </button>
-          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-indigo-600 dark:bg-indigo-500 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all active:scale-95">
-            <Printer size={14} /> Recibos
+          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex items-center justify-center gap-1.5 bg-indigo-600 dark:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-indigo-700 transition-all active:scale-95">
+            <Printer size={12} /> <span className="hidden sm:inline">Recibos</span>
           </button>
-          <button onClick={() => setIsProvisionModalOpen(true)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border-2 border-slate-200 dark:border-zinc-700 px-4 md:px-6 py-3 md:py-4 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-50 transition-all active:scale-95">
-            <FileSpreadsheet size={14} className="text-emerald-500" /> Provisão
+          <button onClick={() => setIsProvisionModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+            <FileSpreadsheet size={12} className="text-emerald-500" /> <span className="hidden sm:inline">Provisão</span>
+          </button>
+          <button onClick={() => setIsAccountingModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+            <FileCode size={12} className="text-amber-500" /> <span className="hidden sm:inline">Contabilidade</span>
           </button>
         </div>
       </div>
@@ -840,30 +869,30 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="overflow-x-auto flex-1 text-slate-900 dark:text-white scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
           <table className="w-full text-left text-sm relative min-w-[1000px] lg:min-w-0">
-            <thead className="bg-slate-50 dark:bg-zinc-800 text-[10px] uppercase font-black border-b sticky top-0 z-10 shadow-sm">
+            <thead className="bg-slate-50 dark:bg-zinc-800 text-[9px] uppercase font-black border-b sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="px-6 py-4 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-20">Profissional</th>
-                <th className="px-6 py-4 text-center">Serviços</th>
-                <th className="px-6 py-4 text-right">Faturamento</th>
-                <th className="px-6 py-4 text-center">Comissão</th>
-                <th className="px-6 py-4 text-right underline decoration-indigo-200 whitespace-nowrap">Valor p/ Nota</th>
-                <th className="px-6 py-4 text-right underline decoration-rose-200 whitespace-nowrap">Caixinhas</th>
-                <th className="px-6 py-4 text-right text-rose-500 whitespace-nowrap">DAS</th>
-                <th className="px-6 py-4 text-right text-rose-600 whitespace-nowrap">Descontos</th>
-                <th className="px-6 py-4 text-right underline decoration-emerald-200 whitespace-nowrap">Total à Repassar</th>
-                <th className="px-6 py-4 text-center sticky right-0 bg-slate-50 dark:bg-zinc-800 z-20">Ações</th>
+                <th className="px-4 py-3 sticky left-0 bg-slate-50 dark:bg-zinc-800 z-20">Profissional</th>
+                <th className="px-3 py-3 text-center">Serviços</th>
+                <th className="px-3 py-3 text-right">Faturamento</th>
+                <th className="px-3 py-3 text-center">Comissão</th>
+                <th className="px-3 py-3 text-right underline decoration-indigo-200 whitespace-nowrap">Valor p/ Nota</th>
+                <th className="px-3 py-3 text-right underline decoration-rose-200 whitespace-nowrap">Caixinhas</th>
+                <th className="px-3 py-3 text-right text-rose-500 whitespace-nowrap">DAS</th>
+                <th className="px-3 py-3 text-right text-rose-600 whitespace-nowrap">Descontos</th>
+                <th className="px-3 py-3 text-right underline decoration-emerald-200 whitespace-nowrap">Total à Repassar</th>
+                <th className="px-4 py-3 text-center sticky right-0 bg-slate-50 dark:bg-zinc-800 z-20">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
               {reportData.map(data => (
-                <tr key={data.provider?.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors">
-                  <td className="px-6 py-4 font-black sticky left-0 bg-white dark:bg-zinc-900 z-10">{data.provider?.name}</td>
-                  <td className="px-6 py-4 text-center font-bold">{data.count}</td>
-                  <td className="px-6 py-4 text-right text-slate-500 font-bold">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4 text-center font-black">{((data.provider?.commissionRate || 0) * 100).toFixed(0)}%</td>
-                  <td className="px-6 py-4 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4 text-right font-black text-rose-600 whitespace-nowrap">R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                   <td className="px-6 py-4 text-right">
+                <tr key={data.provider?.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 transition-colors text-[10px] md:text-xs">
+                  <td className="px-4 py-3 font-black sticky left-0 bg-white dark:bg-zinc-900 z-10 uppercase">{data.provider?.name}</td>
+                  <td className="px-3 py-3 text-center font-bold">{data.count}</td>
+                  <td className="px-3 py-3 text-right text-slate-500 font-bold whitespace-nowrap">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-3 py-3 text-center font-black">{((data.provider?.commissionRate || 0) * 100).toFixed(0)}%</td>
+                  <td className="px-3 py-3 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-3 py-3 text-right font-black text-rose-600 whitespace-nowrap">R$ {data.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                   <td className="px-3 py-3 text-right">
                     <input 
                       type="number" 
                       value={dasAmounts[data.provider?.id || ''] || ''} 
@@ -876,10 +905,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         persistDiscount(data.provider?.id || '', 'das', val);
                       }}
                       placeholder="0,00"
-                      className="w-20 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-xs font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
+                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-[10px] font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
                     />
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-3 py-3 text-right">
                     <input 
                       type="number" 
                       value={otherDiscounts[data.provider?.id || ''] || ''} 
@@ -892,21 +921,20 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         persistDiscount(data.provider?.id || '', 'discount', val);
                       }}
                       placeholder="0,00"
-                      className="w-20 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-xs font-black text-rose-600 focus:ring-1 focus:ring-rose-600 outline-none"
+                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-[10px] font-black text-rose-600 focus:ring-1 focus:ring-rose-600 outline-none"
                     />
                   </td>
-                  <td className="px-6 py-4 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                  <td className="px-6 py-4 sticky right-0 bg-white dark:bg-zinc-900 z-10">
-                    <div className="flex items-center justify-center gap-2">
-                       <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
-                        <FileText size={18} />
+                  <td className="px-3 py-3 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-4 py-3 sticky right-0 bg-white dark:bg-zinc-900 z-10">
+                    <div className="flex items-center justify-center gap-1">
+                       <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                        <FileText size={16} />
                       </button>
-
-                      <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
-                        <MessageCircle size={18} />
+                      <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
+                        <MessageCircle size={16} />
                       </button>
-                      <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
-                        <FileCode size={18} />
+                      <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                        <FileCode size={16} />
                       </button>
                     </div>
                   </td>
@@ -1191,6 +1219,164 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all col-span-2 lg:col-span-1"
               >
                 <Printer size={18} /> Gerar PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAccountingModalOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-6 md:p-8 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600">
+                  <FileCode size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Relatório Contábil</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Dados fiscais e faturamento por profissional</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAccountingModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white text-slate-400 transition-colors"><X size={20} /></button>
+            </div>
+            
+            <div className="flex-1 overflow-auto p-3 md:p-6">
+              <table className="w-full text-left text-[9px] md:text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-zinc-800 text-[8px] md:text-[9px] font-black uppercase tracking-widest border-b">
+                    <th className="px-2 py-2 md:px-3 md:py-3">Profissional</th>
+                    <th className="px-2 py-2 md:px-3 md:py-3">Empresa (Razão Social)</th>
+                    <th className="px-2 py-2 md:px-3 md:py-3">CNPJ</th>
+                    <th className="px-2 py-2 md:px-3 md:py-3 text-right whitespace-nowrap">Valor p/ Nota</th>
+                    <th className="px-2 py-2 md:px-3 md:py-3 text-right whitespace-nowrap">Faturamento Bruto</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                  {reportData.map(data => {
+                    const fiscal = fiscalConfigs.find((f: any) => f.provider_id === data.provider?.id);
+                    return (
+                      <tr key={data.provider?.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-2 py-2 md:px-3 md:py-3 font-black text-slate-900 dark:text-white uppercase">{data.provider?.name}</td>
+                        <td className="px-2 py-2 md:px-3 md:py-3 font-bold text-slate-500 uppercase">{fiscal?.social_name || '—'}</td>
+                        <td className="px-2 py-2 md:px-3 md:py-3 font-bold text-slate-500">{fiscal?.cnpj || '—'}</td>
+                        <td className="px-2 py-2 md:px-3 md:py-3 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-2 md:px-3 md:py-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="p-6 md:p-8 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex flex-wrap gap-4">
+              <button 
+                onClick={() => {
+                  const headers = ["Profissional", "Razao Social", "CNPJ", "Valor para Nota", "Faturamento Bruto"];
+                  const rows = reportData.map(data => {
+                    const fiscal = fiscalConfigs.find((f: any) => f.provider_id === data.provider?.id);
+                    return [
+                      data.provider?.name,
+                      fiscal?.social_name || '',
+                      fiscal?.cnpj || '',
+                      data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2, useGrouping: false }),
+                      data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, useGrouping: false })
+                    ].join(";");
+                  });
+                  const csvContent = "\uFEFF" + [headers.join(";"), ...rows].join("\n");
+                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement("a");
+                  link.setAttribute("href", url);
+                  link.setAttribute("download", `Relatorio_Contabil_${new Date().toISOString().split('T')[0]}.csv`);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }}
+                className="flex-1 min-w-[150px] py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
+              >
+                <Download size={18} /> Exportar CSV
+              </button>
+              <button 
+                onClick={() => {
+                  const printWindow = window.open('', '_blank');
+                  if (!printWindow) return;
+                  
+                  const rows = reportData.map(data => {
+                    const fiscal = fiscalConfigs.find((f: any) => f.provider_id === data.provider?.id);
+                    return `
+                      <tr>
+                        <td style="font-weight: bold; text-transform: uppercase;">${data.provider?.name || ''}</td>
+                        <td style="text-transform: uppercase;">${fiscal?.social_name || '—'}</td>
+                        <td>${fiscal?.cnpj || '—'}</td>
+                        <td align="right" style="font-weight: bold; color: #4f46e5;">R$ ${data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td align="right" style="font-weight: bold;">R$ ${data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    `;
+                  }).join('');
+
+                  printWindow.document.write(`
+                    <html>
+                      <head>
+                        <title>Relatório Contábil - Aminna</title>
+                        <style>
+                          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1e293b; line-height: 1.5; }
+                          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+                          .logo-area h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -1px; text-transform: uppercase; }
+                          .logo-area p { margin: 5px 0 0; font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; }
+                          .date-area { text-align: right; font-size: 12px; font-weight: 700; color: #64748b; }
+                          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                          th { background: #f1f5f9; text-align: left; padding: 12px 8px; font-size: 10px; text-transform: uppercase; font-weight: 900; border-bottom: 1px solid #cbd5e1; color: #475569; }
+                          td { padding: 12px 8px; font-size: 11px; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+                          .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 10px; color: #94a3b8; text-align: center; font-weight: 700; text-transform: uppercase; }
+                          @media print {
+                            @page { margin: 2cm; }
+                            body { padding: 0; }
+                          }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="header">
+                          <div class="logo-area">
+                            <h1>Relatório Contábil</h1>
+                            <p>Aminna • Gestão Inteligente</p>
+                          </div>
+                          <div class="date-area">
+                            <p>EMISSÃO: ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                        </div>
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Profissional</th>
+                              <th>Razão Social</th>
+                              <th>CNPJ</th>
+                              <th style="text-align: right">Valor p/ Nota</th>
+                              <th style="text-align: right">Faturamento Bruto</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            ${rows}
+                          </tbody>
+                        </table>
+                        <div class="footer">
+                          Relatório gerado automaticamente pelo Sistema Aminna
+                        </div>
+                        <script>
+                          window.onload = () => {
+                            setTimeout(() => {
+                              window.print();
+                            }, 500);
+                          };
+                        </script>
+                      </body>
+                    </html>
+                  `);
+                  printWindow.document.close();
+                }}
+                className="flex-1 min-w-[150px] py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
+              >
+                <Printer size={18} /> Imprimir PDF
               </button>
             </div>
           </div>

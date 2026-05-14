@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy } from 'lucide-react';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting, AdSet } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
 import { supabase } from '../services/supabase';
@@ -10,22 +10,22 @@ import { supabase } from '../services/supabase';
 const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, onClick }: any) => (
     <div 
         onClick={onClick}
-        className={`bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-3 h-full`}
+        className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
     >
         <div className="flex justify-between items-start">
             <div className="flex-1 min-w-0">
-                <p className="text-[10px] md:text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
-                <div className="flex items-center gap-2">
-                    <h3 className={`${valueSize || 'text-xl md:text-3xl'} font-black text-slate-900 dark:text-white tracking-tighter mt-1`}>{value}</h3>
-                    {onClick && <ChevronRight size={16} className="text-slate-400 mt-1" />}
+                <p className="text-[6px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
+                <div className="flex items-center gap-1">
+                    <h3 className={`${valueSize || 'text-[10px] md:text-base'} font-black text-slate-900 dark:text-white tracking-tighter mt-0.5 whitespace-nowrap truncate`}>{value}</h3>
+                    {onClick && <ChevronRight size={12} className="text-slate-400 mt-0.5" />}
                 </div>
             </div>
-            <div className={`p-3 rounded-2xl flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
-                <Icon className={`w-5 h-5 md:w-6 md:h-6 ${color} dark:text-current`} />
+            <div className={`p-1 md:p-1.5 rounded-lg flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
+                <Icon className={`w-3 h-3 md:w-4 md:h-4 ${color} dark:text-current`} />
             </div>
         </div>
-        <p className={`text-[10px] md:text-xs font-bold truncate flex items-center gap-1 ${sub.includes('+') ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-            {sub.includes('+') ? <TrendingUp size={12} /> : <AlertTriangle size={12} />}
+        <p className={`text-[6px] md:text-[8px] font-bold truncate flex items-center gap-0.5 ${sub.includes('+') ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
+            {sub.includes('+') ? <TrendingUp size={8} /> : <AlertTriangle size={8} />}
             {sub}
         </p>
     </div>
@@ -69,6 +69,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const [isCouponsModalOpen, setIsCouponsModalOpen] = useState(false);
     const [selectedDateAppointments, setSelectedDateAppointments] = useState<Appointment[] | null>(null);
     const [churnModalTab, setChurnModalTab] = useState<'loyal' | 'new'>('loyal');
+    
+    // Meta Ads State
+    const [adSets, setAdSets] = useState<AdSet[]>([]);
+    const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+    const [metaError, setMetaError] = useState<string | null>(null);
 
     // --- HELPERS ---
     const navigateDate = (direction: 'prev' | 'next') => {
@@ -114,6 +119,97 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         return false;
     };
 
+    const fmt = {
+        currency: (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v),
+        percent: (v: number) => `${v.toFixed(2)}%`,
+        number: (v: number) => v.toLocaleString('pt-BR')
+    };
+
+    // --- META ADS FETCHING ---
+    const fetchMetaAds = async () => {
+        const token = localStorage.getItem('meta_ads_token');
+        const adAccountId = localStorage.getItem('meta_ads_account_id');
+        
+        if (!token || !adAccountId) return;
+        
+        setIsLoadingMeta(true);
+        try {
+            const today = new Date();
+            let startDateStr = "";
+            let endDateStr = today.toISOString().split('T')[0];
+
+            if (timeView === 'day') {
+                startDateStr = dateRef.toISOString().split('T')[0];
+                endDateStr = startDateStr;
+            } else if (timeView === 'month') {
+                startDateStr = new Date(dateRef.getFullYear(), dateRef.getMonth(), 1).toISOString().split('T')[0];
+                endDateStr = new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0).toISOString().split('T')[0];
+            } else if (timeView === 'year') {
+                startDateStr = new Date(dateRef.getFullYear(), 0, 1).toISOString().split('T')[0];
+                endDateStr = new Date(dateRef.getFullYear(), 11, 31).toISOString().split('T')[0];
+            } else if (timeView === 'custom') {
+                startDateStr = customRange.start;
+                endDateStr = customRange.end;
+            }
+
+            const insightsRange = `.time_range({"since":"${startDateStr}","until":"${endDateStr}"})`;
+            const adSetFields = [
+                'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting',
+                `insights${insightsRange}{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,purchase_roas,frequency,reach}`
+            ].join(',');
+
+            const response = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/adsets?fields=${adSetFields}&limit=100&access_token=${token}`);
+            const data = await response.json();
+
+            if (data.error) throw new Error(data.error.message);
+
+            const parsedAdSets: AdSet[] = (data.data || []).map((a: any) => {
+                const insight = a.insights?.data?.[0] || {};
+                const roasObj = insight.purchase_roas?.find((r: any) => r.action_type === 'purchase') || insight.purchase_roas?.[0];
+                
+                let targetingDesc = '—';
+                if (a.targeting) {
+                    const parts = [];
+                    if (a.targeting.age_min) parts.push(`${a.targeting.age_min}-${a.targeting.age_max || '65+'} anos`);
+                    if (a.targeting.genders && a.targeting.genders.length === 1) parts.push(a.targeting.genders[0] === 1 ? 'Homens' : 'Mulheres');
+                    if (a.targeting.geo_locations?.cities) parts.push(`${a.targeting.geo_locations.cities.length} Cid.`);
+                    targetingDesc = parts.join(' • ') || 'Aberto';
+                }
+
+                return {
+                    id: a.id,
+                    campaign_id: a.campaign_id,
+                    campaign_name: a.campaign?.name || '—',
+                    name: a.name,
+                    targeting_desc: targetingDesc,
+                    status: a.status,
+                    spend: Number(insight.spend || 0),
+                    impressions: Number(insight.impressions || 0),
+                    clicks: Number(insight.clicks || 0),
+                    ctr: Number(insight.ctr || 0),
+                    cpc: Number(insight.cpc || 0),
+                    cpm: Number(insight.cpm || 0),
+                    conversions: Number(insight.conversions || 0),
+                    cpa: Number(insight.cost_per_conversion || 0),
+                    roas: Number(roasObj?.value || 0),
+                    frequency: Number(insight.frequency || 0),
+                    reach: Number(insight.reach || 0)
+                };
+            });
+
+            setAdSets(parsedAdSets.filter(a => a.spend > 0 || a.status === 'ACTIVE'));
+        } catch (err: any) {
+            console.error('Meta Ads Fetch Error:', err);
+            setMetaError(err.message);
+        } finally {
+            setIsLoadingMeta(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchMetaAds();
+    }, [timeView, dateRef, customRange]);
+
     // --- DATA FILTERING ---
     const filteredAppointments = useMemo(() => {
         // If product filter is active, we (mostly) hide appointments as they aren't directly linked to product sales in this view
@@ -146,6 +242,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             return true;
         });
     }, [appointments, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, campaigns, customers]);
+
+    const vettedAppointments = useMemo(() => {
+        return filteredAppointments.filter(a => {
+            const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+            const isPast = a.date < toLocalDateStr(new Date());
+            return isPast ? a.status === 'Concluído' : true; // already filtered out 'Cancelado' in filteredAppointments
+        });
+    }, [filteredAppointments]);
 
     const filteredSales = useMemo(() => {
         return sales.filter(s => {
@@ -218,13 +322,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         return Object.entries(firstVisits)
             .filter(([_, v]) => isDateInPeriod(v.date))
             .map(([customerId, v]) => {
-                const customer = customers.find(c => c.id === customerId);
+                const customer = (customers || []).find(c => c.id === customerId);
                 // Find appointments for that specific first visit date
                 const firstDayApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído' && a.date === v.date);
                 
                 // Get professional name (from the first appointment of the day)
+                const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');
                 const mainApp = firstDayApps[0];
-                const professional = providers.find(p => p.id === mainApp?.providerId)?.name || 'N/A';
+                const pid = mainApp?.providerId;
+                const professionalRaw = (providers || []).find(p => p.id === pid)?.name?.trim() || 
+                                   ((!pid || pid === 'null' || pid === 'undefined' || pid === 'unknown') ? (maria?.name?.trim() || 'MARIA ALICE RODI CARDOSO') : `ID: ${pid.slice(0,4)}`);
+                const professional = professionalRaw.toLowerCase().includes('maria alice') || professionalRaw.toLowerCase() === 'maria' ? 'MARIA' : professionalRaw;
                 
                 // Collect all service names from that day
                 const servicesNames = firstDayApps.map(a => {
@@ -363,8 +471,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         return filteredAppointments
             .filter(a => a.status === 'Concluído' && a.appliedCoupon)
             .map(a => {
-                const customer = customers.find(c => c.id === a.customerId);
-                const professional = providers.find(p => p.id === a.providerId)?.name || 'N/A';
+                const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');
+                const customer = (customers || []).find(c => c.id === a.customerId);
+                const pid = a.providerId;
+                const professionalRaw = (providers || []).find(p => p.id === pid)?.name?.trim() || 
+                                   ((!pid || pid === 'null' || pid === 'undefined' || pid === 'unknown') ? (maria?.name?.trim() || 'MARIA ALICE RODI CARDOSO') : `ID: ${pid.slice(0,4)}`);
+                const professional = professionalRaw.toLowerCase().includes('maria alice') || professionalRaw.toLowerCase() === 'maria' ? 'MARIA' : professionalRaw;
                 const svc = services.find(s => s.id === a.serviceId);
                 const servicesNames = [svc?.name || 'Serviço', ...(a.additionalServices || []).map((extra: any) => services.find(s => s.id === extra.serviceId)?.name).filter(Boolean)].join(', ');
                 const revenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
@@ -534,25 +646,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
             // Proportional attribution of revenue to main provider
             const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
-            revenue[a.providerId] = (revenue[a.providerId] || 0) + mainRevenueProportional;
+            
+            const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');
+            const getEffectiveId = (pid: string | null | undefined) => (!pid || pid === 'null' || pid === 'undefined') ? (maria?.id || 'unknown') : pid;
+
+            const effectiveMainId = getEffectiveId(a.providerId);
+            revenue[effectiveMainId] = (revenue[effectiveMainId] || 0) + mainRevenueProportional;
 
             (a.additionalServices || []).forEach(extra => {
                 const extraSvc = services.find(s => s.id === extra.serviceId);
                 const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
                 const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
-                revenue[extra.providerId] = (revenue[extra.providerId] || 0) + extraRevenueProportional;
+                
+                const effectiveExtraId = getEffectiveId(extra.providerId);
+                revenue[effectiveExtraId] = (revenue[effectiveExtraId] || 0) + extraRevenueProportional;
             });
         });
         return Object.entries(revenue)
-            .map(([id, val]) => ({
-                name: (providers.find(p => p.id === id)?.name || 'Desc.').split(' ')[0],
-                full: providers.find(p => p.id === id)?.name,
-                value: val,
-                avatar: providers.find(p => p.id === id)?.avatar
-            }))
+            .map(([id, val]) => {
+                const p = (providers || []).find(p => p.id === id);
+                const name = p?.name?.trim() || (id === 'unknown' ? 'MARIA ALICE RODI CARDOSO' : `ID: ${id.slice(0,4)}`);
+
+                const displayName = name.toLowerCase().includes('maria alice') || name.toLowerCase() === 'maria' ? 'MARIA' : name.split(' ')[0];
+
+                return {
+                    name: displayName,
+                    full: name,
+                    value: val,
+                    avatar: p?.avatar
+                };
+            })
             .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value)
-            .slice(0, 5);
+            .slice(0, 15);
     }, [filteredAppointments, services, providers]);
 
     // 3. Top Customers (Spenders) - Already Revenue
@@ -564,11 +690,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
 
         return Object.entries(spending)
-            .map(([id, val]) => ({
-                name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
-                full: customers.find(c => c.id === id)?.name,
-                value: val
-            }))
+            .map(([id, val]) => {
+                const c = (customers || []).find(c => c.id === id);
+                return {
+                    name: c?.name?.trim() ? (c.name.trim().split(' ')[0]) : 'Não Identificado',
+                    full: c?.name || 'Não Identificado',
+                    value: val
+                };
+            })
             .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
     }, [filteredAppointments, customers, services]);
@@ -651,7 +780,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return Object.entries(stats)
             .map(([id, data]) => ({
-                name: customers.find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
+                name: (customers || []).find(c => c.id === id)?.name.split(' ')[0] || 'Desc.',
                 value: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
             }))
             .filter(item => item.value > 0)
@@ -788,7 +917,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
         return Object.entries(partnerRevenue)
             .map(([id, val]) => ({
-                name: PARTNERS.find((p: any) => p.id === id)?.name || 'Desc.',
+                name: PARTNERS.find((p: any) => p.id === id)?.name || 'Não Identificado',
                 value: val
             }))
             .filter(item => item.value > 0)
@@ -823,7 +952,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
         return Object.entries(revenue)
             .map(([id, val]) => ({
-                name: services.find(s => s.id === id)?.name || 'Desc.',
+                name: services.find(s => s.id === id)?.name || 'Não Identificado',
                 value: val
             }))
             .filter(item => item.value > 0)
@@ -988,26 +1117,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // 11. Profissionais Mais Requisitados (Volume)
     const topProvidersVolume = useMemo(() => {
         const counts: Record<string, number> = {};
-        filteredAppointments.forEach(a => {
-            counts[a.providerId] = (counts[a.providerId] || 0) + 1;
+        const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');
+        const getEffectiveId = (pid: string | null | undefined) => (!pid || pid === 'null' || pid === 'undefined') ? (maria?.id || 'unknown') : pid;
+
+        vettedAppointments.forEach(a => {
+            const mId = getEffectiveId(a.providerId);
+            counts[mId] = (counts[mId] || 0) + 1;
 
             (a.additionalServices || []).forEach(extra => {
-                counts[extra.providerId] = (counts[extra.providerId] || 0) + 1;
+                const eId = getEffectiveId(extra.providerId);
+                counts[eId] = (counts[eId] || 0) + 1;
             });
         });
         return Object.entries(counts)
-            .map(([id, val]) => ({
-                name: (providers.find(p => p.id === id)?.name || 'Desc.').split(' ')[0],
-                value: val
-            }))
+            .map(([id, val]) => {
+                const p = (providers || []).find(p => p.id === id);
+                const name = p?.name?.trim() || (id === 'unknown' ? 'MARIA ALICE RODI CARDOSO' : 'Não Identificado');
+                const displayName = name.toLowerCase().includes('maria alice') || name.toLowerCase() === 'maria' ? 'MARIA' : name.split(' ')[0];
+                return {
+                    name: displayName,
+                    value: val
+                };
+            })
             .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
-    }, [filteredAppointments, providers]);
+    }, [vettedAppointments, providers]);
 
     // 12. Serviços Mais Agendados (Volume)
     const topServicesVolume = useMemo(() => {
         const counts: Record<string, number> = {};
-        filteredAppointments.forEach(a => {
+        vettedAppointments.forEach(a => {
             counts[a.serviceId] = (counts[a.serviceId] || 0) + 1;
 
             (a.additionalServices || []).forEach(extra => {
@@ -1016,18 +1155,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
         return Object.entries(counts)
             .map(([id, val]) => ({
-                name: services.find(s => s.id === id)?.name || 'Desc.',
+                name: (services || []).find(s => s.id === id)?.name || 'Não Identificado',
                 value: val
             }))
             .filter(item => item.value > 0)
             .sort((a, b) => b.value - a.value);
-    }, [filteredAppointments, services]);
+    }, [vettedAppointments, services]);
 
     // Profissionais - Receita e Ticket Médio
     const providerMetrics = useMemo(() => {
         const stats: Record<string, { faturamento: number; atendimentos: number }> = {};
+        const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');
+        const getEffectiveId = (pid: string | null | undefined) => (!pid || pid === 'null' || pid === 'undefined') ? (maria?.id || 'unknown') : pid;
 
-        filteredAppointments.forEach(a => {
+        vettedAppointments.forEach(a => {
             const mainSvc = services.find(s => s.id === a.serviceId);
             const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
             const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
@@ -1040,39 +1181,46 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 ? ((a.pricePaid || 0) - tipAmount)
                 : totalBooked;
 
-            if (!stats[a.providerId]) stats[a.providerId] = { faturamento: 0, atendimentos: 0 };
+            const effectiveMainId = getEffectiveId(a.providerId);
+            if (!stats[effectiveMainId]) stats[effectiveMainId] = { faturamento: 0, atendimentos: 0 };
             const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
-            stats[a.providerId].faturamento += mainRevenueProportional;
-            stats[a.providerId].atendimentos += 1;
+            stats[effectiveMainId].faturamento += mainRevenueProportional;
+            stats[effectiveMainId].atendimentos += 1;
 
             (a.additionalServices || []).forEach(extra => {
-                if (!stats[extra.providerId]) stats[extra.providerId] = { faturamento: 0, atendimentos: 0 };
+                const effectiveExtraId = getEffectiveId(extra.providerId);
+                if (!stats[effectiveExtraId]) stats[effectiveExtraId] = { faturamento: 0, atendimentos: 0 };
                 const extraSvc = services.find(s => s.id === extra.serviceId);
                 const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
                 const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
                 
-                stats[extra.providerId].faturamento += extraRevenueProportional;
-                stats[extra.providerId].atendimentos += 1;
+                stats[effectiveExtraId].faturamento += extraRevenueProportional;
+                stats[effectiveExtraId].atendimentos += 1;
             });
         });
 
-        const arr = Object.entries(stats).map(([id, data]) => ({
-            name: providers.find(p => p.id === id)?.name.split(' ')[0] || 'Desc.',
-            faturamento: data.faturamento,
-            ticketMedio: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
-        })).filter(item => item.faturamento > 0);
+        const arr = Object.entries(stats).map(([id, data]) => {
+            const p = (providers || []).find(p => p.id === id);
+            const name = p?.name?.trim() || (id === 'unknown' ? 'MARIA ALICE RODI CARDOSO' : 'Não Identificado');
+            const displayName = name.toLowerCase().includes('maria alice') || name.toLowerCase() === 'maria' ? 'MARIA' : name.split(' ')[0];
+            return {
+                name: displayName,
+                faturamento: data.faturamento,
+                ticketMedio: data.atendimentos > 0 ? data.faturamento / data.atendimentos : 0
+            };
+        }).filter(item => item.faturamento > 0);
 
         return {
             revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
             ticket: [...arr].sort((a, b) => b.ticketMedio - a.ticketMedio)
         };
-    }, [filteredAppointments, providers, services]);
+    }, [vettedAppointments, providers, services]);
 
     // Serviços - Receita e Ticket Médio
     const serviceMetrics = useMemo(() => {
         const stats: Record<string, { faturamento: number; qtd: number }> = {};
 
-        filteredAppointments.forEach(a => {
+        vettedAppointments.forEach(a => {
             const mainSvc = services.find(s => s.id === a.serviceId);
             const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
             const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
@@ -1102,7 +1250,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
 
         const arr = Object.entries(stats).map(([id, data]) => ({
-            name: services.find(s => s.id === id)?.name || 'Desc.',
+            name: (services || []).find(s => s.id === id)?.name || 'Não Identificado',
             faturamento: data.faturamento,
             ticketMedio: data.qtd > 0 ? data.faturamento / data.qtd : 0
         })).filter(item => item.faturamento > 0);
@@ -1111,7 +1259,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             revenue: [...arr].sort((a, b) => b.faturamento - a.faturamento),
             ticket: [...arr].sort((a, b) => b.ticketMedio - a.ticketMedio)
         };
-    }, [filteredAppointments, services]);
+    }, [vettedAppointments, services]);
+
+    const categoryMetrics = useMemo(() => {
+        const revenue: Record<string, number> = {};
+        const volume: Record<string, number> = {};
+
+        filteredAppointments.forEach(a => {
+            const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
+            const isPast = a.date < toLocalDateStr(new Date());
+            const effectiveStatus = isPast ? a.status === 'Concluído' : a.status !== 'Cancelado';
+            
+            if (!effectiveStatus || isRemake) return;
+
+            const mainSvc = services.find(s => s.id === a.serviceId);
+            const category = mainSvc?.category?.trim() || 'Não Informado';
+            
+            const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
+            const extraBooked = (a.additionalServices || []).reduce((sum, extra) => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                return sum + (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+            }, 0);
+            const totalBooked = mainBooked + extraBooked;
+            const tipAmount = a.tipAmount || 0;
+            const actualTotalRevenue = (a.status === 'Concluído' && (a.pricePaid || 0) > 0)
+                ? ((a.pricePaid || 0) - tipAmount)
+                : totalBooked;
+
+            const mainRevenueProportional = totalBooked > 0 ? (mainBooked / totalBooked) * actualTotalRevenue : 0;
+            revenue[category] = (revenue[category] || 0) + mainRevenueProportional;
+            volume[category] = (volume[category] || 0) + 1;
+
+            (a.additionalServices || []).forEach(extra => {
+                const extraSvc = services.find(s => s.id === extra.serviceId);
+                const extraCategory = extraSvc?.category?.trim() || 'Não Informado';
+                const extraBookedPrice = (extra.bookedPrice ?? extraSvc?.price ?? 0) * (extra.quantity || 1);
+                const extraRevenueProportional = totalBooked > 0 ? (extraBookedPrice / totalBooked) * actualTotalRevenue : 0;
+                
+                revenue[extraCategory] = (revenue[extraCategory] || 0) + extraRevenueProportional;
+                volume[extraCategory] = (volume[extraCategory] || 0) + 1;
+            });
+        });
+
+        return Object.entries(revenue).map(([name, val]) => ({
+            name,
+            faturamento: val,
+            volume: volume[name] || 0
+        })).sort((a, b) => b.faturamento - a.faturamento);
+    }, [vettedAppointments, services]);
 
     // 13. Ausências Metrics (Blocks)
     const absenceMetrics = useMemo(() => {
@@ -1163,7 +1358,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
 
             if (!providerRisk[b.providerId]) {
-                providerRisk[b.providerId] = { count: 0, hours: 0, loss: 0, name: providers.find(p => p.id === b.providerId)?.name || 'Desconhecido' };
+                providerRisk[b.providerId] = { count: 0, hours: 0, loss: 0, name: (providers || []).find(p => p.id === b.providerId)?.name || 'Desconhecido' };
             }
             providerRisk[b.providerId].count += 1;
             const hours = getBusinessHoursIntersection(b.date, b.time, b.endTime || '00:00');
@@ -1228,7 +1423,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         const revenues = Object.entries(revenuePerProvider).map(([id, amount]) => ({
             id,
             amount,
-            name: providers.find(p => p.id === id)?.name || 'Desconhecido'
+            name: (providers || []).find(p => p.id === id)?.name || 'Desconhecido'
         })).sort((a,b) => b.amount - a.amount);
 
         const topPerformer = revenues[0];
@@ -1371,7 +1566,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const mainSvc = services.find(s => s.id === a.serviceId);
                 const hasMainProv = !!a.providerId;
                 const mainBooked = hasMainProv ? ((a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1)) : 0;
-                const provider = providers.find(p => p.id === a.providerId);
+                const provider = (providers || []).find(p => p.id === a.providerId);
                 const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
                 commissionTotal += mainBooked * mainCommRate;
 
@@ -1380,7 +1575,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     if (hasExtraProv) {
                         const extraS = services.find(s => s.id === extra.serviceId);
                         const extraBooked = (extra.bookedPrice ?? extraS?.price ?? 0) * (extra.quantity || 1);
-                        const extraProv = providers.find(p => p.id === extra.providerId);
+                        const extraProv = (providers || []).find(p => p.id === extra.providerId);
                         const extraCommRate = extra.commissionRateSnapshot ?? (extraProv?.commissionRate || 0);
                         commissionTotal += extraBooked * extraCommRate;
                     }
@@ -1805,6 +2000,104 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 />
                             </div>
 
+                            {/* 2. Detalhamento de Campanhas (NEW - Positioned here by user request) */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+                                            <Megaphone size={20} className="text-indigo-600 dark:text-indigo-400" /> Detalhamento de Campanhas
+                                        </h3>
+                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Performance em tempo real (Meta Ads)</p>
+                                    </div>
+                                </div>
+                                
+                                {isLoadingMeta ? (
+                                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando com Meta...</p>
+                                    </div>
+                                ) : adSets.length > 0 ? (
+                                    <div className="overflow-x-auto -mx-6 md:mx-0">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
+                                                    <th className="px-4 py-3">Conjunto de Anúncios</th>
+                                                    <th className="px-4 py-3 text-right">Investimento</th>
+                                                    <th className="px-4 py-3 text-right">Cliques</th>
+                                                    <th className="px-4 py-3 text-right">CTR</th>
+                                                    <th className="px-4 py-3 text-right">CPC</th>
+                                                    <th className="px-4 py-3 text-right">CPA</th>
+                                                    <th className="px-4 py-3 text-right">ROAS</th>
+                                                    <th className="px-4 py-3 text-right">Conv.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                                                {adSets.map(a => (
+                                                    <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors">
+                                                        <td className="px-4 py-3">
+                                                            <p className="font-black text-[11px] text-slate-900 dark:text-white leading-tight uppercase">{a.name}</p>
+                                                            <p className="text-[9px] text-indigo-500 font-bold mt-1 leading-tight">{a.targeting_desc}</p>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-slate-900 dark:text-white">{fmt.currency(a.spend)}</td>
+                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-slate-500">{a.clicks.toLocaleString('pt-BR')}</td>
+                                                        <td className="px-4 py-3 text-right font-black text-[10px] text-indigo-600">{fmt.percent(a.ctr)}</td>
+                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-slate-500">{fmt.currency(a.cpc)}</td>
+                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-rose-600">{fmt.currency(a.cpa)}</td>
+                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-emerald-600">{a.roas > 0 ? `${a.roas.toFixed(2)}x` : '—'}</td>
+                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-indigo-600">{a.conversions}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="py-12 text-center">
+                                        <Megaphone size={40} className="mx-auto text-slate-200 dark:text-zinc-800 mb-4" />
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhuma campanha ativa no período</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. Guia de Métricas (NEW) */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 flex-shrink-0">
+                                        <Activity size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CTR (Click Rate)</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Taxa de cliques por impressão. Ideal acima de 1.5%.</p>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                                        <Zap size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ROAS (Retorno Ads)</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Retorno sobre investimento. Ideal acima de 4.0x.</p>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 flex-shrink-0">
+                                        <Target size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CPA (Custo p/ Conv.)</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Quanto custa cada conversão. Monitorar vs Ticket Médio.</p>
+                                    </div>
+                                </div>
+                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 flex-shrink-0">
+                                        <MessageCircle size={16} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Conversões</p>
+                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Ações de valor (Conversas, Leads ou Vendas).</p>
+                                    </div>
+                                </div>
+                            </div>
+
                             {/* 2. Fluxo Dinâmico (Big Chart) */}
                             <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <div className="flex justify-between items-center mb-6">
@@ -2212,10 +2505,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={topProvidersVolume} layout="vertical" margin={{ left: 0, right: 30 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
                                             <Bar dataKey="value" fill="#0284c7" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={8} fontWeight={900} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -2231,10 +2524,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={providerMetrics.revenue} layout="vertical" margin={{ left: 0, right: 120 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
                                             <Bar dataKey="faturamento" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -2250,10 +2543,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={providerMetrics.ticket} layout="vertical" margin={{ left: 0, right: 120 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
                                             <Bar dataKey="ticketMedio" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -2675,10 +2968,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={topServicesVolume} layout="vertical" margin={{ left: 0, right: 60 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
                                             <Bar dataKey="value" fill="#db2777" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={8} fontWeight={900} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
@@ -2694,17 +2987,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={serviceMetrics.revenue} layout="vertical" margin={{ left: 0, right: 120 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
                                             <Bar dataKey="faturamento" fill="#059669" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
 
-                            {/* Ticket Médio por Serviço */}
+                             {/* Ticket Médio por Serviço */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
@@ -2713,10 +3006,29 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={serviceMetrics.ticket} layout="vertical" margin={{ left: 0, right: 120 }}>
                                             <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 9, fontWeight: 800, fill: '#64748b' }} />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
                                             <Bar dataKey="ticketMedio" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                                <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Faturamento por Categoria */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Package size={16} className="text-indigo-600 dark:text-indigo-400" /> Faturamento por Categoria
+                                </h3>
+                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, categoryMetrics.length * 32)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={categoryMetrics} layout="vertical" margin={{ left: 0, right: 120 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
+                                            <Bar dataKey="faturamento" fill="#4f46e5" radius={[0, 4, 4, 0]} barSize={16}>
+                                                <LabelList dataKey="faturamento" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>

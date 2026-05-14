@@ -165,23 +165,23 @@ const KPICard = ({
   };
   const grad = danger ? 'from-rose-500 to-rose-700' : warning ? 'from-amber-500 to-orange-600' : colorMap[color] || colorMap.indigo;
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-3 sm:p-4 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2.5 sm:p-3 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-6 translate-x-6 group-hover:opacity-10 transition-opacity`} />
-      <div className="flex items-start justify-between mb-2">
-        <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
-          <Icon size={14} className="text-white sm:w-[16px] sm:h-[16px]" />
+      <div className="flex items-start justify-between mb-1.5">
+        <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
+          <Icon size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
-            {trend >= 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+          <div className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
+            {trend >= 0 ? <ArrowUpRight size={8} /> : <ArrowDownRight size={8} />}
             {Math.abs(trend).toFixed(1)}%
           </div>
         )}
       </div>
-      <p className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight mb-1 truncate">{value}</p>
-      <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight">{label}</p>
-      {sub && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-1">{sub}</p>}
-      {trendLabel && <p className="text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
+      <p className="text-[10px] sm:text-xs md:text-sm font-black text-slate-900 dark:text-white tracking-tight mb-0.5 truncate whitespace-nowrap">{value}</p>
+      <p className="text-[7px] sm:text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight truncate">{label}</p>
+      {sub && <p className="text-[7px] sm:text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
+      {trendLabel && <p className="text-[7px] sm:text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
     </div>
   );
 };
@@ -568,6 +568,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     appointments.filter(a => a.status === 'Concluído' && isAppointmentInMarketingPeriod(a.date)).forEach(a => {
       const fv = firstVisits[a.customerId];
       const svc = services.find(s => s.id === a.serviceId);
+      
       const appRevenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
 
       if (fv && fv.date !== a.date) {
@@ -1178,6 +1179,18 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return appointments.filter(a => {
         if (a.status !== 'Concluído' || !isAppointmentInMarketingPeriod(a.date)) return false;
         
+        // Split logic: Sobrancelha campaigns vs others
+        const svc = services.find(s => s.id === a.serviceId);
+        const isSobrancelhaSvc = svc?.category === 'Sobrancelha';
+        const isSobrancelhaCampaign = nameLower.includes('sobrancelha');
+
+        if (isSobrancelhaCampaign) {
+            if (!isSobrancelhaSvc) return false;
+        } else {
+            // "regra antiga menos o valor de Sobrancelha"
+            if (isSobrancelhaSvc) return false;
+        }
+
         const isNewCustomer = firstVisits[a.customerId]?.date === a.date;
         if (!isNewCustomer) return false; // Only new customers generate CRM return for campaigns
 
@@ -1294,7 +1307,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderOverview = () => (
     <div className="space-y-8 pb-12">
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
         <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
         <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
         <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
@@ -1424,6 +1437,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderCampaigns = () => (
     <div className="bg-white dark:bg-zinc-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-none overflow-hidden">
+      <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
+         <span className="text-slate-900 dark:text-white">Resultados de {campaignsWithCRM.filter(c => c.status === 'ACTIVE').length} campanhas ativas</span>
+         <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
+            <Info size={14} /> Detalhes do Gerenciador
+         </button>
+      </div>
       {/* Desktop Version */}
       <div className="hidden lg:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -1607,13 +1626,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
            );
         })}
       </div>
-      
-      <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-t border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
-         <span className="text-slate-900 dark:text-white">Resultados de {campaignsWithCRM.filter(c => c.status === 'ACTIVE').length} campanhas ativas</span>
-         <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
-            <Info size={14} /> Detalhes do Gerenciador
-         </button>
-      </div>
     </div>
   );
 
@@ -1628,8 +1640,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
               <th className="px-4 py-2 text-left">Conjunto</th>
               <th className="px-4 py-2 text-left">Campanha</th>
-              <th className="px-4 py-2 text-left">Gasto</th>
-              <th className="px-4 py-2 text-left">Conv.</th>
+              <th className="px-4 py-2 text-right">Gasto</th>
+              <th className="px-4 py-2 text-right">Cliques</th>
+              <th className="px-4 py-2 text-right">CTR</th>
+              <th className="px-4 py-2 text-right">CPC</th>
+              <th className="px-4 py-2 text-right">CPA</th>
+              <th className="px-4 py-2 text-right">ROAS</th>
+              <th className="px-4 py-2 text-right">Conv.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -1640,8 +1657,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
                 </td>
                 <td className="px-4 py-2 text-[10px] text-slate-500">{a.campaign_name}</td>
-                <td className="px-4 py-2 font-black text-[10px]">{fmt.currency(a.spend)}</td>
-                <td className="px-4 py-2 font-bold text-[10px] text-right">{a.conversions}</td>
+                <td className="px-4 py-2 font-black text-[10px] text-right">{fmt.currency(a.spend)}</td>
+                <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{a.clicks.toLocaleString('pt-BR')}</td>
+                <td className="px-4 py-2 font-bold text-[10px] text-right text-indigo-600">{fmt.percent(a.ctr)}</td>
+                <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.cpc)}</td>
+                <td className="px-4 py-2 font-bold text-[10px] text-right text-rose-600">{fmt.currency(a.cpa)}</td>
+                <td className="px-4 py-2 font-black text-[10px] text-right text-emerald-600">{a.roas ? `${a.roas.toFixed(2)}x` : '—'}</td>
+                <td className="px-4 py-2 font-black text-[10px] text-right text-indigo-600">{a.conversions}</td>
               </tr>
             ))}
           </tbody>
@@ -1650,60 +1672,63 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       {/* Mobile Card Version */}
       <div className="sm:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
-         {activeAdSets.map(a => (
-           <div key={a.id} className="p-4 space-y-2">
-              <div className="flex justify-between items-start gap-2">
-                 <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{a.name}</p>
-                 <span className="text-[10px] font-black text-emerald-600">{fmt.currency(a.spend)}</span>
+        {activeAdSets.map(a => (
+          <div key={a.id} className="p-4 space-y-2">
+            <div className="flex justify-between items-start gap-2">
+              <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{a.name}</p>
+              <span className="text-[10px] font-black text-emerald-600">{fmt.currency(a.spend)}</span>
+            </div>
+            <div className="flex justify-between items-center gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-indigo-500 leading-tight truncate">
+                  {a.targeting_desc || '—'}
+                </p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
               </div>
-              <p className="text-[10px] font-bold text-indigo-500 leading-tight">
-                 {a.targeting_desc || '—'}
+              <p className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                {a.conversions} Conv.
               </p>
-              <div className="flex justify-between items-center pt-1">
-                 <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
-                 <p className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full">
-                    {a.conversions} Conv.
-                 </p>
-              </div>
-           </div>
-         ))}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
-  )};
+  );
+};
 
   const renderAds = () => {
     const activeAds = ads.filter(ad => ad.status === 'ACTIVE');
     
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-1.5">
         {activeAds.map(ad => (
-        <div key={ad.id} className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4 shadow-sm hover:shadow-md transition-all">
-          <div className="flex gap-4 mb-4">
-             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-16 h-16 rounded-xl object-cover" alt="" />}
+        <div key={ad.id} className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md transition-all">
+          <div className="flex gap-1.5 mb-1.5">
+             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-8 h-8 rounded-md object-cover" alt="" />}
              <div className="min-w-0">
-                <p className="font-black text-xs text-slate-900 dark:text-white mb-1 uppercase tracking-tight leading-tight">{ad.name}</p>
-                <div className="flex gap-2 items-center">
+                <p className="font-black text-[8px] text-slate-900 dark:text-white mb-0 uppercase tracking-tighter leading-[1] truncate" title={ad.name}>{ad.name}</p>
+                <div className="flex gap-1 items-center">
                    <StatusBadge status={ad.status} />
                    {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
-                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+                      <span className={`text-[6px] font-black px-1 py-0 rounded uppercase tracking-tighter ${
                          ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
                          ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
                          'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                       }`}>
-                         {ad.quality_ranking.includes('BELOW') ? 'Fadigado' : ad.quality_ranking.includes('ABOVE') ? 'Alta Qualidade' : 'Na Média'}
+                         {ad.quality_ranking.includes('BELOW') ? 'Fadiga' : ad.quality_ranking.includes('ABOVE') ? 'Alta' : 'Média'}
                       </span>
                    )}
                 </div>
              </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 border-t border-slate-100 dark:border-zinc-800 pt-4">
+          <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
              <div>
-                <p className="text-[10px] text-slate-400 font-black uppercase">Gasto</p>
-                <p className="text-xs font-black">{fmt.currency(ad.spend)}</p>
+                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
+                <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
              </div>
-             <div>
-                <p className="text-[10px] text-slate-400 font-black uppercase">Conv.</p>
-                <p className="text-xs font-black">{ad.conversions}</p>
+             <div className="text-right">
+                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>
+                <p className="text-[8px] font-black text-indigo-600 leading-none">{ad.clicks.toLocaleString('pt-BR')}</p>
              </div>
           </div>
         </div>
