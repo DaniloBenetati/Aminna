@@ -676,6 +676,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     if (!adAccountId || !token) return;
     setLoading(true);
     setError(null);
+    setDailyTimeSeries([]);
+    setDailyConversations([]);
     setHasFetched(true);
 
     try {
@@ -835,6 +837,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           time_increment: '1',
           fields: 'spend,impressions,clicks,conversions,actions,date_start,date_stop',
           action_breakdowns: 'action_type',
+          limit: '100',
         };
 
         if (datePreset === 'custom') {
@@ -860,7 +863,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           };
         });
         setDailyTimeSeries(timeseries);
-        setDailyConversations(timeseries.filter(t => t.conversations > 0 || timeseries.length <= 7)); 
+        setDailyConversations(timeseries); 
         
         if (timeseries.length > 0) {
            setDateRange({ 
@@ -868,7 +871,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
              stop: dailyData.data[dailyData.data.length - 1].date_stop 
            });
         }
-      } catch (e) { console.error("Error fetching daily stats", e); }
+      } catch (e: any) { 
+        console.error("Error fetching daily stats", e); 
+        setError(`Erro ao carregar estatísticas diárias: ${e.message}`);
+      }
 
       try {
         if (selectedIgAccountId) {
