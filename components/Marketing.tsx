@@ -13,7 +13,7 @@ import { MarketingReports } from './MarketingReports';
 import { supabase } from '../services/supabase';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer 
+  Tooltip, ResponsiveContainer, BarChart, Bar, LabelList 
 } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ const KPICard = ({
   );
 };
 
-const StatusBadge = ({ status }: { status: string }) => {
+const StatusBadge = ({ status, small }: { status: string, small?: boolean }) => {
   const map: Record<string, { label: string; cls: string }> = {
     ACTIVE: { label: 'Ativa', cls: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
     PAUSED: { label: 'Pausada', cls: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
@@ -194,7 +194,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     ARCHIVED: { label: 'Arquivada', cls: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' },
   };
   const s = map[status] || { label: status, cls: 'bg-slate-100 dark:bg-slate-800 text-slate-600' };
-  return <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${s.cls}`}>{s.label}</span>;
+  return <span className={`${small ? 'text-[8px] px-1.5 py-0' : 'text-[10px] px-2 py-0.5'} font-black uppercase tracking-wider rounded-full ${s.cls}`}>{s.label}</span>;
 };
 
 const SectionTitle = ({ children, sub }: { children: React.ReactNode; sub?: string }) => (
@@ -391,6 +391,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const [totalFollowers, setTotalFollowers] = useState<number>(0);
   const [followerSeries, setFollowerSeries] = useState<any[]>([]);
   const [organicData, setOrganicData] = useState<any>(null);
+  const [dailyConversations, setDailyConversations] = useState<any[]>([]);
 
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_STORAGE_KEY) || '');
   const [tokenInput, setTokenInput] = useState<string>('');
@@ -838,13 +839,19 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         }
 
         const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, insightParams);
-        const timeseries = (dailyData.data || []).map((d: any) => ({
-          day: d.date_start.split('-').slice(1).reverse().join('/'),
-          spend: parseFloat(d.spend || '0'),
-          impressions: parseInt(d.impressions || '0', 10),
-          clicks: parseInt(d.clicks || '0', 10),
-        }));
+        const timeseries = (dailyData.data || []).map((d: any) => {
+          const actions = d.actions || [];
+          const msgStarted = actions.find((a: any) => a.action_type.includes('messaging_conversation_started'))?.value || 0;
+          return {
+            day: d.date_start.split('-').slice(1).reverse().join('/'),
+            spend: parseFloat(d.spend || '0'),
+            impressions: parseInt(d.impressions || '0', 10),
+            clicks: parseInt(d.clicks || '0', 10),
+            conversations: parseInt(msgStarted, 10)
+          };
+        });
         setDailyTimeSeries(timeseries);
+        setDailyConversations(timeseries.filter(t => t.conversations > 0 || timeseries.length <= 10)); // Mostrar dias com conversas ou os últimos se forem poucos
         
         if (timeseries.length > 0) {
            setDateRange({ 
@@ -1413,23 +1420,35 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
              </div>
            </div>
 
-           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-             <SectionTitle>📖 GUIA DE MÉTRICAS</SectionTitle>
-             <div className="mt-4 space-y-4">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+              <SectionTitle>📖 GUIA DE MÉTRICAS</SectionTitle>
+              <div className="mt-4 space-y-4">
                 <div className="flex items-start gap-3">
                   <div className="w-1 h-1 rounded-full bg-indigo-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROAS:</span> Retorno sobre gasto. {'>'} 2.0x é excelente.</p>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROI CRM:</span> Retorno real baseado nas vendas concluídas no Aminna.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5" />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROAS:</span> Retorno sobre gasto (Meta). {'>'} 2.0x é excelente.</p>
                 </div>
                 <div className="flex items-start gap-3">
                   <div className="w-1 h-1 rounded-full bg-rose-500 mt-1.5" />
                   <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CTR:</span> Taxa de clique. Ideal acima de 1%.</p>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPA:</span> Custo por aquisição. Deve ser {'<'} margem lucro.</p>
+                  <div className="w-1 h-1 rounded-full bg-amber-500 mt-1.5" />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPC:</span> Custo por clique. Ideal abaixo de R$ 2,00.</p>
                 </div>
-             </div>
-           </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-1 h-1 rounded-full bg-sky-500 mt-1.5" />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPA:</span> Custo por aquisição. Valor gasto por cada novo cliente.</p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-1 h-1 rounded-full bg-violet-500 mt-1.5" />
+                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPM:</span> Custo por 1.000 visualizações. Avalia o custo da atenção.</p>
+                </div>
+              </div>
+            </div>
         </div>
       </div>
     </div>
@@ -1448,9 +1467,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50 dark:bg-zinc-800/30 border-b border-slate-200 dark:border-zinc-800 text-[10px] font-bold text-slate-500 uppercase">
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">CAMPANHA <ArrowUp size={10} className="inline ml-1" /></th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Veiculação</th>
-                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Ações</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-[10px] font-bold text-slate-500 uppercase">CAMPANHA <ArrowUp size={10} className="inline ml-1" /></th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-[10px] font-bold text-slate-500 uppercase">Ações</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">Resultados</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo p/ res.</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Orçamento</th>
@@ -1472,17 +1490,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                  <tr key={c.id} className="hover:bg-indigo-50/50 dark:hover:bg-indigo-900/5 transition-colors group cursor-default h-14">
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
                       <span className="text-[12px] font-black text-slate-900 dark:text-white uppercase leading-tight">{c.name}</span>
-                   </td>
-                   <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[#00a400]' : 'bg-slate-400'}`} />
-                        <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
-                           {isActive ? 'Ativo' : 
-                            c.status === 'PAUSED' ? 'Desativado' : 
-                            c.status === 'IN_PROCESS' ? 'Em rascunho' : 
-                            c.status.charAt(0).toUpperCase() + c.status.slice(1).toLowerCase().replace(/_/g, ' ')}
-                        </span>
-                      </div>
                    </td>
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800">
                       {hasProblem ? (
@@ -1562,12 +1569,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
              <div key={c.id} className="p-5 space-y-4">
                 <div className="flex justify-between items-start gap-4">
                    <span className="text-[13px] font-black text-slate-900 dark:text-white leading-tight uppercase">{c.name}</span>
-                   <div className="flex items-center gap-1.5 px-2 py-0.5 bg-slate-100 dark:bg-zinc-800 rounded-full h-fit flex-shrink-0">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-[#00a400]' : 'bg-slate-400'}`} />
-                      <span className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">
-                         {isActive ? 'Ativo' : 'Pausado'}
-                      </span>
-                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -1630,7 +1631,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
 
   const renderAdSets = () => {
-    const activeAdSets = adSets.filter(a => a.status === 'ACTIVE');
+    const activeAdSets = [...adSets].filter(a => a.status === 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
     return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
       {/* Desktop Version */}
@@ -1697,41 +1698,52 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 };
 
   const renderAds = () => {
-    const activeAds = ads.filter(ad => ad.status === 'ACTIVE');
+    const activeAds = [...ads].filter(ad => ad.status === 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
     
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-1.5">
         {activeAds.map(ad => (
-        <div key={ad.id} className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md transition-all">
-          <div className="flex gap-1.5 mb-1.5">
-             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-8 h-8 rounded-md object-cover" alt="" />}
-             <div className="min-w-0">
-                <p className="font-black text-[8px] text-slate-900 dark:text-white mb-0 uppercase tracking-tighter leading-[1] truncate" title={ad.name}>{ad.name}</p>
-                <div className="flex gap-1 items-center">
-                   <StatusBadge status={ad.status} />
-                   {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
-                      <span className={`text-[6px] font-black px-1 py-0 rounded uppercase tracking-tighter ${
-                         ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
-                         ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                         'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                      }`}>
-                         {ad.quality_ranking.includes('BELOW') ? 'Fadiga' : ad.quality_ranking.includes('ABOVE') ? 'Alta' : 'Média'}
-                      </span>
-                   )}
-                </div>
-             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
-             <div>
-                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
-                <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
-             </div>
-             <div className="text-right">
-                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>
-                <p className="text-[8px] font-black text-indigo-600 leading-none">{ad.clicks.toLocaleString('pt-BR')}</p>
-             </div>
-          </div>
-        </div>
+          <a 
+            key={ad.id} 
+            href={`https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad"
+          >
+            <div className="flex gap-1.5 mb-1.5">
+               <div className="relative flex-shrink-0">
+                 {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-10 h-10 rounded-md object-cover" alt="" />}
+                 <div className="absolute inset-0 bg-indigo-600/0 group-hover/ad:bg-indigo-600/20 transition-colors rounded-md flex items-center justify-center">
+                    <ArrowUpRight size={12} className="text-white opacity-0 group-hover/ad:opacity-100 transition-opacity" />
+                 </div>
+               </div>
+               <div className="min-w-0">
+                  <p className="font-black text-[7px] text-slate-900 dark:text-white mb-0.5 uppercase tracking-tighter leading-tight line-clamp-2" title={ad.name}>{ad.name}</p>
+                  <div className="flex flex-wrap gap-1 items-center">
+                     <StatusBadge status={ad.status} small />
+                     {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
+                        <span className={`text-[5px] font-black px-1 py-0 rounded uppercase tracking-tighter ${
+                           ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                           ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                           'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                        }`}>
+                           {ad.quality_ranking.includes('BELOW') ? 'Fadiga' : ad.quality_ranking.includes('ABOVE') ? 'Alta' : 'Média'}
+                        </span>
+                     )}
+                  </div>
+               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
+               <div>
+                  <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
+                  <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
+               </div>
+               <div className="text-right">
+                  <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>
+                  <p className="text-[8px] font-black text-indigo-600 leading-none">{ad.clicks.toLocaleString('pt-BR')}</p>
+               </div>
+            </div>
+          </a>
       ))}
       {activeAds.length === 0 && !loading && hasFetched && (
         <div className="col-span-full py-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
@@ -2107,6 +2119,42 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                               <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMkt)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
                             </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Gráfico de Conversas Diárias */}
+                    <section id="conversas-diarias" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                              <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
+                          </div>
+                          <div className="flex items-center gap-4 bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl">
+                             <div className="text-center">
+                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Total de Conversas</p>
+                                <p className="text-lg font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
+                             </div>
+                          </div>
+                        </div>
+                        <div className="h-64 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={dailyConversations}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <Tooltip 
+                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                cursor={{ fill: '#f1f5f9' }}
+                              />
+                              <Bar dataKey="conversations" name="Conversas" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24}>
+                                <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
+                              </Bar>
+                            </BarChart>
                           </ResponsiveContainer>
                         </div>
                       </div>
