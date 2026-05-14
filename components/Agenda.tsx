@@ -1562,7 +1562,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                         <button
                             onClick={() => setIsFinanceModalOpen(true)}
-                            className="xl:hidden flex items-center justify-center bg-white dark:bg-zinc-900 text-emerald-600 px-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-lg active:scale-95 transition-all"
+                            className="flex items-center justify-center bg-white dark:bg-zinc-900 text-emerald-600 px-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-lg active:scale-95 transition-all"
                             title="Resumo Financeiro"
                         >
                             <Wallet size={18} />
