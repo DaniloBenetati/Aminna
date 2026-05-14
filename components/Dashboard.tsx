@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy } from 'lucide-react';
-import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting, AdSet } from '../types';
+import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
 import { supabase } from '../services/supabase';
@@ -70,10 +70,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const [selectedDateAppointments, setSelectedDateAppointments] = useState<Appointment[] | null>(null);
     const [churnModalTab, setChurnModalTab] = useState<'loyal' | 'new'>('loyal');
     
-    // Meta Ads State
-    const [adSets, setAdSets] = useState<AdSet[]>([]);
-    const [isLoadingMeta, setIsLoadingMeta] = useState(false);
-    const [metaError, setMetaError] = useState<string | null>(null);
+
 
     // --- HELPERS ---
     const navigateDate = (direction: 'prev' | 'next') => {
@@ -125,90 +122,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         number: (v: number) => v.toLocaleString('pt-BR')
     };
 
-    // --- META ADS FETCHING ---
-    const fetchMetaAds = async () => {
-        const token = localStorage.getItem('meta_ads_token');
-        const adAccountId = localStorage.getItem('meta_ads_account_id');
-        
-        if (!token || !adAccountId) return;
-        
-        setIsLoadingMeta(true);
-        try {
-            const today = new Date();
-            let startDateStr = "";
-            let endDateStr = today.toISOString().split('T')[0];
 
-            if (timeView === 'day') {
-                startDateStr = dateRef.toISOString().split('T')[0];
-                endDateStr = startDateStr;
-            } else if (timeView === 'month') {
-                startDateStr = new Date(dateRef.getFullYear(), dateRef.getMonth(), 1).toISOString().split('T')[0];
-                endDateStr = new Date(dateRef.getFullYear(), dateRef.getMonth() + 1, 0).toISOString().split('T')[0];
-            } else if (timeView === 'year') {
-                startDateStr = new Date(dateRef.getFullYear(), 0, 1).toISOString().split('T')[0];
-                endDateStr = new Date(dateRef.getFullYear(), 11, 31).toISOString().split('T')[0];
-            } else if (timeView === 'custom') {
-                startDateStr = customRange.start;
-                endDateStr = customRange.end;
-            }
-
-            const insightsRange = `.time_range({"since":"${startDateStr}","until":"${endDateStr}"})`;
-            const adSetFields = [
-                'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting',
-                `insights${insightsRange}{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,purchase_roas,frequency,reach}`
-            ].join(',');
-
-            const response = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/adsets?fields=${adSetFields}&limit=100&access_token=${token}`);
-            const data = await response.json();
-
-            if (data.error) throw new Error(data.error.message);
-
-            const parsedAdSets: AdSet[] = (data.data || []).map((a: any) => {
-                const insight = a.insights?.data?.[0] || {};
-                const roasObj = insight.purchase_roas?.find((r: any) => r.action_type === 'purchase') || insight.purchase_roas?.[0];
-                
-                let targetingDesc = '—';
-                if (a.targeting) {
-                    const parts = [];
-                    if (a.targeting.age_min) parts.push(`${a.targeting.age_min}-${a.targeting.age_max || '65+'} anos`);
-                    if (a.targeting.genders && a.targeting.genders.length === 1) parts.push(a.targeting.genders[0] === 1 ? 'Homens' : 'Mulheres');
-                    if (a.targeting.geo_locations?.cities) parts.push(`${a.targeting.geo_locations.cities.length} Cid.`);
-                    targetingDesc = parts.join(' • ') || 'Aberto';
-                }
-
-                return {
-                    id: a.id,
-                    campaign_id: a.campaign_id,
-                    campaign_name: a.campaign?.name || '—',
-                    name: a.name,
-                    targeting_desc: targetingDesc,
-                    status: a.status,
-                    spend: Number(insight.spend || 0),
-                    impressions: Number(insight.impressions || 0),
-                    clicks: Number(insight.clicks || 0),
-                    ctr: Number(insight.ctr || 0),
-                    cpc: Number(insight.cpc || 0),
-                    cpm: Number(insight.cpm || 0),
-                    conversions: Number(insight.conversions || 0),
-                    cpa: Number(insight.cost_per_conversion || 0),
-                    roas: Number(roasObj?.value || 0),
-                    frequency: Number(insight.frequency || 0),
-                    reach: Number(insight.reach || 0)
-                };
-            });
-
-            setAdSets(parsedAdSets.filter(a => a.spend > 0 || a.status === 'ACTIVE'));
-        } catch (err: any) {
-            console.error('Meta Ads Fetch Error:', err);
-            setMetaError(err.message);
-        } finally {
-            setIsLoadingMeta(false);
-        }
-    };
-
-    React.useEffect(() => {
-        fetchMetaAds();
-    }, [timeView, dateRef, customRange]);
 
     // --- DATA FILTERING ---
     const filteredAppointments = useMemo(() => {
@@ -502,9 +416,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     // 1. Dynamic Flow Chart (Adapts x-axis based on view)
     const flowData = useMemo(() => {
         const calcMetrics = (apps: Appointment[], pSales: Sale[] = []) => {
-            let serviceProduction = 0; // "Faturamento Bruto" matching Repasses Screen
+            let serviceProduction = 0;
             let productSales = 0;
             let commissionTotal = 0;
+            let faturamentoConcluido = 0;
+            let faturamentoPrevisto = 0;
 
             apps.forEach(a => {
                 const mainSvc = services.find(s => s.id === a.serviceId);
@@ -521,14 +437,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const totalBooked = mainBooked + extrasList.reduce((sum, e) => sum + e.bookedPrice, 0);
                 const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
                 
-                // For past periods (Jan/Feb), we only count Concluído to match Repasses (Closures.tsx)
                 const isPast = a.date < toLocalDateStr(new Date());
                 const effectiveStatus = isPast ? a.status === 'Concluído' : a.status !== 'Cancelado';
 
                 if (effectiveStatus && !isRemake) {
                     serviceProduction += totalBooked;
                     
-                    // Commission Logic matching Closures.tsx
+                    if (a.status === 'Concluído') {
+                        faturamentoConcluido += totalBooked;
+                    } else {
+                        faturamentoPrevisto += totalBooked;
+                    }
+
                     const provider = providers.find(p => p.id === a.providerId);
                     const mainCommRate = a.commissionRateSnapshot ?? (provider?.commissionRate || 0);
                     commissionTotal += mainBooked * mainCommRate;
@@ -542,13 +462,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             });
 
             pSales.forEach(s => {
-                productSales += Number(s.totalAmount || 0);
+                const amount = Number(s.totalAmount || 0);
+                productSales += amount;
+                faturamentoConcluido += amount;
             });
 
             return {
                 serviceProduction,
                 productSales,
                 faturamento: serviceProduction + productSales,
+                faturamentoConcluido,
+                faturamentoPrevisto,
                 receita: (serviceProduction + productSales) - commissionTotal
             };
         };
@@ -566,7 +490,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 return {
                     name: label,
                     atendimentos: hourApps.length,
+                    clientes: new Set(hourApps.map(a => a.customerId)).size,
                     faturamento: metrics.faturamento,
+                    faturamentoConcluido: metrics.faturamentoConcluido,
+                    faturamentoPrevisto: metrics.faturamentoPrevisto,
                     receita: metrics.receita
                 };
             });
@@ -595,7 +522,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     name: d.getDate().toString(),
                     fullDate: dateStr,
                     atendimentos: dayApps.length,
+                    clientes: new Set(dayApps.map(a => a.customerId)).size,
                     faturamento: metrics.faturamento,
+                    faturamentoConcluido: metrics.faturamentoConcluido,
+                    faturamentoPrevisto: metrics.faturamentoPrevisto,
                     receita: metrics.receita
                 };
             });
@@ -621,7 +551,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 return {
                     name: m,
                     atendimentos: monthApps.length,
+                    clientes: new Set(monthApps.map(a => a.customerId)).size,
                     faturamento: metrics.faturamento,
+                    faturamentoConcluido: metrics.faturamentoConcluido,
+                    faturamentoPrevisto: metrics.faturamentoPrevisto,
                     receita: metrics.receita
                 };
             });
@@ -1780,8 +1713,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">{data.atendimentos}</span>
                         </div>
                         <div className="flex justify-between items-center gap-4">
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento:</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Clientes:</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">{data.clientes}</span>
+                        </div>
+                        <div className="flex justify-between items-center gap-4">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento Total:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {data.faturamento.toFixed(2)}</span>
+                        </div>
+                        <div className="pl-4 border-l-2 border-slate-100 dark:border-zinc-700 space-y-1">
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-indigo-500 uppercase">Realizado:</span>
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">R$ {data.faturamentoConcluido.toFixed(2)}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Previsto:</span>
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">R$ {data.faturamentoPrevisto.toFixed(2)}</span>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase flex items-center gap-1"><Wallet size={10} /> Receita Líq.:</span>
@@ -1930,7 +1877,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     { id: 'profissionais', label: 'Profissionais' },
                     { id: 'servicos', label: 'Serviços' },
                     { id: 'clientes', label: 'Clientes' },
-                    { id: 'campanhas', label: 'Campanhas' }
+
                 ].map((tab) => (
                     <button
                         key={tab.id}
@@ -2000,103 +1947,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 />
                             </div>
 
-                            {/* 2. Detalhamento de Campanhas (NEW - Positioned here by user request) */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <div className="flex justify-between items-center mb-6">
-                                    <div>
-                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                                            <Megaphone size={20} className="text-indigo-600 dark:text-indigo-400" /> Detalhamento de Campanhas
-                                        </h3>
-                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Performance em tempo real (Meta Ads)</p>
-                                    </div>
-                                </div>
-                                
-                                {isLoadingMeta ? (
-                                    <div className="flex flex-col items-center justify-center py-12 gap-4">
-                                        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando com Meta...</p>
-                                    </div>
-                                ) : adSets.length > 0 ? (
-                                    <div className="overflow-x-auto -mx-6 md:mx-0">
-                                        <table className="w-full text-left border-collapse">
-                                            <thead>
-                                                <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
-                                                    <th className="px-4 py-3">Conjunto de Anúncios</th>
-                                                    <th className="px-4 py-3 text-right">Investimento</th>
-                                                    <th className="px-4 py-3 text-right">Cliques</th>
-                                                    <th className="px-4 py-3 text-right">CTR</th>
-                                                    <th className="px-4 py-3 text-right">CPC</th>
-                                                    <th className="px-4 py-3 text-right">CPA</th>
-                                                    <th className="px-4 py-3 text-right">ROAS</th>
-                                                    <th className="px-4 py-3 text-right">Conv.</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-                                                {adSets.map(a => (
-                                                    <tr key={a.id} className="hover:bg-slate-50/50 dark:hover:bg-zinc-800/20 transition-colors">
-                                                        <td className="px-4 py-3">
-                                                            <p className="font-black text-[11px] text-slate-900 dark:text-white leading-tight uppercase">{a.name}</p>
-                                                            <p className="text-[9px] text-indigo-500 font-bold mt-1 leading-tight">{a.targeting_desc}</p>
-                                                        </td>
-                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-slate-900 dark:text-white">{fmt.currency(a.spend)}</td>
-                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-slate-500">{a.clicks.toLocaleString('pt-BR')}</td>
-                                                        <td className="px-4 py-3 text-right font-black text-[10px] text-indigo-600">{fmt.percent(a.ctr)}</td>
-                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-slate-500">{fmt.currency(a.cpc)}</td>
-                                                        <td className="px-4 py-3 text-right font-bold text-[10px] text-rose-600">{fmt.currency(a.cpa)}</td>
-                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-emerald-600">{a.roas > 0 ? `${a.roas.toFixed(2)}x` : '—'}</td>
-                                                        <td className="px-4 py-3 text-right font-black text-[11px] text-indigo-600">{a.conversions}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                ) : (
-                                    <div className="py-12 text-center">
-                                        <Megaphone size={40} className="mx-auto text-slate-200 dark:text-zinc-800 mb-4" />
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhuma campanha ativa no período</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 3. Guia de Métricas (NEW) */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600 flex-shrink-0">
-                                        <Activity size={16} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CTR (Click Rate)</p>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Taxa de cliques por impressão. Ideal acima de 1.5%.</p>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 flex-shrink-0">
-                                        <Zap size={16} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ROAS (Retorno Ads)</p>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Retorno sobre investimento. Ideal acima de 4.0x.</p>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 flex-shrink-0">
-                                        <Target size={16} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">CPA (Custo p/ Conv.)</p>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Quanto custa cada conversão. Monitorar vs Ticket Médio.</p>
-                                    </div>
-                                </div>
-                                <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-start gap-3">
-                                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 flex-shrink-0">
-                                        <MessageCircle size={16} />
-                                    </div>
-                                    <div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Conversões</p>
-                                        <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-tight mt-1">Ações de valor (Conversas, Leads ou Vendas).</p>
-                                    </div>
-                                </div>
-                            </div>
 
                             {/* 2. Fluxo Dinâmico (Big Chart) */}
                             <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
@@ -2110,22 +1960,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                                 <div className="h-64 w-full">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={flowData}>
-                                            <defs>
-                                                <linearGradient id="colorFlow" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
+                                        <BarChart data={flowData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" strokeOpacity={0.1} />
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip content={<CustomFlowTooltip />} cursor={{ stroke: '#4f46e5', strokeWidth: 2 }} />
-                                            <Area type="monotone" dataKey="atendimentos" stroke="#4f46e5" strokeWidth={4} fillOpacity={1} fill="url(#colorFlow)" />
-                                        </AreaChart>
+                                            <Tooltip content={<CustomFlowTooltip />} cursor={{ fill: 'transparent' }} />
+                                            <Bar dataKey="faturamentoConcluido" stackId="a" fill="#4f46e5" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="faturamentoPrevisto" stackId="a" fill="#94a3b8" radius={[6, 6, 0, 0]} />
+                                        </BarChart>
                                     </ResponsiveContainer>
                                 </div>
                             </div>
+
 
                             {/* 4. Aniversariantes */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3453,163 +3299,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     )}
                 </div>
             ) : null}
-            {dashboardTab === 'campanhas' ? (
-                <div className="space-y-6">
-                    {/* Sub-tabs for Campaigns */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
-                        <button 
-                            onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            <Megaphone size={14} /> Performance de Mídia
-                        </button>
-                        <button 
-                            onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            <BrainCircuit size={14} /> ROI & Conversão
-                        </button>
-                    </div>
 
-                    {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {/* Campanhas Uso */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Ticket size={16} className="text-amber-600" /> Uso de Cupons
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, campaignUsage.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={campaignUsage.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltipAgendamentos />} />
-                                            <Bar dataKey="value" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Top Campanhas Faturamento */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <DollarSign size={16} className="text-emerald-500" /> Faturamento por Campanha
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCampaigns.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={topCampaigns.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 120 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
-                                            <Bar dataKey="value" fill="#10b981" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-
-                            {/* Top Canais de Entrada */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Megaphone size={16} className="text-cyan-600" /> Canais de Entrada
-                                </h3>
-                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, topChannels.slice(0, 10).length * 32)}px` }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={topChannels.slice(0, 10)} layout="vertical" margin={{ left: 0, right: 60 }}>
-                                            <XAxis type="number" hide />
-                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: 'transparent' }} content={<CountTooltip />} />
-                                            <Bar dataKey="value" fill="#0891b2" radius={[0, 4, 4, 0]} barSize={16}>
-                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={10} fontWeight={900} />
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
-                            {/* Campaign Insight 1: ROI */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                                    <Wallet size={24} />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">ROI das Campanhas</h4>
-                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Eficiência de Marketing</p>
-                                </div>
-                                <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
-                                        <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Campanha Estrela</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            A campanha <span className="text-slate-900 dark:text-white font-black">{topCampaigns[0]?.name}</span> gerou o maior Retorno sobre Investimento, com ticket médio 15% superior à base geral.
-                                        </p>
-                                    </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
-                                        <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Custo por Aquisição (CAC)</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            Campanhas de "Indicação" possuem CAC zero e geram 3x mais receita no 1º mês comparado ao tráfego pago do Instagram.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Campaign Insight 2: Canais */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-cyan-50 dark:bg-cyan-900/20 rounded-2xl flex items-center justify-center text-cyan-600 dark:text-cyan-400">
-                                    <Megaphone size={24} />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Análise de Canal</h4>
-                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Onde Investir</p>
-                                </div>
-                                <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
-                                        <p className="text-[10px] font-black text-cyan-600 uppercase mb-1">Instagram vs WhatsApp</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            80% das suas conversões vêm do WhatsApp direto. O Instagram funciona como vitrine (awareness), mas o fechamento é 1-para-1.
-                                        </p>
-                                    </div>
-                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-                                        <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Canal Emergente</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            O canal 'TikTok' cresceu 400% este mês para a categoria 'Mechas'. Ideal para investir em vídeos curtos de 'Antes e Depois'.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Campaign Insight 3: Perfil */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
-                                    <Target size={24} />
-                                </div>
-                                <div>
-                                    <h4 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white">Qualidade Leads</h4>
-                                    <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Perpetuidade da Campanha</p>
-                                </div>
-                                <div className="space-y-3 mt-2">
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
-                                        <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Alerta de Desconto</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            Evitar cupons acima de 20% para serviços recorrentes. Eles atraem clientes que não fidelizam e buscam apenas preço.
-                                        </p>
-                                    </div>
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
-                                        <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Público Lookalike</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            Seu público ideal é composto por mulheres (25-45 anos) que consomem serviços de alta complexidade a cada 45 dias.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : null}
 
             {/* Churn Action Modal */}
             {isChurnModalOpen && (
