@@ -73,7 +73,11 @@ interface AdInsight {
   ctr: number;
   cpc: number;
   conversions: number;
-  creative?: { thumbnail_url?: string };
+  creative?: { 
+    thumbnail_url?: string;
+    instagram_permalink_url?: string;
+    effective_object_story_id?: string;
+  };
   quality_ranking?: string;
 }
 
@@ -801,7 +805,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       const adFields = [
         'id', 'name', 'status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
         `insights${insightsRange}{spend,impressions,clicks,ctr,conversions,cost_per_conversion,quality_ranking,engagement_rate_ranking}`,
-        'creative{thumbnail_url}'
+        'creative{thumbnail_url,instagram_permalink_url,effective_object_story_id}'
       ].join(',');
 
       const adData = await fetchFromMeta(token, `${adAccountId}/ads`, {
@@ -829,7 +833,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       try {
         const insightParams: any = {
           time_increment: '1',
-          fields: 'spend,impressions,clicks,conversions,date_start,date_stop',
+          fields: 'spend,impressions,clicks,conversions,actions,date_start,date_stop',
+          action_breakdowns: 'action_type',
         };
 
         if (datePreset === 'custom') {
@@ -841,7 +846,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, insightParams);
         const timeseries = (dailyData.data || []).map((d: any) => {
           const actions = d.actions || [];
-          const msgStarted = actions.find((a: any) => a.action_type.includes('messaging_conversation_started'))?.value || 0;
+          const msgStarted = actions.find((a: any) => 
+            a.action_type === 'messaging_conversation_started_7d' || 
+            a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
+            a.action_type.includes('messaging_conversation_started')
+          )?.value || d.conversions || 0;
           return {
             day: d.date_start.split('-').slice(1).reverse().join('/'),
             spend: parseFloat(d.spend || '0'),
@@ -851,7 +860,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           };
         });
         setDailyTimeSeries(timeseries);
-        setDailyConversations(timeseries.filter(t => t.conversations > 0 || timeseries.length <= 10)); // Mostrar dias com conversas ou os últimos se forem poucos
+        setDailyConversations(timeseries.filter(t => t.conversations > 0 || timeseries.length <= 7)); 
         
         if (timeseries.length > 0) {
            setDateRange({ 
@@ -1312,144 +1321,144 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     </div>
   );
 
-  const renderOverview = () => (
-    <div className="space-y-8 pb-12">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
-        <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
-        <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
-        <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
-        <KPICard label="Ticket Médio" value={fmt.currency(avgTicketMarketing)} icon={DollarSign} color="emerald" />
-        <KPICard label="Novos Clientes (CRM)" value={fmt.number(totalNewCustomersCRM, 0)} icon={Users} color="emerald" />
+  const renderKPICards = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
+      <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
+      <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
+      <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
+      <KPICard label="Ticket Médio" value={fmt.currency(avgTicketMarketing)} icon={DollarSign} color="emerald" />
+      <KPICard label="Novos Clientes (CRM)" value={fmt.number(totalNewCustomersCRM, 0)} icon={Users} color="emerald" />
 
-        <KPICard label="Conversas Iniciadas" value={fmt.number(totalMessageStarts, 0)} icon={MessageSquare} color="sky" />
-        <KPICard label="Custo p/ Resultado" value={fmt.currency(avgCostPerResult)} icon={Zap} color="indigo" />
-        <KPICard label="CTR Médio" value={fmt.percent(avgCTR)} icon={MousePointer} color="rose" danger={avgCTR < 1} />
-        <KPICard label="CPC Médio" value={fmt.currency(avgCPC)} icon={DollarSign} color="emerald" warning={avgCPC > 3} />
-        <KPICard label="CPM" value={fmt.currency(avgCPM)} icon={Layers} color="amber" />
+      <KPICard label="Conversas Iniciadas" value={fmt.number(totalMessageStarts, 0)} icon={MessageSquare} color="sky" />
+      <KPICard label="Custo p/ Resultado" value={fmt.currency(avgCostPerResult)} icon={Zap} color="indigo" />
+      <KPICard label="CTR Médio" value={fmt.percent(avgCTR)} icon={MousePointer} color="rose" danger={avgCTR < 1} />
+      <KPICard label="CPC Médio" value={fmt.currency(avgCPC)} icon={DollarSign} color="emerald" warning={avgCPC > 3} />
+      <KPICard label="CPM" value={fmt.currency(avgCPM)} icon={Layers} color="amber" />
 
-        <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
-        <KPICard label="Cliques Totais" value={fmt.number(totalClicks, 0)} icon={MousePointer} color="indigo" />
-        <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
+      <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
+      <KPICard label="Cliques Totais" value={fmt.number(totalClicks, 0)} icon={MousePointer} color="indigo" />
+      <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
+    </div>
+  );
+
+  const renderDetailedInsights = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-8">
+         <div className="grid md:grid-cols-2 gap-6">
+           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+              <SectionTitle sub="Campanhas com ROAS acima de 2x">🚀 OPORTUNIDADES — ESCALAR</SectionTitle>
+              <div className="space-y-3 mt-4">
+                {topPerformers.length > 0 ? topPerformers.slice(0, 3).map((c: any) => (
+                  <div key={c.id} className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
+                    <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 truncate max-w-[150px]">{c.name}</span>
+                    <span className="text-xs font-black text-emerald-600">{fmt.number(c.crmROI, 2)}x ROAS</span>
+                  </div>
+                )) : (
+                  <p className="text-xs text-slate-400 italic">Nenhuma campanha com ROAS {'>'} 2x no período.</p>
+                )}
+              </div>
+           </div>
+
+           <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+              <SectionTitle sub="Problemas detectados automaticamente">🚨 PRINCIPAIS PROBLEMAS</SectionTitle>
+              <div className="space-y-3 mt-4">
+                 {problems.length > 0 ? problems.slice(0, 3).map((p, i) => (
+                   <div key={i} className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/20">
+                      <AlertTriangle size={14} className="text-rose-500" />
+                      <span className="text-xs font-bold text-rose-800 dark:text-rose-400 truncate flex-1">{p.campaign.name}</span>
+                   </div>
+                 )) : (
+                   <div className="flex items-center gap-2 text-emerald-600">
+                      <CircleCheck size={14} />
+                      <span className="text-xs font-bold">Nenhum problema crítico detectado!</span>
+                   </div>
+                 )}
+              </div>
+           </div>
+         </div>
+
+         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+            <SectionTitle sub="Investimento diário no período">📈 DESEMPENHO DE INVESTIMENTO</SectionTitle>
+            <div className="h-64 w-full mt-6">
+                <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyTimeSeries}>
+                    <defs>
+                        <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dx={-10} />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
+                      formatter={(v: number) => [fmt.currency(v), 'Gasto']} 
+                    />
+                    <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorSpend)" />
+                    </AreaChart>
+                </ResponsiveContainer>
+            </div>
+         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-           <div className="grid md:grid-cols-2 gap-6">
-             <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-                <SectionTitle sub="Campanhas com ROAS acima de 2x">🚀 OPORTUNIDADES — ESCALAR</SectionTitle>
-                <div className="space-y-3 mt-4">
-                  {topPerformers.length > 0 ? topPerformers.slice(0, 3).map((c: any) => (
-                    <div key={c.id} className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/20">
-                      <span className="text-xs font-bold text-emerald-800 dark:text-emerald-400 truncate max-w-[150px]">{c.name}</span>
-                      <span className="text-xs font-black text-emerald-600">{fmt.number(c.crmROI, 2)}x ROAS</span>
-                    </div>
-                  )) : (
-                    <p className="text-xs text-slate-400 italic">Nenhuma campanha com ROAS {'>'} 2x no período.</p>
-                  )}
+      <div className="space-y-6">
+         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+              <Zap size={80} className="text-indigo-500" />
+            </div>
+           <SectionTitle sub="Controle de orçamento e performance.">⚡ RESUMO DE INVESTIMENTO</SectionTitle>
+           <div className="mt-8 space-y-6 relative">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Diária Planejada</p>
+                <p className="text-2xl font-black text-slate-900 dark:text-white">{fmt.currency(totalSpend / (dailyTimeSeries.length || 1))}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status de Entrega</p>
+                <div className="flex items-center gap-2 mt-1">
+                   <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-indigo-500 h-full rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" style={{ width: '85%' }} />
+                   </div>
+                   <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">85%</span>
                 </div>
-             </div>
-
-             <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-                <SectionTitle sub="Problemas detectados automaticamente">🚨 PRINCIPAIS PROBLEMAS</SectionTitle>
-                <div className="space-y-3 mt-4">
-                   {problems.length > 0 ? problems.slice(0, 3).map((p, i) => (
-                     <div key={i} className="flex items-center gap-3 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900/20">
-                        <AlertTriangle size={14} className="text-rose-500" />
-                        <span className="text-xs font-bold text-rose-800 dark:text-rose-400 truncate flex-1">{p.campaign.name}</span>
-                     </div>
-                   )) : (
-                     <div className="flex items-center gap-2 text-emerald-600">
-                        <CircleCheck size={14} />
-                        <span className="text-xs font-bold">Nenhum problema crítico detectado!</span>
-                     </div>
-                   )}
-                </div>
-             </div>
-           </div>
-
-           <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-              <SectionTitle sub="Investimento diário no período">📈 DESEMPENHO DE INVESTIMENTO</SectionTitle>
-              <div className="h-64 w-full mt-6">
-                  <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={dailyTimeSeries}>
-                      <defs>
-                          <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                          </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dx={-10} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                        formatter={(v: number) => [fmt.currency(v), 'Gasto']} 
-                      />
-                      <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorSpend)" />
-                      </AreaChart>
-                  </ResponsiveContainer>
+              </div>
+              <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
+                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">
+                    "Seu ROAS está {totalROAS > 1.5 ? 'saudável' : 'abaixo do ideal'}. Recomenda-se focar em criativos de alta conversão para reduzir o CPA."
+                 </p>
               </div>
            </div>
-        </div>
+         </div>
 
-        <div className="space-y-6">
-           <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                <Zap size={80} className="text-indigo-500" />
+          <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
+            <SectionTitle>📖 GUIA DE MÉTRICAS</SectionTitle>
+            <div className="mt-4 space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-indigo-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROI CRM:</span> Retorno real baseado nas vendas concluídas no Aminna.</p>
               </div>
-             <SectionTitle sub="Controle de orçamento e performance.">⚡ RESUMO DE INVESTIMENTO</SectionTitle>
-             <div className="mt-8 space-y-6 relative">
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Média Diária Planejada</p>
-                  <p className="text-2xl font-black text-slate-900 dark:text-white">{fmt.currency(totalSpend / (dailyTimeSeries.length || 1))}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status de Entrega</p>
-                  <div className="flex items-center gap-2 mt-1">
-                     <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                        <div className="bg-indigo-500 h-full rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]" style={{ width: '85%' }} />
-                     </div>
-                     <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">85%</span>
-                  </div>
-                </div>
-                <div className="pt-6 border-t border-slate-100 dark:border-zinc-800">
-                   <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic">
-                      "Seu ROAS está {totalROAS > 1.5 ? 'saudável' : 'abaixo do ideal'}. Recomenda-se focar em criativos de alta conversão para reduzir o CPA."
-                   </p>
-                </div>
-             </div>
-           </div>
-
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-              <SectionTitle>📖 GUIA DE MÉTRICAS</SectionTitle>
-              <div className="mt-4 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-indigo-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROI CRM:</span> Retorno real baseado nas vendas concluídas no Aminna.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROAS:</span> Retorno sobre gasto (Meta). {'>'} 2.0x é excelente.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-rose-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CTR:</span> Taxa de clique. Ideal acima de 1%.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-amber-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPC:</span> Custo por clique. Ideal abaixo de R$ 2,00.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-sky-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPA:</span> Custo por aquisição. Valor gasto por cada novo cliente.</p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-1 rounded-full bg-violet-500 mt-1.5" />
-                  <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPM:</span> Custo por 1.000 visualizações. Avalia o custo da atenção.</p>
-                </div>
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-emerald-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">ROAS:</span> Retorno sobre gasto (Meta). {'>'} 2.0x é excelente.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-rose-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CTR:</span> Taxa de clique. Ideal acima de 1%.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-amber-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPC:</span> Custo por clique. Ideal abaixo de R$ 2,00.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-sky-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPA:</span> Custo por aquisição. Valor gasto por cada novo cliente.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-1 h-1 rounded-full bg-violet-500 mt-1.5" />
+                <p className="text-[10px] text-slate-500 font-bold uppercase"><span className="text-slate-900 dark:text-white">CPM:</span> Custo por 1.000 visualizações. Avalia o custo da atenção.</p>
               </div>
             </div>
-        </div>
+          </div>
       </div>
     </div>
   );
@@ -1705,7 +1714,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         {activeAds.map(ad => (
           <a 
             key={ad.id} 
-            href={`https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
+            href={ad.creative?.instagram_permalink_url || `https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
             target="_blank"
             rel="noopener noreferrer"
             className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad"
@@ -2046,7 +2055,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               ) : (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
                   <div className="space-y-6">
-                    {renderOverview()}
+                    {renderKPICards()}
                   </div>
 
                   <div className="space-y-8">
@@ -2134,11 +2143,15 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             </h3>
                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
                           </div>
-                          <div className="flex items-center gap-4 bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl">
-                             <div className="text-center">
+                          <div className="flex flex-wrap items-center gap-4">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Total de Conversas</p>
                                 <p className="text-lg font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
-                             </div>
+                            </div>
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
+                                <p className="text-lg font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
+                            </div>
                           </div>
                         </div>
                         <div className="h-64 mt-4">
@@ -2148,8 +2161,28 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <Tooltip 
-                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                 cursor={{ fill: '#f1f5f9' }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
+                                        <div className="space-y-1">
+                                          <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-4">
+                                            <span>CONVERSAS:</span>
+                                            <span>{data.conversations}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-4">
+                                            <span>GASTO:</span>
+                                            <span>{fmt.currency(data.spend)}</span>
+                                          </p>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
                               />
                               <Bar dataKey="conversations" name="Conversas" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24}>
                                 <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
@@ -2173,7 +2206,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       {renderAds()}
                     </section>
 
-                    <section id="insights-IA" className="scroll-mt-32 mt-16">
+                    <section id="insights-detalhados" className="scroll-mt-32 pb-12 pt-16 border-t border-slate-100 dark:border-zinc-800">
+                       {renderDetailedInsights()}
+                    </section>
+
+                    <section id="insights-IA" className="scroll-mt-32 mt-16 pt-16 border-t border-slate-100 dark:border-zinc-800">
                       <SectionTitle sub="Otimizações recomendadas com base no desempenho atual">💡 RECOMENDAÇÕES E INSIGHTS</SectionTitle>
                       {renderRecommendations()}
                     </section>
