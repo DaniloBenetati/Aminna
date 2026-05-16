@@ -525,9 +525,9 @@ export const Agenda: React.FC<AgendaProps> = ({
         return filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
     }, [activeProviders, selectedProviderId, visibleProviderIds]);
 
-    // Confirmation Logic (Uses Range)
-    // Confirmation Logic (Uses Range)
-    const generateConfirmationMessage = (customer: Customer, apps: Appointment[]) => {
+    // Confirmações Range)
+    // Confirmações Range)
+    const generateConfirmaçõessage = (customer: Customer, apps: Appointment[]) => {
         const validApps = apps.filter(a => a.status !== 'Concluído' && a.status !== 'Cancelado');
         if (validApps.length === 0) return '';
 
@@ -613,7 +613,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         if (!customer) return;
 
         // Message for ONLY this specific appointment
-        const msg = generateConfirmationMessage(customer, [appt]);
+        const msg = generateConfirmaçõessage(customer, [appt]);
         if (msg) {
             const phone = customer.phone.replace(/\D/g, '');
             window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
@@ -2166,7 +2166,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                     <div className="flex-1 flex flex-col gap-0.5">
                                                         {dayApps.slice(0, 3).map(app => (
-                                                            <div key={app.id} className={`w-full h-1 md:h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-[#01A4C6]' : app.status === 'Aguardando' ? 'bg-[#F7E8C9]' : app.status === 'Concluído' ? 'bg-slate-400' : 'bg-amber-400'}`} title={`${app.time} - ${services.find(s => s.id === app.serviceId)?.name}`}></div>
+                                                            <div key={app.id} className={`w-full h-1 md:h-1.5 rounded-full ${app.status === 'Confirmado' ? 'bg-[#01A4C6]' : app.status === 'Aguardando' ? 'bg-[#F7E8C9]' : app.status === 'Concluído' ? 'bg-slate-500' : 'bg-amber-400'}`}></div>
                                                         ))}
                                                         {dayApps.length > 3 && (
                                                             <span className="text-[8px] md:text-[9px] font-bold text-slate-400 text-center">+{dayApps.length - 3}</span>
@@ -2393,7 +2393,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             {isQuickRegisterOpen ? (
                                 <div className="p-4 bg-indigo-50 dark:bg-zinc-900 border-b border-indigo-100 dark:border-zinc-800 animate-in slide-in-from-top-2">
                                     <div className="flex justify-between items-center mb-3">
-                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro R�pido</h4>
+                                        <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
                                         <button onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
                                     </div>
                                     <form onSubmit={handleQuickRegister} className="flex flex-col gap-3">
@@ -2486,7 +2486,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
-                                        <MessageCircle size={18} className="text-emerald-400" /> Confirma��es
+                                        <MessageCircle size={18} className="text-emerald-400" /> Confirmações
                                     </h3>
                                     <p className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">
                                         {new Date(rangeStart + 'T12:00:00').toLocaleDateString('pt-BR')} at� {new Date(rangeEnd + 'T12:00:00').toLocaleDateString('pt-BR')}
@@ -2522,7 +2522,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={() => {
-                                                        const msg = generateConfirmationMessage(customer, sortedApps);
+                                                        const msg = generateConfirmaçõessage(customer, sortedApps);
                                                         navigator.clipboard.writeText(msg).then(() => {
                                                             showToast('Mensagem copiada com sucesso!');
                                                         });
@@ -2533,7 +2533,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 </button>
                                                 <button
                                                     onClick={() => {
-                                                        const msg = generateConfirmationMessage(customer, sortedApps);
+                                                        const msg = generateConfirmaçõessage(customer, sortedApps);
                                                         const phone = customer.phone.replace(/\D/g, '');
                                                         window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                     }}
@@ -2547,7 +2547,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 }) : (
                                     <div className="text-center py-10 text-slate-400 dark:text-slate-600">
                                         <CircleCheck size={48} className="mx-auto mb-2 opacity-20" />
-                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no per�odo</p>
+                                        <p className="text-xs font-black uppercase">Nenhum agendamento pendente/confirmado no período</p>
                                     </div>
                                 )}
                             </div>

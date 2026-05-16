@@ -158,6 +158,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     }>({ open: false, providerName: '', reason: '' });
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
     const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
+    const [showFutureAgendaOptions, setShowFutureAgendaOptions] = useState(false);
 
     // NFSe State
     const [nfseStatus, setNfseStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -2534,6 +2535,102 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setShowWhatsAppOptions(false);
     };
 
+    const handleFutureAgendaWhatsApp = (action: 'COPY' | 'OPEN') => {
+        if (!customer.phone) {
+            alert('Cliente sem telefone cadastrado.');
+            return;
+        }
+
+        const cleanPhone = customer.phone.replace(/\D/g, '');
+        const whatsappPhone = cleanPhone.length <= 11 ? `55${cleanPhone}` : cleanPhone;
+
+        const now = new Date();
+        const hoursNow = now.getHours();
+        let greeting = 'Bom dia';
+        if (hoursNow >= 12 && hoursNow < 18) greeting = 'Boa tarde';
+        else if (hoursNow >= 18) greeting = 'Boa noite';
+
+        const weekdays = ['DOMINGO', 'SEGUNDA-FEIRA', 'TERÇA-FEIRA', 'QUARTA-FEIRA', 'QUINTA-FEIRA', 'SEXTA-FEIRA', 'SÁBADO'];
+        const months = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+
+        const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
+
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const localTodayStr = `${y}-${m}-${d}`;
+
+        const pendingAppts = allAppointments
+            .filter(a => a.customerId === customer.id && a.status !== 'Concluído' && a.status !== 'Cancelado' && a.date >= localTodayStr)
+            .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+
+        if (pendingAppts.length === 0) {
+            showToast('Nenhum agendamento futuro encontrado.', 'warning');
+            return;
+        }
+
+        const groupedByDate: Record<string, typeof pendingAppts> = {};
+        pendingAppts.forEach(a => {
+            if (!groupedByDate[a.date]) groupedByDate[a.date] = [];
+            groupedByDate[a.date].push(a);
+        });
+
+        const blocks = Object.entries(groupedByDate).map(([dateStr, apptsOnDate]) => {
+            const dateObj = new Date(dateStr + 'T12:00:00');
+            const formattedDate = `${weekdays[dateObj.getDay()]} ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
+
+            const serviceDetails = apptsOnDate.flatMap(appt => {
+                const svcs = [];
+                const formatSvc = (time: string, sId: string, pId: string) => {
+                    const service = services.find(s => s.id === sId);
+                    const provider = providers.find(p => p.id === pId);
+                    const [hour, minute] = (time || '00:00').split(':');
+                    const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+                    
+                    const pid = String(pId).trim().toLowerCase();
+                    const isPref = prefIds.includes(pid);
+                    const nameToUse = (isPref && provider) ? (provider.nickname || provider.name.split(' ')[0]) : 'Equipe';
+                    
+                    let labelLine = '';
+                    if (isPref) {
+                        labelLine = `*Agendamento com preferência | ${nameToUse}*`;
+                    } else {
+                        labelLine = `*Agendamento confirmado | Equipe*`;
+                    }
+                    return `${displayTime} | ${service?.name || 'Serviço'}\n${labelLine}`;
+                };
+
+                svcs.push(formatSvc(appt.time, appt.serviceId, appt.providerId));
+
+                if (appt.additionalServices) {
+                    appt.additionalServices.forEach((extra: any) => {
+                        svcs.push(formatSvc(extra.startTime || appt.time, extra.serviceId, extra.providerId));
+                    });
+                }
+                return svcs;
+            }).join('\n\n');
+
+            return `${formattedDate}\n${serviceDetails}`;
+        }).join('\n\n');
+
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${blocks}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
+
+        if (action === 'COPY') {
+            navigator.clipboard.writeText(message).then(() => {
+                showToast('Mensagem copiada com sucesso!');
+            }).catch(err => {
+                console.error('Erro ao copiar mensagem:', err);
+                showToast('Erro ao copiar mensagem.', 'error');
+            });
+        } else {
+            navigator.clipboard.writeText(message).catch(() => {});
+            const url = `https://wa.me/${whatsappPhone}?text=${encodeURIComponent(message)}`;
+            window.open(url, '_blank');
+        }
+        
+        setShowFutureAgendaOptions(false);
+    };
+
     return (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
             <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
@@ -2594,6 +2691,39 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             <div className="border-t border-slate-100 dark:border-zinc-700 my-1"></div>
                                             <button 
                                                 onClick={() => setShowWhatsAppOptions(false)}
+                                                className="w-full text-center py-1 text-[8px] font-bold text-slate-400 uppercase hover:text-slate-600 transition-colors"
+                                            >
+                                                Fechar
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="relative">
+                                    <button 
+                                        onClick={() => setShowFutureAgendaOptions(!showFutureAgendaOptions)}
+                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-indigo-500 hover:bg-indigo-600 border border-indigo-400 rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+                                        title="Agenda Futura"
+                                    >
+                                        <span className="text-xs">📅</span> Agenda Futura
+                                    </button>
+                                    {showFutureAgendaOptions && (
+                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
+                                            <button 
+                                                onClick={() => handleFutureAgendaWhatsApp('COPY')}
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
+                                            >
+                                                <Copy size={12} /> Copiar Mensagem
+                                            </button>
+                                            <button 
+                                                onClick={() => handleFutureAgendaWhatsApp('OPEN')}
+                                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-2 transition-colors"
+                                            >
+                                                <Smartphone size={12} /> Ir para WhatsApp
+                                            </button>
+                                            <div className="border-t border-slate-100 dark:border-zinc-700 my-1"></div>
+                                            <button 
+                                                onClick={() => setShowFutureAgendaOptions(false)}
                                                 className="w-full text-center py-1 text-[8px] font-bold text-slate-400 uppercase hover:text-slate-600 transition-colors"
                                             >
                                                 Fechar
