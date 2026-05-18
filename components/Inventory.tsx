@@ -15,7 +15,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [searchTerm, setSearchTerm] = useState('');
 
     // Modal States
-    const [modalType, setModalType] = useState<'ENTRY' | 'EXIT' | 'HISTORY' | 'EDIT_PRICE' | 'NEW_PRODUCT' | 'EDIT_PRODUCT' | 'INVENTORY' | 'REPORT' | 'CHOICE' | null>(null);
+    const [modalType, setModalType] = useState<'ENTRY' | 'EXIT' | 'HISTORY' | 'EDIT_PRICE' | 'NEW_PRODUCT' | 'EDIT_PRODUCT' | 'INVENTORY' | 'REPORT' | 'CHOICE' | 'BEST_SELLERS' | null>(null);
     const [showReportExportMenu, setShowReportExportMenu] = useState(false);
 
     const [selectedItemId, setSelectedItemId] = useState('');
@@ -54,6 +54,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     });
 
     const totalStockValue = stock.reduce((acc, item) => acc + (item.quantity * item.costPrice), 0);
+    const totalVolume = stock.reduce((acc, item) => acc + item.quantity, 0);
     const getSelectedItem = () => stock.find(i => i.id === selectedItemId);
     const getProviderName = (id?: string) => providers.find(p => p.id === id)?.name || 'N/A';
 
@@ -94,6 +95,20 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             (item.group && item.group.toLowerCase().includes(searchTerm.toLowerCase()))
         );
     }, [stock, searchTerm]);
+
+    const bestSellersReport = useMemo(() => {
+        return stock.map(item => {
+            const soldAmount = (item.usageHistory || [])
+                .filter(log => log.type === 'VENDA')
+                .reduce((acc, log) => acc + log.quantity, 0);
+            return {
+                ...item,
+                soldAmount
+            };
+        })
+            .filter(item => item.soldAmount > 0 || item.category === 'Venda')
+            .sort((a, b) => b.soldAmount - a.soldAmount);
+    }, [stock]);
 
     const getAllMovements = useMemo(() => {
         const movements: (StockUsageLog & { productName: string; productCode: string })[] = [];
@@ -182,6 +197,64 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
           <div class="summary">
             Total de Registros: ${filteredMovements.length}
           </div>
+          <script>window.onload = () => { window.print(); window.close(); }</script>
+        </body>
+      </html>
+    `;
+        const win = window.open('', '_blank');
+        if (win) { win.document.write(printContent); win.document.close(); }
+    };
+
+    const handlePrintBestSellers = () => {
+        const printContent = `
+      <html>
+        <head>
+          <title>Relatório de Mais Vendidos - Aminna</title>
+          <style>
+            body { font-family: 'Segoe UI', sans-serif; padding: 40px; color: #333; }
+            .header { margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+            .header h1 { font-size: 24px; font-weight: 900; text-transform: uppercase; margin: 0; }
+            .header p { font-size: 12px; margin: 5px 0 0; color: #666; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
+            th { background-color: #f8f9fa; text-transform: uppercase; font-weight: 900; text-align: left; padding: 10px; border-bottom: 2px solid #000; }
+            td { border-bottom: 1px solid #eee; padding: 10px; vertical-align: top; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Aminna Home Nail Gel</h1>
+              <p>Relatório de Produtos Mais Vendidos</p>
+            </div>
+            <div style="text-align: right;">
+              <p><strong>Gerado em:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%">Foto</th>
+                <th style="width: 40%">Produto</th>
+                <th style="width: 20%; text-align: center;">Código</th>
+                <th style="width: 15%; text-align: center;">Vendas</th>
+                <th style="width: 15%; text-align: center;">Em Estoque</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${bestSellersReport.map(item => `
+                <tr>
+                  <td>${item.imageUrl ? `<img src="${sanitizeImageUrl(item.imageUrl)}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;" />` : ''}</td>
+                  <td>
+                    <strong>${item.name}</strong><br/>
+                    <span style="color: #666; font-size: 9px; text-transform: uppercase;">${item.group || item.category}</span>
+                  </td>
+                  <td style="text-align: center; font-weight: bold;">${item.code || '-'}</td>
+                  <td style="text-align: center; color: #059669; font-weight: bold;">${item.soldAmount} un</td>
+                  <td style="text-align: center; font-weight: bold; color: ${item.quantity <= item.minQuantity ? '#dc2626' : '#333'}">${item.quantity} un</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
           <script>window.onload = () => { window.print(); window.close(); }</script>
         </body>
       </html>
@@ -368,9 +441,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             const updatedHistory = [...(itemToUpdate.priceHistory || []), newHistoryEntry];
 
             const { error } = await supabase.from('stock_items')
-                .update({ 
+                .update({
                     sale_price: priceNum,
-                    price_history: updatedHistory 
+                    price_history: updatedHistory
                 })
                 .eq('id', selectedItemId);
 
@@ -405,7 +478,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         }
 
         if (!window.confirm("Deseja realmente excluir este produto?")) return;
-        
+
         try {
             const { error } = await supabase
                 .from('stock_items')
@@ -472,7 +545,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     createdId = data[0].id;
                 }
             }
-            
+
             const costAtCreation = productFormData.costPrice;
             closeModal();
 
@@ -525,7 +598,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx?.drawImage(img, 0, 0, width, height);
-                    
+
                     canvas.toBlob((blob) => {
                         if (blob) resolve(blob);
                         else reject(new Error('Canvas to Blob failed'));
@@ -551,7 +624,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             // Apply filters for "AI Magic" look
             ctx.filter = 'contrast(1.2) brightness(1.05) saturate(1.15) sharpness(1.1)';
             ctx.drawImage(img, 0, 0);
-            
+
             canvas.toBlob(async (blob) => {
                 if (blob) {
                     const fileName = `magic_${Date.now()}.webp`;
@@ -604,8 +677,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 const b = data[i + 2];
 
                 const diff = Math.sqrt(
-                    Math.pow(r - rRef, 2) + 
-                    Math.pow(g - gRef, 2) + 
+                    Math.pow(r - rRef, 2) +
+                    Math.pow(g - gRef, 2) +
                     Math.pow(b - bRef, 2)
                 );
 
@@ -617,7 +690,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             }
 
             ctx.putImageData(imageData, 0, 0);
-            
+
             canvas.toBlob(async (blob) => {
                 if (blob) {
                     const fileName = `clean_${Date.now()}.webp`;
@@ -652,7 +725,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         try {
             const compressedBlob = await compressImage(file);
             setUploadProgress(40);
-            
+
             const fileName = `${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.webp`;
             const { data, error } = await supabase.storage
                 .from('product-images')
@@ -717,7 +790,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 return parseInt(numPart);
             })
             .filter(num => !isNaN(num));
-        
+
         const maxNum = codes.length > 0 ? Math.max(...codes) : 0;
         const nextNum = maxNum + 1;
         // Padrão amigável: AMINNA + número com pelo menos 2 dígitos
@@ -747,221 +820,227 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         <div className="h-full flex flex-col space-y-4 md:space-y-6 relative text-slate-900 dark:text-white min-h-0">
             <div className="flex-shrink-0 space-y-4 md:space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Estoque</h2>
-                    <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de materiais e revenda</p>
+                    <div>
+                        <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight">Estoque</h2>
+                        <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de materiais e revenda</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
+                        <button onClick={() => { setModalType('REPORT'); setReportFilter('ALL'); }} className="flex-1 md:flex-none px-3 py-2 bg-slate-800 dark:bg-zinc-800 text-white dark:text-white rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all border border-transparent dark:border-zinc-700"><FileText size={14} /> Relatórios</button>
+                        <button onClick={() => setModalType('CHOICE')} className="flex-1 md:flex-none px-3 py-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"><Tag size={14} /> Novo</button>
+                    </div>
                 </div>
-                <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
-                    <button onClick={() => { setModalType('REPORT'); setReportFilter('ALL'); }} className="flex-1 md:flex-none px-3 py-2 bg-slate-800 dark:bg-zinc-800 text-white dark:text-white rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all border border-transparent dark:border-zinc-700"><FileText size={14} /> Relatórios</button>
-                    <button onClick={() => setModalType('CHOICE')} className="flex-1 md:flex-none px-3 py-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"><Tag size={14} /> Novo</button>
-                </div>
-            </div>
 
-            {/* Action Quick Bar - Mobile Only */}
-            <div className="md:hidden flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-                <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><ClipboardList size={14} /> Inventário</button>
-                <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Plus size={14} /> Entrada</button>
-                <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
-            </div>
+                {/* Action Quick Bar - Mobile Only */}
+                <div className="md:hidden flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+                    <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><ClipboardList size={14} /> Inventário</button>
+                    <button onClick={() => { setModalType('BEST_SELLERS'); }} className="whitespace-nowrap px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><TrendingUp size={14} /> Mais Vendidos</button>
+                    <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Plus size={14} /> Entrada</button>
+                    <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
+                </div>
 
-            <div className="hidden lg:grid lg:grid-cols-4 gap-6">
-                <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                    <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 rounded-xl"><Package size={20} className="md:w-6 md:h-6" /></div>
-                    <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Itens</p><p className="text-sm md:text-2xl font-black text-slate-950 dark:text-white">{stock.length}</p></div>
+                <div className="hidden lg:grid lg:grid-cols-5 gap-6">
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 rounded-xl"><Package size={20} className="md:w-6 md:h-6" /></div>
+                        <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">SKUs</p><p className="text-sm md:text-2xl font-black text-slate-950 dark:text-white">{stock.length}</p></div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 rounded-xl"><Layers size={20} className="md:w-6 md:h-6" /></div>
+                        <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Volume</p><p className="text-sm md:text-2xl font-black text-indigo-600 dark:text-indigo-400">{totalVolume}</p></div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-400 rounded-xl"><AlertTriangle size={20} className="md:w-6 md:h-6" /></div>
+                        <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">Crítico</p><p className="text-sm md:text-2xl font-black text-amber-600 dark:text-amber-400">{stock.filter(i => i.quantity <= i.minQuantity).length}</p></div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-400 rounded-xl"><DollarSign size={20} className="md:w-6 md:h-6" /></div>
+                        <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Custo</p><p className="text-sm md:text-2xl font-black text-purple-900 dark:text-purple-400">R${(totalStockValue / 1000).toFixed(1)}k</p></div>
+                    </div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 rounded-xl"><ShoppingBag size={20} className="md:w-6 md:h-6" /></div>
+                        <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Venda</p><p className="text-sm md:text-2xl font-black text-emerald-900 dark:text-emerald-400">{stock.filter(i => i.category === 'Venda').length}</p></div>
+                    </div>
                 </div>
-                <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                    <div className="p-2 md:p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-400 rounded-xl"><AlertTriangle size={20} className="md:w-6 md:h-6" /></div>
-                    <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">Crítico</p><p className="text-sm md:text-2xl font-black text-amber-600 dark:text-amber-400">{stock.filter(i => i.quantity <= i.minQuantity).length}</p></div>
-                </div>
-                <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                    <div className="p-2 md:p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-400 rounded-xl"><DollarSign size={20} className="md:w-6 md:h-6" /></div>
-                    <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Custo</p><p className="text-sm md:text-2xl font-black text-purple-900 dark:text-purple-400">R${(totalStockValue / 1000).toFixed(1)}k</p></div>
-                </div>
-                <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                    <div className="p-2 md:p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 rounded-xl"><ShoppingBag size={20} className="md:w-6 md:h-6" /></div>
-                    <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Venda</p><p className="text-sm md:text-2xl font-black text-emerald-900 dark:text-emerald-400">{stock.filter(i => i.category === 'Venda').length}</p></div>
-                </div>
-            </div>
 
-            {/* Search Input */}
-            <div className="relative group">
-                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Pesquisar por nome ou código..."
-                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all shadow-sm placeholder-slate-500 dark:placeholder-slate-400"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
-            </div>
+                {/* Search Input */}
+                <div className="relative group">
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Pesquisar por nome ou código..."
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all shadow-sm placeholder-slate-500 dark:placeholder-slate-400"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
 
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 scrollbar-hide space-y-4 md:space-y-6 pb-24 md:pb-8">
                 {/* Desktop Table View */}
-            <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-                <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
-                    <div className="flex gap-2">
-                        <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
-                        <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Plus size={14} /> Entrada</button>
-                        <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Minus size={14} /> Saída</button>
+                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+                    <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center">
+                        <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
+                        <div className="flex gap-2">
+                            <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
+                            <button onClick={() => { setModalType('BEST_SELLERS'); }} className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all flex items-center gap-1.5 shadow-sm"><TrendingUp size={14} /> Mais Vendidos</button>
+                            <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Plus size={14} /> Entrada</button>
+                            <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Minus size={14} /> Saída</button>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-3 w-16">Foto</th>
+                                    <th className="px-6 py-3">Código</th>
+                                    <th className="px-6 py-3">Produto</th>
+                                    <th className="px-6 py-3">Categoria</th>
+                                    <th className="px-6 py-3">Classificação</th>
+                                    <th className="px-6 py-3 text-center">Quantidade</th>
+                                    <th className="px-6 py-3 text-right">Último Custo</th>
+                                    <th className="px-6 py-3 text-right">Preço Venda</th>
+                                    <th className="px-6 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
+                                {filteredStock.map(item => {
+                                    const isLow = item.quantity <= item.minQuantity;
+                                    return (
+                                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 group/row">
+                                            <td className="px-6 py-3">
+                                                <div
+                                                    className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
+                                                    onMouseEnter={(e) => {
+                                                        if (!item.imageUrl) return;
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setHoverPosition({ x: rect.right + 20, y: rect.top - 50 });
+                                                        setHoveredImage(item.imageUrl);
+                                                    }}
+                                                    onMouseLeave={() => setHoveredImage(null)}
+                                                >
+                                                    {item.imageUrl ? (
+                                                        <img
+                                                            src={sanitizeImageUrl(item.imageUrl)}
+                                                            alt={item.name}
+                                                            className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300"
+                                                        />
+                                                    ) : (
+                                                        <Package className="w-5 h-5 text-slate-400" />
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-xs font-black text-slate-950 dark:text-white">{item.code || '-'}</td>
+                                            <td className="px-6 py-4 font-black text-slate-950 dark:text-white">
+                                                {item.name}
+                                                <div className="md:hidden mt-1 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{item.category}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full border ${item.category === 'Venda' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-950 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-slate-300 border-slate-300 dark:border-zinc-700'}`}>
+                                                    {item.category}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-900 dark:text-slate-300">
+                                                {/* Display combined classification */}
+                                                <div className="flex flex-col">
+                                                    <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">{item.group || '-'}</span>
+                                                    {item.subGroup && <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{item.subGroup}</span>}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`font-black ${isLow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{item.quantity} {item.unit}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <span className="font-bold text-slate-950 dark:text-white">R$ {item.costPrice.toFixed(2)}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <span className="font-black text-slate-950 dark:text-white">R$ {(item.price || 0).toFixed(2)}</span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button onClick={() => openEditProduct(item)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Editar Informações"><Settings2 size={16} /></button>
+                                                    <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Alterar Preço"><Edit2 size={16} /></button>
+                                                    <button onClick={() => openHistory(item.id)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Ver Histórico"><History size={16} /></button>
+                                                    <button onClick={() => handleDeleteProduct(item.id)} className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors" title="Excluir Produto"><Trash2 size={16} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
-                            <tr>
-                                <th className="px-6 py-3 w-16">Foto</th>
-                                <th className="px-6 py-3">Código</th>
-                                <th className="px-6 py-3">Produto</th>
-                                <th className="px-6 py-3">Categoria</th>
-                                <th className="px-6 py-3">Classificação</th>
-                                <th className="px-6 py-3 text-center">Quantidade</th>
-                                <th className="px-6 py-3 text-right">Último Custo</th>
-                                <th className="px-6 py-3 text-right">Preço Venda</th>
-                                <th className="px-6 py-3 text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
-                            {filteredStock.map(item => {
-                                const isLow = item.quantity <= item.minQuantity;
-                                return (
-                                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 group/row">
-                                        <td className="px-6 py-3">
-                                            <div 
-                                                className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
-                                                onMouseEnter={(e) => {
-                                                    if (!item.imageUrl) return;
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setHoverPosition({ x: rect.right + 20, y: rect.top - 50 });
-                                                    setHoveredImage(item.imageUrl);
-                                                }}
-                                                onMouseLeave={() => setHoveredImage(null)}
-                                            >
-                                                {item.imageUrl ? (
-                                                    <img 
-                                                        src={sanitizeImageUrl(item.imageUrl)} 
-                                                        alt={item.name} 
-                                                        className="w-full h-full object-cover group-hover/row:scale-110 transition-transform duration-300"
-                                                    />
-                                                ) : (
-                                                    <Package className="w-5 h-5 text-slate-400" />
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-xs font-black text-slate-950 dark:text-white">{item.code || '-'}</td>
-                                        <td className="px-6 py-4 font-black text-slate-950 dark:text-white">
-                                            {item.name}
-                                            <div className="md:hidden mt-1 text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{item.category}</div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-full border ${item.category === 'Venda' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-950 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-slate-300 border-slate-300 dark:border-zinc-700'}`}>
-                                                {item.category}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-slate-900 dark:text-slate-300">
-                                            {/* Display combined classification */}
-                                            <div className="flex flex-col">
-                                                <span className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400">{item.group || '-'}</span>
-                                                {item.subGroup && <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">{item.subGroup}</span>}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <span className={`font-black ${isLow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{item.quantity} {item.unit}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="font-bold text-slate-950 dark:text-white">R$ {item.costPrice.toFixed(2)}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <span className="font-black text-slate-950 dark:text-white">R$ {(item.price || 0).toFixed(2)}</span>
-                                        </td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex items-center justify-center gap-1.5">
-                                                <button onClick={() => openEditProduct(item)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Editar Informações"><Settings2 size={16} /></button>
-                                                <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Alterar Preço"><Edit2 size={16} /></button>
-                                                <button onClick={() => openHistory(item.id)} className="p-1.5 text-slate-600 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors" title="Ver Histórico"><History size={16} /></button>
-                                                <button onClick={() => handleDeleteProduct(item.id)} className="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors" title="Excluir Produto"><Trash2 size={16} /></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+
+                {/* Mobile Card List View */}
+                <div className="md:hidden space-y-3">
+                    {filteredStock.map(item => {
+                        const isLow = item.quantity <= item.minQuantity;
+                        return (
+                            <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
+                                <div className="flex gap-4">
+                                    <div
+                                        className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center relative"
+                                        onMouseEnter={(e) => {
+                                            if (!item.imageUrl) return;
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            setHoverPosition({ x: rect.left, y: rect.bottom + 10 });
+                                            setHoveredImage(item.imageUrl);
+                                        }}
+                                        onMouseLeave={() => setHoveredImage(null)}
+                                    >
+                                        {item.imageUrl ? (
+                                            <img
+                                                src={sanitizeImageUrl(item.imageUrl)}
+                                                alt={item.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <Package className="w-6 h-6 text-slate-400" />
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase mb-0.5">{item.code || 'S/ COD'}</p>
+                                        <h4 className="text-sm font-black text-slate-950 dark:text-white leading-tight truncate">{item.name}</h4>
+
+                                        {/* Display Classification on Mobile */}
+                                        {(item.group || item.subGroup) && (
+                                            <p className="text-[10px] text-indigo-800 dark:text-indigo-400 font-black uppercase mt-1 flex items-center gap-1">
+                                                <Layers size={10} /> {item.group || '-'} {item.subGroup ? `/ ${item.subGroup}` : ''}
+                                            </p>
+                                        )}
+
+                                        <div className="flex items-center gap-1.5 mt-1.5">
+                                            <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${item.category === 'Venda' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-950 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-slate-300 border-slate-300 dark:border-zinc-700'}`}>{item.category}</span>
+                                            {isLow && <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-800">Estoque Baixo</span>}
+                                        </div>
+                                    </div>
+                                    <div className="text-right flex flex-col items-end">
+                                        <p className={`text-xl font-black ${isLow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{item.quantity}<span className="text-[10px] text-slate-950 dark:text-slate-400 font-bold ml-1 uppercase">{item.unit}</span></p>
+                                        <p className="text-[10px] font-black text-slate-950 dark:text-white mt-1">R$ {(item.price || 0).toFixed(2)}/un</p>
+                                    </div>
+                                </div>
+                                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col gap-3">
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+                                        <span>Custo Unitário:</span>
+                                        <span className="text-slate-950 dark:text-white">R$ {item.costPrice.toFixed(2)}</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <div className="flex flex-wrap gap-1.5">
+                                            <button onClick={() => openEditProduct(item)} className="p-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-200 dark:active:bg-zinc-700"><Settings2 size={16} /><span className="text-[9px] font-black uppercase">Editar</span></button>
+                                            <button onClick={() => openHistory(item.id)} className="p-2.5 bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-100 dark:active:bg-zinc-700"><History size={16} /><span className="text-[9px] font-black uppercase">Histórico</span></button>
+                                            <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-slate-900 dark:text-white rounded-2xl border border-indigo-200 dark:border-indigo-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-indigo-100 dark:active:bg-indigo-900/30"><Edit2 size={16} /><span className="text-[9px] font-black uppercase">Preço</span></button>
+                                            <button onClick={() => handleDeleteProduct(item.id)} className="p-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-rose-100 dark:active:bg-rose-900/30"><Trash2 size={16} /><span className="text-[9px] font-black uppercase">Excluir</span></button>
+                                        </div>
+                                        <div className="flex gap-1 justify-end items-end pt-2">
+                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('ENTRY'); setEntryCost(item.costPrice.toString()); }} className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Plus size={18} /></button>
+                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('EXIT'); }} className="p-2.5 bg-rose-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Minus size={18} /></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-            </div>
-
-            {/* Mobile Card List View */}
-            <div className="md:hidden space-y-3">
-                {filteredStock.map(item => {
-                    const isLow = item.quantity <= item.minQuantity;
-                    return (
-                        <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
-                            <div className="flex gap-4">
-                                <div 
-                                    className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center relative"
-                                    onMouseEnter={(e) => {
-                                        if (!item.imageUrl) return;
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setHoverPosition({ x: rect.left, y: rect.bottom + 10 });
-                                        setHoveredImage(item.imageUrl);
-                                    }}
-                                    onMouseLeave={() => setHoveredImage(null)}
-                                >
-                                    {item.imageUrl ? (
-                                        <img 
-                                            src={sanitizeImageUrl(item.imageUrl)} 
-                                            alt={item.name} 
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <Package className="w-6 h-6 text-slate-400" />
-                                    )}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400 font-bold uppercase mb-0.5">{item.code || 'S/ COD'}</p>
-                                    <h4 className="text-sm font-black text-slate-950 dark:text-white leading-tight truncate">{item.name}</h4>
-
-                                    {/* Display Classification on Mobile */}
-                                    {(item.group || item.subGroup) && (
-                                        <p className="text-[10px] text-indigo-800 dark:text-indigo-400 font-black uppercase mt-1 flex items-center gap-1">
-                                            <Layers size={10} /> {item.group || '-'} {item.subGroup ? `/ ${item.subGroup}` : ''}
-                                        </p>
-                                    )}
-
-                                    <div className="flex items-center gap-1.5 mt-1.5">
-                                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${item.category === 'Venda' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-950 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-slate-300 border-slate-300 dark:border-zinc-700'}`}>{item.category}</span>
-                                        {isLow && <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border border-rose-200 dark:border-rose-800">Estoque Baixo</span>}
-                                    </div>
-                                </div>
-                                <div className="text-right flex flex-col items-end">
-                                    <p className={`text-xl font-black ${isLow ? 'text-rose-700 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{item.quantity}<span className="text-[10px] text-slate-950 dark:text-slate-400 font-bold ml-1 uppercase">{item.unit}</span></p>
-                                    <p className="text-[10px] font-black text-slate-950 dark:text-white mt-1">R$ {(item.price || 0).toFixed(2)}/un</p>
-                                </div>
-                            </div>
-                            <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex flex-col gap-3">
-                                <div className="flex justify-between items-center text-[10px] font-bold text-slate-700 dark:text-slate-300 uppercase">
-                                    <span>Custo Unitário:</span>
-                                    <span className="text-slate-950 dark:text-white">R$ {item.costPrice.toFixed(2)}</span>
-                                </div>
-                                <div className="grid grid-cols-1 gap-2">
-                                    <div className="flex flex-wrap gap-1.5">
-                                        <button onClick={() => openEditProduct(item)} className="p-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-200 dark:active:bg-zinc-700"><Settings2 size={16} /><span className="text-[9px] font-black uppercase">Editar</span></button>
-                                        <button onClick={() => openHistory(item.id)} className="p-2.5 bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-100 dark:active:bg-zinc-700"><History size={16} /><span className="text-[9px] font-black uppercase">Histórico</span></button>
-                                        <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-slate-900 dark:text-white rounded-2xl border border-indigo-200 dark:border-indigo-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-indigo-100 dark:active:bg-indigo-900/30"><Edit2 size={16} /><span className="text-[9px] font-black uppercase">Preço</span></button>
-                                        <button onClick={() => handleDeleteProduct(item.id)} className="p-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-rose-100 dark:active:bg-rose-900/30"><Trash2 size={16} /><span className="text-[9px] font-black uppercase">Excluir</span></button>
-                                    </div>
-                                    <div className="flex gap-1 justify-end items-end pt-2">
-                                        <button onClick={() => { setSelectedItemId(item.id); setModalType('ENTRY'); setEntryCost(item.costPrice.toString()); }} className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Plus size={18} /></button>
-                                        <button onClick={() => { setSelectedItemId(item.id); setModalType('EXIT'); }} className="p-2.5 bg-rose-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Minus size={18} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
             </div>
 
             {/* MODALS SECTION */}
@@ -1043,7 +1122,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
                                             {/* Separation pipe - only on mobile */}
                                             <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
-                                            
+
                                             {/* Upload from Gallery (Standard) */}
                                             <label className="cursor-pointer text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 hover:underline">
                                                 <Plus size={12} className="md:hidden" />
@@ -1059,7 +1138,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {isUploading && (
                                     <div className="w-full h-1 bg-slate-100 dark:bg-zinc-800 rounded-full overflow-hidden mb-3">
                                         <div className="h-full bg-indigo-600 transition-all duration-300" style={{ width: `${uploadProgress}%` }}></div>
@@ -1069,9 +1148,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 {productFormData.imageUrl && (
                                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
                                         <img src={sanitizeImageUrl(productFormData.imageUrl)} className="max-w-full max-h-full object-contain" alt="Preview" />
-                                        <button 
-                                            type="button" 
-                                            onClick={() => setProductFormData({...productFormData, imageUrl: ''})}
+                                        <button
+                                            type="button"
+                                            onClick={() => setProductFormData({ ...productFormData, imageUrl: '' })}
                                             className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover/img:opacity-100 transition-opacity"
                                         >
                                             <X size={16} />
@@ -1124,43 +1203,43 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 </div>
                             </div>
 
-                                {/* Previews */}
-                                {(productFormData.imageUrl || productFormData.imageUrls.some(u => u)) && (
-                                    <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                                        {[productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u).map((url, i) => (
-                                            <button 
-                                                key={i} 
-                                                type="button"
-                                                onClick={() => {
-                                                    if (i === 0) return; // Already primary
-                                                    const allUrls = [productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u);
-                                                    const selectedUrl = allUrls[i];
-                                                    const otherUrls = allUrls.filter((_, idx) => idx !== i);
-                                                    setProductFormData({
-                                                        ...productFormData,
-                                                        imageUrl: selectedUrl,
-                                                        imageUrls: otherUrls
-                                                    });
-                                                }}
-                                                className={`relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
-                                            >
-                                                <img 
-                                                    src={sanitizeImageUrl(url)} 
-                                                    alt="Preview" 
-                                                    className="w-full h-full object-cover" 
-                                                    referrerPolicy="no-referrer"
-                                                />
-                                                {i === 0 ? (
-                                                    <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow-sm"><CircleCheck size={10} /></div>
-                                                ) : (
-                                                    <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
-                                                        <span className="text-[7px] font-black text-white uppercase leading-none text-center">Definir<br/>Capa</span>
-                                                    </div>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
+                            {/* Previews */}
+                            {(productFormData.imageUrl || productFormData.imageUrls.some(u => u)) && (
+                                <div className="mt-3 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                                    {[productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u).map((url, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => {
+                                                if (i === 0) return; // Already primary
+                                                const allUrls = [productFormData.imageUrl, ...productFormData.imageUrls].filter(u => u);
+                                                const selectedUrl = allUrls[i];
+                                                const otherUrls = allUrls.filter((_, idx) => idx !== i);
+                                                setProductFormData({
+                                                    ...productFormData,
+                                                    imageUrl: selectedUrl,
+                                                    imageUrls: otherUrls
+                                                });
+                                            }}
+                                            className={`relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
+                                        >
+                                            <img
+                                                src={sanitizeImageUrl(url)}
+                                                alt="Preview"
+                                                className="w-full h-full object-cover"
+                                                referrerPolicy="no-referrer"
+                                            />
+                                            {i === 0 ? (
+                                                <div className="absolute top-1 right-1 bg-indigo-600 text-white p-0.5 rounded-full shadow-sm"><CircleCheck size={10} /></div>
+                                            ) : (
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                    <span className="text-[7px] font-black text-white uppercase leading-none text-center">Definir<br />Capa</span>
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Categoria (Visibilidade no PDV)</label>
                                 <div className="grid grid-cols-2 gap-2">
@@ -1697,22 +1776,93 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     </div>
                 </div>
             )}
+            {/* BEST SELLERS MODAL */}
+            {modalType === 'BEST_SELLERS' && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-black dark:border-zinc-700 flex flex-col max-h-[90vh]">
+                        <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-amber-500 text-black">
+                            <div className="flex items-center gap-2">
+                                <TrendingUp size={24} />
+                                <h3 className="font-black text-base uppercase tracking-widest">Relatório: Mais Vendidos</h3>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                <button onClick={handlePrintBestSellers} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 hover:bg-black/20 rounded-xl text-black font-black uppercase text-xs transition-colors"><Printer size={14} /> Imprimir</button>
+                                <button onClick={closeModal} className="text-black hover:text-black/70"><X size={24} /></button>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 p-4 scrollbar-hide">
+                            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-zinc-800">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-[10px] text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="px-4 py-3 w-16 text-center">Foto</th>
+                                            <th className="px-4 py-3">Produto</th>
+                                            <th className="px-4 py-3 text-center">Código</th>
+                                            <th className="px-4 py-3 text-center">Vendas (Total)</th>
+                                            <th className="px-4 py-3 text-center">Em Estoque</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-zinc-700">
+                                        {bestSellersReport.map(item => (
+                                            <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
+                                                <td className="px-4 py-2">
+                                                    <div
+                                                        className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in mx-auto relative"
+                                                        onMouseEnter={(e) => {
+                                                            if (!item.imageUrl) return;
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setHoverPosition({ x: rect.right + 10, y: rect.top - 50 });
+                                                            setHoveredImage(item.imageUrl);
+                                                        }}
+                                                        onMouseLeave={() => setHoveredImage(null)}
+                                                    >
+                                                        {item.imageUrl ? (
+                                                            <img
+                                                                src={sanitizeImageUrl(item.imageUrl)}
+                                                                alt={item.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        ) : (
+                                                            <Package className="w-5 h-5 text-slate-400" />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    <p className="font-black text-slate-950 dark:text-white text-xs">{item.name}</p>
+                                                    <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{item.group || item.category}</p>
+                                                </td>
+                                                <td className="px-4 py-2 text-center text-[11px] font-black text-slate-950 dark:text-white">{item.code || '-'}</td>
+                                                <td className="px-4 py-2 text-center">
+                                                    <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{item.soldAmount} un</span>
+                                                </td>
+                                                <td className="px-4 py-2 text-center">
+                                                    <span className={`font-black text-sm ${item.quantity <= item.minQuantity ? 'text-rose-600 dark:text-rose-400' : 'text-slate-950 dark:text-white'}`}>{item.quantity} un</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             {/* Hover Image Preview Overlay */}
             {hoveredImage && (
-                <div 
+                <div
                     className="fixed z-[999] pointer-events-none animate-in fade-in zoom-in duration-200"
-                    style={{ 
-                        left: Math.min(Math.max(20, hoverPosition.x), window.innerWidth - 340), 
+                    style={{
+                        left: Math.min(Math.max(20, hoverPosition.x), window.innerWidth - 340),
                         top: Math.min(Math.max(20, hoverPosition.y), window.innerHeight - 340),
                         width: '320px',
                         height: '320px'
                     }}
                 >
                     <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-zinc-800 ring-1 ring-black/10">
-                        <img 
-                            src={sanitizeImageUrl(hoveredImage)} 
-                            alt="Preview" 
-                            className="w-full h-full object-contain bg-slate-50 dark:bg-zinc-950" 
+                        <img
+                            src={sanitizeImageUrl(hoveredImage)}
+                            alt="Preview"
+                            className="w-full h-full object-contain bg-slate-50 dark:bg-zinc-950"
                         />
                     </div>
                 </div>
