@@ -732,7 +732,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             oneTimeOnlyClients: [] as { id: string, name: string, phone: string, lastVisit: string, avgTicket: number, daysInactive: number }[],
             avgFrequency: 0,
             secondVisitConversion: 0,
-            realChurnRate: 0
+            realChurnRate: 0,
+            oneTimeClientsTotal: 0,
+            newChurnRate: 0,
+            conversionToLoyalRate: 0
         };
 
         const now = new Date();
@@ -757,6 +760,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 stats.recurringClients++;
                 stats.recurringRevenue += totalSpent;
                 stats.recurringAppointments += appCount;
+            } else if (appCount === 1) {
+                stats.oneTimeClientsTotal++;
             }
 
             const lastApp = [...customerApps].sort((a, b) => b.date.localeCompare(a.date))[0];
@@ -801,6 +806,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         
         // Taxa de Churn Real: (Clientes Inativos Fiéis / Clientes Totais que já foram Recorrentes)
         stats.realChurnRate = stats.recurringClients > 0 ? (stats.churnRiskCount / stats.recurringClients) * 100 : 0;
+        
+        // Taxa de Churn de Novos: (Clientes Novos Inativos / Clientes que vieram apenas 1 vez)
+        stats.newChurnRate = stats.oneTimeClientsTotal > 0 ? (stats.oneTimeOnlyClients.length / stats.oneTimeClientsTotal) * 100 : 0;
+
+        // Conversão em Fiéis (Fidelização): Clientes que visitaram 1 vez e voltaram (2+ visitas)
+        const totalWithVisits = stats.recurringClients + stats.oneTimeClientsTotal;
+        stats.conversionToLoyalRate = totalWithVisits > 0 
+            ? (stats.recurringClients / totalWithVisits) * 100 
+            : 0;
 
         return stats;
     }, [customers, appointments]);
@@ -2981,7 +2995,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -2989,6 +3003,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={Users}
                                     color="text-indigo-700"
                                     lightColor="bg-indigo-50"
+                                />
+                                <KPICard
+                                    title="Conversão em Fiéis"
+                                    value={`${recurringStats.conversionToLoyalRate.toFixed(1)}%`}
+                                    sub="Retorno após 1ª visita"
+                                    icon={Sparkles}
+                                    color="text-violet-700"
+                                    lightColor="bg-violet-50"
                                 />
                                 <KPICard
                                     title="Faturamento Recorrente"
@@ -3219,28 +3241,72 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Recência, Frequência e Valor</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
-                                        <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Campeões</p>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            <span className="text-slate-900 dark:text-white font-black">VIPs</span> são clientes que gastam acima de R$800/mês. Eles sozinhos geram 40% do seu lucro líquido.
-                                        </p>
-                                    </div>
                                     <div 
-                                        className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30 cursor-pointer hover:border-rose-300 dark:hover:border-rose-700 transition-all group"
+                                        className="bg-rose-50/25 dark:bg-rose-900/5 p-5 rounded-3xl border border-rose-100/50 dark:border-zinc-800 cursor-pointer hover:bg-rose-50/50 hover:border-rose-200 dark:hover:border-rose-900/10 transition-all group relative"
                                         onClick={() => {
                                             setChurnModalTab('loyal');
                                             setIsChurnModalOpen(true);
                                         }}
                                     >
-                                        <div className="flex justify-between items-start mb-1">
-                                            <p className="text-[10px] font-black text-rose-600 uppercase">Risco de Churn</p>
-                                            <div className="bg-rose-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase">Ação Reativa</div>
+                                        <div className="absolute top-4 right-4 bg-rose-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest">
+                                            Abrir Recuperação
                                         </div>
-                                        <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
-                                            Identificamos <span className="text-rose-900 dark:text-rose-400 font-black">{recurringStats.churnRiskCount} fiéis</span> e <span className="text-sky-700 dark:text-sky-400 font-black">{recurringStats.oneTimeOnlyClients.length} novos</span> que não retornam. Perda potencial: R$ {((recurringStats.churnRiskCount + recurringStats.oneTimeOnlyClients.length) * (customerAvgTicket[0]?.value || 150)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês.
-                                        </p>
-                                        <div className="mt-3 flex items-center gap-1 text-[9px] font-black text-rose-600 uppercase tracking-widest">
-                                            Recuperar Clientes <ChevronRight size={10} />
+                                        
+                                        <div className="space-y-4">
+                                            {/* 1. Base Geral */}
+                                            <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
+                                                <div className="bg-indigo-50 dark:bg-indigo-950 p-1.5 rounded-xl text-indigo-700 dark:text-indigo-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                    Base
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Lista Geral de Contatos</p>
+                                                    <p className="text-[10px] text-slate-500 leading-tight mt-0.5">Temos <span className="text-slate-900 dark:text-white font-black">{recurringStats.totalClients} clientes</span> cadastrados ao longo do tempo.</p>
+                                                </div>
+                                            </div>
+
+                                            {/* 2. Conversão / Fidelização */}
+                                            <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
+                                                <div className="bg-emerald-100 dark:bg-emerald-950 p-1.5 rounded-xl text-emerald-700 dark:text-emerald-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                    {recurringStats.conversionToLoyalRate.toFixed(1)}%
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Fidelização ({recurringStats.recurringClients}/{recurringStats.recurringClients + recurringStats.oneTimeClientsTotal})</p>
+                                                    <p className="text-[10px] text-slate-500 leading-tight mt-1">
+                                                        De cada 10 novos clientes que experimentam o serviço pela primeira vez, cerca de <span className="text-emerald-700 dark:text-emerald-400 font-black">{(recurringStats.conversionToLoyalRate / 10).toFixed(0)} voltam</span>. Nosso serviço inicial é excelente: a grande maioria gosta da experiência e se torna recorrente.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* 3. Churn Fiéis */}
+                                            <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
+                                                <div className="bg-rose-100 dark:bg-rose-950 p-1.5 rounded-xl text-rose-700 dark:text-rose-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                    {recurringStats.realChurnRate.toFixed(1)}%
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Clientes de Casa Sumidos ({recurringStats.churnRiskClients.length}/{recurringStats.recurringClients})</p>
+                                                    <p className="text-[10px] text-slate-500 leading-tight mt-1">
+                                                        Cerca de <span className="text-rose-700 dark:text-rose-400 font-black">{(recurringStats.realChurnRate / 10).toFixed(0)} em cada 10</span> clientes frequentes não aparecem há +45 dias. Como já nos conhecem, são fáceis de recuperar com um carinho.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {/* 4. Churn Novos */}
+                                            <div className="flex items-start gap-2.5">
+                                                <div className="bg-sky-100 dark:bg-sky-950 p-1.5 rounded-xl text-sky-700 dark:text-sky-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                    {recurringStats.newChurnRate.toFixed(1)}%
+                                                </div>
+                                                <div>
+                                                    <p className="text-[9px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider">Novos s/ Retorno ({recurringStats.oneTimeOnlyClients.length}/{recurringStats.oneTimeClientsTotal})</p>
+                                                    <p className="text-[10px] text-slate-500 leading-tight mt-1">
+                                                        Cerca de <span className="text-sky-700 dark:text-sky-400 font-black">{(recurringStats.newChurnRate / 10).toFixed(0)} em cada 10</span> novos clientes vieram apenas 1 vez e sumiram nos últimos 30 dias. Um pequeno mimo trará vários de volta.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 pt-3 border-t border-rose-100/50 dark:border-zinc-800 flex justify-between items-center text-[8px] font-black text-rose-600 uppercase tracking-widest">
+                                            <span>Perda: R$ {((recurringStats.churnRiskCount + recurringStats.oneTimeOnlyClients.length) * (customerAvgTicket[0]?.value || 150)).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}/mês</span>
+                                            <span className="flex items-center gap-0.5 group-hover:translate-x-1 transition-transform">Recuperar <ChevronRight size={8} /></span>
                                         </div>
                                     </div>
                                 </div>
@@ -3311,9 +3377,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
                                     <Target size={18} className="text-rose-500" /> Plano de Recuperação
                                 </h3>
-                                <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                    Churn Real: <span className="text-rose-400">{recurringStats.realChurnRate.toFixed(1)}%</span> | {customers.length} clientes
-                                </p>
+                                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 leading-none">
+                                    <span>Base: <span className="text-white">{customers.length} Clientes</span></span>
+                                    <span>·</span>
+                                    <span>Fidelizados (Conversão): <span className="text-emerald-400">{recurringStats.conversionToLoyalRate.toFixed(1)}%</span> <span className="text-slate-500">({recurringStats.recurringClients}/{recurringStats.recurringClients + recurringStats.oneTimeClientsTotal})</span></span>
+                                    <span>·</span>
+                                    <span>Churn Fiéis: <span className="text-rose-400">{recurringStats.realChurnRate.toFixed(1)}%</span> <span className="text-slate-500">({recurringStats.churnRiskClients.length}/{recurringStats.recurringClients})</span></span>
+                                    <span>·</span>
+                                    <span>Churn Novos (1 Visita): <span className="text-sky-400">{recurringStats.newChurnRate.toFixed(1)}%</span> <span className="text-slate-500">({recurringStats.oneTimeOnlyClients.length}/{recurringStats.oneTimeClientsTotal})</span></span>
+                                </div>
                             </div>
                             <button 
                                 onClick={() => setIsChurnModalOpen(false)}
