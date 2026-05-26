@@ -415,6 +415,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
     // 1. Dynamic Flow Chart (Adapts x-axis based on view)
     const flowData = useMemo(() => {
+        const getCustomerDetails = (apps: Appointment[]) => {
+            const uniqueCustomerIds = new Set(apps.map(a => a.customerId));
+            let clientesNovos = 0;
+            let clientesFieis = 0;
+            uniqueCustomerIds.forEach(customerId => {
+                const fvDate = firstVisits[customerId]?.date;
+                if (fvDate && apps.some(a => a.customerId === customerId && a.date === fvDate)) {
+                    clientesNovos++;
+                } else {
+                    clientesFieis++;
+                }
+            });
+            return {
+                clientes: uniqueCustomerIds.size,
+                clientesNovos,
+                clientesFieis
+            };
+        };
+
         const calcMetrics = (apps: Appointment[], pSales: Sale[] = []) => {
             let serviceProduction = 0;
             let productSales = 0;
@@ -487,10 +506,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     return parseInt(a.time.split(':')[0]) === h;
                 });
                 const metrics = calcMetrics(hourApps);
+                const custDetails = getCustomerDetails(hourApps);
                 return {
                     name: label,
                     atendimentos: hourApps.length,
-                    clientes: new Set(hourApps.map(a => a.customerId)).size,
+                    clientes: custDetails.clientes,
+                    clientesNovos: custDetails.clientesNovos,
+                    clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -518,11 +540,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const dayApps = filteredAppointments.filter(a => a.date === dateStr);
                 const daySales = filteredSales.filter(s => s.date === dateStr);
                 const metrics = calcMetrics(dayApps, daySales);
+                const custDetails = getCustomerDetails(dayApps);
                 return {
                     name: d.getDate().toString(),
                     fullDate: dateStr,
                     atendimentos: dayApps.length,
-                    clientes: new Set(dayApps.map(a => a.customerId)).size,
+                    clientes: custDetails.clientes,
+                    clientesNovos: custDetails.clientesNovos,
+                    clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -548,10 +573,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     return (monthPart - 1) === i;
                 });
                 const metrics = calcMetrics(monthApps, monthSales);
+                const custDetails = getCustomerDetails(monthApps);
                 return {
                     name: m,
                     atendimentos: monthApps.length,
-                    clientes: new Set(monthApps.map(a => a.customerId)).size,
+                    clientes: custDetails.clientes,
+                    clientesNovos: custDetails.clientesNovos,
+                    clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -1729,6 +1757,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Clientes:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">{data.clientes}</span>
+                        </div>
+                        <div className="pl-4 border-l-2 border-slate-100 dark:border-zinc-700 space-y-1">
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-emerald-500 uppercase">Novos:</span>
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">{data.clientesNovos || 0}</span>
+                            </div>
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-indigo-500 uppercase">Fiéis:</span>
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">{data.clientesFieis || 0}</span>
+                            </div>
                         </div>
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento Total:</span>
