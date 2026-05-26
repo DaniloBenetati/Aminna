@@ -475,13 +475,18 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
     }, [timeView, dateRef, customRange]);
 
-    const activeProviders = useMemo(() => providers.filter(p => p.active), [providers]);
+    const activeProviders = useMemo(() => {
+        const filtered = providers.filter(p => p.active);
+        console.log('🔍 [AGENDA] activeProviders:', filtered.map(p => ({ id: p.id, name: p.name, active: p.active })));
+        return filtered;
+    }, [providers]);
 
     // Filter Appointments for the GRID (Always shows dateRef day or start of custom range)
     const gridDateStr = timeView === 'custom' ? customRange.start : formatDate(dateRef);
 
     const gridAppointments = useMemo(() => {
-        return appointments.filter(a => {
+        console.log('🔍 [AGENDA] gridAppointments filtering started. Total appointments in state:', appointments.length, 'gridDateStr:', gridDateStr);
+        const filtered = appointments.filter(a => {
             const isDate = a.date === gridDateStr;
 
             // Provider filter: if visibleProviderIds is empty, show ALL providers
@@ -513,17 +518,27 @@ export const Agenda: React.FC<AgendaProps> = ({
                     !!(a.additionalServices?.some(s => visibleServiceIds.includes(s.serviceId)));
             }
 
-            return isDate && isProvider && isNotCancelled && isSearchMatch && isService;
+            const keep = isDate && isProvider && isNotCancelled && isSearchMatch && isService;
+            if (keep) {
+                console.log(`📌 [AGENDA] Keeping appointment on ${gridDateStr}: ID=${a.id}, Time=${a.time}, Customer=${a.customerId}, Provider=${a.providerId}`);
+            }
+            return keep;
         });
+        console.log('🔍 [AGENDA] gridAppointments filtering finished. Keep count:', filtered.length);
+        return filtered;
     }, [appointments, gridDateStr, selectedProviderId, visibleProviderIds, searchTerm, customers, visibleServiceIds]);
 
     const activeVisibileProviders = useMemo(() => {
+        console.log('🔍 [AGENDA] activeVisibileProviders filtering. activeProviders count:', activeProviders.length, 'selectedProviderId:', selectedProviderId, 'visibleProviderIds:', visibleProviderIds);
         const filtered = selectedProviderId === 'all'
             ? activeProviders.filter(p => visibleProviderIds.length === 0 || visibleProviderIds.some(vid => String(vid).trim().toLowerCase() === String(p.id).trim().toLowerCase()))
             : activeProviders.filter(p => String(p.id).trim().toLowerCase() === String(selectedProviderId).trim().toLowerCase());
 
-        return filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+        const sorted = filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+        console.log('🔍 [AGENDA] activeVisibileProviders output:', sorted.map(p => ({ id: p.id, name: p.name })));
+        return sorted;
     }, [activeProviders, selectedProviderId, visibleProviderIds]);
+
 
     // Confirmações Range)
     // Confirmações Range)

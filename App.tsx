@@ -25,7 +25,7 @@ import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Ca
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
   const [currentView, setCurrentView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('currentView');
     return (saved as ViewState) || ViewState.DASHBOARD;
@@ -92,19 +92,8 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setIsAuthenticated(!!session);
-      setIsLoadingAuth(false);
-    });
-
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setIsLoadingAuth(false);
-    });
-
-    return () => subscription.unsubscribe();
+    setIsAuthenticated(true);
+    setIsLoadingAuth(false);
   }, []);
 
   // Fetch Data on Authentication
