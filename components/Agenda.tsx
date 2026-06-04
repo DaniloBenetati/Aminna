@@ -104,7 +104,8 @@ import {
     parseDateSafe,
     generateFinancialTransactions,
     calculateDailySummary,
-    isFirstAppointment
+    isFirstAppointment,
+    getMinDate
 } from '../services/financialService';
 import { DailyCloseView } from './DailyCloseView';
 import { Toast } from './Toast';
@@ -1678,7 +1679,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2">
                                                                     <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
-                                                                    {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                    {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                                                         <span className="bg-emerald-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
                                                                     )}
                                                                     {customer?.isVip && <Sparkles size={10} className="text-amber-500 flex-shrink-0" />}
@@ -1929,7 +1930,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                         <p className={`text-[10px] font-black uppercase leading-none truncate ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
                                                                                             {customer?.name || 'Cliente'}
                                                                                         </p>
-                                                                                        {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                                        {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                                                                             <span className="bg-white text-indigo-600 text-[7px] font-black px-1 rounded-sm uppercase shadow-sm">Novo</span>
                                                                                         )}
                                                                                         {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
@@ -1967,7 +1968,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
                                                                                         <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
                                                                                         <div className="flex flex-col">
-                                                                                            {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (
+                                                                                            {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                                                                                 <div className="mb-2">
                                                                                                     <span className="bg-indigo-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full uppercase shadow-sm">1º Agendamento</span>
                                                                                                 </div>
@@ -2647,6 +2648,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     date={dateRef}
                                     appointments={appointments}
                                     services={services}
+                                    customers={customers}
                                     onPrint={handlePrintDailyClose}
                                     onCloseRegister={handleCloseRegister}
                                     onShareWhatsapp={handleShareWhatsappDailyClose}

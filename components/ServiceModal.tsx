@@ -5,7 +5,7 @@ import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentS
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
 import { focusNfeService } from '../services/focusNfeService';
-import { isFirstAppointment } from '../services/financialService';
+import { isFirstAppointment, getMinDate } from '../services/financialService';
 import { ConsentForm } from './ConsentForm';
 import { Toast } from './Toast';
 
@@ -2846,7 +2846,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         <>
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
                                 <div className="flex flex-col">
-                                    {customer?.id && isFirstAppointment(customer.id, appointmentDate, allAppointments) && (
+                                    {customer?.id && isFirstAppointment(customer.id, appointmentDate, allAppointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                         <div className="mb-2">
                                             <span className="bg-indigo-600 text-white text-[8px] font-black px-2.5 py-1 rounded-full uppercase shadow-sm">1º Agendamento</span>
                                         </div>

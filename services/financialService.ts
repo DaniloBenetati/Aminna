@@ -8,8 +8,17 @@ export const toLocalDateStr = (date: Date | string) => {
     return `${year}-${month}-${day}`;
 };
 
+export const getMinDate = () => {
+    const now = new Date();
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const referenceDate = threeMonthsAgo < startOfYear ? threeMonthsAgo : startOfYear;
+    return referenceDate.getFullYear() + '-' + String(referenceDate.getMonth() + 1).padStart(2, '0') + '-' + String(referenceDate.getDate()).padStart(2, '0');
+};
+
 export const isFirstAppointment = (customerId: string, date: string, appointments: Appointment[]) => {
-    const validApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído');
+    const validApps = appointments.filter(a => a.customerId === customerId && a.status !== 'Cancelado');
     if (validApps.length === 0) return false;
     const firstDate = validApps.reduce((min, a) => (a.date < min ? a.date : min), validApps[0].date);
     return date === firstDate;

@@ -4249,7 +4249,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             );
                         })()}
                         {/* ===== CAIXA DIÁRIO ===== */}
-                        {accountsSubTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
+                        {accountsSubTab === 'DAILY' && <DailyCloseView transactions={transactions} physicalCash={physicalCash} setPhysicalCash={setPhysicalCash} closingObservation={closingObservation} setClosingObservation={setClosingObservation} closerName={closerName} setCloserName={setCloserName} date={dateRef} appointments={appointments} services={services} customers={customers} onPrint={handlePrintDailyClose} onCloseRegister={() => { }} />}
 
 
 

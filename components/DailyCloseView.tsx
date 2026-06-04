@@ -5,7 +5,7 @@ import {
     ShieldAlert, Heart
 } from 'lucide-react';
 import { Appointment, Service, FinancialTransaction } from '../types';
-import { toLocalDateStr, calculateDailySummary, isFirstAppointment } from '../services/financialService';
+import { toLocalDateStr, calculateDailySummary, isFirstAppointment, getMinDate } from '../services/financialService';
 import { Customer } from '../types';
 
 interface DailyCloseViewProps {
@@ -558,6 +558,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                                 const hasRefazer = cData.transactions.some((t: any) => t.paymentMethod === 'Refazer');
                                                 // If it's Refazer, we completely ignore VIP logic for display priority
                                                 const isVip = !hasRefazer && (cData.amount < 0.01 || cData.isVip);
+                                                const customer = customers?.find(c => String(c.id) === String(cData.customerId));
 
                                                 return (
                                                     <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
@@ -568,7 +569,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                                                     className="text-start hover:underline active:opacity-50 transition-all text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1.5"
                                                                 >
                                                                     {customerName}
-                                                                    {cData.customerId && isFirstAppointment(cData.customerId, dateStr, appointments) && <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">NOVO</span>}
+                                                                    {cData.customerId && isFirstAppointment(cData.customerId, dateStr, appointments) && (!customer || customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && <span className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">NOVO</span>}
                                                                     {hasRefazer && <span className="bg-fuchsia-100 dark:bg-fuchsia-900/30 text-fuchsia-600 dark:text-fuchsia-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5">REFAZER</span>}
                                                                     {isVip && <span className="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Crown size={8} /> VIP</span>}
                                                                     {cData.tipAmount > 0 && <span className="bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 text-[7px] px-1.5 rounded-full flex items-center gap-0.5"><Target size={8} /> CAIXINHA</span>}
