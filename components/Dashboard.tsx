@@ -4,32 +4,42 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
-import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe } from '../services/financialService';
+import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe, isFirstAppointment, getMinDate } from '../services/financialService';
 import { supabase } from '../services/supabase';
 
-const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, onClick }: any) => (
-    <div 
-        onClick={onClick}
-        className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
-    >
-        <div className="flex justify-between items-start">
-            <div className="flex-1 min-w-0">
-                <p className="text-[6px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
-                <div className="flex items-center gap-1">
-                    <h3 className={`${valueSize || 'text-[10px] md:text-base'} font-black text-slate-900 dark:text-white tracking-tighter mt-0.5 whitespace-nowrap truncate`}>{value}</h3>
-                    {onClick && <ChevronRight size={12} className="text-slate-400 mt-0.5" />}
+const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, onClick }: any) => {
+    const isPositive = sub?.includes('+') || false;
+    const isNegative = sub?.includes('-') || false;
+    
+    let subColor = 'text-slate-500 dark:text-zinc-400';
+    if (isPositive) subColor = 'text-emerald-700 dark:text-emerald-400';
+    if (isNegative) subColor = 'text-rose-700 dark:text-rose-400';
+
+    return (
+        <div 
+            onClick={onClick}
+            className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
+        >
+            <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                    <p className="text-[6px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
+                    <div className="flex items-center gap-1">
+                        <h3 className={`${valueSize || 'text-[10px] md:text-base'} font-black text-slate-900 dark:text-white tracking-tighter mt-0.5 whitespace-nowrap truncate`}>{value}</h3>
+                        {onClick && <ChevronRight size={12} className="text-slate-400 mt-0.5" />}
+                    </div>
+                </div>
+                <div className={`p-1 md:p-1.5 rounded-lg flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
+                    <Icon className={`w-3 h-3 md:w-4 md:h-4 ${color} dark:text-current`} />
                 </div>
             </div>
-            <div className={`p-1 md:p-1.5 rounded-lg flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
-                <Icon className={`w-3 h-3 md:w-4 md:h-4 ${color} dark:text-current`} />
-            </div>
+            <p className={`text-[6px] md:text-[8px] font-bold truncate flex items-center gap-0.5 ${subColor}`}>
+                {isPositive && <TrendingUp size={8} />}
+                {isNegative && <AlertTriangle size={8} />}
+                {sub}
+            </p>
         </div>
-        <p className={`text-[6px] md:text-[8px] font-bold truncate flex items-center gap-0.5 ${sub.includes('+') ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}>
-            {sub.includes('+') ? <TrendingUp size={8} /> : <AlertTriangle size={8} />}
-            {sub}
-        </p>
-    </div>
-);
+    );
+};
 
 interface DashboardProps {
     onNavigate: (view: ViewState) => void;
@@ -232,6 +242,79 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         return Object.values(firstVisits).filter(v => isDateInPeriod(v.date)).length;
     }, [firstVisits, timeView, dateRef, customRange]);
 
+    const newCustomersAvg = useMemo(() => {
+        const count = newCustomersCount;
+        if (timeView === 'day') {
+            return {
+                value: count.toString(),
+                label: 'por dia',
+                full: `${count} / dia`
+            };
+        }
+        if (timeView === 'month') {
+            const year = dateRef.getFullYear();
+            const month = dateRef.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+            const elapsedDays = isCurrentMonth ? today.getDate() : daysInMonth;
+            
+            const perDay = count / elapsedDays;
+            const perWeek = perDay * 7;
+            
+            if (perWeek < 1 && perDay > 0) {
+                return {
+                    value: perDay.toFixed(1).replace('.', ','),
+                    label: 'por dia',
+                    full: `${perDay.toFixed(1).replace('.', ',')} / dia`
+                };
+            }
+            return {
+                value: perWeek.toFixed(1).replace('.', ','),
+                label: 'por semana',
+                full: `${perWeek.toFixed(1).replace('.', ',')} / semana`
+            };
+        }
+        if (timeView === 'year') {
+            const today = new Date();
+            const isCurrentYear = today.getFullYear() === dateRef.getFullYear();
+            const elapsedMonths = isCurrentYear ? (today.getMonth() + 1) : 12;
+            
+            const perMonth = count / elapsedMonths;
+            return {
+                value: perMonth.toFixed(1).replace('.', ','),
+                label: 'por mês',
+                full: `${perMonth.toFixed(1).replace('.', ',')} / mês`
+            };
+        }
+        if (timeView === 'custom') {
+            const start = new Date(customRange.start + 'T00:00:00');
+            const end = new Date(customRange.end + 'T00:00:00');
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            const perDay = count / days;
+            if (days >= 7) {
+                const perWeek = perDay * 7;
+                return {
+                    value: perWeek.toFixed(1).replace('.', ','),
+                    label: 'por semana',
+                    full: `${perWeek.toFixed(1).replace('.', ',')} / semana`
+                };
+            }
+            return {
+                value: perDay.toFixed(1).replace('.', ','),
+                label: 'por dia',
+                full: `${perDay.toFixed(1).replace('.', ',')} / dia`
+            };
+        }
+        return {
+            value: '0',
+            label: 'por dia',
+            full: '0 / dia'
+        };
+    }, [newCustomersCount, timeView, dateRef, customRange]);
+
     const newCustomersListData = useMemo(() => {
         return Object.entries(firstVisits)
             .filter(([_, v]) => isDateInPeriod(v.date))
@@ -420,9 +503,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             let clientesNovos = 0;
             let clientesFieis = 0;
             uniqueCustomerIds.forEach(customerId => {
-                const fvDate = firstVisits[customerId]?.date;
-                if (fvDate && apps.some(a => a.customerId === customerId && a.date === fvDate)) {
-                    clientesNovos++;
+                const customer = (customers || []).find(c => String(c.id).trim().toLowerCase() === String(customerId).trim().toLowerCase());
+                if (customer) {
+                    const firstApp = apps.find(a => String(a.customerId).trim().toLowerCase() === String(customerId).trim().toLowerCase());
+                    if (firstApp && isFirstAppointment(customer.id, firstApp.date, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate()))) {
+                        clientesNovos++;
+                    } else {
+                        clientesFieis++;
+                    }
                 } else {
                     clientesFieis++;
                 }
@@ -587,7 +675,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 };
             });
         }
-    }, [filteredAppointments, timeView, dateRef, customRange, services, providers]);
+    }, [filteredAppointments, timeView, dateRef, customRange, services, providers, appointments, customers]);
 
     // 2. Top Providers (Updated to Revenue)
     const topProviders = useMemo(() => {
@@ -1963,7 +2051,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <>
 
                             {/* 1. KPIs Operacionais */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
                                     value={new Set(filteredAppointments.map(a => a.customerId)).size}
@@ -1988,6 +2076,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     color="text-blue-700"
                                     lightColor="bg-blue-50"
                                     onClick={() => setIsNewCustomersModalOpen(true)}
+                                />
+                                <KPICard
+                                    title="Média de Novos"
+                                    value={newCustomersAvg.value}
+                                    sub={newCustomersAvg.label}
+                                    icon={Users}
+                                    color="text-indigo-700"
+                                    lightColor="bg-indigo-50"
                                 />
                                 <KPICard
                                     title="Produtos Vendidos (Qtd)"
@@ -3033,7 +3129,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -3073,6 +3169,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={Activity}
                                     color="text-amber-700"
                                     lightColor="bg-amber-50"
+                                />
+                                <KPICard
+                                    title="Média de Novos"
+                                    value={newCustomersAvg.value}
+                                    sub={newCustomersAvg.label}
+                                    icon={Users}
+                                    color="text-blue-700"
+                                    lightColor="bg-blue-50"
                                 />
                                 <KPICard
                                     title="Em Risco de Churn"
