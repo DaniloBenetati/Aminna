@@ -18,10 +18,24 @@ export const getMinDate = () => {
 };
 
 export const isFirstAppointment = (customerId: string, date: string, appointments: Appointment[]) => {
-    const validApps = appointments.filter(a => a.customerId === customerId && a.status !== 'Cancelado');
+    if (!customerId || !date || !appointments) return false;
+    const normCustomerId = String(customerId).trim().toLowerCase();
+    const cleanDate = date.substring(0, 10);
+    
+    const validApps = appointments.filter(a => 
+        a.customerId && 
+        String(a.customerId).trim().toLowerCase() === normCustomerId && 
+        a.status !== 'Cancelado'
+    );
     if (validApps.length === 0) return false;
-    const firstDate = validApps.reduce((min, a) => (a.date < min ? a.date : min), validApps[0].date);
-    return date === firstDate;
+    
+    const firstDate = validApps.reduce((min, a) => {
+        const aDate = (a.date || '').substring(0, 10);
+        const minDateVal = min.substring(0, 10);
+        return aDate < minDateVal ? aDate : minDateVal;
+    }, (validApps[0].date || '').substring(0, 10));
+    
+    return cleanDate === firstDate;
 };
 
 export const parseDateSafe = (dateStr: string | undefined | Date): Date => {

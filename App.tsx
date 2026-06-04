@@ -626,7 +626,7 @@ const App: React.FC = () => {
           packageName: c.package_name,
           packageSessions: c.package_sessions,
           packageSessionsUsed: c.package_sessions_used,
-          registrationDate: c.created_at,
+          registrationDate: c.registration_date || c.created_at,
           isVip: c.is_vip,
           vipDiscountPercent: c.vip_discount_percent,
           creditBalance: c.credit_balance,
