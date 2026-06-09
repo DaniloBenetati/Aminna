@@ -315,6 +315,71 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         };
     }, [newCustomersCount, timeView, dateRef, customRange]);
 
+    const newCustomersAvgDay = useMemo(() => {
+        const count = newCustomersCount;
+        if (timeView === 'day') {
+            return {
+                value: count.toString(),
+                label: 'por dia',
+                full: `${count} / dia`
+            };
+        }
+        if (timeView === 'month') {
+            const year = dateRef.getFullYear();
+            const month = dateRef.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+            const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+            const elapsedDays = isCurrentMonth ? today.getDate() : daysInMonth;
+            
+            const perDay = count / Math.max(1, elapsedDays);
+            return {
+                value: perDay.toFixed(1).replace('.', ','),
+                label: 'por dia',
+                full: `${perDay.toFixed(1).replace('.', ',')} / dia`
+            };
+        }
+        if (timeView === 'year') {
+            const year = dateRef.getFullYear();
+            const today = new Date();
+            const isCurrentYear = today.getFullYear() === year;
+            let elapsedDays = 365;
+            if (isCurrentYear) {
+                const startOfYear = new Date(year, 0, 1);
+                const diffTime = Math.abs(today.getTime() - startOfYear.getTime());
+                elapsedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            } else {
+                const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+                elapsedDays = isLeap ? 366 : 365;
+            }
+            
+            const perDay = count / Math.max(1, elapsedDays);
+            return {
+                value: perDay.toFixed(1).replace('.', ','),
+                label: 'por dia',
+                full: `${perDay.toFixed(1).replace('.', ',')} / dia`
+            };
+        }
+        if (timeView === 'custom') {
+            const start = new Date(customRange.start + 'T00:00:00');
+            const end = new Date(customRange.end + 'T00:00:00');
+            const diffTime = Math.abs(end.getTime() - start.getTime());
+            const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            const perDay = count / Math.max(1, days);
+            return {
+                value: perDay.toFixed(1).replace('.', ','),
+                label: 'por dia',
+                full: `${perDay.toFixed(1).replace('.', ',')} / dia`
+            };
+        }
+        return {
+            value: '0',
+            label: 'por dia',
+            full: '0 / dia'
+        };
+    }, [newCustomersCount, timeView, dateRef, customRange]);
+
     const newCustomersListData = useMemo(() => {
         return Object.entries(firstVisits)
             .filter(([_, v]) => isDateInPeriod(v.date))
@@ -2051,7 +2116,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <>
 
                             {/* 1. KPIs Operacionais */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
                                     value={new Set(filteredAppointments.map(a => a.customerId)).size}
@@ -2084,6 +2149,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={Users}
                                     color="text-indigo-700"
                                     lightColor="bg-indigo-50"
+                                />
+                                <KPICard
+                                    title="Média de Novos (Dia)"
+                                    value={newCustomersAvgDay.value}
+                                    sub={newCustomersAvgDay.label}
+                                    icon={Users}
+                                    color="text-teal-700"
+                                    lightColor="bg-teal-50"
                                 />
                                 <KPICard
                                     title="Produtos Vendidos (Qtd)"
@@ -3129,7 +3202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -3177,6 +3250,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     icon={Users}
                                     color="text-blue-700"
                                     lightColor="bg-blue-50"
+                                />
+                                <KPICard
+                                    title="Média de Novos (Dia)"
+                                    value={newCustomersAvgDay.value}
+                                    sub={newCustomersAvgDay.label}
+                                    icon={Users}
+                                    color="text-teal-700"
+                                    lightColor="bg-teal-50"
                                 />
                                 <KPICard
                                     title="Em Risco de Churn"
