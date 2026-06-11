@@ -276,6 +276,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
     // Alterado: Mapa de substituições individuais (ID Agendamento -> ID Novo Profissional)
     const [replacementMap, setReplacementMap] = useState<Record<string, string>>({});
+    const [isTransferring, setIsTransferring] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState<Partial<Provider> & {
@@ -822,29 +823,51 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
         }
     };
 
-    const confirmInactivation = () => {
+    const confirmInactivation = async () => {
         if (!inactivationData) return;
 
         // Validate if ALL appointments have a replacement selected
         const allSelected = inactivationData.appointments.every(app => replacementMap[app.id]);
         if (!allSelected) return;
 
-        // 1. Transfer Appointments Individually
-        setAppointments(prev => prev.map(a => {
-            const newProviderId = replacementMap[a.id];
-            // If this appointment is in the conflict list AND has a replacement selected
-            if (newProviderId && inactivationData.appointments.some(ia => ia.id === a.id)) {
-                return { ...a, providerId: newProviderId };
-            }
-            return a;
-        }));
+        setIsTransferring(true);
+        try {
+            // Update each appointment in Supabase
+            const promises = inactivationData.appointments.map(async (app) => {
+                const newProviderId = replacementMap[app.id];
+                if (newProviderId) {
+                    const { error } = await supabase
+                        .from('appointments')
+                        .update({ provider_id: newProviderId })
+                        .eq('id', app.id);
+                    if (error) throw error;
+                }
+            });
 
-        // 2. Set the form state to Inactive (Visual Feedback)
-        setFormData(prev => ({ ...prev, active: false }));
+            await Promise.all(promises);
 
-        // 3. Close Conflict Modal & Cleanup
-        setInactivationData(null);
-        setReplacementMap({});
+            // 1. Transfer Appointments Individually
+            setAppointments(prev => prev.map(a => {
+                const newProviderId = replacementMap[a.id];
+                // If this appointment is in the conflict list AND has a replacement selected
+                if (newProviderId && inactivationData.appointments.some(ia => ia.id === a.id)) {
+                    return { ...a, providerId: newProviderId };
+                }
+                return a;
+            }));
+
+            // 2. Set the form state to Inactive (Visual Feedback)
+            setFormData(prev => ({ ...prev, active: false }));
+
+            // 3. Close Conflict Modal & Cleanup
+            setInactivationData(null);
+            setReplacementMap({});
+        } catch (error) {
+            console.error('Error transferring appointments:', error);
+            alert('Erro ao transferir agendamentos no banco de dados. Por favor, tente novamente.');
+        } finally {
+            setIsTransferring(false);
+        }
     };
 
     // Helper to get available replacement providers (active and NOT the current one being inactivated)
@@ -2232,11 +2255,20 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                         <div className="p-4 bg-white dark:bg-zinc-900 border-t border-slate-100 dark:border-zinc-800 flex-shrink-0">
                             <button
                                 onClick={confirmInactivation}
-                                disabled={!isAllReplacementsSelected}
+                                disabled={!isAllReplacementsSelected || isTransferring}
                                 className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                             >
-                                {isAllReplacementsSelected ? <CircleCheck size={16} /> : <AlertTriangle size={16} />}
-                                Confirmar Substituição e Inativar
+                                {isTransferring ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white dark:border-black border-t-transparent rounded-full animate-spin" />
+                                        Transferindo...
+                                    </>
+                                ) : (
+                                    <>
+                                        {isAllReplacementsSelected ? <CircleCheck size={16} /> : <AlertTriangle size={16} />}
+                                        Confirmar Substituição e Inativar
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
