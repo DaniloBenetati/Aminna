@@ -476,14 +476,25 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
     }, [timeView, dateRef, customRange]);
 
-    const activeProviders = useMemo(() => {
-        const filtered = providers.filter(p => p.active);
-        console.log('🔍 [AGENDA] activeProviders:', filtered.map(p => ({ id: p.id, name: p.name, active: p.active })));
-        return filtered;
-    }, [providers]);
-
     // Filter Appointments for the GRID (Always shows dateRef day or start of custom range)
     const gridDateStr = timeView === 'custom' ? customRange.start : formatDate(dateRef);
+
+    const activeProviders = useMemo(() => {
+        const todayStr = formatLocalDate(new Date());
+        const filtered = providers.filter(p => {
+            if (p.active) return true;
+            // Se inativo, só aparece em datas passadas se tiver agendamentos, 
+            // ou hoje se tiver agendamentos concluídos
+            if (gridDateStr < todayStr) {
+                return appointments.some(a => a.providerId === p.id && a.date === gridDateStr);
+            } else if (gridDateStr === todayStr) {
+                return appointments.some(a => a.providerId === p.id && a.date === gridDateStr && a.status === 'Concluído');
+            }
+            return false;
+        });
+        console.log('🔍 [AGENDA] activeProviders (including inactive with past appts):', filtered.map(p => ({ id: p.id, name: p.name, active: p.active })));
+        return filtered;
+    }, [providers, appointments, gridDateStr]);
 
     const gridAppointments = useMemo(() => {
         console.log('🔍 [AGENDA] gridAppointments filtering started. Total appointments in state:', appointments.length, 'gridDateStr:', gridDateStr);
