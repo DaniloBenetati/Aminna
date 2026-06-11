@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 
-import { Search, Plus, Link, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CircleCheck, CircleX, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock, FileText, Printer, Download } from 'lucide-react';
+import { Search, Plus, Link, User, DollarSign, X, Edit2, Smartphone, CreditCard, ToggleLeft, ToggleRight, CircleCheck, CircleX, Briefcase, Phone, TrendingUp, Award, Star, Filter, Calendar, AlertTriangle, ArrowRight, Sparkles, ChevronDown, History, ArrowUp, ArrowDown, Layers, Clock, FileText, Printer, Download, Upload, Camera } from 'lucide-react';
 
 import { PROVIDERS } from '../constants';
 import { Provider, Appointment, Customer, Service, CommissionHistoryItem } from '../types';
@@ -277,6 +277,93 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
     // Alterado: Mapa de substituições individuais (ID Agendamento -> ID Novo Profissional)
     const [replacementMap, setReplacementMap] = useState<Record<string, string>>({});
     const [isTransferring, setIsTransferring] = useState(false);
+
+    // States for image upload
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+
+    const compressImage = (file: File): Promise<Blob> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200;
+                    const MAX_HEIGHT = 1200;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    canvas.toBlob((blob) => {
+                        if (blob) resolve(blob);
+                        else reject(new Error('Canvas to Blob failed'));
+                    }, 'image/webp', 0.82); // High quality WebP
+                };
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        setUploadProgress(10);
+
+        try {
+            const compressedBlob = await compressImage(file);
+            setUploadProgress(40);
+
+            const fileName = `avatars/${Date.now()}_${file.name.replace(/\.[^/.]+$/, "")}.webp`;
+            const { data, error } = await supabase.storage
+                .from('product-images')
+                .upload(fileName, compressedBlob, {
+                    contentType: 'image/webp',
+                    cacheControl: '3600',
+                    upsert: false
+                });
+
+            if (error) throw error;
+            setUploadProgress(80);
+
+            if (data) {
+                const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(data.path);
+                setFormData(prev => ({
+                    ...prev,
+                    avatar: publicUrl
+                }));
+            }
+            setUploadProgress(100);
+        } catch (error) {
+            console.error("Erro no upload:", error);
+            alert("Erro ao fazer upload da imagem.");
+        } finally {
+            setTimeout(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+            }, 500);
+        }
+    };
 
     // Form State
     const [formData, setFormData] = useState<Partial<Provider> & {
@@ -1635,11 +1722,30 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         size="w-24 h-24"
                                         className="border-4 border-white dark:border-zinc-900 shadow-2xl"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm" onClick={() => document.getElementById('avatar-url-input')?.focus()}>
-                                        <Edit2 size={24} className="text-white drop-shadow-md" />
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm" onClick={() => document.getElementById('avatar-file-input')?.click()}>
+                                        <Camera size={24} className="text-white drop-shadow-md" />
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Hidden file inputs for avatar */}
+                            <input
+                                type="file"
+                                id="avatar-file-input"
+                                className="hidden"
+                                accept="image/*"
+                                onChange={handleImageUpload}
+                                disabled={isUploading}
+                            />
+                            <input
+                                type="file"
+                                id="avatar-camera-input"
+                                className="hidden"
+                                accept="image/*"
+                                capture="user"
+                                onChange={handleImageUpload}
+                                disabled={isUploading}
+                            />
 
                             {/* AVATAR PRESETS */}
                             <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
@@ -1679,21 +1785,55 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     </button>
                                 </div>
                                 
-                                {/* Manual Photo URL Input */}
+                                {/* Photo Upload & Manual URL Section */}
                                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-700">
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5 flex items-center gap-2">
-                                        <Link size={14} className="text-indigo-600 dark:text-indigo-400" /> Link da Foto Customizada
+                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-3 flex items-center gap-2">
+                                        <Camera size={14} className="text-indigo-600 dark:text-indigo-400" /> Foto Personalizada
                                     </label>
-                                    <input
-                                        type="url"
-                                        id="avatar-url-input"
-                                        value={(formData.avatar && !formData.avatar.includes('dicebear.com')) ? formData.avatar : ''}
-                                        onChange={e => setFormData({ ...formData, avatar: e.target.value })}
-                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400"
-                                        placeholder="Cole aqui o link da foto (ex: instagram, google drive, etc)"
-                                    />
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => document.getElementById('avatar-file-input')?.click()}
+                                            disabled={isUploading}
+                                            className="w-full flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 text-xs font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all disabled:opacity-50"
+                                        >
+                                            <Upload size={16} />
+                                            {isUploading ? `Enviando (${uploadProgress}%)` : 'Subir Foto'}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => document.getElementById('avatar-camera-input')?.click()}
+                                            disabled={isUploading}
+                                            className="w-full flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-4 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all disabled:opacity-50"
+                                        >
+                                            <Camera size={16} />
+                                            {isUploading ? `Enviando (${uploadProgress}%)` : 'Usar Câmera'}
+                                        </button>
+                                    </div>
+
+                                    {isUploading && (
+                                        <div className="w-full bg-slate-100 dark:bg-zinc-800 rounded-full h-1.5 mb-3 overflow-hidden">
+                                            <div
+                                                className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300"
+                                                style={{ width: `${uploadProgress}%` }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="relative mt-2">
+                                        <input
+                                            type="url"
+                                            id="avatar-url-input"
+                                            value={(formData.avatar && !formData.avatar.includes('dicebear.com') && !formData.avatar.includes('/product-images/')) ? formData.avatar : ''}
+                                            onChange={e => setFormData({ ...formData, avatar: e.target.value })}
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400"
+                                            placeholder="Ou cole aqui o link da foto (ex: instagram, google drive, etc)"
+                                        />
+                                    </div>
                                     <p className="text-[9px] font-bold text-slate-400 mt-1.5 ml-1 italic">
-                                        Se preenchido, este link substituirá o avatar selecionado acima.
+                                        Se preenchido ou enviado, isso substituirá o avatar selecionado acima.
                                     </p>
                                 </div>
                             </div>
