@@ -1768,19 +1768,18 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         </div>
 
                                                         {isOnVacation ? (
-                                                            <div className="mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-amber-950 shadow-sm">
-                                                                <CalendarIcon size={8} /> Em Férias
+                                                            <div className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-amber-950 shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'}`} title={p.daysOff?.includes(gridDateStr) ? 'Folga' : 'Férias'}>
+                                                                <CalendarIcon size={8} />
+                                                                {zoomLevel >= 0.8 && (p.daysOff?.includes(gridDateStr) ? 'Folga' : 'Férias')}
                                                             </div>
                                                         ) : (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
-                                                                className={`mt-1 flex items-center gap-1 mx-auto px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${isBlocked
-                                                                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                                                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'
-                                                                    }`}
+                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} ${isBlocked ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'}`}
+                                                                title={isBlocked ? 'Desbloquear' : 'Bloquear'}
                                                             >
                                                                 {isBlocked ? <Check size={8} /> : <Ban size={8} />}
-                                                                {isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                                                {zoomLevel >= 0.8 && (isBlocked ? 'Desbloquear' : 'Bloquear')}
                                                             </button>
                                                         )}
                                                     </div>
