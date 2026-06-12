@@ -733,6 +733,9 @@ export interface MetaCampaign {
   };
   result_name?: string;
   cost_per_result?: number;
+  crmRevenue?: number;
+  crmROI?: number;
+  crmCustomers?: number;
 }
 
 export interface AdSet {

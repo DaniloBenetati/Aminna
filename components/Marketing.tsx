@@ -40,6 +40,9 @@ interface MetaCampaign {
   results?: { count: number; name: string };
   cost_per_result?: number;
   result_name?: string;
+  crmRevenue?: number;
+  crmROI?: number;
+  crmCustomers?: number;
 }
 
 interface AdSet {
@@ -1258,7 +1261,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         ...c, 
         results: updatedResults,
         crmRevenue: isConversation ? crmRevenue : 0, 
-        crmROI: (isConversation && c.spend > 0) ? crmRevenue / c.spend : 0
+        crmROI: (isConversation && c.spend > 0) ? crmRevenue / c.spend : 0,
+        crmCustomers: isConversation ? matchingCouponAppts.length : 0
       };
     });
   }, [campaigns, appointments, services, firstVisits, partnerCampaigns]);
@@ -1488,6 +1492,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Custo p/ res.</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Orçamento</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">Valor usado</th>
+                <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right text-emerald-600">Novos Clientes</th>
                 <th className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right text-emerald-600">Retorno CRM</th>
                 <th className="px-6 py-4 text-right text-emerald-600">ROI CRM</th>
               </tr>
@@ -1547,6 +1552,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    </td>
                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right font-black">
                       <span className="text-[12px] text-slate-900 dark:text-white">{fmt.currency(c.spend)}</span>
+                   </td>
+                    <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">
+                      {c.crmCustomers && c.crmCustomers > 0 ? (
+                        <span className={`text-[12px] font-black ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>{fmt.number(c.crmCustomers, 0)}</span>
+                      ) : (
+                        <span className="text-slate-300 dark:text-zinc-700">—</span>
+                      )}
                    </td>
                     <td className="px-6 py-4 border-r border-slate-200 dark:border-zinc-800 text-right">
                       {c.crmRevenue > 0 ? (
@@ -1619,12 +1631,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    </div>
 
                    <div className="space-y-0.5">
+                      <p className={`text-[8px] font-black uppercase tracking-widest ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Novos Clientes</p>
+                      <p className={`text-[11px] font-black ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                         {c.crmCustomers && c.crmCustomers > 0 ? fmt.number(c.crmCustomers, 0) : '—'}
+                      </p>
+                   </div>
+
+                   <div className="space-y-0.5 text-right">
                       <p className={`text-[8px] font-black uppercase tracking-widest ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
                       <p className={`text-[11px] font-black ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
                          {crmRevenue > 0 ? fmt.currency(crmRevenue) : '—'}
                       </p>
                    </div>
-                   <div className="space-y-0.5 text-right">
+
+                   <div className="space-y-0.5">
                       <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
                       <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
                          {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
