@@ -25,7 +25,7 @@ interface ClientsProps {
 
 export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [], partners = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit' | 'debt'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -103,6 +103,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
       if (filterType === 'credit') {
         return (c.creditBalance || 0) > 0;
+      }
+
+      if (filterType === 'debt') {
+        return (c.outstandingBalance || 0) > 0;
       }
 
       return true;
@@ -576,13 +580,15 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
               {[
                 { id: 'all', label: 'Todos', icon: Users, color: 'indigo' },
                 { id: 'vip', label: 'VIPs', icon: Crown, color: 'amber', count: customers.filter(c => c.isVip || c.status === 'VIP').length },
-                { id: 'credit', label: 'Com Crédito', icon: Wallet, color: 'emerald', count: customers.filter(c => (c.creditBalance || 0) > 0).length }
+                { id: 'credit', label: 'Com Crédito', icon: Wallet, color: 'emerald', count: customers.filter(c => (c.creditBalance || 0) > 0).length },
+                { id: 'debt', label: 'Com Dívida', icon: AlertTriangle, color: 'rose', count: customers.filter(c => (c.outstandingBalance || 0) > 0).length }
               ].map((btn) => {
                 const isActive = filterType === btn.id;
                 const colorClasses = {
                   indigo: isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-800',
                   amber: isActive ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-amber-300 dark:hover:border-amber-800',
-                  emerald: isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-800'
+                  emerald: isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-800',
+                  rose: isActive ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-rose-300 dark:hover:border-rose-800'
                 };
 
                 return (
@@ -711,6 +717,12 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                         <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-900/20 px-1.5 py-0.5 rounded border border-purple-100 dark:border-purple-800">
                           <Wallet size={10} className="text-purple-600 dark:text-purple-400" />
                           <span className="text-[8px] font-black text-purple-700 dark:text-purple-400 uppercase">R$ {customer.creditBalance.toFixed(2)}</span>
+                        </div>
+                      )}
+                      {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
+                        <div className="flex items-center gap-1 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded border border-rose-100 dark:border-rose-800">
+                          <AlertTriangle size={10} className="text-rose-600 dark:text-rose-400" />
+                          <span className="text-[8px] font-black text-rose-700 dark:text-rose-400 uppercase">R$ {customer.outstandingBalance.toFixed(2)}</span>
                         </div>
                       )}
                       {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 && (
