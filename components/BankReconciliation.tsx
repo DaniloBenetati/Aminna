@@ -20,7 +20,92 @@ interface ReconciledRow {
     divergenceReason?: string;
     originalLines?: string[];
     fingerprint?: string;
+    isPersisted?: boolean;
+    isModified?: boolean;
 }
+
+const cleanDescForComparison = (desc: string): string => {
+    if (!desc) return '';
+    // Normaliza: remove acentos e converte para minúsculas
+    let normalized = desc.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    
+    // Remove prefixos comuns de transações bancárias
+    const prefixes = [
+        /^pagamento\s+pix\s+\d*\s*/,
+        /^pagamento\s+pix\s*/,
+        /^pix\s+enviado\s*/,
+        /^pix\s+recebido\s*/,
+        /^pix\s+transf\s*/,
+        /^pix\s*/,
+        /^pagamento\s+de\s+duplicata\s*/,
+        /^pagamento\s+de\s*/,
+        /^pagamento\s*/,
+        /^pagto\s*/,
+        /^pag\s*/,
+        /^transferencia\s+enviada\s*/,
+        /^transferencia\s+recebida\s*/,
+        /^transferencia\s*/,
+        /^transf\s*/,
+        /^ted\s+enviada\s*/,
+        /^ted\s+recebida\s*/,
+        /^ted\s*/,
+        /^doc\s*/,
+        /^deb\.autom\.\s*/,
+        /^debito\s+automatico\s*/,
+        /^debito\s*/,
+        /^credito\s*/,
+        /^liquidacao\s+de\s+parcela\s*/,
+        /^liquidacao\s+de\s*/,
+        /^liquidacao\s*/,
+        /^tarifa\s*/,
+        /^tar\s*/,
+        /^saque\s+atm\s*/,
+        /^saque\s*/,
+        /^deposito\s*/,
+        /^cobranca\s*/,
+        /^compras\s+nacionais\s*/,
+        /^compras\s*/,
+        /^compra\s*/,
+        /^pgto\s*/,
+        /^envio\s+pix\s*/,
+        /^recebimento\s+pix\s*/,
+    ];
+    
+    for (const prefix of prefixes) {
+        normalized = normalized.replace(prefix, '');
+    }
+    
+    // Remove sequências numéricas longas (CPFs, CNPJs, códigos de autorização/documento)
+    normalized = normalized.replace(/\b\d{4,}\b/g, '');
+    
+    // Normaliza múltiplos espaços em branco
+    return normalized.replace(/\s+/g, ' ').trim();
+};
+
+const isSimilarDescription = (desc1: string, desc2: string): boolean => {
+    const clean1 = cleanDescForComparison(desc1);
+    const clean2 = cleanDescForComparison(desc2);
+    
+    // Se forem idênticas após a limpeza
+    if (clean1 === clean2) return true;
+    if (!clean1 || !clean2) return false;
+    
+    // Se forem muito curtas (menos de 4 caracteres), exige correspondência exata
+    if (clean1.length < 4 || clean2.length < 4) return false;
+    
+    // Se uma contém a outra (ex: "suelen alves vital" e "suelen alves")
+    if (clean1.includes(clean2) || clean2.includes(clean1)) return true;
+    
+    // Se compartilham o mesmo prefixo de pelo menos 10 caracteres
+    // (ex: "assai atacadista sao paulo br" e "assai atacadista campinas br" -> "assai atacadista")
+    const minLen = Math.min(clean1.length, clean2.length);
+    const prefixLen = Math.min(minLen, 10);
+    if (prefixLen >= 10 && clean1.substring(0, prefixLen) === clean2.substring(0, prefixLen)) {
+        return true;
+    }
+    
+    return false;
+};
 
 interface BankReconciliationProps {
     expenses: Expense[];
@@ -278,6 +363,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
     const [reconciledRows, setReconciledRows] = useState<ReconciledRow[]>([]);
     const [activeTab, setActiveTab] = useState<'A_CONFERIR' | 'A_LANCAR' | 'CONCILIADOS'>('A_CONFERIR');
     const [approvalQueue, setApprovalQueue] = useState<Set<string>>(new Set());
+    const [existingTransactions, setExistingTransactions] = useState<Record<string, any>>({});
 
     const [quickCreateType, setQuickCreateType] = useState<'CATEGORY' | 'ENTITY' | null>(null);
     const [quickCreatePayload, setQuickCreatePayload] = useState<{ id: string, type: 'RECEITA' | 'DESPESA' } | null>(null);
@@ -313,15 +399,11 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const row = reconciledRows.find(r => r.id === id);
         if (!row) return;
 
-        const cleanDesc = (s: string) => s?.trim().toLowerCase() || '';
-        const targetClean = cleanDesc(row.description);
-        
-        // Buscamos itens similares: descrição idêntica ou mesmo prefixo longo
+        // Buscamos itens similares com a nova lógica inteligente
         const similarRows = reconciledRows.filter(r => 
             r.id !== id && 
             (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
-            (cleanDesc(r.description) === targetClean || 
-             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12))))
+            isSimilarDescription(r.description, row.description)
         );
 
         let updateAll = false;
@@ -331,13 +413,11 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
         setReconciledRows(prev => prev.map(r => {
             const isTarget = r.id === id;
-            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && (
-                cleanDesc(r.description) === targetClean || 
-                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12)))
-            );
+            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
+                isSimilarDescription(r.description, row.description);
 
             if (isTarget || isSimilar) {
-                return { ...r, suggestedCategory: newCategory };
+                return { ...r, suggestedCategory: newCategory, isModified: true };
             }
             return r;
         }));
@@ -347,14 +427,10 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const row = reconciledRows.find(r => r.id === id);
         if (!row) return;
 
-        const cleanDesc = (s: string) => s?.trim().toLowerCase() || '';
-        const targetClean = cleanDesc(row.description);
-
         const similarRows = reconciledRows.filter(r => 
             r.id !== id && 
             (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
-            (cleanDesc(r.description) === targetClean || 
-             (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12))))
+            isSimilarDescription(r.description, row.description)
         );
 
         let updateAll = false;
@@ -368,10 +444,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
         setReconciledRows(prev => prev.map(r => {
             const isTarget = r.id === id;
-            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && (
-                cleanDesc(r.description) === targetClean || 
-                (targetClean.length >= 10 && cleanDesc(r.description).startsWith(targetClean.substring(0, 12)))
-            );
+            const isSimilar = updateAll && (r.status === 'A_LANCAR' || r.status === 'A_CONFERIR') && 
+                isSimilarDescription(r.description, row.description);
             
             if (isTarget || isSimilar) {
                 // Se tiver favorecido identificado, tenta buscar match no sistema (Auto-Correção)
@@ -395,7 +469,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 status: 'A_CONFERIR' as const,
                                 matchId: potentialMatch.id, matchType: 'DESPESA' as const,
                                 suggestedCategory: potentialMatch.category,
-                                divergenceReason: `Match encontrado: ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`
+                                divergenceReason: `Match encontrado: ${potentialMatch.description} (R$ ${potentialMatch.amount.toFixed(2)})`,
+                                isModified: true
                             };
                         }
                     } else if (r.type === 'RECEITA') {
@@ -404,12 +479,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         // Tenta encontrar em vendas
                         const saleMatch = sales.find(s => !s.isReconciled && s.customerId === entityId && Math.abs(s.totalAmount - r.amount) < 0.05);
                         if (saleMatch) {
-                            return {
+                           return {
                                 ...r, suggestedProvider: newProvider,
                                 status: 'A_CONFERIR' as const,
                                 matchId: saleMatch.id, matchType: 'RECEITA' as const,
                                 suggestedCategory: 'Produto',
-                                divergenceReason: `Match encontrado em Vendas (R$ ${saleMatch.totalAmount.toFixed(2)})`
+                                divergenceReason: `Match encontrado em Vendas (R$ ${saleMatch.totalAmount.toFixed(2)})`,
+                                isModified: true
                             };
                         }
 
@@ -421,12 +497,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 status: 'A_CONFERIR' as const,
                                 matchId: appMatch.id, matchType: 'SERVICO' as const,
                                 suggestedCategory: 'Serviço',
-                                divergenceReason: `Match encontrado em Agendamentos (R$ ${(appMatch.pricePaid || appMatch.bookedPrice || 0).toFixed(2)})`
+                                divergenceReason: `Match encontrado em Agendamentos (R$ ${(appMatch.pricePaid || appMatch.bookedPrice || 0).toFixed(2)})`,
+                                isModified: true
                             };
                         }
                     }
                 }
-                return { ...r, suggestedProvider: newProvider };
+                return { ...r, suggestedProvider: newProvider, isModified: true };
             }
             return r;
         }));
@@ -446,7 +523,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
     const handleManualConfirm = React.useCallback((id: string) => {
         setReconciledRows(prev => prev.map(r =>
-            r.id === id ? { ...r, status: 'CONCILIADOS' as const } : r
+            r.id === id ? { ...r, status: 'CONCILIADOS' as const, isModified: true } : r
         ));
         // Adiciona automaticamente à fila de aprovação para facilitar
         setApprovalQueue(prev => {
@@ -462,7 +539,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         const newDate = prompt("Para qual data (AAAA-MM-DD) deseja mover este lançamento?", row.date);
         if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
             setReconciledRows(prev => prev.map(r =>
-                r.id === id ? { ...r, date: newDate } : r
+                r.id === id ? { ...r, date: newDate, isModified: true } : r
             ));
         } else if (newDate) {
             alert("Formato de data inválido. Use AAAA-MM-DD.");
@@ -512,7 +589,8 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     linkedMatches: linkedMatches,
                     suggestedCategory: sysCat,
                     suggestedProvider: sysProv,
-                    divergenceReason: linkedMatches.length > 1 ? `Vínculo múltiplo: ${linkedMatches.length} itens (Total R$ ${totalAmount.toFixed(2)})` : undefined
+                    divergenceReason: linkedMatches.length > 1 ? `Vínculo múltiplo: ${linkedMatches.length} itens (Total R$ ${totalAmount.toFixed(2)})` : undefined,
+                    isModified: true
                 } : r);
         });
         setApprovalQueue(prev => {
@@ -784,6 +862,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
             // Etapa 2 e 3: Comparação e Classificação apenas para os novos
             const processed = runReconciliationEngine(newTransactions, existingTransactionsMap);
+            
+            const existingTxObj: Record<string, any> = {};
+            existingTransactionsMap.forEach((val, key) => {
+                existingTxObj[key] = val;
+            });
+            setExistingTransactions(existingTxObj);
+
             setReconciledRows(processed);
 
         } catch (err) {
@@ -832,15 +917,16 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     }
 
                     return {
-                        ...bankTx,
-                        id: rowId,
+                        bankTx,
+                        rowId,
+                        bestMatch: { id: matches[0].id, type: matches[0].type },
+                        mType: matches[0].type,
                         status: 'CONCILIADOS' as const,
-                        matchId: matches[0].id,
-                        matchType: matches[0].type,
                         linkedMatches: matches,
                         suggestedCategory: dbData.system_category,
-                        suggestedProvider: resolvedProviderId
-                    };
+                        suggestedProvider: resolvedProviderId,
+                        isPersisted: true
+                    } as any;
                 }
             }
 
@@ -929,7 +1015,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
         // Pass 2: Greedy matches for remaining unmatched rows
         intermediateRows.forEach(row => {
-            if (row.bestMatch) return;
+            if (row.bestMatch || (row as any).status === 'CONCILIADOS') return;
 
             const { bankTx } = row;
             const bankDate = parseDateSafe(bankTx.date);
@@ -952,7 +1038,24 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         });
 
         // Finalize results
-        intermediateRows.forEach(({ bankTx, rowId, bestMatch, mType }) => {
+        intermediateRows.forEach((item) => {
+            const { bankTx, rowId, bestMatch, mType, status, linkedMatches, suggestedCategory, suggestedProvider, isPersisted } = item as any;
+            
+            if (status === 'CONCILIADOS') {
+                results.push({
+                    ...bankTx,
+                    id: rowId,
+                    status: 'CONCILIADOS',
+                    matchId: bestMatch?.id,
+                    matchType: mType,
+                    linkedMatches,
+                    suggestedCategory,
+                    suggestedProvider,
+                    isPersisted
+                });
+                return;
+            }
+
             if (bestMatch) {
                 let sysCat = undefined;
                 let sysProv = undefined;
@@ -1146,296 +1249,329 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
         if (queueSize === 0 && conciliadosRows.length === 0) return;
 
         setIsProcessing(true);
-        // Include selected rows + ALL auto-matched CONCILIADOS rows (they should always be persisted)
-        const selectedRows = reconciledRows.filter(r => approvalQueue.has(r.id));
-        const allConciliadosRows = conciliadosRows;
-        // Merge unique rows (selectedRows may also have CONCILIADOS status)
-        const rowsToProcess = [...selectedRows];
-        for (const row of allConciliadosRows) {
-            if (!rowsToProcess.find(r => r.id === row.id)) rowsToProcess.push(row);
-        }
-
-        const newExpenses: Partial<Expense>[] = [];
-        const newSales: any[] = [];
-        const toUpdateExpenseStatus: string[] = [];
-        const toUpdateSaleStatus: string[] = [];
-        const toUpdateAppointmentStatus: string[] = [];
-        const updatesToExecute: { 
-            type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', 
-            id: string, 
-            date: string,
-            category?: string,
-            dre_class?: string,
-            supplier_id?: string | null,
-            provider_id?: string | null,
-            employee_id?: string | null
-        }[] = [];
-
-        for (const row of rowsToProcess) {
-            if (row.status === 'A_LANCAR') {
-                // Create a new record for items found in the bank but not in the system.
-                // is_reconciled=false: these are new launches, NOT reconciled matches.
-                // They appear in the regular flow (Extrato/Fluxo), not in CONCILIADOS.
-                if (row.type === 'DESPESA') {
-                    // PREVENÇÃO PRIMÁRIA: Verifica se o banco já tem um vínculo salvo para este fingerprint
-                    // Isso evita criar despesas duplicadas para SAQUEs que já foram processados anteriormente
-                    const existingBankMatch = row.fingerprint
-                        ? bankTransactions.find(bt => bt.fingerprint === row.fingerprint && bt.systemMatches && bt.systemMatches.length > 0)
-                        : null;
-
-                    if (existingBankMatch && existingBankMatch.systemMatches) {
-                        // Already linked — just re-use the existing match, don't create anything new
-                        existingBankMatch.systemMatches.forEach((m: any) => {
-                            if (m.type === 'EXPENSE' && !m.id.startsWith('comm-')) {
-                                toUpdateExpenseStatus.push(m.id);
-                                updatesToExecute.push({ type: 'EXPENSE', id: m.id, date: row.date });
-                            }
-                        });
-                    } else {
-                    // PREVENÇÃO SECUNDÁRIA: Busca por despesa idêntica (descrição + valor + data)
-                    const existingExp = expenses.find(e =>
-                        e.description === row.description &&
-                        Math.abs(e.amount - row.amount) < 0.01 &&
-                        e.date === row.date
-                    );
-
-                    if (existingExp) {
-                        toUpdateExpenseStatus.push(existingExp.id);
-                        updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
-                    } else if (row.suggestedProvider) {
-                        // REGRA: Somente cria no contas a pagar se houver favorecido identificado
-                        
-                        let sId = null;
-                        let pId = null;
-                        let eId = null;
-
-                        if (row.suggestedProvider.startsWith('prov_')) {
-                            pId = row.suggestedProvider.replace('prov_', '');
-                        } else if (row.suggestedProvider.startsWith('emp_')) {
-                            eId = row.suggestedProvider.replace('emp_', '');
-                        } else {
-                            // If it doesn't have a prefix, it might be a supplier ID OR a name
-                            const foundSupplier = suppliers.find(s => s.id === row.suggestedProvider || s.name === row.suggestedProvider);
-                            const foundProvider = providers.find(p => p.id === row.suggestedProvider || p.name === row.suggestedProvider);
-                            const foundEmployee = employees.find(emp => emp.id === row.suggestedProvider || emp.name === row.suggestedProvider);
-
-                            if (foundSupplier) sId = foundSupplier.id;
-                            else if (foundProvider) pId = foundProvider.id;
-                            else if (foundEmployee) eId = foundEmployee.id;
-                            else if (row.suggestedProvider.length > 20) {
-                                // Likely an ID but no prefix
-                                sId = row.suggestedProvider; 
-                            }
-                        }
-
-                        const catInfo = categories.find(c => c.name === row.suggestedCategory);
-                        
-                        newExpenses.push({
-                            description: row.description,
-                            amount: row.amount,
-                            date: row.date,
-                            supplierId: sId,
-                            providerId: pId,
-                            employeeId: eId,
-                            category: row.suggestedCategory || 'Despesas Diversas',
-                            dreClass: catInfo?.dreClass || 'EXPENSE_ADM',
-                            status: 'Pago',
-                            paymentMethod: 'Transferência',
-                            isReconciled: true
-                        });
-                    }
-                    } // end else (no existing bank match)
-                } else if (row.type === 'RECEITA') {
-                    // PREVENÇÃO DE DUPLICADOS PARA RECEITA: Evita criar duplicatas de entradas manuais ou re-processamento
-                    const existingExp = expenses.find(e =>
-                        e.description === row.description &&
-                        Math.abs(e.amount - row.amount) < 0.01 &&
-                        e.date === row.date
-                    );
-
-                    if (existingExp) {
-                        toUpdateExpenseStatus.push(existingExp.id);
-                        updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
-                    } else if (row.suggestedProvider) {
-                        // REGRA: Somente cria no contas a receber/vendas se houver favorecido identificado
-                        // Determina o dreClass com base na categoria selecionada:
-                        // REVENUE = receita de serviços (Receita Bruta), OTHER_INCOME = devoluções/reembolsos (Outras Receitas)
-                        const selectedCat = categories.find(c => c.name === row.suggestedCategory);
-                        const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
-                        const fallbackCat = categories.find(c => c.dreClass === 'REVENUE');
-                        
-                        const customerEntity = customers.find(x => x.id === row.suggestedProvider);
-                        const providerEntity = providers.find(x => x.id === row.suggestedProvider?.replace('prov_', ''));
-                        const entityName = customerEntity?.name || providerEntity?.name || '';
-
-                        newExpenses.push({
-                            description: row.description,
-                            amount: row.amount,
-                            date: row.date,
-                            category: row.suggestedCategory || fallbackCat?.name || 'Outras Receitas',
-                            dreClass: revDreClass,
-                            status: 'Pago',
-                            paymentMethod: 'Transferência',
-                            isReconciled: true,
-                            ...(entityName ? { notes: entityName } : {})
-                        } as any);
-                    }
-                }
-            } else if (row.status === 'A_CONFERIR' || row.status === 'CONCILIADOS') {
-                const matches = row.linkedMatches && row.linkedMatches.length > 0 
-                    ? row.linkedMatches 
-                    : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
-
-                for (const m of matches) {
-                    if (m.type === 'RECEITA') {
-                        toUpdateSaleStatus.push(m.id);
-                        updatesToExecute.push({ type: 'SALE', id: m.id, date: row.date });
-                    } else if (m.type === 'SERVICO') {
-                        toUpdateAppointmentStatus.push(m.id);
-                        updatesToExecute.push({ type: 'APPOINTMENT', id: m.id, date: row.date });
-                    } else {
-                        toUpdateExpenseStatus.push(m.id);
-                        
-                        const catInfo = categories.find(c => c.name === row.suggestedCategory);
-                        let sId = null;
-                        let pId = null;
-                        let eId = null;
-
-                        if (row.suggestedProvider?.startsWith('prov_')) {
-                            pId = row.suggestedProvider.replace('prov_', '');
-                        } else if (row.suggestedProvider?.startsWith('emp_')) {
-                            eId = row.suggestedProvider.replace('emp_', '');
-                        } else if (row.suggestedProvider) {
-                            sId = row.suggestedProvider;
-                        }
-
-                        updatesToExecute.push({ 
-                            type: 'EXPENSE', 
-                            id: m.id, 
-                            date: row.date,
-                            category: row.suggestedCategory,
-                            dre_class: catInfo?.dreClass,
-                            supplier_id: sId,
-                            provider_id: pId,
-                            employee_id: eId
-                        });
-                    }
-                }
-            }
-        }
-
-        const newBankTransactions: any[] = [];
-
-        for (const row of rowsToProcess) {
-            if (row.id.startsWith('bank_')) {
-                let systemCategory = row.suggestedCategory || null;
-                let systemEntityName = null;
-                let systemPaymentMethod = null;
-
-                if (row.status === 'CONCILIADOS' && row.matchId) {
-                    if (row.matchType === 'RECEITA') {
-                        const s = sales.find(x => x.id === row.matchId);
-                        systemCategory = row.suggestedCategory || 'Produto';
-                        const c = customers.find(x => x.id === row.suggestedProvider || x.id === s?.customerId);
-                        systemEntityName = c?.name || 'Fluxo de Loja';
-                        systemPaymentMethod = s?.paymentMethod;
-                    } else if (row.matchType === 'SERVICO') {
-                        const a = appointments.find(x => x.id === row.matchId);
-                        systemCategory = row.suggestedCategory || 'Serviço';
-                        const c = customers.find(x => x.id === row.suggestedProvider || x.id === a?.customerId);
-                        systemEntityName = c?.name;
-                        systemPaymentMethod = a?.paymentMethod;
-                    } else if (row.matchType === 'DESPESA') {
-                        const e = expenses.find(x => x.id === row.matchId);
-                        systemCategory = row.suggestedCategory || e?.category;
-                        let entityId = row.suggestedProvider || e?.supplierId || (e?.providerId ? `prov_${e.providerId}` : (e?.employeeId ? `emp_${e.employeeId}` : ''));
-                        
-                        if (entityId?.startsWith('prov_')) {
-                            systemEntityName = providers.find(x => x.id === entityId.replace('prov_', ''))?.name;
-                        } else if (entityId?.startsWith('emp_')) {
-                            systemEntityName = employees.find(x => x.id === entityId.replace('emp_', ''))?.name;
-                        } else {
-                            systemEntityName = suppliers.find(x => x.id === entityId)?.name;
-                        }
-                        
-                        systemPaymentMethod = e?.paymentMethod;
-                    }
-                } else if (row.status === 'A_LANCAR') {
-                    systemCategory = row.suggestedCategory || (row.type === 'DESPESA' ? categories[0]?.name : 'Serviço');
-                    if (row.type === 'DESPESA') {
-                        const entity = suppliers.find(x => x.id === row.suggestedProvider);
-                        systemEntityName = entity?.name || null;
-                    } else {
-                        // Para receitas, busca tanto em clientes quanto em profissionais
-                        const customerEntity = customers.find(x => x.id === row.suggestedProvider);
-                        const providerEntity = providers.find(x => x.id === row.suggestedProvider);
-                        systemEntityName = customerEntity?.name || providerEntity?.name || null;
-                    }
-                    systemPaymentMethod = 'Transferência';
-                }
-
-                const matches = row.linkedMatches && row.linkedMatches.length > 0 
-                    ? row.linkedMatches 
-                    : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
-
-                newBankTransactions.push({
-                    date: row.date,
-                    description: row.description,
-                    document: row.document || null,
-                    amount: Math.abs(row.amount),
-                    type: row.type,
-                    fingerprint: row.fingerprint,
-                    system_category: systemCategory,
-                    system_entity_name: systemEntityName,
-                    system_payment_method: systemPaymentMethod,
-                    system_matches: matches.length > 0 ? matches : null
-                });
-            }
-        }
-
-        // ===== UNLINK STEP: Find expense IDs that were previously linked but are no longer =====
-        // This fixes the bug where old linked expenses still show as 'Conciliado' after being replaced
-        const expenseIdsToUnlink: string[] = [];
-        for (const row of newBankTransactions) {
-            if (!row.fingerprint) continue;
-            // Fetch current system_matches from DB for this bank transaction
-            const { data: currentTx } = await supabase
-                .from('bank_transactions')
-                .select('system_matches')
-                .eq('fingerprint', row.fingerprint)
-                .single();
-            
-            if (currentTx?.system_matches && Array.isArray(currentTx.system_matches)) {
-                const newMatchIds = (row.system_matches || []).map((m: any) => m.id);
-                const oldExpenseIds = currentTx.system_matches
-                    .filter((m: any) => m.type === 'EXPENSE' || m.type === 'DESPESA')
-                    .map((m: any) => m.id);
-                // Items in old matches but NOT in new matches → need to be unlinked
-                oldExpenseIds.forEach((id: string) => {
-                    if (!newMatchIds.includes(id) && !id.startsWith('comm-')) {
-                        expenseIdsToUnlink.push(id);
-                    }
-                });
-            }
-        }
-        // Apply unlink to removed expenses
-        if (expenseIdsToUnlink.length > 0) {
-            await Promise.all(expenseIdsToUnlink.map(id =>
-                supabase.from('expenses').update({ is_reconciled: false, status: 'Pendente' }).eq('id', id)
-            ));
-            setExpenses(prev => prev.map(e =>
-                expenseIdsToUnlink.includes(e.id) ? { ...e, isReconciled: false, status: 'Pendente' } : e
-            ));
-        }
-        // ===== END UNLINK STEP =====
+        
+        // Helper para validar UUIDs válidos e evitar erro de tipo no PostgreSQL
+        const isUUID = (str: string): boolean => {
+            if (!str) return false;
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+        };
 
         try {
-            console.log('Starting Batch Approval:', {
-                toUpdateExpenseStatus: toUpdateExpenseStatus.length,
-                toUpdateSaleStatus: toUpdateSaleStatus.length,
-                toUpdateAppointmentStatus: toUpdateAppointmentStatus.length
-            });
+            console.log('🔄 [RECON] Iniciando processamento de conciliação...');
+            // Include selected rows + ALL auto-matched CONCILIADOS rows
+            const selectedRows = reconciledRows.filter(r => approvalQueue.has(r.id));
+            const allConciliadosRows = conciliadosRows;
+            // Merge unique rows (selectedRows may also have CONCILIADOS status)
+            const rowsToProcess = [...selectedRows];
+            for (const row of allConciliadosRows) {
+                if (!rowsToProcess.find(r => r.id === row.id)) rowsToProcess.push(row);
+            }
 
+            // Filtra para processar apenas itens não persistidos ou modificados na sessão
+            const finalRowsToProcess = rowsToProcess.filter(r => !r.isPersisted || r.isModified);
+            console.log(`📊 [RECON] Total de linhas candidatas: ${rowsToProcess.length}. Para processar no banco (novas/modificadas): ${finalRowsToProcess.length}`);
+  
+            const newExpenses: Partial<Expense>[] = [];
+            const newSales: any[] = [];
+            const toUpdateExpenseStatus: string[] = [];
+            const toUpdateSaleStatus: string[] = [];
+            const toUpdateAppointmentStatus: string[] = [];
+            const updatesToExecute: { 
+                type: 'EXPENSE' | 'SALE' | 'APPOINTMENT', 
+                id: string, 
+                date: string,
+                category?: string,
+                dre_class?: string,
+                supplier_id?: string | null,
+                provider_id?: string | null,
+                employee_id?: string | null
+            }[] = [];
+  
+            for (const row of finalRowsToProcess) {
+                if (row.status === 'A_LANCAR') {
+                    // Create a new record for items found in the bank but not in the system.
+                    if (row.type === 'DESPESA') {
+                        // PREVENÇÃO PRIMÁRIA: Verifica se o banco já tem um vínculo salvo para este fingerprint
+                        const dbTx = row.fingerprint ? existingTransactions[row.fingerprint] : null;
+                        const existingBankMatch = dbTx && dbTx.system_matches && dbTx.system_matches.length > 0 ? dbTx : null;
+  
+                        if (existingBankMatch && existingBankMatch.system_matches) {
+                            // Already linked — just re-use the existing match, don't create anything new
+                            existingBankMatch.system_matches.forEach((m: any) => {
+                                if ((m.type === 'EXPENSE' || m.type === 'DESPESA') && m.id && !m.id.startsWith('comm-')) {
+                                    toUpdateExpenseStatus.push(m.id);
+                                    updatesToExecute.push({ type: 'EXPENSE', id: m.id, date: row.date });
+                                }
+                            });
+                        } else {
+                            // PREVENÇÃO SECUNDÁRIA: Busca por despesa idêntica (descrição + valor + data)
+                            const existingExp = expenses.find(e =>
+                                e.description === row.description &&
+                                Math.abs(e.amount - row.amount) < 0.01 &&
+                                e.date === row.date
+                            );
+        
+                            if (existingExp) {
+                                toUpdateExpenseStatus.push(existingExp.id);
+                                updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                            } else if (row.suggestedProvider) {
+                                // REGRA: Somente cria no contas a pagar se houver favorecido identificado
+                                let sId = null;
+                                let pId = null;
+                                let eId = null;
+        
+                                if (row.suggestedProvider.startsWith('prov_')) {
+                                    const val = row.suggestedProvider.replace('prov_', '');
+                                    if (isUUID(val)) pId = val;
+                                } else if (row.suggestedProvider.startsWith('emp_')) {
+                                    const val = row.suggestedProvider.replace('emp_', '');
+                                    if (isUUID(val)) eId = val;
+                                } else {
+                                    const val = row.suggestedProvider;
+                                    // Se for UUID válido, atribui ao Fornecedor
+                                    if (isUUID(val)) {
+                                        sId = val;
+                                    } else {
+                                        // Se for nome de texto comum (ex: Suelen Alves Vital), tenta resolver o UUID antes
+                                        const foundSupplier = suppliers.find(s => s.id === val || s.name === val);
+                                        const foundProvider = providers.find(p => p.id === val || p.name === val);
+                                        const foundEmployee = employees.find(emp => emp.id === val || emp.name === val);
+        
+                                        if (foundSupplier && isUUID(foundSupplier.id)) sId = foundSupplier.id;
+                                        else if (foundProvider && isUUID(foundProvider.id)) pId = foundProvider.id;
+                                        else if (foundEmployee && isUUID(foundEmployee.id)) eId = foundEmployee.id;
+                                    }
+                                }
+        
+                                const catInfo = categories.find(c => c.name === row.suggestedCategory);
+                                
+                                newExpenses.push({
+                                    description: row.description,
+                                    amount: row.amount,
+                                    date: row.date,
+                                    supplierId: sId,
+                                    providerId: pId,
+                                    employeeId: eId,
+                                    category: row.suggestedCategory || 'Despesas Diversas',
+                                    dreClass: catInfo?.dreClass || 'EXPENSE_ADM',
+                                    status: 'Pago',
+                                    paymentMethod: 'Transferência',
+                                    isReconciled: true
+                                });
+                            }
+                        }
+                    } else if (row.type === 'RECEITA') {
+                        // PREVENÇÃO DE DUPLICADOS PARA RECEITA
+                        const existingExp = expenses.find(e =>
+                            e.description === row.description &&
+                            Math.abs(e.amount - row.amount) < 0.01 &&
+                            e.date === row.date
+                        );
+    
+                        if (existingExp) {
+                            toUpdateExpenseStatus.push(existingExp.id);
+                            updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                        } else if (row.suggestedProvider) {
+                            const selectedCat = categories.find(c => c.name === row.suggestedCategory);
+                            const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
+                            const fallbackCat = categories.find(c => c.dreClass === 'REVENUE');
+                            
+                            const customerEntity = customers.find(x => x.id === row.suggestedProvider);
+                            const providerEntity = providers.find(x => x.id === row.suggestedProvider?.replace('prov_', ''));
+                            const entityName = customerEntity?.name || providerEntity?.name || '';
+    
+                            newExpenses.push({
+                                description: row.description,
+                                amount: row.amount,
+                                date: row.date,
+                                category: row.suggestedCategory || fallbackCat?.name || 'Outras Receitas',
+                                dreClass: revDreClass,
+                                status: 'Pago',
+                                paymentMethod: 'Transferência',
+                                isReconciled: true,
+                                ...(entityName ? { notes: entityName } : {})
+                            } as any);
+                        }
+                    }
+                } else if (row.status === 'A_CONFERIR' || row.status === 'CONCILIADOS') {
+                    const matches = row.linkedMatches && row.linkedMatches.length > 0 
+                        ? row.linkedMatches 
+                        : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
+    
+                    for (const m of matches) {
+                        if (m.type === 'RECEITA') {
+                            toUpdateSaleStatus.push(m.id);
+                            updatesToExecute.push({ type: 'SALE', id: m.id, date: row.date });
+                        } else if (m.type === 'SERVICO') {
+                            toUpdateAppointmentStatus.push(m.id);
+                            updatesToExecute.push({ type: 'APPOINTMENT', id: m.id, date: row.date });
+                        } else {
+                            toUpdateExpenseStatus.push(m.id);
+                            
+                            const catInfo = categories.find(c => c.name === row.suggestedCategory);
+                            let sId = null;
+                            let pId = null;
+                            let eId = null;
+    
+                            if (row.suggestedProvider?.startsWith('prov_')) {
+                                const val = row.suggestedProvider.replace('prov_', '');
+                                if (isUUID(val)) pId = val;
+                            } else if (row.suggestedProvider?.startsWith('emp_')) {
+                                const val = row.suggestedProvider.replace('emp_', '');
+                                if (isUUID(val)) eId = val;
+                            } else if (row.suggestedProvider) {
+                                const val = row.suggestedProvider;
+                                if (isUUID(val)) {
+                                    sId = val;
+                                } else {
+                                    const foundSupplier = suppliers.find(s => s.id === val || s.name === val);
+                                    if (foundSupplier && isUUID(foundSupplier.id)) sId = foundSupplier.id;
+                                }
+                            }
+    
+                            updatesToExecute.push({ 
+                                type: 'EXPENSE', 
+                                id: m.id, 
+                                date: row.date,
+                                category: row.suggestedCategory,
+                                dre_class: catInfo?.dreClass,
+                                supplier_id: sId,
+                                provider_id: pId,
+                                employee_id: eId
+                            });
+                        }
+                    }
+                }
+            }
+    
+            const newBankTransactions: any[] = [];
+    
+            for (const row of finalRowsToProcess) {
+                if (row.id.startsWith('bank_')) {
+                    let systemCategory = row.suggestedCategory || null;
+                    let systemEntityName = null;
+                    let systemPaymentMethod = null;
+    
+                    if (row.status === 'CONCILIADOS' && row.matchId) {
+                        if (row.matchType === 'RECEITA') {
+                            const s = sales.find(x => x.id === row.matchId);
+                            systemCategory = row.suggestedCategory || 'Produto';
+                            const c = customers.find(x => x.id === row.suggestedProvider || x.id === s?.customerId);
+                            systemEntityName = c?.name || 'Fluxo de Loja';
+                            systemPaymentMethod = s?.paymentMethod;
+                        } else if (row.matchType === 'SERVICO') {
+                            const a = appointments.find(x => x.id === row.matchId);
+                            systemCategory = row.suggestedCategory || 'Serviço';
+                            const c = customers.find(x => x.id === row.suggestedProvider || x.id === a?.customerId);
+                            systemEntityName = c?.name;
+                            systemPaymentMethod = a?.paymentMethod;
+                        } else if (row.matchType === 'DESPESA') {
+                            const e = expenses.find(x => x.id === row.matchId);
+                            systemCategory = row.suggestedCategory || e?.category;
+                            let entityId = row.suggestedProvider || e?.supplierId || (e?.providerId ? `prov_${e.providerId}` : (e?.employeeId ? `emp_${e.employeeId}` : ''));
+                            
+                            if (entityId?.startsWith('prov_')) {
+                                systemEntityName = providers.find(x => x.id === entityId.replace('prov_', ''))?.name;
+                            } else if (entityId?.startsWith('emp_')) {
+                                systemEntityName = employees.find(x => x.id === entityId.replace('emp_', ''))?.name;
+                            } else {
+                                systemEntityName = suppliers.find(x => x.id === entityId)?.name;
+                            }
+                            
+                            systemPaymentMethod = e?.paymentMethod;
+                        }
+                    } else if (row.status === 'A_LANCAR') {
+                        systemCategory = row.suggestedCategory || (row.type === 'DESPESA' ? categories[0]?.name : 'Serviço');
+                        
+                        if (row.type === 'DESPESA') {
+                            if (row.suggestedProvider?.startsWith('prov_')) {
+                                systemEntityName = providers.find(x => x.id === row.suggestedProvider.replace('prov_', ''))?.name;
+                            } else if (row.suggestedProvider?.startsWith('emp_')) {
+                                systemEntityName = employees.find(x => x.id === row.suggestedProvider.replace('emp_', ''))?.name;
+                            } else if (row.suggestedProvider) {
+                                systemEntityName = suppliers.find(x => x.id === row.suggestedProvider || x.name === row.suggestedProvider)?.name;
+                            }
+                        } else {
+                            if (row.suggestedProvider?.startsWith('prov_')) {
+                                systemEntityName = providers.find(x => x.id === row.suggestedProvider.replace('prov_', ''))?.name;
+                            } else if (row.suggestedProvider) {
+                                systemEntityName = customers.find(x => x.id === row.suggestedProvider || x.name === row.suggestedProvider)?.name;
+                            }
+                        }
+                        systemPaymentMethod = 'Transferência';
+                    }
+    
+                    const matches = row.linkedMatches && row.linkedMatches.length > 0 
+                        ? row.linkedMatches 
+                        : (row.matchId ? [{ id: row.matchId, type: row.matchType || (row.type === 'DESPESA' ? 'DESPESA' : 'RECEITA'), amount: row.amount }] : []);
+    
+                    newBankTransactions.push({
+                        date: row.date,
+                        description: row.description,
+                        document: row.document || null,
+                        amount: Math.abs(row.amount),
+                        type: row.type,
+                        fingerprint: row.fingerprint,
+                        system_category: systemCategory,
+                        system_entity_name: systemEntityName || null,
+                        system_payment_method: systemPaymentMethod,
+                        system_matches: matches.length > 0 ? matches : null
+                    });
+                }
+            }
+    
+            // ===== UNLINK STEP =====
+            const expenseIdsToUnlink: string[] = [];
+            const fingerprintsToQuery = newBankTransactions.map(r => r.fingerprint).filter(Boolean);
+            
+            if (fingerprintsToQuery.length > 0) {
+                try {
+                    const { data: currentTxList } = await supabase
+                        .from('bank_transactions')
+                        .select('fingerprint, system_matches')
+                        .in('fingerprint', fingerprintsToQuery);
+    
+                    if (currentTxList && currentTxList.length > 0) {
+                        const txMap = new Map<string, any>(currentTxList.map(tx => [tx.fingerprint, tx]));
+                        
+                        for (const row of newBankTransactions) {
+                            if (!row.fingerprint) continue;
+                            const currentTx = txMap.get(row.fingerprint);
+                            
+                            if (currentTx?.system_matches && Array.isArray(currentTx.system_matches)) {
+                                const newMatchIds = (row.system_matches || []).map((m: any) => m.id);
+                                const oldExpenseIds = currentTx.system_matches
+                                    .filter((m: any) => m.type === 'EXPENSE' || m.type === 'DESPESA')
+                                    .map((m: any) => m.id);
+                                
+                                oldExpenseIds.forEach((id: string) => {
+                                    if (id && !newMatchIds.includes(id) && !id.startsWith('comm-')) {
+                                        expenseIdsToUnlink.push(id);
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } catch (queryErr) {
+                    console.error('Error fetching existing transactions for unlink:', queryErr);
+                }
+            }
+    
+            if (expenseIdsToUnlink.length > 0) {
+                await supabase.from('expenses').update({ is_reconciled: false, status: 'Pendente' }).in('id', expenseIdsToUnlink);
+                setExpenses(prev => prev.map(e =>
+                    expenseIdsToUnlink.includes(e.id) ? { ...e, isReconciled: false, status: 'Pendente' } : e
+                ));
+            }
+            // ===== END UNLINK STEP =====
+    
+            console.log('📦 [RECON] Iniciando Batch Approval no banco de dados:', {
+                newExpenses: newExpenses.length,
+                newSales: newSales.length,
+                updatesToExecute: updatesToExecute.length,
+                newBankTransactions: newBankTransactions.length
+            });
+    
             if (newExpenses.length > 0) {
                 const mappedInserts = newExpenses.map(e => ({
                     description: e.description,
@@ -1472,14 +1608,14 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     } as Expense))]);
                 }
             }
-
+    
             if (newSales.length > 0) {
                 const { data, error } = await supabase.from('sales').insert(newSales).select();
                 if (error) {
                     console.error("Error inserting sales:", error);
                     throw error;
                 }
-
+    
                 if (data) {
                     setSales(prev => [...prev, ...data.map(s => ({
                         id: s.id,
@@ -1493,30 +1629,90 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                     } as Sale))]);
                 }
             }
-
+    
             if (updatesToExecute.length > 0) {
-                const updatePromises = updatesToExecute.map(u => {
-                    if (u.id.startsWith('comm-')) return Promise.resolve();
+                const groupedPromises: Promise<any>[] = [];
+                const salesByDate = new Map<string, string[]>();
+                const appointmentsByDate = new Map<string, string[]>();
+                const expensesByUpdateFields = new Map<string, { fields: any; ids: string[] }>();
+    
+                updatesToExecute.forEach(u => {
+                    if (u.id.startsWith('comm-')) return;
                     if (u.type === 'SALE') {
-                        return supabase.from('sales').update({ is_reconciled: true, date: u.date }).eq('id', u.id);
+                        const list = salesByDate.get(u.date) || [];
+                        list.push(u.id);
+                        salesByDate.set(u.date, list);
                     } else if (u.type === 'APPOINTMENT') {
-                        return supabase.from('appointments').update({ is_reconciled: true, payment_date: u.date }).eq('id', u.id);
-                    } else {
-                        return supabase.from('expenses').update({ 
-                            status: 'Pago', 
-                            is_reconciled: true, 
-                            date: u.date,
-                            ...(u.category ? { category: u.category } : {}),
-                            ...(u.dre_class ? { dre_class: u.dre_class } : {}),
-                            ...(u.supplier_id !== undefined ? { supplier_id: u.supplier_id } : {}),
-                            ...(u.provider_id !== undefined ? { provider_id: u.provider_id } : {}),
-                            ...(u.employee_id !== undefined ? { employee_id: u.employee_id } : {})
-                        }).eq('id', u.id);
+                        const list = appointmentsByDate.get(u.date) || [];
+                        list.push(u.id);
+                        appointmentsByDate.set(u.date, list);
+                    } else if (u.type === 'EXPENSE') {
+                        const currentExp = expenses.find(x => x.id === u.id);
+                        const fields: any = {};
+                        
+                        if (currentExp) {
+                            if (currentExp.status !== 'Pago') fields.status = 'Pago';
+                            if (!currentExp.isReconciled) fields.is_reconciled = true;
+                            if (currentExp.date !== u.date) fields.date = u.date;
+                            if (u.category && currentExp.category !== u.category) {
+                                fields.category = u.category;
+                                if (u.dre_class) fields.dre_class = u.dre_class;
+                            }
+                            
+                            const currentSupId = currentExp.supplierId || null;
+                            const currentProvId = currentExp.providerId ? `prov_${currentExp.providerId}` : null;
+                            const currentEmpId = currentExp.employeeId ? `emp_${currentExp.employeeId}` : null;
+                            const currentEntityId = currentSupId || currentProvId || currentEmpId;
+                            
+                            const targetEntityId = u.supplier_id || (u.provider_id ? `prov_${u.provider_id}` : (u.employee_id ? `emp_${u.employee_id}` : null));
+                            
+                            if (targetEntityId !== currentEntityId) {
+                                fields.supplier_id = u.supplier_id;
+                                fields.provider_id = u.provider_id;
+                                fields.employee_id = u.employee_id;
+                            }
+                        } else {
+                            // Fallback
+                            fields.status = 'Pago';
+                            fields.is_reconciled = true;
+                            fields.date = u.date;
+                            if (u.category) fields.category = u.category;
+                            if (u.dre_class) fields.dre_class = u.dre_class;
+                            if (u.supplier_id !== undefined) fields.supplier_id = u.supplier_id;
+                            if (u.provider_id !== undefined) fields.provider_id = u.provider_id;
+                            if (u.employee_id !== undefined) fields.employee_id = u.employee_id;
+                        }
+
+                        // Se nenhum campo mudou, não há necessidade de atualizar esta despesa no banco!
+                        if (Object.keys(fields).length === 0) return;
+
+                        const key = JSON.stringify(fields);
+                        const group = expensesByUpdateFields.get(key) || { fields, ids: [] };
+                        group.ids.push(u.id);
+                        expensesByUpdateFields.set(key, group);
                     }
                 });
-
-                await Promise.all(updatePromises);
-
+    
+                salesByDate.forEach((ids, date) => {
+                    groupedPromises.push(
+                        supabase.from('sales').update({ is_reconciled: true, date: date }).in('id', ids) as any
+                    );
+                });
+    
+                appointmentsByDate.forEach((ids, date) => {
+                    groupedPromises.push(
+                        supabase.from('appointments').update({ is_reconciled: true, payment_date: date }).in('id', ids) as any
+                    );
+                });
+    
+                expensesByUpdateFields.forEach((group) => {
+                    groupedPromises.push(
+                        supabase.from('expenses').update(group.fields).in('id', group.ids) as any
+                    );
+                });
+    
+                await Promise.all(groupedPromises);
+    
                 setExpenses(prev => prev.map(e => {
                     const update = updatesToExecute.find(u => u.type === 'EXPENSE' && u.id === e.id);
                     if (!update) return e;
@@ -1532,35 +1728,33 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         employeeId: update.employee_id !== undefined ? update.employee_id : e.employeeId
                     };
                 }));
-
+    
                 setSales(prev => prev.map(s => {
                     const update = updatesToExecute.find(u => u.type === 'SALE' && u.id === s.id);
                     return update ? { ...s, isReconciled: true, date: update.date } : s;
                 }));
-
+    
                 setAppointments(prev => prev.map(a => {
                     const update = updatesToExecute.find(u => u.type === 'APPOINTMENT' && u.id === a.id);
                     return update ? { ...a, isReconciled: true, paymentDate: update.date } : a;
                 }));
             }
-
+    
             if (newBankTransactions.length > 0) {
-                // Remove ignoreDuplicates: true to allow updating existing records when they are reconciled
                 const { error } = await supabase.from('bank_transactions').upsert(newBankTransactions, { onConflict: 'fingerprint' });
                 if (error) {
                     console.error('Error inserting bank_transactions:', error);
                     throw error;
                 }
             }
-
-            // Update processed items to 'CONCILIADOS' so they reflect in the success tab
+    
             setReconciledRows(prev => prev.map(r => approvalQueue.has(r.id) ? { ...r, status: 'CONCILIADOS' } : r));
             setApprovalQueue(new Set());
             alert("Lançamentos conciliados com sucesso!");
-
+    
         } catch (err) {
             console.error('Conciliation Error:', err);
-            alert("Erro ao salvar reconciliação. Verifique o console.");
+            alert("Erro ao salvar conciliação: " + (err instanceof Error ? err.message : String(err)));
         } finally {
             setIsProcessing(false);
         }
@@ -1931,7 +2125,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredRows.slice(0, 50).map((row, index) => (
+                                        {filteredRows.map((row, index) => (
                                             <ReconciliationRow
                                                 key={row.id}
                                                 row={row}
@@ -1952,13 +2146,6 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                                 isLinkingActive={linkingSourceIds.length > 0}
                                             />
                                         ))}
-                                        {filteredRows.length > 50 && (
-                                            <tr>
-                                                <td colSpan={5} className="p-4 text-center text-slate-500 font-medium bg-slate-50 italic">
-                                                    Exibindo os primeiros 50 resultados de {filteredRows.length}. Refine sua busca ou utilize o filtro de data se necessário.
-                                                </td>
-                                            </tr>
-                                        )}
                                         {filteredRows.length === 0 && (
                                             <tr>
                                                 <td colSpan={5} className="py-12 text-center text-slate-400 font-semibold text-sm bg-white">
