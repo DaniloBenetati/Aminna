@@ -843,35 +843,67 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           limit: '100',
         };
 
-        if (datePreset === 'custom') {
-          insightParams.time_range = JSON.stringify({ since: customStartDate, until: customEndDate });
+        if (datePreset === 'lifetime') {
+          insightParams.date_preset = 'lifetime';
         } else {
-          insightParams.date_preset = datePreset;
+          const compareStartDate = new Date(startDateStr + 'T12:00:00');
+          compareStartDate.setDate(compareStartDate.getDate() - 7);
+          const compareStartDateStr = compareStartDate.toISOString().split('T')[0];
+          insightParams.time_range = JSON.stringify({ since: compareStartDateStr, until: endDateStr });
         }
 
         const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, insightParams);
-        const timeseries = (dailyData.data || []).map((d: any) => {
+        const dailyMap = new Map();
+        (dailyData.data || []).forEach((d: any) => {
           const actions = d.actions || [];
           const msgStarted = actions.find((a: any) => 
             a.action_type === 'messaging_conversation_started_7d' || 
             a.action_type === 'onsite_conversion.messaging_conversation_started_7d' ||
             a.action_type.includes('messaging_conversation_started')
           )?.value || d.conversions || 0;
-          return {
-            day: d.date_start.split('-').slice(1).reverse().join('/'),
+          
+          dailyMap.set(d.date_start, {
             spend: parseFloat(d.spend || '0'),
             impressions: parseInt(d.impressions || '0', 10),
             clicks: parseInt(d.clicks || '0', 10),
             conversations: parseInt(msgStarted, 10)
-          };
+          });
         });
+
+        const timeseries = [];
+        let curr = new Date(startDateStr + 'T12:00:00');
+        const last = new Date(endDateStr + 'T12:00:00');
+
+        while (curr <= last) {
+          const dStr = curr.toISOString().split('T')[0];
+          const prevDate = new Date(curr);
+          prevDate.setDate(prevDate.getDate() - 7);
+          const prevDStr = prevDate.toISOString().split('T')[0];
+
+          const currentVal = dailyMap.get(dStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
+          const prevVal = dailyMap.get(prevDStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
+
+          timeseries.push({
+            date: dStr,
+            day: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            spend: currentVal.spend,
+            impressions: currentVal.impressions,
+            clicks: currentVal.clicks,
+            conversations: currentVal.conversations,
+            prevConversations: prevVal.conversations,
+            prevSpend: prevVal.spend
+          });
+
+          curr.setDate(curr.getDate() + 1);
+        }
+
         setDailyTimeSeries(timeseries);
         setDailyConversations(timeseries); 
         
         if (timeseries.length > 0) {
            setDateRange({ 
-             start: dailyData.data[0].date_start, 
-             stop: dailyData.data[dailyData.data.length - 1].date_stop 
+             start: timeseries[0].date, 
+             stop: timeseries[timeseries.length - 1].date 
            });
         }
       } catch (e: any) { 
@@ -2214,6 +2246,114 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                 <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
                               </Bar>
                             </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Gráfico Comparativo de Conversas com a Semana Anterior */}
+                    <section id="comparativo-conversas" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                              <TrendingUp size={16} className="text-indigo-600" /> Comparativo com a Semana Anterior
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação de novas conversas com o mesmo dia da semana anterior</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Média Período Atual</p>
+                                <p className="text-lg font-black text-indigo-600">
+                                  {dailyConversations.length > 0 
+                                    ? (dailyConversations.reduce((sum, d) => sum + (d.conversations || 0), 0) / dailyConversations.length).toFixed(1)
+                                    : '0.0'}
+                                </p>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Média Semana Anterior</p>
+                                <p className="text-lg font-black text-slate-500">
+                                  {dailyConversations.length > 0 
+                                    ? (dailyConversations.reduce((sum, d) => sum + (d.prevConversations || 0), 0) / dailyConversations.length).toFixed(1)
+                                    : '0.0'}
+                                </p>
+                            </div>
+                            {(() => {
+                              const currentTotal = dailyConversations.reduce((sum, d) => sum + (d.conversations || 0), 0);
+                              const prevTotal = dailyConversations.reduce((sum, d) => sum + (d.prevConversations || 0), 0);
+                              const diff = currentTotal - prevTotal;
+                              const pct = prevTotal > 0 ? (diff / prevTotal) * 100 : 0;
+                              const isUp = diff >= 0;
+                              return (
+                                <div className={`px-6 py-3 rounded-2xl text-center flex flex-col justify-center ${
+                                  isUp 
+                                    ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' 
+                                    : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
+                                }`}>
+                                  <p className={`text-[8px] font-black uppercase tracking-widest ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>Desempenho Geral</p>
+                                  <p className="text-lg font-black flex items-center justify-center gap-1">
+                                    {isUp ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                                    {isUp ? '+' : ''}{pct.toFixed(1)}%
+                                  </p>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                        <div className="h-64 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={dailyConversations} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorCurrent" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorPrev" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.1}/>
+                                  <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <Tooltip 
+                                cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    const currentVal = data.conversations || 0;
+                                    const prevVal = data.prevConversations || 0;
+                                    const diff = currentVal - prevVal;
+                                    const pct = prevVal > 0 ? (diff / prevVal) * 100 : 0;
+                                    const isUp = diff >= 0;
+                                    return (
+                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
+                                        <div className="space-y-2">
+                                          <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
+                                            <span>DIA ATUAL:</span>
+                                            <span>{currentVal} conversas</span>
+                                          </p>
+                                          <p className="text-xs font-black text-slate-500 flex items-center justify-between gap-6">
+                                            <span>SEMANA ANTERIOR:</span>
+                                            <span>{prevVal} conversas</span>
+                                          </p>
+                                          <div className={`text-[10px] font-black flex items-center gap-1 border-t border-slate-100 dark:border-zinc-800 pt-2 ${
+                                            isUp ? 'text-emerald-600' : 'text-rose-600'
+                                          }`}>
+                                            {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                            <span>VARIAÇÃO: {isUp ? '+' : ''}{pct.toFixed(1)}% ({isUp ? 'Subindo' : 'Descendo'})</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Area type="monotone" dataKey="conversations" name="Dia Atual" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorCurrent)" dot={{ fill: '#6366f1', r: 3 }} activeDot={{ r: 5 }} />
+                              <Area type="monotone" dataKey="prevConversations" name="Semana Anterior" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} fillOpacity={1} fill="url(#colorPrev)" dot={{ fill: '#94a3b8', r: 2 }} />
+                            </AreaChart>
                           </ResponsiveContainer>
                         </div>
                       </div>
