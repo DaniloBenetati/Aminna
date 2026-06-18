@@ -837,10 +837,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       try {
         const insightParams: any = {
+          level: 'campaign',
           time_increment: '1',
-          fields: 'spend,impressions,clicks,conversions,actions,date_start,date_stop',
+          fields: 'campaign_id,campaign_name,spend,impressions,clicks,conversions,actions,date_start,date_stop',
           action_breakdowns: 'action_type',
-          limit: '100',
+          limit: '1000',
         };
 
         if (datePreset === 'lifetime') {
@@ -855,6 +856,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         const dailyData = await fetchFromMeta(token, `${adAccountId}/insights`, insightParams);
         const dailyMap = new Map();
         (dailyData.data || []).forEach((d: any) => {
+          const campName = (d.campaign_name || '').toLowerCase();
+          const isFollower = campName.includes('seguidores');
+          const isManicure = campName.includes('manicures');
+          const isAgendamento = !isFollower && !isManicure && (campName.includes('conversas') || campName.includes('lead') || campName.includes('cupom') || campName.includes('trafego') || campName.includes('estetica') || campName.includes('estética'));
+          
+          if (!isAgendamento) return;
+
           const actions = d.actions || [];
           const msgStarted = actions.find((a: any) => 
             a.action_type === 'messaging_conversation_started_7d' || 
@@ -862,11 +870,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             a.action_type.includes('messaging_conversation_started')
           )?.value || d.conversions || 0;
           
-          dailyMap.set(d.date_start, {
-            spend: parseFloat(d.spend || '0'),
-            impressions: parseInt(d.impressions || '0', 10),
-            clicks: parseInt(d.clicks || '0', 10),
-            conversations: parseInt(msgStarted, 10)
+          const dateKey = d.date_start;
+          const current = dailyMap.get(dateKey) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
+          
+          dailyMap.set(dateKey, {
+            spend: current.spend + parseFloat(d.spend || '0'),
+            impressions: current.impressions + parseInt(d.impressions || '0', 10),
+            clicks: current.clicks + parseInt(d.clicks || '0', 10),
+            conversations: current.conversations + parseInt(msgStarted, 10)
           });
         });
 
@@ -1229,6 +1240,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     const isConversionCampaign = nameLower.includes('conversas') || 
                                  nameLower.includes('lead') || 
                                  nameLower.includes('cupom agendamento') ||
+                                 nameLower.includes('estetica') ||
+                                 nameLower.includes('estética') ||
                                  (nameLower.includes('trafego') && !nameLower.includes('manicures') && !nameLower.includes('seguidores'));
 
     if (!isConversionCampaign) return [];
@@ -1281,7 +1294,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       // Classification
       const isFollower = nameLower.includes('seguidores');
       const isManicure = nameLower.includes('manicures');
-      const isConversation = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+      const isConversation = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
 
       // Override result name for specific campaigns
       const updatedResults = c.results ? {
@@ -1318,7 +1331,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     const nameLower = c.name.toLowerCase();
     const isFollower = nameLower.includes('seguidores');
     const isManicure = nameLower.includes('manicures');
-    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
     
     return isLeadConversion ? s + (c.results?.count || 0) : s;
   }, 0);
@@ -1327,12 +1340,29 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     const nameLower = c.name.toLowerCase();
     const isFollower = nameLower.includes('seguidores');
     const isManicure = nameLower.includes('manicures');
-    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego'));
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
     
     return isLeadConversion ? s + c.spend : s;
   }, 0);
 
   const avgCostPerResult = totalMessageStarts > 0 ? conversionSpend / totalMessageStarts : 0;
+  const activeConversionCampaigns = campaignsWithCRM.filter(c => c.status === 'ACTIVE');
+  const activeMessageStarts = activeConversionCampaigns.reduce((s, c) => {
+    const nameLower = c.name.toLowerCase();
+    const isFollower = nameLower.includes('seguidores');
+    const isManicure = nameLower.includes('manicures');
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
+    return isLeadConversion ? s + (c.results?.count || 0) : s;
+  }, 0);
+  const activeConversionSpend = activeConversionCampaigns.reduce((s, c) => {
+    const nameLower = c.name.toLowerCase();
+    const isFollower = nameLower.includes('seguidores');
+    const isManicure = nameLower.includes('manicures');
+    const isLeadConversion = !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
+    return isLeadConversion ? s + c.spend : s;
+  }, 0);
+  const activeCostPerResult = activeMessageStarts > 0 ? activeConversionSpend / activeMessageStarts : 0;
+
   const totalNewCustomersCRM = totalConversions;
   const avgTicketMarketing = totalNewCustomersCRM > 0 ? totalCRMRevenue / totalNewCustomersCRM : 0;
 
@@ -2270,6 +2300,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                     : '0.0'}
                                 </p>
                             </div>
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Resultado</p>
+                                <p className="text-lg font-black text-violet-600">
+                                  {activeCostPerResult > 0 ? fmt.currency(activeCostPerResult) : '—'}
+                                </p>
+                            </div>
                             <div className="bg-slate-50 dark:bg-zinc-800/50 px-6 py-3 rounded-2xl text-center">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Média Semana Anterior</p>
                                 <p className="text-lg font-black text-slate-500">
@@ -2337,6 +2373,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                           <p className="text-xs font-black text-slate-500 flex items-center justify-between gap-6">
                                             <span>SEMANA ANTERIOR:</span>
                                             <span>{prevVal} conversas</span>
+                                          </p>
+                                          <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
+                                            <span>INVESTIMENTO:</span>
+                                            <span>{fmt.currency(data.spend)}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-violet-600 flex items-center justify-between gap-6">
+                                            <span>CUSTO P/ RES.:</span>
+                                            <span>{data.conversations > 0 ? fmt.currency(data.spend / data.conversations) : '—'}</span>
                                           </p>
                                           <div className={`text-[10px] font-black flex items-center gap-1 border-t border-slate-100 dark:border-zinc-800 pt-2 ${
                                             isUp ? 'text-emerald-600' : 'text-rose-600'
