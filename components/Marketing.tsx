@@ -179,7 +179,7 @@ const KPICard = ({
   return (
     <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2.5 sm:p-3 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
       <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-6 translate-x-6 group-hover:opacity-10 transition-opacity`} />
-      <div className="flex items-start justify-between mb-1.5">
+      <div className="flex items-start justify-between mb-1.5 min-w-0">
         <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
           <Icon size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
         </div>
@@ -1491,7 +1491,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
 
   const renderKPICards = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5 md:gap-3">
       <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
       <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
       <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
@@ -1850,45 +1850,51 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-zinc-950 min-h-0 overflow-hidden">
       {/* Cabeçalho unificado e compacto no topo */}
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-4 md:px-6 py-3 flex-shrink-0 z-30 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Abas */}
-          <div className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide">
+      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-4 md:px-6 py-1 md:py-1.5 flex-shrink-0 z-30 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          
+          {/* Abas (esquerda) */}
+          <div className="flex items-center gap-1 md:gap-3 overflow-x-auto no-scrollbar flex-nowrap">
             <button
               onClick={() => setActiveMarketingTab('paid')}
-              className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
             >
               Tráfego Pago
             </button>
             <button
               onClick={() => setActiveMarketingTab('reports')}
-              className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
             >
               Apresentações
             </button>
           </div>
 
-          {/* Período e Botão Filtrar */}
-          <div className="flex items-center gap-4 justify-between md:justify-end">
-            <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black whitespace-nowrap">
-              Análise estratégica · {
-                datePreset === 'last_7d' ? 'Últimos 7 dias' : 
-                datePreset === 'last_30d' ? 'Últimos 30 dias' : 
-                datePreset === 'last_90d' ? 'Últimos 90 dias' :
+          {/* Período (esquerda) e Botão Filtrar (direita) unificados em uma linha */}
+          <div className="flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
+            <p className="text-[7px] sm:text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-normal font-bold whitespace-nowrap">
+              <span className="hidden sm:inline">Análise estratégica · </span>{
+                datePreset === 'last_7d' ? '7 dias' : 
+                datePreset === 'last_30d' ? '30 dias' : 
+                datePreset === 'last_90d' ? '90 dias' :
                 datePreset === 'this_month' ? 'Este mês' :
                 datePreset === 'last_month' ? 'Mês anterior' :
                 datePreset === 'this_year' ? 'Este ano' :
                 datePreset === 'custom' ? `${customStartDate.split('-').reverse().join('/')} até ${customEndDate.split('-').reverse().join('/')}` :
-                'Período personalizado'
+                'Período'
               }
             </p>
+            
+            {/* Divisor vertical */}
+            <div className="h-4 w-[1px] bg-slate-200 dark:bg-zinc-800 flex-shrink-0" />
+
+            {/* Botão Filtrar Unificado */}
             <button 
               id="marketing-filter-btn"
               onClick={() => setIsFiltersVisible(!isFiltersVisible)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
+              className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[8px] md:text-[9px] font-bold uppercase tracking-wider transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600 border border-slate-200 dark:border-zinc-700' : 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'}`}
             >
-              <Filter size={14} />
-              {isFiltersVisible ? 'Ocultar Filtros' : 'Filtrar'}
+              <Filter size={10} className="md:w-3 md:h-3" />
+              <span className="hidden min-[400px]:inline">{isFiltersVisible ? 'Ocultar' : 'Filtrar'}</span>
             </button>
           </div>
         </div>
@@ -2140,47 +2146,47 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
                     {/* Novo Gráfico: Conversão e Performance de Clientes */}
                     <section id="conversao-clientes" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
-                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                           <div>
                             <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
                               <TrendingUp size={16} className="text-indigo-600" /> Conversão e Performance de Clientes
                             </h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Análise de novos clientes e serviços no período</p>
+                            <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de novos clientes e serviços no período</p>
                           </div>
-                          <div className="flex flex-wrap gap-4">
-                            <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-3xl shadow-sm flex items-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                              <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Base de Novos</p>
-                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                          <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Base de Novos</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                   {trafficChartData.reduce((sum: number, d: any) => sum + (d.value || 0), 0)}
                                 </p>
                               </div>
-                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-                              <div className="px-5 py-2 text-center min-w-[100px]">
-                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
-                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                              <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                   R$ {trafficChartData.reduce((sum: number, d: any) => sum + (d.revenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                                 </p>
                               </div>
-                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-                              <div className="px-5 py-2">
-                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Serviços</p>
-                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                              <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Serviços</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                   {trafficChartData.reduce((sum: number, d: any) => sum + (d.services || 0), 0)}
                                 </p>
                               </div>
-                              <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
                               <div 
-                                className="px-5 py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new"
+                                className="px-1.5 py-1.5 sm:px-5 sm:py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new flex-1 xs:flex-none text-center xs:text-left"
                                 onClick={() => setIsCouponsModalOpen(true)}
                               >
-                                <p className="text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
-                                <div className="flex items-center gap-1">
-                                  <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                <p className="text-[7px] sm:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
+                                <div className="flex items-center justify-center xs:justify-start gap-0.5">
+                                  <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                     {trafficChartData.reduce((sum: number, d: any) => sum + (d.coupons || 0), 0)}
                                   </p>
-                                  <ChevronRight size={14} className="text-slate-400 mt-0.5" />
+                                  <ChevronRight size={10} className="text-slate-400 mt-0.5 hidden xs:block" />
                                 </div>
                               </div>
                             </div>

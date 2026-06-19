@@ -285,7 +285,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0 pt-20 sm:pt-0' : 'overflow-auto sm:pt-6 sm:px-6 sm:pb-6 p-4 pt-20'}`}>
+      <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0 pt-20 sm:pt-0' : 'overflow-y-auto overflow-x-hidden sm:overflow-auto sm:pt-6 sm:px-6 sm:pb-6 p-4 pt-20'}`}>
         {isSimulating && (
           <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">

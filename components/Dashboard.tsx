@@ -20,7 +20,7 @@ const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, 
             onClick={onClick}
             className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
         >
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start min-w-0">
                 <div className="flex-1 min-w-0">
                     <p className="text-[6px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest truncate">{title}</p>
                     <div className="flex items-center gap-1">
@@ -2025,54 +2025,63 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     };
 
     return (
-        <div className="space-y-6 relative pb-20 md:pb-0">
+        <div className="space-y-6 relative pb-20 md:pb-0 w-full max-w-full overflow-x-hidden">
 
             {/* --- CONTROL BAR UNIFICADO --- */}
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-4 sticky top-0 z-20">
-                {/* Header Title */}
-                <div className="flex flex-col justify-between items-start gap-0.5 w-full md:w-auto">
-                    <h2 className="text-sm md:text-lg font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tight">Painel Gerencial</h2>
-                    <p className="text-slate-500 dark:text-slate-400 text-[8px] md:text-[10px] font-bold uppercase tracking-widest leading-none">Visão Geral do Negócio</p>
+            <div className="bg-white dark:bg-zinc-900 py-0.5 px-2 md:py-1.5 md:px-4 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2 md:gap-3 sticky top-0 z-20">
+                
+                {/* Header Title (Desktop only) */}
+                <div className="hidden xl:flex flex-col justify-between items-start gap-0.5 flex-shrink-0">
+                    <h2 className="text-xs md:text-sm font-black text-slate-900 dark:text-white leading-tight uppercase tracking-tight">Painel Gerencial</h2>
+                    <p className="text-slate-500 dark:text-slate-400 text-[8px] md:text-[9px] font-bold uppercase tracking-widest leading-none">Visão Geral do Negócio</p>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-4 w-full md:w-auto justify-end">
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                {/* Controls Area (Agora sempre em uma linha flex!) */}
+                <div className="flex flex-row items-center justify-between lg:justify-end gap-1 sm:gap-2.5 w-full xl:w-auto">
+                    
+                    {/* Tabs */}
+                    <div className="flex gap-0.5 bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-700 overflow-x-auto no-scrollbar flex-shrink-0">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button
                                 key={v}
                                 onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                className={`px-1 min-[320px]:px-2 py-0.5 rounded-md text-[7.5px] min-[320px]:text-[8px] sm:text-[9px] md:text-[9.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
                             </button>
                         ))}
                     </div>
 
+                    {/* Date Selector */}
                     {timeView === 'custom' ? (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
-                            <CalendarRange size={16} className="text-slate-400" />
-                            <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-xs font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                        <div className="flex items-center justify-center gap-1 bg-transparent px-1 py-0.5">
+                            <CalendarRange size={11} className="text-slate-400" />
+                            <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[7.5px] sm:text-[9px] md:text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                             <span className="text-slate-300">-</span>
-                            <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-xs font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
+                            <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[7.5px] sm:text-[9px] md:text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                         </div>
                     ) : (
-                        <div className="flex items-center gap-3 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                            <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={20} /></button>
-                            <div className="flex flex-col items-center min-w-[140px]">
-                                <span className="text-xs font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
-                                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Período Selecionado</span>
+                        <div className="flex items-center gap-0.5 bg-transparent px-0.5 py-0 justify-between flex-shrink-0">
+                            <button onClick={() => navigateDate('prev')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={10} /></button>
+                            <div className="flex flex-col items-center min-w-[45px] min-[320px]:min-w-[70px] sm:min-w-[90px]">
+                                <span className="text-[7px] min-[320px]:text-[7.5px] sm:text-[9.5px] md:text-[10.5px] font-black text-slate-955 dark:text-white uppercase tracking-tight leading-none">{getDateLabel()}</span>
+                                <span className="hidden md:block text-[6.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 leading-none">Período Selecionado</span>
                             </div>
-                            <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={20} /></button>
+                            <button onClick={() => navigateDate('next')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={10} /></button>
                         </div>
                     )}
 
-                    {/* Filters Trigger & Active Filters */}
+                    {/* Divisor vertical (oculto em telas bem pequenas) */}
+                    <div className="hidden sm:block h-4 w-[1px] bg-slate-200 dark:bg-zinc-800 flex-shrink-0" />
+
+                    {/* Botão Filtros Unificado */}
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
+                        className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md text-[7.5px] md:text-[9px] font-bold uppercase tracking-wider transition-all flex-shrink-0 ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100'}`}
                     >
-                        <Filter size={16} />
-                        Filtros {activeFiltersCount > 0 && <span className="bg-indigo-600 text-white w-5 h-5 flex items-center justify-center rounded-full text-[9px] ml-1">{activeFiltersCount}</span>}
+                        <Filter size={10} className="md:w-3 md:h-3" />
+                        <span className="hidden min-[400px]:inline">Filtros</span>
+                        {activeFiltersCount > 0 && <span className="bg-indigo-600 text-white w-3 h-3 flex items-center justify-center rounded-full text-[7px] ml-0.5">{activeFiltersCount}</span>}
                     </button>
                 </div>
             </div>
@@ -2177,7 +2186,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <>
 
                             {/* 1. KPIs Operacionais */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4 md:gap-6">
                                 <KPICard
                                     title="Atendimentos (Clientes)"
                                     value={new Set(filteredAppointments.map(a => a.customerId)).size}
@@ -2231,28 +2240,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
 
                             {/* 2. Fluxo Dinâmico (Big Chart) */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                     <div>
-                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                                            <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
+                                        <h3 className="text-[11px] min-[350px]:text-sm sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
+                                            <Clock className="text-indigo-600 dark:text-indigo-400 w-3.5 h-3.5 sm:w-5 sm:h-5" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
+                                        <p className="text-[7px] min-[350px]:text-[8px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Distribuição de atendimentos no período</p>
                                     </div>
                                     
                                     {/* Indicadores do período */}
-                                    <div className="flex flex-wrap gap-2">
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 px-3.5 py-2 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
-                                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Projetado</p>
-                                            <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1.5">{fmt.currency(totalsFlow.projetado)}</p>
+                                    <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-zinc-800/80 text-center sm:text-left">
+                                            <p className="text-[7px] sm:text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Projetado</p>
+                                            <p className="text-[9px] sm:text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.projetado)}</p>
                                         </div>
-                                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 px-3.5 py-2 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
-                                            <p className="text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest leading-none">Realizado</p>
-                                            <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 mt-1.5">{fmt.currency(totalsFlow.realizado)}</p>
+                                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30 text-center sm:text-left">
+                                            <p className="text-[7px] sm:text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest leading-none">Realizado</p>
+                                            <p className="text-[9px] sm:text-[11px] font-black text-indigo-600 dark:text-indigo-400 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.realizado)}</p>
                                         </div>
-                                        <div className="bg-rose-50/50 dark:bg-rose-950/20 px-3.5 py-2 rounded-2xl border border-rose-100/50 dark:border-rose-900/30">
-                                            <p className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-widest leading-none">Cancelado</p>
-                                            <p className="text-[11px] font-black text-rose-600 dark:text-rose-400 mt-1.5">{fmt.currency(totalsFlow.cancelado)}</p>
+                                        <div className="bg-rose-50/50 dark:bg-rose-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-rose-100/50 dark:border-rose-900/30 text-center sm:text-left">
+                                            <p className="text-[7px] sm:text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-widest leading-none">Cancelado</p>
+                                            <p className="text-[9px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.cancelado)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -3280,7 +3289,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     {activeSubTab === 'charts' ? (
                         <div className="space-y-8">
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-4 md:gap-6 pt-2 px-1">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-2 sm:gap-4 md:gap-6 pt-2 px-1">
                                 <KPICard
                                     title="Clientes Recorrentes"
                                     value={recurringStats.recurringClients}
@@ -3347,84 +3356,84 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 />
                             </div>
                             {/* Tráfego de Novos Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
-                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
+                                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                                     <div>
-                                        <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                            <TrendingUp size={16} className="text-emerald-500" /> Tráfego e Performance de Período
+                                        <h3 className="text-[10px] min-[350px]:text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                                            <TrendingUp size={14} className="text-emerald-500 sm:w-4 sm:h-4" /> Tráfego e Performance de Período
                                         </h3>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Análise de conversão e fidelidade no período selecionado</p>
+                                        <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de conversão e fidelidade no período selecionado</p>
                                     </div>
-                                    <div className="flex flex-wrap gap-4">
+                                    <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
                                         {/* Unified Novos Clientes Card */}
-                                        <div className="bg-zinc-100 dark:bg-zinc-800 p-1 rounded-3xl shadow-sm flex items-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                        <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
                                             <div 
-                                                className="px-5 py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new"
+                                                className="px-1.5 py-1.5 sm:px-5 sm:py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new flex-1 xs:flex-none text-center xs:text-left"
                                                 onClick={() => setIsNewCustomersModalOpen(true)}
                                             >
-                                                <div className="flex items-center gap-1.5">
-                                                    <p className="text-[8px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Base de Novos</p>
-                                                    <ChevronRight size={8} className="text-zinc-400 opacity-0 group-hover/new:opacity-100 transition-opacity" />
+                                                <div className="flex items-center justify-center xs:justify-start gap-1">
+                                                    <p className="text-[7px] sm:text-[8px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">Base de Novos</p>
+                                                    <ChevronRight size={8} className="text-zinc-400 opacity-0 group-hover/new:opacity-100 transition-opacity hidden xs:block" />
                                                 </div>
-                                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.value || 0), 0)}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
-                                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                            <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                                            <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                                     R$ {newCustomersTrafficData.reduce((sum, d) => sum + (d.revenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços</p>
-                                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                            <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                                            <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços</p>
+                                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.services || 0), 0)}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-zinc-200 dark:bg-zinc-700" />
+                                            <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
                                             <div 
-                                                className="px-5 py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new"
+                                                className="px-1.5 py-1.5 sm:px-5 sm:py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new flex-1 xs:flex-none text-center xs:text-left"
                                                 onClick={() => setIsCouponsModalOpen(true)}
                                             >
-                                                <p className="text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
-                                                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
+                                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.coupons || 0), 0)}
                                                 </p>
                                             </div>
                                         </div>
 
                                         {/* Unified Recorrentes Card */}
-                                        <div className="bg-white dark:bg-zinc-800 p-1 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center overflow-hidden">
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                        <div className="bg-white dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden">
+                                            <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
+                                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurring || 0), 0)}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                            <div className="w-px h-5 sm:h-8 bg-slate-100 dark:bg-zinc-700" />
+                                            <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Faturamento</p>
+                                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                                     R$ {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurringRevenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
-                                            <div className="px-5 py-2">
-                                                <p className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                            <div className="w-px h-5 sm:h-8 bg-slate-100 dark:bg-zinc-700" />
+                                            <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Serviços</p>
+                                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurringServices || 0), 0)}
                                                 </p>
                                             </div>
-                                            <div className="w-px h-8 bg-slate-100 dark:bg-zinc-700" />
+                                            <div className="w-px h-5 sm:h-8 bg-slate-100 dark:bg-zinc-700" />
                                             <div 
-                                                className="px-5 py-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 transition-colors"
+                                                className="px-1.5 py-1.5 sm:px-5 sm:py-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-700/50 transition-colors flex-1 xs:flex-none text-center xs:text-left"
                                                 onClick={() => setIsCouponsModalOpen(true)}
                                             >
-                                                <p className="text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
-                                                <p className="text-sm font-black text-slate-900 dark:text-white mt-0.5">
+                                                <p className="text-[7px] sm:text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cupons</p>
+                                                <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">
                                                     {newCustomersTrafficData.reduce((sum, d) => sum + (d.recurringCoupons || 0), 0)}
                                                 </p>
                                             </div>
