@@ -43,6 +43,7 @@ interface MetaCampaign {
   crmRevenue?: number;
   crmROI?: number;
   crmCustomers?: number;
+  isConversation?: boolean;
 }
 
 interface AdSet {
@@ -63,6 +64,7 @@ interface AdSet {
   targeting_desc?: string;
   daily_budget?: number;
   lifetime_budget?: number;
+  roas?: number;
 }
 
 interface AdInsight {
@@ -876,13 +878,31 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           )?.value || d.conversions || 0;
           
           const dateKey = d.date_start;
-          const current = dailyMap.get(dateKey) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
+          const current = dailyMap.get(dateKey) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
+
+          const camp = parsedCampaigns.find((c: any) => c.id === d.campaign_id);
+          let campDailyBudget = 0;
+          if (camp) {
+            const daily = camp.daily_budget ? (camp.daily_budget / 100) : 0;
+            const lifetime = camp.lifetime_budget ? ((camp.lifetime_budget / 100) / 30) : 0;
+            campDailyBudget = daily + lifetime;
+
+            if (campDailyBudget === 0) {
+              const campAdSets = parsedAdSets.filter((a: any) => a.campaign_id === camp.id);
+              campAdSets.forEach((a: any) => {
+                const adSetDaily = a.daily_budget ? (a.daily_budget / 100) : 0;
+                const adSetLifetime = a.lifetime_budget ? ((a.lifetime_budget / 100) / 30) : 0;
+                campDailyBudget += adSetDaily + adSetLifetime;
+              });
+            }
+          }
           
           dailyMap.set(dateKey, {
             spend: current.spend + parseFloat(d.spend || '0'),
             impressions: current.impressions + parseInt(d.impressions || '0', 10),
             clicks: current.clicks + parseInt(d.clicks || '0', 10),
-            conversations: current.conversations + parseInt(msgStarted, 10)
+            conversations: current.conversations + parseInt(msgStarted, 10),
+            budget: current.budget + campDailyBudget
           });
         });
 
@@ -896,8 +916,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           prevDate.setDate(prevDate.getDate() - 7);
           const prevDStr = prevDate.toISOString().split('T')[0];
 
-          const currentVal = dailyMap.get(dStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
-          const prevVal = dailyMap.get(prevDStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0 };
+          const currentVal = dailyMap.get(dStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
+          const prevVal = dailyMap.get(prevDStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
 
           timeseries.push({
             date: dStr,
@@ -907,7 +927,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             clicks: currentVal.clicks,
             conversations: currentVal.conversations,
             prevConversations: prevVal.conversations,
-            prevSpend: prevVal.spend
+            prevSpend: prevVal.spend,
+            budget: currentVal.budget || 0
           });
 
           curr.setDate(curr.getDate() + 1);
@@ -1312,7 +1333,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         results: updatedResults,
         crmRevenue: isConversation ? crmRevenue : 0, 
         crmROI: (isConversation && c.spend > 0) ? crmRevenue / c.spend : 0,
-        crmCustomers: isConversation ? matchingCouponAppts.length : 0
+        crmCustomers: isConversation ? matchingCouponAppts.length : 0,
+        isConversation
       };
     });
   }, [campaigns, appointments, services, firstVisits, partnerCampaigns]);
@@ -1399,17 +1421,56 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return totalBudget;
   }, [campaignsWithCRM, adSets]);
 
+  const budgetVsSpendMetrics = useMemo(() => {
+    if (!dailyConversations || dailyConversations.length === 0) {
+      return {
+        totalSpend: 0,
+        totalBudget: 0,
+        avgDailySpend: 0,
+        consumptionRate: 0,
+        statusLabel: 'Sem dados',
+        statusColor: 'text-slate-500 bg-slate-50 dark:bg-zinc-800/50'
+      };
+    }
+
+    const totalSpend = dailyConversations.reduce((sum, d) => sum + (d.spend || 0), 0);
+    const totalBudget = dailyConversations.reduce((sum, d) => sum + (d.budget || activeAgendamentoBudget || 0), 0);
+    const avgDailySpend = totalSpend / dailyConversations.length;
+    const consumptionRate = totalBudget > 0 ? (totalSpend / totalBudget) * 100 : 0;
+
+    let statusLabel = 'Saudável';
+    let statusColor = 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
+
+    if (consumptionRate < 90) {
+      statusLabel = 'Sub-consumo';
+      statusColor = 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
+    } else if (consumptionRate > 110) {
+      statusLabel = 'Super-consumo';
+      statusColor = 'text-rose-600 bg-rose-50 dark:bg-rose-900/20';
+    }
+
+    return {
+      totalSpend,
+      totalBudget,
+      avgDailySpend,
+      consumptionRate,
+      statusLabel,
+      statusColor
+    };
+  }, [dailyConversations, activeAgendamentoBudget]);
+
   const totalNewCustomersCRM = totalConversions;
   const avgTicketMarketing = totalNewCustomersCRM > 0 ? totalCRMRevenue / totalNewCustomersCRM : 0;
 
-  const highFrequency = campaignsWithCRM.filter(c => c.frequency > 3 && c.status === 'ACTIVE');
-  const lowCTR = campaignsWithCRM.filter(c => c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
-  const highCPA = campaignsWithCRM.filter(c => c.cpa > avgCPA * 2 && c.cpa > 0 && c.status === 'ACTIVE');
+  const highFrequency = campaignsWithCRM.filter(c => c.isConversation && c.frequency > 3 && c.status === 'ACTIVE');
+  const lowCTR = campaignsWithCRM.filter(c => c.isConversation && c.ctr < 1 && c.impressions > 1000 && c.status === 'ACTIVE');
+  const highCPA = campaignsWithCRM.filter(c => c.isConversation && c.cpa > avgCPA * 2 && c.cpa > 0 && c.status === 'ACTIVE');
   const zeroConversions = campaignsWithCRM.filter(c => {
+    if (!c.isConversation) return false;
     const matchingCouponAppts = getMatchingCouponAppts(c.name);
     return matchingCouponAppts.length === 0 && c.spend > 50 && c.status === 'ACTIVE';
   });
-  const topPerformers = campaignsWithCRM.filter(c => c.crmROI > 2 && c.status === 'ACTIVE').sort((a, b) => b.crmROI - a.crmROI);
+  const topPerformers = campaignsWithCRM.filter(c => c.isConversation && c.crmROI > 2 && c.status === 'ACTIVE').sort((a, b) => b.crmROI - a.crmROI);
   const problems = [...highFrequency.map(c => ({ type: 'frequency', campaign: c })),
     ...lowCTR.map(c => ({ type: 'ctr', campaign: c })),
     ...highCPA.map(c => ({ type: 'cpa', campaign: c })),
@@ -1485,29 +1546,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
            </div>
          </div>
 
-         <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-slate-100 dark:border-zinc-800 shadow-sm">
-            <SectionTitle sub="Investimento diário no período">📈 DESEMPENHO DE INVESTIMENTO</SectionTitle>
-            <div className="h-64 w-full mt-6">
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dailyTimeSeries}>
-                    <defs>
-                        <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                        </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.5} />
-                    <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dx={-10} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} 
-                      formatter={(v: number) => [fmt.currency(v), 'Gasto']} 
-                    />
-                    <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={4} fillOpacity={1} fill="url(#colorSpend)" />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
-         </div>
+         {/* Desempenho de Investimento removido para evitar duplicidade com o gráfico de consumo de orçamento */}
       </div>
 
       <div className="space-y-6">
@@ -1904,29 +1943,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     </div>
   );
 
-  const renderRecommendations = () => (
-    <div className="space-y-4">
-      {problems.length > 0 ? problems.map((p, i) => (
-        <div key={i} className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/20 p-5 rounded-2xl flex items-start gap-4">
-          <AlertTriangle className="text-rose-500 flex-shrink-0" />
-          <div>
-            <p className="text-xs font-black text-rose-900 dark:text-rose-400 mb-1 uppercase tracking-widest">{p.campaign.name}</p>
-            <p className="text-sm text-rose-700 dark:text-rose-500">
-               {p.type === 'frequency' && 'Frequência elevada (fadiga). Sature o público e troque os criativos.'}
-               {p.type === 'ctr' && 'CTR abaixo da média. O anúncio não está atraente.'}
-               {p.type === 'conversions' && 'Gasto sem conversão. Revise a oferta ou segmentação.'}
-            </p>
-          </div>
-        </div>
-      )) : (
-        <div className="bg-emerald-50 p-12 rounded-3xl text-center">
-           <CircleCheck size={40} className="text-emerald-500 mx-auto mb-4" />
-           <p className="font-black text-emerald-900">Performance Saudável!</p>
-           <p className="text-sm text-emerald-700 mt-2">Suas métricas principais estão dentro dos benchmarks.</p>
-        </div>
-      )}
-    </div>
-  );
+
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-zinc-950 min-h-0 overflow-hidden">
@@ -2015,7 +2032,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       setSelectedIgAccountId(e.target.value);
                       localStorage.setItem('selected_ig_account_id', e.target.value);
                     }}
-                    className={`px-6 py-2.5 text-[10px] font-black bg-white dark:bg-zinc-800 border-2 rounded-full outline-none shadow-sm transition-colors uppercase tracking-widest ${activeMarketingTab === 'organic' ? 'border-indigo-500 text-indigo-600' : 'border-slate-200 text-slate-500'}`}
+                    className={`px-6 py-2.5 text-[10px] font-black bg-white dark:bg-zinc-800 border-2 rounded-full outline-none shadow-sm transition-colors uppercase tracking-widest ${(activeMarketingTab as string) === 'organic' ? 'border-indigo-500 text-indigo-600' : 'border-slate-200 text-slate-500'}`}
                   >
                     {igAccounts.map(acc => (
                       <option key={acc.id} value={acc.id}>{acc.name} ({acc.id})</option>
@@ -2444,6 +2461,112 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </div>
                     </section>
 
+                    {/* Gráfico de Consumo de Orçamento Diário vs Investimento */}
+                    <section id="consumo-orcamento" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                          <div>
+                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                              <DollarSign size={16} className="text-emerald-600" /> Consumo de Orçamento Diário
+                            </h3>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação do investimento realizado com o orçamento diário programado</p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
+                                <p className="text-lg font-black text-emerald-600">{fmt.currency(budgetVsSpendMetrics.totalSpend)}</p>
+                            </div>
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Orçamento Programado</p>
+                                <p className="text-lg font-black text-indigo-600">{fmt.currency(budgetVsSpendMetrics.totalBudget)}</p>
+                            </div>
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-6 py-3 rounded-2xl text-center">
+                                <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Média Diária Gasta</p>
+                                <p className="text-lg font-black text-violet-600">{fmt.currency(budgetVsSpendMetrics.avgDailySpend)}</p>
+                            </div>
+                            <div className={`px-6 py-3 rounded-2xl text-center flex flex-col justify-center ${budgetVsSpendMetrics.statusColor}`}>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80">Taxa de Consumo</p>
+                                <p className="text-lg font-black flex items-center justify-center gap-1">
+                                  {budgetVsSpendMetrics.consumptionRate.toFixed(1)}%
+                                </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-64 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={dailyConversations} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                              <defs>
+                                <linearGradient id="colorSpendConsumo" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                </linearGradient>
+                                <linearGradient id="colorBudgetConsumo" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.05}/>
+                                  <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={45} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} tickFormatter={(val) => `R$${val}`} />
+                              <Tooltip 
+                                cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                                                    const spendVal = data.spend || 0;
+                                    const budgetVal = data.budget || activeAgendamentoBudget || 0;
+                                    const diff = spendVal - budgetVal;
+                                    const pct = budgetVal > 0 ? (spendVal / budgetVal) * 100 : 0;
+                                    const isOk = pct >= 90 && pct <= 110;
+                                    const isOver = pct > 110;
+                                    const conversationsVal = data.conversations || 0;
+                                    const costPerResultVal = conversationsVal > 0 ? (spendVal / conversationsVal) : 0;
+                                    
+                                    return (
+                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
+                                        <div className="space-y-2">
+                                          <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
+                                            <span>INVESTIMENTO:</span>
+                                            <span>{fmt.currency(spendVal)}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
+                                            <span>ORÇAMENTO:</span>
+                                            <span>{fmt.currency(budgetVal)}</span>
+                                          </p>
+                                          <p className={`text-xs font-black flex items-center justify-between gap-6 ${diff >= 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                            <span>DIFERENÇA:</span>
+                                            <span>{diff >= 0 ? '+' : ''}{fmt.currency(diff)}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-indigo-500 flex items-center justify-between gap-6 border-t border-slate-100 dark:border-zinc-800/50 pt-1.5">
+                                            <span>CONVERSAS:</span>
+                                            <span>{conversationsVal}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-violet-600 flex items-center justify-between gap-6">
+                                            <span>CUSTO P/ RES.:</span>
+                                            <span>{conversationsVal > 0 ? fmt.currency(costPerResultVal) : '—'}</span>
+                                          </p>
+                                          <div className={`text-[10px] font-black flex items-center gap-1 border-t border-slate-100 dark:border-zinc-800 pt-2 ${
+                                            isOk ? 'text-emerald-600' : isOver ? 'text-rose-600' : 'text-amber-600'
+                                          }`}>
+                                            {isOk ? <CircleCheck size={12} /> : <AlertTriangle size={12} />}
+                                            <span>CONSUMO: {pct.toFixed(1)}% ({isOk ? 'Saudável' : isOver ? 'Super-consumo' : 'Sub-consumo'})</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Area type="monotone" dataKey="spend" name="Investido" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSpendConsumo)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
+                              <Area type="monotone" dataKey="budget" name="Orçado" stroke="#6366f1" strokeDasharray="5 5" strokeWidth={2} fillOpacity={1} fill="url(#colorBudgetConsumo)" dot={{ fill: '#6366f1', r: 2 }} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </section>
+
                     <section id="conjuntos-anuncios" className="scroll-mt-32">
                       <SectionTitle sub="Interação por público, segmentação e posicionamento">👥 CONJUNTOS DE ANÚNCIOS</SectionTitle>
                       <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 p-8 shadow-sm">
@@ -2457,14 +2580,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       {renderAds()}
                     </section>
 
-                    <section id="insights-detalhados" className="scroll-mt-32 pb-12 pt-16 border-t border-slate-100 dark:border-zinc-800">
-                       {renderDetailedInsights()}
-                    </section>
-
-                    <section id="insights-IA" className="scroll-mt-32 mt-16 pt-16 border-t border-slate-100 dark:border-zinc-800">
-                      <SectionTitle sub="Otimizações recomendadas com base no desempenho atual">💡 RECOMENDAÇÕES E INSIGHTS</SectionTitle>
-                      {renderRecommendations()}
-                    </section>
+                    {/* Insights detalhados e Recomendações IA removidos conforme solicitado */}
                   </div>
                 </div>
               )}
