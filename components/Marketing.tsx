@@ -60,6 +60,9 @@ interface AdSet {
   conversions: number;
   cpa: number;
   frequency: number;
+  targeting_desc?: string;
+  daily_budget?: number;
+  lifetime_budget?: number;
 }
 
 interface AdInsight {
@@ -774,7 +777,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       setCampaigns(parsedCampaigns);
 
       const adSetFields = [
-        'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting',
+        'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting', 'daily_budget', 'lifetime_budget',
         `insights${insightsRange}{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,frequency}`
       ].join(',');
 
@@ -802,6 +805,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           name: a.name,
           targeting_desc: targetingDesc,
           status: a.status,
+          daily_budget: a.daily_budget ? Number(a.daily_budget) : undefined,
+          lifetime_budget: a.lifetime_budget ? Number(a.lifetime_budget) : undefined,
           ...parseInsight(insight),
         };
       });
@@ -1362,6 +1367,37 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return isLeadConversion ? s + c.spend : s;
   }, 0);
   const activeCostPerResult = activeMessageStarts > 0 ? activeConversionSpend / activeMessageStarts : 0;
+
+  const activeAgendamentoBudget = useMemo(() => {
+    const activeConvCampaigns = campaignsWithCRM.filter(c => {
+      if (c.status !== 'ACTIVE') return false;
+      const nameLower = c.name.toLowerCase();
+      const isFollower = nameLower.includes('seguidores');
+      const isManicure = nameLower.includes('manicures');
+      return !isFollower && !isManicure && (nameLower.includes('conversas') || nameLower.includes('lead') || nameLower.includes('cupom') || nameLower.includes('trafego') || nameLower.includes('estetica') || nameLower.includes('estética'));
+    });
+
+    let totalBudget = 0;
+
+    activeConvCampaigns.forEach(c => {
+      const daily = c.daily_budget ? (c.daily_budget / 100) : 0;
+      const lifetime = c.lifetime_budget ? ((c.lifetime_budget / 100) / 30) : 0;
+      const campBudget = daily + lifetime;
+
+      if (campBudget > 0) {
+        totalBudget += campBudget;
+      } else {
+        const campAdSets = adSets.filter(a => a.campaign_id === c.id && a.status === 'ACTIVE');
+        campAdSets.forEach(a => {
+          const adSetDaily = a.daily_budget ? (a.daily_budget / 100) : 0;
+          const adSetLifetime = a.lifetime_budget ? ((a.lifetime_budget / 100) / 30) : 0;
+          totalBudget += adSetDaily + adSetLifetime;
+        });
+      }
+    });
+
+    return totalBudget;
+  }, [campaignsWithCRM, adSets]);
 
   const totalNewCustomersCRM = totalConversions;
   const avgTicketMarketing = totalNewCustomersCRM > 0 ? totalCRMRevenue / totalNewCustomersCRM : 0;
@@ -2118,6 +2154,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               dailyData={dailyTimeSeries}
               followerSeries={followerSeries}
               organicData={organicData}
+              activeBudget={activeAgendamentoBudget}
             />
           ) : (
             <div className="w-full">
@@ -2377,6 +2414,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                           <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
                                             <span>INVESTIMENTO:</span>
                                             <span>{fmt.currency(data.spend)}</span>
+                                          </p>
+                                          <p className="text-xs font-black text-amber-600 flex items-center justify-between gap-6">
+                                            <span>ORÇAMENTO DIÁRIO:</span>
+                                            <span>{fmt.currency(activeAgendamentoBudget || 222)}</span>
                                           </p>
                                           <p className="text-xs font-black text-violet-600 flex items-center justify-between gap-6">
                                             <span>CUSTO P/ RES.:</span>

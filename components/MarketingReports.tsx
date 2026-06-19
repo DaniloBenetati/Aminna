@@ -1,6 +1,6 @@
 import React from 'react';
 import { Printer, TrendingUp, DollarSign, Target, Users, Megaphone, Presentation, Calendar, BarChart3, ArrowUpRight, ArrowDownRight, Award, Instagram, Activity, Heart, MessageCircle, Bookmark, Share2, Eye, UserPlus } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, AreaChart, Area, ReferenceLine } from 'recharts';
 
 interface CampaignData {
   id: string;
@@ -28,6 +28,7 @@ interface MarketingReportsProps {
   totalFollowers?: number;
   followerSeries?: any[];
   organicData?: any;
+  activeBudget?: number;
 }
 
 const fmt = {
@@ -49,7 +50,8 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
   dailyData,
   totalFollowers = 0,
   followerSeries = [],
-  organicData
+  organicData,
+  activeBudget
 }) => {
   const handlePrint = () => {
     window.print();
@@ -348,6 +350,18 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dy={10} />
                     <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700}} dx={-10} />
                     <Area type="monotone" dataKey="spend" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#reportSpend)" />
+                    <ReferenceLine 
+                      y={activeBudget || 222} 
+                      stroke="#f43f5e" 
+                      strokeDasharray="3 3" 
+                      label={{ 
+                        value: `Orçamento Diário: ${fmt.currency(activeBudget || 222)}`, 
+                        fill: '#f43f5e', 
+                        fontSize: 10, 
+                        fontWeight: 'bold', 
+                        position: 'top' 
+                      }} 
+                    />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
