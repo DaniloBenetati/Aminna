@@ -167,6 +167,33 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         });
     }, [appointments, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, campaigns, customers]);
 
+    const appointmentsForFlow = useMemo(() => {
+        if (filterProduct !== 'all') return [];
+
+        return appointments.filter(app => {
+            if (!isDateInPeriod(app.date)) return false;
+
+            // Context Filters
+            if (filterProvider !== 'all' && app.providerId !== filterProvider) return false;
+            if (filterService !== 'all' && app.serviceId !== filterService) return false;
+
+            if (filterCampaign !== 'all') {
+                const campaign = campaigns.find(c => c.id === filterCampaign);
+                if (!campaign || app.appliedCoupon !== campaign.couponCode) return false;
+            }
+
+            if (filterPartner !== 'all') {
+                const partnerCampaignCodes = campaigns
+                    .filter(c => c.partnerId === filterPartner)
+                    .map(c => c.couponCode);
+
+                if (!app.appliedCoupon || !partnerCampaignCodes.includes(app.appliedCoupon)) return false;
+            }
+
+            return true;
+        });
+    }, [appointments, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, campaigns, customers]);
+
     const vettedAppointments = useMemo(() => {
         return filteredAppointments.filter(a => {
             const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
@@ -593,6 +620,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             let commissionTotal = 0;
             let faturamentoConcluido = 0;
             let faturamentoPrevisto = 0;
+            let faturamentoCancelado = 0;
 
             apps.forEach(a => {
                 const mainSvc = services.find(s => s.id === a.serviceId);
@@ -609,6 +637,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const totalBooked = mainBooked + extrasList.reduce((sum, e) => sum + e.bookedPrice, 0);
                 const isRemake = a.isRemake || a.paymentMethod === 'Refazer' || a.paymentMethod?.startsWith('Justificativa');
                 
+                if (a.status === 'Cancelado') {
+                    faturamentoCancelado += totalBooked;
+                    return;
+                }
+
                 const isPast = a.date < toLocalDateStr(new Date());
                 const effectiveStatus = isPast ? a.status === 'Concluído' : a.status !== 'Cancelado';
 
@@ -645,6 +678,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 faturamento: serviceProduction + productSales,
                 faturamentoConcluido,
                 faturamentoPrevisto,
+                faturamentoCancelado,
                 receita: (serviceProduction + productSales) - commissionTotal
             };
         };
@@ -654,21 +688,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             const hours = Array.from({ length: 14 }, (_, i) => i + 7); // 7h to 20h
             return hours.map(h => {
                 const label = `${h}h`;
-                const hourApps = filteredAppointments.filter(a => {
+                const hourApps = appointmentsForFlow.filter(a => {
                     if (!a.time) return false;
                     return parseInt(a.time.split(':')[0]) === h;
                 });
                 const metrics = calcMetrics(hourApps);
-                const custDetails = getCustomerDetails(hourApps);
+                const custDetails = getCustomerDetails(hourApps.filter(a => a.status !== 'Cancelado'));
                 return {
                     name: label,
-                    atendimentos: hourApps.length,
+                    atendimentos: hourApps.filter(a => a.status !== 'Cancelado').length,
+                    atendimentosCancelados: hourApps.filter(a => a.status === 'Cancelado').length,
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
+                    faturamentoCancelado: metrics.faturamentoCancelado,
                     receita: metrics.receita
                 };
             });
@@ -690,20 +726,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
             return days.map(d => {
                 const dateStr = d.toISOString().split('T')[0];
-                const dayApps = filteredAppointments.filter(a => a.date === dateStr);
+                const dayApps = appointmentsForFlow.filter(a => a.date === dateStr);
                 const daySales = filteredSales.filter(s => s.date === dateStr);
                 const metrics = calcMetrics(dayApps, daySales);
-                const custDetails = getCustomerDetails(dayApps);
+                const custDetails = getCustomerDetails(dayApps.filter(a => a.status !== 'Cancelado'));
                 return {
                     name: d.getDate().toString(),
                     fullDate: dateStr,
-                    atendimentos: dayApps.length,
+                    atendimentos: dayApps.filter(a => a.status !== 'Cancelado').length,
+                    atendimentosCancelados: dayApps.filter(a => a.status === 'Cancelado').length,
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
+                    faturamentoCancelado: metrics.faturamentoCancelado,
                     receita: metrics.receita
                 };
             });
@@ -711,7 +749,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             // Monthly flow
             const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
             return months.map((m, i) => {
-                const monthApps = filteredAppointments.filter(a => {
+                const monthApps = appointmentsForFlow.filter(a => {
                     if (!a.date) return false;
                     const parts = a.date.split('-');
                     if (parts.length < 2) return false;
@@ -726,21 +764,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     return (monthPart - 1) === i;
                 });
                 const metrics = calcMetrics(monthApps, monthSales);
-                const custDetails = getCustomerDetails(monthApps);
+                const custDetails = getCustomerDetails(monthApps.filter(a => a.status !== 'Cancelado'));
                 return {
                     name: m,
-                    atendimentos: monthApps.length,
+                    atendimentos: monthApps.filter(a => a.status !== 'Cancelado').length,
+                    atendimentosCancelados: monthApps.filter(a => a.status === 'Cancelado').length,
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
+                    faturamentoCancelado: metrics.faturamentoCancelado,
                     receita: metrics.receita
                 };
             });
         }
-    }, [filteredAppointments, timeView, dateRef, customRange, services, providers, appointments, customers]);
+    }, [appointmentsForFlow, filteredSales, timeView, dateRef, customRange, services, providers, appointments, customers]);
+
+    const totalsFlow = useMemo(() => {
+        let realizado = 0;
+        let previsto = 0;
+        let cancelado = 0;
+        flowData.forEach(d => {
+            realizado += d.faturamentoConcluido || 0;
+            previsto += d.faturamentoPrevisto || 0;
+            cancelado += d.faturamentoCancelado || 0;
+        });
+        return {
+            realizado,
+            previsto,
+            cancelado,
+            projetado: realizado + previsto + cancelado
+        };
+    }, [flowData]);
 
     // 2. Top Providers (Updated to Revenue)
     const topProviders = useMemo(() => {
@@ -1905,7 +1962,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     <div className="space-y-2">
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Atendimentos:</span>
-                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">{data.atendimentos}</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                                {data.atendimentos} <span className="text-rose-500 font-bold">({data.atendimentosCancelados || 0} canc.)</span>
+                            </span>
                         </div>
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Clientes:</span>
@@ -1921,9 +1980,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">{data.clientesFieis || 0}</span>
                             </div>
                         </div>
-                        <div className="flex justify-between items-center gap-4">
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento Total:</span>
-                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {data.faturamento.toFixed(2)}</span>
+                        <div className="flex justify-between items-center gap-4 border-t border-slate-100 dark:border-zinc-700/50 pt-2">
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento Projetado:</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {(data.faturamento + (data.faturamentoCancelado || 0)).toFixed(2)}</span>
                         </div>
                         <div className="pl-4 border-l-2 border-slate-100 dark:border-zinc-700 space-y-1">
                             <div className="flex justify-between items-center gap-4">
@@ -1934,8 +1993,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <span className="text-[9px] font-bold text-slate-400 uppercase">Previsto:</span>
                                 <span className="text-[10px] font-black text-slate-600 dark:text-slate-400">R$ {data.faturamentoPrevisto.toFixed(2)}</span>
                             </div>
+                            <div className="flex justify-between items-center gap-4">
+                                <span className="text-[9px] font-bold text-rose-500 uppercase">Cancelado:</span>
+                                <span className="text-[10px] font-black text-rose-600 dark:text-rose-400">R$ {(data.faturamentoCancelado || 0).toFixed(2)}</span>
+                            </div>
                         </div>
-                        <div className="flex justify-between items-center gap-4">
+                        <div className="flex justify-between items-center gap-4 border-t border-slate-100 dark:border-zinc-700/50 pt-2">
                             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase flex items-center gap-1"><Wallet size={10} /> Receita Líq.:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {data.receita.toFixed(2)}</span>
                         </div>
@@ -2171,12 +2234,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             {/* 2. Fluxo Dinâmico (Big Chart) */}
                             <div className="bg-white dark:bg-zinc-900 p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
-                                <div className="flex justify-between items-center mb-6">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                     <div>
                                         <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
                                             <Clock size={20} className="text-indigo-600 dark:text-indigo-400" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
                                         </h3>
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Distribuição de atendimentos no período</p>
+                                    </div>
+                                    
+                                    {/* Indicadores do período */}
+                                    <div className="flex flex-wrap gap-2">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 px-3.5 py-2 rounded-2xl border border-slate-100 dark:border-zinc-800/80">
+                                            <p className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Projetado</p>
+                                            <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1.5">{fmt.currency(totalsFlow.projetado)}</p>
+                                        </div>
+                                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 px-3.5 py-2 rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30">
+                                            <p className="text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest leading-none">Realizado</p>
+                                            <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 mt-1.5">{fmt.currency(totalsFlow.realizado)}</p>
+                                        </div>
+                                        <div className="bg-rose-50/50 dark:bg-rose-950/20 px-3.5 py-2 rounded-2xl border border-rose-100/50 dark:border-rose-900/30">
+                                            <p className="text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-widest leading-none">Cancelado</p>
+                                            <p className="text-[11px] font-black text-rose-600 dark:text-rose-400 mt-1.5">{fmt.currency(totalsFlow.cancelado)}</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="h-64 w-full">
@@ -2186,8 +2265,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} interval={timeView === 'day' ? 0 : 'preserveStartEnd'} />
                                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 800, fill: '#64748b' }} />
                                             <Tooltip content={<CustomFlowTooltip />} cursor={{ fill: 'transparent' }} />
-                                            <Bar dataKey="faturamentoConcluido" stackId="a" fill="#4f46e5" radius={[0, 0, 0, 0]} />
-                                            <Bar dataKey="faturamentoPrevisto" stackId="a" fill="#94a3b8" radius={[6, 6, 0, 0]} />
+                                            <Bar dataKey="faturamentoConcluido" name="Realizado" stackId="a" fill="#4f46e5" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="faturamentoPrevisto" name="Previsto" stackId="a" fill="#94a3b8" radius={[0, 0, 0, 0]} />
+                                            <Bar dataKey="faturamentoCancelado" name="Cancelado/Remarcado" stackId="a" fill="#f87171" radius={[6, 6, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
