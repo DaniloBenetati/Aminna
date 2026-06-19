@@ -1849,24 +1849,54 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-zinc-950 min-h-0 overflow-hidden">
-      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-4 md:px-6 py-2 flex gap-2 md:gap-4 overflow-x-auto shadow-sm flex-shrink-0 scrollbar-hide z-30">
-        <button
-          onClick={() => setActiveMarketingTab('paid')}
-          className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-        >
-          Tráfego Pago
-        </button>
-        <button
-          onClick={() => setActiveMarketingTab('reports')}
-          className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-        >
-          Apresentações
-        </button>
+      {/* Cabeçalho unificado e compacto no topo */}
+      <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-4 md:px-6 py-3 flex-shrink-0 z-30 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Abas */}
+          <div className="flex gap-2 md:gap-4 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => setActiveMarketingTab('paid')}
+              className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              Tráfego Pago
+            </button>
+            <button
+              onClick={() => setActiveMarketingTab('reports')}
+              className={`px-3 md:px-4 py-2 text-[10px] md:text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              Apresentações
+            </button>
+          </div>
+
+          {/* Período e Botão Filtrar */}
+          <div className="flex items-center gap-4 justify-between md:justify-end">
+            <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-black whitespace-nowrap">
+              Análise estratégica · {
+                datePreset === 'last_7d' ? 'Últimos 7 dias' : 
+                datePreset === 'last_30d' ? 'Últimos 30 dias' : 
+                datePreset === 'last_90d' ? 'Últimos 90 dias' :
+                datePreset === 'this_month' ? 'Este mês' :
+                datePreset === 'last_month' ? 'Mês anterior' :
+                datePreset === 'this_year' ? 'Este ano' :
+                datePreset === 'custom' ? `${customStartDate.split('-').reverse().join('/')} até ${customEndDate.split('-').reverse().join('/')}` :
+                'Período personalizado'
+              }
+            </p>
+            <button 
+              id="marketing-filter-btn"
+              onClick={() => setIsFiltersVisible(!isFiltersVisible)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
+            >
+              <Filter size={14} />
+              {isFiltersVisible ? 'Ocultar Filtros' : 'Filtrar'}
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto flex flex-col min-h-0">
-        <div className="sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md border-b border-slate-100 dark:border-zinc-800 px-6 py-4 flex-shrink-0 z-20">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className={`sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex-shrink-0 z-20 transition-all ${isFiltersVisible ? 'border-b border-slate-100 dark:border-zinc-800 px-6 py-4' : 'h-0 overflow-hidden'}`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 hidden">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
                 {activeMarketingTab === 'paid' ? <Megaphone size={20} /> : <Presentation size={20} />}
@@ -1892,7 +1922,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
             <div className="flex items-center gap-3">
               <button 
-                id="marketing-filter-btn"
+                id="marketing-filter-btn-old"
                 onClick={() => setIsFiltersVisible(!isFiltersVisible)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
               >
