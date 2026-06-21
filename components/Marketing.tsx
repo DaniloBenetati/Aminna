@@ -5,12 +5,14 @@ import {
   Eye, MousePointer, BarChart3, RefreshCw, ChevronDown, ChevronUp,
   CircleCheck, CircleX, Pause, Play, ArrowUpRight, ArrowDownRight,
   Megaphone, Users, Activity, Info, Filter, Calendar, Layers, FileText,
-  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare, ShieldCheck, Presentation
+  Instagram, Plus, Edit2, ArrowUp, Ticket, X, ChevronRight, MessageSquare, ShieldCheck, Presentation,
+  Maximize2, Minimize2
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
 import { MarketingReports } from './MarketingReports';
 import { supabase } from '../services/supabase';
+import { GeoTrafficMap } from './GeoTrafficMap';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
   Tooltip, ResponsiveContainer, BarChart, Bar, LabelList 
@@ -65,6 +67,7 @@ interface AdSet {
   daily_budget?: number;
   lifetime_budget?: number;
   roas?: number;
+  targeting?: any;
 }
 
 interface AdInsight {
@@ -177,23 +180,23 @@ const KPICard = ({
   };
   const grad = danger ? 'from-rose-500 to-rose-700' : warning ? 'from-amber-500 to-orange-600' : colorMap[color] || colorMap.indigo;
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-2xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2.5 sm:p-3 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
-      <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-6 translate-x-6 group-hover:opacity-10 transition-opacity`} />
-      <div className="flex items-start justify-between mb-1.5 min-w-0">
-        <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-md`}>
-          <Icon size={12} className="text-white sm:w-[14px] sm:h-[14px]" />
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
+      <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-4 translate-x-4 group-hover:opacity-10 transition-opacity`} />
+      <div className="flex items-start justify-between mb-1 min-w-0">
+        <div className={`w-5 h-5 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm`}>
+          <Icon size={10} className="text-white" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-1 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded-lg ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
-            {trend >= 0 ? <ArrowUpRight size={8} /> : <ArrowDownRight size={8} />}
+          <div className={`flex items-center gap-0.5 text-[7px] font-bold px-1 py-0.5 rounded-md ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
+            {trend >= 0 ? <ArrowUpRight size={7} /> : <ArrowDownRight size={7} />}
             {Math.abs(trend).toFixed(1)}%
           </div>
         )}
       </div>
-      <p className="text-[10px] sm:text-xs md:text-sm font-black text-slate-900 dark:text-white tracking-tight mb-0.5 truncate whitespace-nowrap">{value}</p>
-      <p className="text-[7px] sm:text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-tight truncate">{label}</p>
-      {sub && <p className="text-[7px] sm:text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
-      {trendLabel && <p className="text-[7px] sm:text-[8px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
+      <p className="text-[9px] sm:text-[11px] font-black text-slate-900 dark:text-white tracking-tight mb-0.5 truncate whitespace-nowrap">{value}</p>
+      <p className="text-[6.5px] sm:text-[7px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none truncate">{label}</p>
+      {sub && <p className="text-[6px] sm:text-[6.5px] text-slate-400 dark:text-slate-500 mt-0.5">{sub}</p>}
+      {trendLabel && <p className="text-[6px] sm:text-[6.5px] text-slate-400 dark:text-slate-500 mt-0.5">{trendLabel}</p>}
     </div>
   );
 };
@@ -425,6 +428,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const [permissions, setPermissions] = useState<any[]>([]);
   const [checkingPerms, setCheckingPerms] = useState(false);
+  const [maximizedChart, setMaximizedChart] = useState<string | null>(null);
 
   const checkPermissions = async () => {
     if (!token) return;
@@ -809,10 +813,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           status: a.status,
           daily_budget: a.daily_budget ? Number(a.daily_budget) : undefined,
           lifetime_budget: a.lifetime_budget ? Number(a.lifetime_budget) : undefined,
+          targeting: a.targeting,
           ...parseInsight(insight),
         };
       });
-      setAdSets(parsedAdSets);
 
       const adFields = [
         'id', 'name', 'status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
@@ -840,6 +844,37 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           ...parseInsight(insight),
         };
       });
+
+      // Aggregate Ad metrics to their parent AdSets if the AdSet API metrics are 0 or lower than ads sum
+      const finalAdSets = parsedAdSets.map(adset => {
+        const matchingAds = parsedAds.filter(ad => ad.adset_id === adset.id);
+        if (matchingAds.length > 0) {
+          const sumSpend = matchingAds.reduce((acc, ad) => acc + (ad.spend || 0), 0);
+          const sumImpressions = matchingAds.reduce((acc, ad) => acc + (ad.impressions || 0), 0);
+          const sumClicks = matchingAds.reduce((acc, ad) => acc + (ad.clicks || 0), 0);
+          const sumConversions = matchingAds.reduce((acc, ad) => acc + (ad.conversions || 0), 0);
+          
+          const ctr = sumImpressions > 0 ? (sumClicks / sumImpressions) * 100 : 0;
+          const cpc = sumClicks > 0 ? sumSpend / sumClicks : 0;
+          const cpa = sumConversions > 0 ? sumSpend / sumConversions : 0;
+
+          if (adset.clicks === 0 || sumClicks > adset.clicks) {
+            return {
+              ...adset,
+              spend: sumSpend,
+              impressions: sumImpressions,
+              clicks: sumClicks,
+              conversions: sumConversions,
+              ctr,
+              cpc,
+              cpa
+            };
+          }
+        }
+        return adset;
+      });
+
+      setAdSets(finalAdSets);
       setAds(parsedAds);
 
       try {
@@ -1491,7 +1526,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
 
   const renderKPICards = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-2.5 md:gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-1.5 sm:gap-2">
       <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
       <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
       <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
@@ -2140,7 +2175,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
                   <div className="space-y-8">
                     <section id="detalhamento-campanhas" className="scroll-mt-32">
-                      <SectionTitle sub="Visão macro de performance por objetivo de campanha">📣 DETALHAMENTO DE CAMPANHAS</SectionTitle>
                       {renderCampaigns()}
                     </section>
 
@@ -2148,11 +2182,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     <section id="conversao-clientes" className="scroll-mt-32">
                       <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
-                          <div>
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                              <TrendingUp size={16} className="text-indigo-600" /> Conversão e Performance de Clientes
-                            </h3>
-                            <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de novos clientes e serviços no período</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <TrendingUp size={16} className="text-indigo-600" /> Conversão e Performance de Clientes
+                              </h3>
+                              <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de novos clientes e serviços no período</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('novos-clientes')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
                           </div>
                           <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
                             <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
@@ -2217,11 +2260,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     <section id="conversas-diarias" className="scroll-mt-32">
                       <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
-                          <div>
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                              <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
-                            </h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
+                              </h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('conversas-diarias')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
@@ -2277,11 +2329,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     <section id="comparativo-conversas" className="scroll-mt-32">
                       <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
-                          <div>
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                              <TrendingUp size={16} className="text-indigo-600" /> Comparativo com a Semana Anterior
-                            </h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação de novas conversas com o mesmo dia da semana anterior</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <TrendingUp size={16} className="text-indigo-600" /> Comparativo com a Semana Anterior
+                              </h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação de novas conversas com o mesmo dia da semana anterior</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('comparativo-conversas')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
@@ -2403,11 +2464,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     <section id="consumo-orcamento" className="scroll-mt-32">
                       <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
-                          <div>
-                            <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                              <DollarSign size={16} className="text-emerald-600" /> Consumo de Orçamento Diário
-                            </h3>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação do investimento realizado com o orçamento diário programado</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <DollarSign size={16} className="text-emerald-600" /> Consumo de Orçamento Diário
+                              </h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação do investimento realizado com o orçamento diário programado</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('consumo-orcamento')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-4">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl text-center">
@@ -2512,6 +2582,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </div>
                     </section>
 
+                    <section id="geolocalizacao-trafego" className="scroll-mt-32">
+                      <GeoTrafficMap adSets={adSets} ads={ads} loading={loading} hasFetched={hasFetched} />
+                    </section>
+
 
                     <section id="anuncios-criativos" className="scroll-mt-32">
                       <SectionTitle sub="Melhores criativos e análise visual de anúncios">🖼️ ANÚNCIOS E CRIATIVOS EM DESTAQUE</SectionTitle>
@@ -2526,6 +2600,221 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           )}
         </div>
       </div>
+      {maximizedChart && (
+        <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-10 animate-fadeIn">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-[85vh] rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 dark:border-zinc-800 flex flex-col relative animate-scaleIn">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-100 dark:border-zinc-800 flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                  {maximizedChart === 'novos-clientes' && <>📊 Novos Clientes por Dia</>}
+                  {maximizedChart === 'conversas-diarias' && <>💬 Conversas Iniciadas por Dia</>}
+                  {maximizedChart === 'comparativo-conversas' && <>📈 Comparativo com a Semana Anterior</>}
+                  {maximizedChart === 'consumo-orcamento' && <>💵 Consumo de Orçamento Diário</>}
+                </h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">Visualização em Tela Cheia</p>
+              </div>
+              <button 
+                onClick={() => setMaximizedChart(null)}
+                className="p-2.5 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white rounded-full transition-all hover:scale-105"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 min-h-0 w-full">
+              {maximizedChart === 'novos-clientes' && (
+                <div className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={trafficChartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="colorNewMktMax" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMktMax)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {maximizedChart === 'conversas-diarias' && (
+                <div className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={dailyConversations} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <Tooltip 
+                        cursor={{ fill: '#f1f5f9' }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            return (
+                              <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 rounded-2xl shadow-xl text-left max-w-sm">
+                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase leading-none mb-2">Dia: {data.day}</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Conversas</span>
+                                    <span className="text-xs font-black text-indigo-600 mt-0.5 block">{data.conversations}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Investido</span>
+                                    <span className="text-xs font-black text-slate-800 dark:text-zinc-200 mt-0.5 block">R$ {data.spend.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Bar dataKey="conversations" name="Conversas" fill="#6366f1" radius={[8, 8, 0, 0]} maxBarSize={45}>
+                        <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={11} fontWeight={900} />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {maximizedChart === 'comparativo-conversas' && (
+                <div className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyConversations} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="colorCurrentMax" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorPrevMax" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#94a3b8" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#94a3b8" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <Tooltip 
+                        cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const currentVal = data.conversations || 0;
+                            const prevVal = data.prevConversations || 0;
+                            const diff = currentVal - prevVal;
+                            const pct = prevVal > 0 ? (diff / prevVal) * 100 : 0;
+                            const isUp = diff >= 0;
+                            return (
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
+                                    <span>DIA ATUAL:</span>
+                                    <span>{currentVal} conversas</span>
+                                  </p>
+                                  <p className="text-xs font-black text-slate-500 flex items-center justify-between gap-6">
+                                    <span>SEMANA ANTERIOR:</span>
+                                    <span>{prevVal} conversas</span>
+                                  </p>
+                                  <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
+                                    <span>INVESTIMENTO:</span>
+                                    <span>{fmt.currency(data.spend)}</span>
+                                  </p>
+                                  <div className={`text-[10px] font-black flex items-center gap-1 border-t border-slate-100 dark:border-zinc-800 pt-2 ${
+                                    isUp ? 'text-emerald-600' : 'text-rose-600'
+                                  }`}>
+                                    {isUp ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                                    <span>VARIAÇÃO: {isUp ? '+' : ''}{pct.toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area type="monotone" dataKey="conversations" name="Dia Atual" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorCurrentMax)" dot={{ fill: '#6366f1', r: 4 }} activeDot={{ r: 6 }} />
+                      <Area type="monotone" dataKey="prevConversations" name="Semana Anterior" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={2} fillOpacity={1} fill="url(#colorPrevMax)" dot={{ fill: '#94a3b8', r: 3 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {maximizedChart === 'consumo-orcamento' && (
+                <div className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyConversations} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="colorSpendConsumoMax" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        </linearGradient>
+                        <linearGradient id="colorBudgetConsumoMax" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} tickFormatter={(val) => `R$${val}`} />
+                      <Tooltip 
+                        cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }}
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload;
+                            const spendVal = data.spend || 0;
+                            const budgetVal = data.budget || activeAgendamentoBudget || 0;
+                            const diff = spendVal - budgetVal;
+                            const pct = budgetVal > 0 ? (spendVal / budgetVal) * 100 : 0;
+                            const isOk = pct >= 90 && pct <= 110;
+                            const isOver = pct > 110;
+                            return (
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
+                                <div className="space-y-2">
+                                  <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
+                                    <span>INVESTIMENTO:</span>
+                                    <span>{fmt.currency(spendVal)}</span>
+                                  </p>
+                                  <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
+                                    <span>ORÇAMENTO:</span>
+                                    <span>{fmt.currency(budgetVal)}</span>
+                                  </p>
+                                  <p className={`text-xs font-black flex items-center justify-between gap-6 ${diff >= 0 ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                    <span>DIFERENÇA:</span>
+                                    <span>{diff >= 0 ? '+' : ''}{fmt.currency(diff)}</span>
+                                  </p>
+                                  <div className={`text-[10px] font-black flex items-center gap-1 border-t border-slate-100 dark:border-zinc-800 pt-2 ${
+                                    isOk ? 'text-emerald-600' : isOver ? 'text-rose-600' : 'text-amber-600'
+                                  }`}>
+                                    {isOk ? <CircleCheck size={12} /> : <AlertTriangle size={12} />}
+                                    <span>CONSUMO: {pct.toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area type="monotone" dataKey="spend" name="Investido" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSpendConsumoMax)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
+                      <Area type="monotone" dataKey="budget" name="Orçado" stroke="#6366f1" strokeDasharray="5 5" strokeWidth={2} fillOpacity={1} fill="url(#colorBudgetConsumoMax)" dot={{ fill: '#6366f1', r: 3 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isCouponsModalOpen && (
         <CouponsModal 
           couponsListData={couponsListData} 
