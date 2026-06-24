@@ -14,6 +14,14 @@ const getDuration = (start: string, end?: string, defaultDuration: number = 30) 
     return (endH * 60 + endM) - (startH * 60 + startM);
 };
 
+const isFullDayBlockCheck = (a: { time: string; endTime?: string }) => {
+    const time = a.time ? a.time.substring(0, 5) : '';
+    const endTime = a.endTime ? a.endTime.substring(0, 5) : '';
+    const isStart = !time || time === '00:00';
+    const isEnd = !endTime || endTime === '23:59' || endTime === '24:00';
+    return isStart && isEnd;
+};
+
 const getEffectiveStatus = (a: Appointment, providerId?: string) => {
     // If the overall appointment is finished or canceled, that status should prevail for everyone
     if (a.status === 'Concluído' || a.status === 'Cancelado') return a.status;
@@ -1735,22 +1743,27 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         {/* Providers Row */}
                                         <div className="flex">
                                             {activeVisibileProviders.map(p => {
-                                                const isInternalBlocked = appointments.some(a =>
+                                                const providerBlocks = appointments.filter(a =>
                                                     a.providerId === p.id &&
                                                     a.date === gridDateStr &&
                                                     a.combinedServiceNames === 'BLOQUEIO_INTERNO'
+                                                );
+                                                const isInternalBlocked = providerBlocks.length > 0;
+                                                const isFullDayBlock = providerBlocks.some(a =>
+                                                    isFullDayBlockCheck(a)
                                                 );
                                                 const isVacationPeriod = p.vacationStart && p.vacationEnd &&
                                                     gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
                                                 const isDayOff = p.daysOff?.includes(gridDateStr);
                                                 const isOnVacation = isVacationPeriod || isDayOff;
 
-                                                const isBlocked = isInternalBlocked || isOnVacation;
+                                                const isFullyBlocked = isFullDayBlock || isOnVacation;
+                                                const isPartiallyBlocked = isInternalBlocked && !isFullDayBlock;
 
                                                 return (
                                                     <div
                                                         key={p.id}
-                                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isBlocked ? 'bg-slate-200 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-700' : ''}`}
+                                                        className={`flex-shrink-0 border-r border-slate-100 dark:border-zinc-800 p-3 text-center transition-all relative group ${isFullyBlocked ? 'bg-slate-200 dark:bg-zinc-800/80 border-slate-300 dark:border-zinc-700' : ''}`}
                                                         style={{ width: `${160 * zoomLevel}px` }}
                                                     >
                                                         <div className="flex justify-center mb-1">
@@ -1772,14 +1785,32 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                 <CalendarIcon size={8} />
                                                                 {zoomLevel >= 0.8 && (p.daysOff?.includes(gridDateStr) ? 'Folga' : 'Férias')}
                                                             </div>
+                                                        ) : isFullDayBlock ? (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} bg-rose-500 text-white hover:bg-rose-600`}
+                                                                title="Desbloquear"
+                                                            >
+                                                                <Ban size={8} />
+                                                                {zoomLevel >= 0.8 && 'Bloqueado'}
+                                                            </button>
+                                                        ) : isPartiallyBlocked ? (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
+                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} bg-amber-500 text-white hover:bg-amber-600`}
+                                                                title="Desbloquear"
+                                                            >
+                                                                <Clock size={8} />
+                                                                {zoomLevel >= 0.8 && 'Parcial'}
+                                                            </button>
                                                         ) : (
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleBlockProfessional(p.id); }}
-                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} ${isBlocked ? 'bg-emerald-500 text-white hover:bg-emerald-600' : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400'}`}
-                                                                title={isBlocked ? 'Desbloquear' : 'Bloquear'}
+                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} bg-emerald-500 text-white hover:bg-emerald-600`}
+                                                                title="Bloquear"
                                                             >
-                                                                {isBlocked ? <Check size={8} /> : <Ban size={8} />}
-                                                                {zoomLevel >= 0.8 && (isBlocked ? 'Desbloquear' : 'Bloquear')}
+                                                                <Check size={8} />
+                                                                {zoomLevel >= 0.8 && 'Disponível'}
                                                             </button>
                                                         )}
                                                     </div>
@@ -1816,12 +1847,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         );
 
                                                         const isBlocked = isOnVacation || internalBlocks.some(a => {
-                                                            if (!a.endTime || (a.time === '00:00' && a.endTime === '23:59')) return true;
-                                                            return hour >= a.time && hour < a.endTime;
+                                                            if (isFullDayBlockCheck(a)) return true;
+                                                            const time = a.time ? a.time.substring(0, 5) : '';
+                                                            const endTime = a.endTime ? a.endTime.substring(0, 5) : '';
+                                                            return hour >= time && hour < endTime;
                                                         });
                                                         
                                                         const isFullDayBlock = isOnVacation || internalBlocks.some(a => 
-                                                            !a.endTime || (a.time === '00:00' && a.endTime === '23:59')
+                                                            isFullDayBlockCheck(a)
                                                         );
 
                                                         const slotAppointments = getCellAppointments(p.id, hour).filter(a => a.combinedServiceNames !== 'BLOQUEIO_INTERNO');
