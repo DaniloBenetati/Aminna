@@ -694,6 +694,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 });
                 const metrics = calcMetrics(hourApps);
                 const custDetails = getCustomerDetails(hourApps.filter(a => a.status !== 'Cancelado'));
+                const activeCustIds = new Set(hourApps.filter(a => a.status !== 'Cancelado').map(a => a.customerId));
+                const cancelledCustIds = new Set(hourApps.filter(a => a.status === 'Cancelado').map(a => a.customerId));
+                const clientesCancelados = Array.from(cancelledCustIds).filter(id => !activeCustIds.has(id)).length;
                 return {
                     name: label,
                     atendimentos: hourApps.filter(a => a.status !== 'Cancelado').length,
@@ -701,6 +704,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
+                    clientesCancelados,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -730,6 +734,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 const daySales = filteredSales.filter(s => s.date === dateStr);
                 const metrics = calcMetrics(dayApps, daySales);
                 const custDetails = getCustomerDetails(dayApps.filter(a => a.status !== 'Cancelado'));
+                const activeCustIds = new Set(dayApps.filter(a => a.status !== 'Cancelado').map(a => a.customerId));
+                const cancelledCustIds = new Set(dayApps.filter(a => a.status === 'Cancelado').map(a => a.customerId));
+                const clientesCancelados = Array.from(cancelledCustIds).filter(id => !activeCustIds.has(id)).length;
                 return {
                     name: d.getDate().toString(),
                     fullDate: dateStr,
@@ -738,6 +745,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
+                    clientesCancelados,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -765,6 +773,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 });
                 const metrics = calcMetrics(monthApps, monthSales);
                 const custDetails = getCustomerDetails(monthApps.filter(a => a.status !== 'Cancelado'));
+                const activeCustIds = new Set(monthApps.filter(a => a.status !== 'Cancelado').map(a => a.customerId));
+                const cancelledCustIds = new Set(monthApps.filter(a => a.status === 'Cancelado').map(a => a.customerId));
+                const clientesCancelados = Array.from(cancelledCustIds).filter(id => !activeCustIds.has(id)).length;
                 return {
                     name: m,
                     atendimentos: monthApps.filter(a => a.status !== 'Cancelado').length,
@@ -772,6 +783,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     clientes: custDetails.clientes,
                     clientesNovos: custDetails.clientesNovos,
                     clientesFieis: custDetails.clientesFieis,
+                    clientesCancelados,
                     faturamento: metrics.faturamento,
                     faturamentoConcluido: metrics.faturamentoConcluido,
                     faturamentoPrevisto: metrics.faturamentoPrevisto,
@@ -1963,12 +1975,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Atendimentos:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">
-                                {data.atendimentos} <span className="text-rose-500 font-bold">({data.atendimentosCancelados || 0} canc.)</span>
+                                {data.atendimentos}
                             </span>
                         </div>
                         <div className="flex justify-between items-center gap-4">
                             <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Clientes:</span>
-                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">{data.clientes}</span>
+                            <span className="text-xs font-black text-slate-700 dark:text-slate-300">
+                                {data.clientes} <span className="text-rose-500 font-bold">({data.clientesCancelados || 0} canc.)</span>
+                            </span>
                         </div>
                         <div className="pl-4 border-l-2 border-slate-100 dark:border-zinc-700 space-y-1">
                             <div className="flex justify-between items-center gap-4">
