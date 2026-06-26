@@ -26,3 +26,12 @@ if (path.startsWith('/catalogo')) {
     </React.StrictMode>
   );
 }
+
+// Registro do Service Worker para suporte a PWA instalável
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('Service Worker registrado com sucesso:', reg.scope))
+      .catch((err) => console.error('Falha ao registrar Service Worker:', err));
+  });
+}

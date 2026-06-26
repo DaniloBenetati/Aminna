@@ -2275,14 +2275,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <Maximize2 size={13} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Total de Conversas</p>
-                                <p className="text-lg font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
+                                <p className="text-sm font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
                             </div>
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl text-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
-                                <p className="text-lg font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
+                                <p className="text-sm font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
                             </div>
                           </div>
                         </div>
@@ -2344,24 +2344,24 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <Maximize2 size={13} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Média Período Atual</p>
-                                <p className="text-lg font-black text-indigo-600">
+                                <p className="text-sm font-black text-indigo-600">
                                   {dailyConversations.length > 0 
                                     ? (dailyConversations.reduce((sum, d) => sum + (d.conversations || 0), 0) / dailyConversations.length).toFixed(1)
                                     : '0.0'}
                                 </p>
                             </div>
-                            <div className="bg-violet-50 dark:bg-violet-900/20 px-6 py-3 rounded-2xl text-center">
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Resultado</p>
-                                <p className="text-lg font-black text-violet-600">
+                                <p className="text-sm font-black text-violet-600">
                                   {activeCostPerResult > 0 ? fmt.currency(activeCostPerResult) : '—'}
                                 </p>
                             </div>
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-6 py-3 rounded-2xl text-center">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Média Semana Anterior</p>
-                                <p className="text-lg font-black text-slate-500">
+                                <p className="text-sm font-black text-slate-500">
                                   {dailyConversations.length > 0 
                                     ? (dailyConversations.reduce((sum, d) => sum + (d.prevConversations || 0), 0) / dailyConversations.length).toFixed(1)
                                     : '0.0'}
@@ -2374,14 +2374,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               const pct = prevTotal > 0 ? (diff / prevTotal) * 100 : 0;
                               const isUp = diff >= 0;
                               return (
-                                <div className={`px-6 py-3 rounded-2xl text-center flex flex-col justify-center ${
+                                <div className={`px-4 py-2 rounded-xl text-center flex flex-col justify-center ${
                                   isUp 
                                     ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' 
                                     : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
                                 }`}>
                                   <p className={`text-[8px] font-black uppercase tracking-widest ${isUp ? 'text-emerald-400' : 'text-rose-400'}`}>Desempenho Geral</p>
-                                  <p className="text-lg font-black flex items-center justify-center gap-1">
-                                    {isUp ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+                                  <p className="text-sm font-black flex items-center justify-center gap-1">
+                                    {isUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                                     {isUp ? '+' : ''}{pct.toFixed(1)}%
                                   </p>
                                 </div>
@@ -2479,22 +2479,22 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <Maximize2 size={13} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-6 py-3 rounded-2xl text-center">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
-                                <p className="text-lg font-black text-emerald-600">{fmt.currency(budgetVsSpendMetrics.totalSpend)}</p>
+                                <p className="text-sm font-black text-emerald-600">{fmt.currency(budgetVsSpendMetrics.totalSpend)}</p>
                             </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 rounded-2xl text-center">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Orçamento Programado</p>
-                                <p className="text-lg font-black text-indigo-600">{fmt.currency(budgetVsSpendMetrics.totalBudget)}</p>
+                                <p className="text-sm font-black text-indigo-600">{fmt.currency(budgetVsSpendMetrics.totalBudget)}</p>
                             </div>
-                            <div className="bg-violet-50 dark:bg-violet-900/20 px-6 py-3 rounded-2xl text-center">
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Média Diária Gasta</p>
-                                <p className="text-lg font-black text-violet-600">{fmt.currency(budgetVsSpendMetrics.avgDailySpend)}</p>
+                                <p className="text-sm font-black text-violet-600">{fmt.currency(budgetVsSpendMetrics.avgDailySpend)}</p>
                             </div>
-                            <div className={`px-6 py-3 rounded-2xl text-center flex flex-col justify-center ${budgetVsSpendMetrics.statusColor}`}>
+                            <div className={`px-4 py-2 rounded-xl text-center flex flex-col justify-center ${budgetVsSpendMetrics.statusColor}`}>
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-80">Taxa de Consumo</p>
-                                <p className="text-lg font-black flex items-center justify-center gap-1">
+                                <p className="text-sm font-black flex items-center justify-center gap-1">
                                   {budgetVsSpendMetrics.consumptionRate.toFixed(1)}%
                                 </p>
                             </div>
