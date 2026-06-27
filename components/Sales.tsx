@@ -42,8 +42,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [dateRef, setDateRef] = useState(new Date());
 
     const [customRange, setCustomRange] = useState({
-        start: new Date().toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
+        start: toLocalDateStr(new Date()),
+        end: toLocalDateStr(new Date())
     });
 
     const [paymentFilter, setPaymentFilter] = useState('all');
@@ -62,7 +62,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [productSearch, setProductSearch] = useState('');
     const [isScanning, setIsScanning] = useState(false);
     const [ocrError, setOcrError] = useState<string | null>(null);
-    const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+    const [saleDate, setSaleDate] = useState(toLocalDateStr(new Date()));
     const [activeMainTab, setActiveMainTab] = useState<'ACTIVITY' | 'CATALOG' | 'ANALYSES' | 'RESERVAS'>('CATALOG');
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -133,6 +133,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         }
     }, [activeMainTab]);
 
+    // Ensure registering a sale always brings the current date when opening the modal
+    useEffect(() => {
+        if (isModalOpen && !editingSaleId) {
+            setSaleDate(toLocalDateStr(new Date()));
+        }
+    }, [isModalOpen, editingSaleId]);
+
     // Quick Registration State
     const [isQuickRegisterOpen, setIsQuickRegisterOpen] = useState(false);
     const [quickRegisterData, setQuickRegisterData] = useState<{ name: string, phone: string, cpf?: string }>({ name: '', phone: '', cpf: '' });
@@ -170,7 +177,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
         setAdjustmentAmount(0);
         setAdjustmentReason('');
         setShowAdjustmentField(false);
-        setSaleDate(new Date().toISOString().split('T')[0]);
+        setSaleDate(toLocalDateStr(new Date()));
         setEditingSaleId(null);
         setConvertingReservationId(null);
         setTriedToSubmit(false);
@@ -591,7 +598,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 name: quickRegisterData.name,
                 phone: normalizedPhone,
                 cpf: quickRegisterData.cpf,
-                registration_date: new Date().toISOString().split('T')[0],
+                registration_date: toLocalDateStr(new Date()),
                 status: 'Novo',
                 total_spent: 0,
                 acquisition_channel: 'Venda Direta'
@@ -776,7 +783,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             total: i.quantity * i.unitPrice
         })));
         setCustomerId(sale.customerId);
-        setSaleDate(sale.date ? sale.date.split('T')[0] : new Date().toISOString().split('T')[0]);
+        setSaleDate(sale.date ? sale.date.split('T')[0] : toLocalDateStr(new Date()));
         setPayments(sale.payments || []);
         setAdjustmentAmount(sale.adjustmentAmount || 0);
         setAdjustmentReason(sale.adjustmentReason || '');
@@ -839,7 +846,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             name: cleanName,
                             phone: cleanPhone,
                             status: 'Novo',
-                            registration_date: new Date().toISOString().split('T')[0],
+                            registration_date: toLocalDateStr(new Date()),
                             total_spent: 0
                         }).select().single();
 
@@ -849,7 +856,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 name: cleanName,
                                 phone: cleanPhone,
                                 status: 'Novo',
-                                registration_date: new Date().toISOString().split('T')[0],
+                                registration_date: toLocalDateStr(new Date()),
                                 total_spent: 0
                             }).select().single();
                             

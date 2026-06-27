@@ -179,6 +179,7 @@ interface AgendaProps {
     paymentSettings: PaymentSetting[];
     commissionSettings?: CommissionSetting[];
     providers: Provider[];
+    setProviders?: React.Dispatch<React.SetStateAction<Provider[]>>;
     stock: StockItem[];
     sales: Sale[];
     expenses: Expense[];
@@ -194,7 +195,7 @@ interface AgendaProps {
 
 export const Agenda: React.FC<AgendaProps> = ({
     customers, setCustomers, appointments, setAppointments, services, campaigns, leads, setLeads, paymentSettings,
-    commissionSettings, providers, stock, sales, expenses, nfseRecords, fiscalConfig, userProfile,
+    commissionSettings, providers, setProviders, stock, sales, expenses, nfseRecords, fiscalConfig, userProfile,
     financialConfigs, setFinancialConfigs, isLoadingData, onNavigate, partners = []
 }) => {
     // Date & View States
@@ -1030,6 +1031,55 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsBlockModalOpen(true);
     };
 
+    const handleRemoveDayOff = async (providerId: string, dateStr: string) => {
+        const provider = providers.find(p => p.id === providerId);
+        if (!provider) return;
+
+        const name = provider.name;
+        const [year, month, day] = dateStr.split('-');
+        const formattedDate = `${day}/${month}/${year}`;
+
+        if (window.confirm(`Deseja REMOVER a folga de ${name} para o dia ${formattedDate}?`)) {
+            // Optimistic update
+            if (setProviders) {
+                setProviders(prev => prev.map(p => {
+                    if (p.id === providerId) {
+                        return {
+                            ...p,
+                            daysOff: (p.daysOff || []).filter(d => d !== dateStr)
+                        };
+                    }
+                    return p;
+                }));
+            }
+
+            try {
+                const updatedDaysOff = (provider.daysOff || []).filter(d => d !== dateStr);
+
+                const { error } = await supabase
+                    .from('providers')
+                    .update({ days_off: updatedDaysOff })
+                    .eq('id', providerId);
+
+                if (error) throw error;
+                showToast(`Folga de ${name} removida com sucesso!`, 'success');
+            } catch (error) {
+                console.error('Error removing day off:', error);
+                showToast('Erro ao remover folga no banco de dados.', 'error');
+                
+                // Rollback
+                if (setProviders) {
+                    setProviders(prev => prev.map(p => {
+                        if (p.id === providerId) {
+                            return provider;
+                        }
+                        return p;
+                    }));
+                }
+            }
+        }
+    };
+
     const handleConfirmBlock = async () => {
         const { providerId, name, reason, type, startTime, endTime } = blockingData;
         const dateLabel = getDateLabel();
@@ -1652,7 +1702,17 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate">{p.name}</p>
                                                 {isOnVacation && (
-                                                    <span className="text-[9px] font-black text-amber-600 uppercase">{isDayOff ? 'Em Folga' : 'Em Férias'}</span>
+                                                    isDayOff ? (
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); handleRemoveDayOff(p.id, gridDateStr); }}
+                                                            className="text-[9px] font-black text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 uppercase bg-amber-100 dark:bg-amber-950/40 px-1.5 py-0.5 rounded transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                                                            title="Remover folga para este dia"
+                                                        >
+                                                            Em Folga <X size={8} />
+                                                        </button>
+                                                    ) : (
+                                                        <span className="text-[9px] font-black text-amber-600 uppercase">Em Férias</span>
+                                                    )
                                                 )}
                                             </div>
                                             <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-black px-2 py-0.5 rounded-full">{provAppts.length}</span>
@@ -1667,9 +1727,21 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         {/* Appointment cards */}
                                         {isOnVacation ? (
                                             <div className="px-4 py-8 text-center bg-amber-50/30 dark:bg-amber-900/5">
-                                                <p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest">
-                                                    {isDayOff ? 'Folga neste dia' : 'Profissional em férias'}
-                                                </p>
+                                                {isDayOff ? (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleRemoveDayOff(p.id, gridDateStr); }}
+                                                        className="mx-auto flex flex-col items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-all active:scale-95 p-2 rounded-xl bg-amber-100/40 dark:bg-amber-950/20"
+                                                    >
+                                                        <p className="text-[10px] font-black uppercase tracking-widest">
+                                                            Folga neste dia
+                                                        </p>
+                                                        <span className="text-[8px] font-bold underline">Clique para remover folga</span>
+                                                    </button>
+                                                ) : (
+                                                    <p className="text-amber-600 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest">
+                                                        Profissional em férias
+                                                    </p>
+                                                )}
                                             </div>
                                         ) : provAppts.length === 0 ? (
                                             <div className="px-4 py-8 text-center bg-slate-50/30 dark:bg-zinc-900/5">
@@ -1780,10 +1852,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             </p>
                                                         </div>
 
-                                                        {isOnVacation ? (
-                                                            <div className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-amber-950 shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'}`} title={p.daysOff?.includes(gridDateStr) ? 'Folga' : 'Férias'}>
+                                                        {isDayOff ? (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); handleRemoveDayOff(p.id, gridDateStr); }}
+                                                                className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter transition-all hover:scale-105 active:scale-95 shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'} bg-amber-400 text-amber-950 hover:bg-amber-500`}
+                                                                title="Remover folga para este dia"
+                                                            >
                                                                 <CalendarIcon size={8} />
-                                                                {zoomLevel >= 0.8 && (p.daysOff?.includes(gridDateStr) ? 'Folga' : 'Férias')}
+                                                                {zoomLevel >= 0.8 && 'Folga'}
+                                                            </button>
+                                                        ) : isVacationPeriod ? (
+                                                            <div className={`mt-1 flex items-center justify-center gap-1 mx-auto rounded-full text-[8px] font-black uppercase tracking-tighter bg-amber-400 text-amber-950 shadow-sm ${zoomLevel >= 0.8 ? 'px-2 py-0.5' : 'p-1 w-5 h-5'}`} title="Férias">
+                                                                <CalendarIcon size={8} />
+                                                                {zoomLevel >= 0.8 && 'Férias'}
                                                             </div>
                                                         ) : isFullDayBlock ? (
                                                             <button

@@ -784,6 +784,7 @@ const App: React.FC = () => {
             financialConfigs={financialConfigs}
             setFinancialConfigs={setFinancialConfigs}
             providers={providers}
+            setProviders={setProviders}
             stock={stock}
             expenses={expenses}
             nfseRecords={nfseRecords}
