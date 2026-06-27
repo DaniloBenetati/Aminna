@@ -123,7 +123,8 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
         
         filteredSales.forEach(s => {
             if (s.date) {
-                const dateObj = new Date(s.date.includes('T') ? s.date : s.date + 'T12:00:00');
+                const dateStr = s.date.split(' ')[0].split('T')[0];
+                const dateObj = new Date(dateStr + 'T12:00:00');
                 const d = dateObj.getDay();
                 if (!isNaN(d) && performance[d]) {
                     performance[d].value += (s.totalAmount || 0);

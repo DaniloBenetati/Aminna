@@ -297,7 +297,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="text-[10px] font-bold text-slate-500">{new Date(row.date).toLocaleDateString('pt-BR')}</span>
+                          <span className="text-[10px] font-bold text-slate-500">{new Date(row.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
                           <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">

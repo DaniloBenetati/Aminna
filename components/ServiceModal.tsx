@@ -2935,7 +2935,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             {(() => {
                                                 const dateStr = appointment.date || appointment.paymentDate;
                                                 if (!dateStr) return '-';
-                                                const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T12:00:00');
+                                                const cleanDate = dateStr.split(' ')[0].split('T')[0];
+                                                const d = new Date(cleanDate + 'T12:00:00');
                                                 return isNaN(d.getTime()) ? 'Data Inválida' : d.toLocaleDateString('pt-BR');
                                             })()}
                                         </span>
