@@ -904,9 +904,15 @@ const App: React.FC = () => {
 
   if (isLoadingAuth || (isAuthenticated && isLoadingData && services.length === 0)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-zinc-950 flex-col gap-4">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-        {isAuthenticated && <p className="text-xs font-bold text-slate-400 animate-pulse">Carregando seus dados...</p>}
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-zinc-950 transition-colors duration-300">
+        <div className="relative flex flex-col items-center">
+          <div className="absolute inset-0 bg-indigo-500/10 dark:bg-indigo-400/5 blur-3xl rounded-full scale-150 animate-pulse" />
+          <img 
+            src="/logo.png" 
+            alt="Aminna Logo" 
+            className="h-24 md:h-28 w-auto object-contain dark:invert animate-pulse relative z-10" 
+          />
+        </div>
       </div>
     );
   }

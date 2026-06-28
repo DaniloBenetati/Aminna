@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered, Monitor, Smartphone, Wallet } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, DollarSign, Package, Menu, Settings, Briefcase, ShoppingCart, Sparkles, Contact, X, Handshake, Clock, BarChart3, Moon, Sun, Coffee, LogOut, ChevronLeft, ChevronRight, Megaphone, ListOrdered, Monitor, Smartphone, Wallet, Minus, Plus } from 'lucide-react';
 import { ViewState, UserProfile } from '../types';
 
 interface LayoutProps {
@@ -57,6 +57,47 @@ export const Layout: React.FC<LayoutProps> = ({
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  // App Custom Zoom Controls
+  const [zoom, setZoom] = useState(() => {
+    const saved = localStorage.getItem('appZoom');
+    return saved ? parseFloat(saved) : 1.0;
+  });
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isZoomExpanded, setIsZoomExpanded] = useState(false);
+
+  useEffect(() => {
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    setIsStandalone(!!isPWA || isLocal);
+  }, []);
+
+  useEffect(() => {
+    const zoomStr = zoom.toFixed(2);
+    (document.body.style as any).zoom = zoomStr;
+    localStorage.setItem('appZoom', zoomStr);
+  }, [zoom]);
+
+  // Auto collapse zoom control after 5s of inactivity
+  useEffect(() => {
+    if (!isZoomExpanded) return;
+    const timer = setTimeout(() => {
+      setIsZoomExpanded(false);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [isZoomExpanded, zoom]);
+
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.05, 1.40));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.05, 0.70));
+  };
+
+  const handleZoomReset = () => {
+    setZoom(1.0);
+  };
 
 
   const menuItems = [
@@ -307,6 +348,48 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
       </main>
 
+      {/* Floating Zoom Controls for PWA / Standalone App / Dev Mode */}
+      {isStandalone && (
+        <div className="fixed bottom-6 right-6 z-[9999] flex items-center font-sans select-none pointer-events-auto">
+          {isZoomExpanded ? (
+            <div className="flex items-center gap-3 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border border-slate-200/60 dark:border-zinc-800/60 px-3 py-1.5 rounded-full shadow-2xl animate-in slide-in-from-right-4 duration-300">
+              <button
+                onClick={handleZoomOut}
+                disabled={zoom <= 0.70}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer"
+                title="Diminuir Zoom"
+              >
+                <Minus size={14} className="text-slate-700 dark:text-slate-300" />
+              </button>
+              
+              <button
+                onClick={handleZoomReset}
+                className="text-[11px] font-black text-slate-800 dark:text-slate-200 min-w-[50px] text-center hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors uppercase tracking-wider cursor-pointer"
+                title="Resetar Zoom para 100%"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+
+              <button
+                onClick={handleZoomIn}
+                disabled={zoom >= 1.40}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 disabled:opacity-40 transition-colors cursor-pointer"
+                title="Aumentar Zoom"
+              >
+                <Plus size={14} className="text-slate-700 dark:text-slate-300" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsZoomExpanded(true)}
+              className="w-11 h-11 rounded-full flex items-center justify-center bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border border-slate-200 dark:border-zinc-800 shadow-xl hover:scale-105 hover:bg-white dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300 transition-all font-black text-xs cursor-pointer"
+              title="Ajustar Zoom"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+          )}
+        </div>
+      )}
 
     </div>
   );
