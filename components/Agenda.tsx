@@ -736,22 +736,37 @@ export const Agenda: React.FC<AgendaProps> = ({
         const normalizedPhone = quickRegisterData.phone.replace(/\D/g, '');
         const existingCustomer = customers.find(c => {
             const cPhone = (c.phone || '').replace(/\D/g, '');
-            return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
+            const secondaryMatch = c.secondaryPhones?.some(p => p.replace(/\D/g, '') === normalizedPhone);
+            return (normalizedPhone && (cPhone === normalizedPhone || secondaryMatch)) || (c.name.toLowerCase() === quickRegisterData.name.toLowerCase());
         });
 
         if (existingCustomer) {
-            if (window.confirm(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nDeseja usar o cadastro existente em vez de criar um novo?`)) {
+            const cPhone = (existingCustomer.phone || '').replace(/\D/g, '');
+            const secondaryMatch = existingCustomer.secondaryPhones?.some(p => p.replace(/\D/g, '') === normalizedPhone);
+            const isPhoneMatch = normalizedPhone && (cPhone === normalizedPhone || secondaryMatch);
+
+            if (isPhoneMatch) {
+                alert(`⚠️ NÚMERO VINCULADO A CLIENTE EXISTENTE\n\nO número "${quickRegisterData.phone}" pertence à cliente "${existingCustomer.name}".\n\nAbriremos automaticamente o cadastro principal desta cliente para o agendamento.`);
                 handleSelectCustomerForAppointment(existingCustomer);
                 setIsQuickRegisterOpen(false);
                 setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                setIsRegisteringClient(false);
                 return;
+            } else {
+                if (window.confirm(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo nome.\n\nDeseja usar o cadastro existente em vez de criar um novo?`)) {
+                    handleSelectCustomerForAppointment(existingCustomer);
+                    setIsQuickRegisterOpen(false);
+                    setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                    setIsRegisteringClient(false);
+                    return;
+                }
             }
         } else {
             // Secondary check: query DB directly in case local state is out of sync
             const { data: dbCustomer } = await supabase
                 .from('customers')
                 .select('*')
-                .or(`phone.eq.${normalizedPhone},name.eq.${quickRegisterData.name}`)
+                .or(`phone.eq.${normalizedPhone},secondary_phones.cs.{"${normalizedPhone}"},name.eq.${quickRegisterData.name}`)
                 .maybeSingle();
 
             if (dbCustomer) {
@@ -765,26 +780,37 @@ export const Agenda: React.FC<AgendaProps> = ({
                     totalSpent: 0,
                     status: dbCustomer.status,
                     history: [],
-                    preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
+                    preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' },
+                    secondaryPhones: dbCustomer.secondary_phones || []
                 };
-                
-                if (window.confirm(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" diretamente no banco de dados.\n\nDeseja usar o cadastro existente?`)) {
-                    setCustomers(prev => [...prev, mappedCustomer]);
+
+                const dbPhone = (dbCustomer.phone || '').replace(/\D/g, '');
+                const dbSecMatch = dbCustomer.secondary_phones?.some((p: string) => p.replace(/\D/g, '') === normalizedPhone);
+                const isPhoneMatch = normalizedPhone && (dbPhone === normalizedPhone || dbSecMatch);
+
+                if (isPhoneMatch) {
+                    alert(`⚠️ NÚMERO VINCULADO A CLIENTE EXISTENTE\n\nO número "${quickRegisterData.phone}" pertence à cliente "${dbCustomer.name}" diretamente no banco de dados.\n\nSincronizando e abrindo o cadastro principal desta cliente.`);
+                    setCustomers(prev => [...prev.filter(c => c.id !== mappedCustomer.id), mappedCustomer]);
                     handleSelectCustomerForAppointment(mappedCustomer);
                     setIsQuickRegisterOpen(false);
                     setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                    setIsRegisteringClient(false);
                     return;
+                } else {
+                    if (window.confirm(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" com o mesmo nome diretamente no banco de dados.\n\nDeseja usar o cadastro existente?`)) {
+                        setCustomers(prev => [...prev.filter(c => c.id !== mappedCustomer.id), mappedCustomer]);
+                        handleSelectCustomerForAppointment(mappedCustomer);
+                        setIsQuickRegisterOpen(false);
+                        setQuickRegisterData({ name: '', phone: '', cpf: '' });
+                        setIsRegisteringClient(false);
+                        return;
+                    }
                 }
             }
         }
 
-
         try {
             // 1. Insert into Supabase
-            // Note: Assuming 'customers' table auto-generates IDs or we generate one.
-            // Using a timestamp-based ID to match local pattern if DB doesn't return one immediately,
-            // but ideally we rely on DB return. For now, we'll try to insert and use returned data.
-
             const newCustomerPayload = {
                 name: quickRegisterData.name,
                 phone: normalizedPhone,
@@ -792,7 +818,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                 registration_date: new Date().toISOString().split('T')[0],
                 status: 'Novo',
                 total_spent: 0,
-                acquisition_channel: 'Agendamento Rápido'
+                acquisition_channel: 'Agendamento Rápido',
+                secondary_phones: []
             };
 
             const { data, error } = await supabase
@@ -806,7 +833,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             if (data) {
                 // 2. Update Local State
                 const newCustomer: Customer = {
-                    id: data.id, // Use ID from Supabase
+                    id: data.id,
                     name: data.name,
                     phone: data.phone,
                     email: data.email,
@@ -816,7 +843,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                     status: 'Novo',
                     history: [],
                     preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' },
-                    acquisitionChannel: 'Agendamento Rápido'
+                    acquisitionChannel: 'Agendamento Rápido',
+                    secondaryPhones: []
                 };
 
                 setCustomers(prev => [...prev, newCustomer]);
@@ -984,8 +1012,10 @@ export const Agenda: React.FC<AgendaProps> = ({
 
     const filteredCustomersForSelection = customers.filter(c => {
         const search = normalizeSearch(customerSearchTerm);
+        const secondaryMatch = c.secondaryPhones?.some(p => normalizeSearch(p).includes(search));
         return normalizeSearch(c.name).includes(search) ||
-               c.phone.includes(search);
+               c.phone.includes(search) ||
+               secondaryMatch;
     });
 
     const handleBlockProfessional = async (providerId: string) => {

@@ -631,7 +631,8 @@ const App: React.FC = () => {
           vipDiscountPercent: c.vip_discount_percent,
           creditBalance: c.credit_balance,
           lastMarketingContact: c.last_marketing_contact,
-          acquisitionChannel: c.acquisition_channel
+          acquisitionChannel: c.acquisition_channel,
+          secondaryPhones: c.secondary_phones || []
         }));
 
         // Frontend Deduplication
@@ -736,6 +737,8 @@ const App: React.FC = () => {
             customers={customers}
             setCustomers={setCustomers}
             appointments={appointments}
+            setAppointments={setAppointments}
+            setSales={setSales}
             services={services}
             userProfile={simulatedProfile || userProfile}
             selectedCustomerId={selectedCustomerId}

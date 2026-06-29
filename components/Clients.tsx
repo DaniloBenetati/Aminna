@@ -7,13 +7,16 @@ import {
   Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save,
   ClipboardCheck, Eye, Trash2
 } from 'lucide-react';
-import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile, ConsentForm as IConsentForm } from '../types';
+import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile, ConsentForm as IConsentForm, Partner, Sale } from '../types';
 import { ConsentForm } from './ConsentForm';
+import { LinkCustomersModal } from './LinkCustomersModal';
 
 interface ClientsProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
   appointments?: Appointment[];
+  setAppointments?: React.Dispatch<React.SetStateAction<Appointment[]>>;
+  setSales?: React.Dispatch<React.SetStateAction<Sale[]>>;
   services?: Service[];
   userProfile: UserProfile | null;
   selectedCustomerId: string | null;
@@ -23,7 +26,7 @@ interface ClientsProps {
   partners?: Partner[];
 }
 
-export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [], partners = [] }) => {
+export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], setAppointments, setSales, services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [], partners = [] }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit' | 'debt'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -34,6 +37,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [isLoadingForms, setIsLoadingForms] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedConsentForm, setSelectedConsentForm] = useState<IConsentForm | null>(null);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
 
   // Form States
   const [formData, setFormData] = useState<Partial<Customer>>({});
@@ -91,9 +95,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
   const filteredCustomers = useMemo(() => {
     return customers.filter(c => {
+      const secondaryMatch = c.secondaryPhones?.some(p => p.includes(searchTerm));
       const matchesSearch = 
         c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.phone.includes(searchTerm);
+        c.phone.includes(searchTerm) ||
+        secondaryMatch;
       
       if (!matchesSearch) return false;
 
@@ -185,7 +191,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     setFormData({
       ...customer,
       isBlocked: customer.isBlocked || false,
-      blockReason: customer.blockReason || ''
+      blockReason: customer.blockReason || '',
+      secondaryPhones: customer.secondaryPhones || []
     });
     setActiveTab('INFO');
     setLocalRestrictions(customer.preferences?.restrictions || '');
@@ -207,14 +214,15 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     }
     setLocalRestrictionReasons(reasons);
   };
-
+ 
   const handleNewCustomer = () => {
     setFormData({
       name: '', phone: '', email: '', address: '', birthDate: '', cpf: '', profession: '', status: 'Novo', observations: '',
       acquisitionChannel: '',
       isBlocked: false,
       blockReason: '',
-      preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' }
+      preferences: { favoriteServices: [], preferredDays: [], notes: '', restrictions: '' },
+      secondaryPhones: []
     });
 
     setLocalRestrictions(''); setLocalFavServices(''); setLocalPrefDays(''); setLocalPrefNotes('');
@@ -248,11 +256,13 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       const normalizedPhone = (formData.phone || '').replace(/\D/g, '');
       const existingCustomer = customers.find(c => {
         const cPhone = (c.phone || '').replace(/\D/g, '');
-        return (normalizedPhone && cPhone === normalizedPhone) || (c.name.toLowerCase() === formData.name!.toLowerCase());
+        const secondaryMatch = c.secondaryPhones?.some(p => p.replace(/\D/g, '') === normalizedPhone);
+        return (normalizedPhone && (cPhone === normalizedPhone || secondaryMatch)) || (c.name.toLowerCase() === formData.name!.toLowerCase());
       });
 
       if (existingCustomer) {
-        alert(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nPor favor, use a busca para encontrar o cadastro existente.`);
+        alert(`⚠️ CLIENTE JÁ CADASTRADA\n\nEncontramos "${existingCustomer.name}" com o mesmo telefone/nome.\n\nAbriremos automaticamente o cadastro principal desta cliente.`);
+        handleSelectCustomer(existingCustomer);
         return;
       }
 
@@ -260,11 +270,38 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       const { data: dbCustomer } = await supabase
         .from('customers')
         .select('*')
-        .or(`phone.eq.${normalizedPhone},name.eq.${formData.name}`)
+        .or(`phone.eq.${normalizedPhone},secondary_phones.cs.{"${normalizedPhone}"},name.eq.${formData.name}`)
         .maybeSingle();
 
       if (dbCustomer) {
-        alert(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" diretamente no banco de dados.\n\nPor favor, atualize a lista de clientes para sincronizar.`);
+        const mappedCustomer: Customer = {
+          id: dbCustomer.id,
+          name: dbCustomer.name,
+          email: dbCustomer.email,
+          phone: dbCustomer.phone || '',
+          cpf: dbCustomer.cpf,
+          birthDate: dbCustomer.birth_date,
+          address: dbCustomer.address,
+          preferences: dbCustomer.preferences,
+          totalSpent: dbCustomer.total_spent,
+          lastVisit: dbCustomer.last_visit,
+          outstandingBalance: dbCustomer.outstanding_balance,
+          history: dbCustomer.history || [],
+          status: dbCustomer.status || 'Ativo',
+          blockReason: dbCustomer.block_reason,
+          assignedProviderId: dbCustomer.assigned_provider_id,
+          assignedProviderIds: dbCustomer.assigned_provider_ids || [],
+          registrationDate: dbCustomer.registration_date || dbCustomer.created_at,
+          isVip: dbCustomer.is_vip,
+          vipDiscountPercent: dbCustomer.vip_discount_percent,
+          creditBalance: dbCustomer.credit_balance,
+          lastMarketingContact: dbCustomer.last_marketing_contact,
+          acquisitionChannel: dbCustomer.acquisition_channel,
+          secondaryPhones: dbCustomer.secondary_phones || []
+        };
+        alert(`⚠️ CLIENTE ENCONTRADA NO BANCO\n\nEncontramos "${dbCustomer.name}" diretamente no banco de dados.\n\nSincronizando e abrindo o cadastro desta cliente.`);
+        setCustomers(prev => [...prev.filter(c => c.id !== mappedCustomer.id), mappedCustomer]);
+        handleSelectCustomer(mappedCustomer);
         return;
       }
 
@@ -287,7 +324,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         registrationDate: new Date().toISOString().split('T')[0],
         history: initialHistory,
         totalSpent: 0,
-        preferences: updatedPreferences
+        preferences: updatedPreferences,
+        secondaryPhones: []
       } as Customer;
 
       // Save to Supabase
@@ -311,7 +349,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         assigned_provider_ids: localAssignedProviderIds,
         restricted_provider_ids: localRestrictedProviderIds,
         is_vip: formData.isVip || false,
-        vip_discount_percent: formData.vipDiscountPercent || 0
+        vip_discount_percent: formData.vipDiscountPercent || 0,
+        secondary_phones: []
       }).select().single();
 
       if (error) {
@@ -320,7 +359,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         return;
       }
 
-      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds, restrictedProviderIds: localRestrictedProviderIds, isVip: formData.isVip || false, vipDiscountPercent: formData.vipDiscountPercent || 0 };
+      const clientWithId = { ...newItem, id: data.id, assignedProviderIds: localAssignedProviderIds, restrictedProviderIds: localRestrictedProviderIds, isVip: formData.isVip || false, vipDiscountPercent: formData.vipDiscountPercent || 0, secondaryPhones: [] };
       setCustomers(prev => [...prev, clientWithId]);
       setSelectedCustomer(clientWithId);
 
@@ -328,6 +367,21 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         onNavigate(returnView);
       }
     } else if (selectedCustomer) {
+      // Validate secondary phones for duplicate conflicts
+      const newSecondaryPhonesClean = formData.secondaryPhones?.map(p => p.replace(/\D/g, '')).filter(Boolean) || [];
+      for (const phone of newSecondaryPhonesClean) {
+        const conflict = customers.find(c => {
+          if (c.id === selectedCustomer.id) return false;
+          const cPhone = (c.phone || '').replace(/\D/g, '');
+          const cSecMatch = c.secondaryPhones?.some(p => p.replace(/\D/g, '') === phone);
+          return cPhone === phone || cSecMatch;
+        });
+        if (conflict) {
+          alert(`⚠️ CONFLITO DE TELEFONE SECUNDÁRIO\n\nO número "${phone}" já está sendo usado pela cliente "${conflict.name}" (como telefone principal ou secundário).`);
+          return;
+        }
+      }
+
       // Logic for restriction history
       let finalHistory = [...(selectedCustomer.history || [])];
       localRestrictedProviderIds.forEach(pid => {
@@ -373,7 +427,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         assignedProviderIds: localAssignedProviderIds,
         restrictedProviderIds: localRestrictedProviderIds || [],
         isVip: formData.isVip || false,
-        vipDiscountPercent: formData.vipDiscountPercent || 0
+        vipDiscountPercent: formData.vipDiscountPercent || 0,
+        secondaryPhones: newSecondaryPhonesClean
       } as Customer;
 
       // Update Supabase
@@ -396,7 +451,8 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         history: finalHistory,
         is_vip: formData.isVip,
         vip_discount_percent: formData.vipDiscountPercent,
-        credit_balance: formData.creditBalance || 0
+        credit_balance: formData.creditBalance || 0,
+        secondary_phones: newSecondaryPhonesClean
       }).eq('id', selectedCustomer.id);
 
       if (error) {
@@ -413,6 +469,32 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       }
     }
     setIsEditing(false); setIsNew(false);
+  };
+
+  const handleMergeComplete = (updatedMainCustomer: Customer, mergedCustomerIds: string[]) => {
+    // 1. Atualizar a lista local de clientes (substituindo o principal e removendo os secundários)
+    setCustomers(prev => 
+      prev
+        .map(c => c.id === updatedMainCustomer.id ? updatedMainCustomer : c)
+        .filter(c => !mergedCustomerIds.includes(c.id))
+    );
+
+    // 2. Atualizar agendamentos no estado do React (se setAppointments for fornecido)
+    if (setAppointments) {
+      setAppointments(prev => 
+        prev.map(a => mergedCustomerIds.includes(a.customerId) ? { ...a, customerId: updatedMainCustomer.id } : a)
+      );
+    }
+
+    // 3. Atualizar vendas no estado do React (se setSales for fornecido)
+    if (setSales) {
+      setSales(prev =>
+        prev.map(s => mergedCustomerIds.includes(s.customerId) ? { ...s, customerId: updatedMainCustomer.id } : s)
+      );
+    }
+
+    // 4. Selecionar o cliente principal unificado
+    handleSelectCustomer(updatedMainCustomer);
   };
 
   const handleQuickRegister = async (e: React.FormEvent) => {
@@ -830,7 +912,14 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       <button type="submit" className="px-3 py-2 md:px-5 md:py-2.5 bg-indigo-600 text-white rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all">SALVAR</button>
                     </>
                   ) : (
-                    <button type="button" onClick={() => setIsEditing(true)} className="px-5 py-2.5 md:px-8 md:py-3 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">EDITAR</button>
+                    <div className="flex gap-2">
+                      {!isNew && (
+                        <button type="button" onClick={() => setIsLinkModalOpen(true)} className="px-3 py-2 md:px-4 md:py-2 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-950/50">
+                          <Users size={14} /> Vincular Cadastros
+                        </button>
+                      )}
+                      <button type="button" onClick={() => setIsEditing(true)} className="px-5 py-2.5 md:px-8 md:py-3 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">EDITAR</button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -994,7 +1083,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               <p className="text-sm font-black text-slate-950 dark:text-white">{formData.phone || 'N/A'}</p>
                             )}
                           </label>
-                          <label className="block">
+                           <label className="block">
                             <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Email</span>
                             {isEditing ? (
                               <input type="email" className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-zinc-950 dark:focus:border-white" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} />
@@ -1002,6 +1091,61 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               <p className="text-sm font-black text-slate-950 dark:text-white">{formData.email || 'Não informado'}</p>
                             )}
                           </label>
+
+                          {/* Telefones Secundários */}
+                          <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-zinc-700">
+                            <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Telefones Secundários</span>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                {formData.secondaryPhones?.map((phone, index) => (
+                                  <div key={index} className="flex gap-2 items-center">
+                                    <input 
+                                      type="tel" 
+                                      className="flex-1 bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none" 
+                                      value={phone} 
+                                      onChange={e => {
+                                        const updated = [...(formData.secondaryPhones || [])];
+                                        updated[index] = e.target.value;
+                                        setFormData({ ...formData, secondaryPhones: updated });
+                                      }} 
+                                    />
+                                    <button 
+                                      type="button" 
+                                      onClick={() => {
+                                        const updated = (formData.secondaryPhones || []).filter((_, i) => i !== index);
+                                        setFormData({ ...formData, secondaryPhones: updated });
+                                      }} 
+                                      className="p-3 bg-rose-50 dark:bg-rose-950/20 text-rose-500 rounded-xl hover:bg-rose-100 transition-all"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                ))}
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    setFormData({ ...formData, secondaryPhones: [...(formData.secondaryPhones || []), ''] });
+                                  }} 
+                                  className="w-full py-2 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                                >
+                                  <Plus size={14} /> Adicionar Telefone Secundário
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {formData.secondaryPhones && formData.secondaryPhones.length > 0 ? (
+                                  formData.secondaryPhones.map((phone, idx) => (
+                                    <p key={idx} className="text-sm font-black text-slate-950 dark:text-white flex items-center gap-2">
+                                      <Phone size={12} className="text-indigo-500" /> {phone}
+                                    </p>
+                                  ))
+                                ) : (
+                                  <p className="text-sm text-slate-400 dark:text-slate-500 italic">Nenhum telefone secundário vinculado</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
                         </div>
                       </div>
 
@@ -1491,6 +1635,16 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
           onSaved={() => fetchConsentForms(selectedCustomer.id)}
           initialTerm={selectedConsentForm}
           partners={partners}
+        />
+      )}
+
+      {/* Link Customers Modal */}
+      {isLinkModalOpen && selectedCustomer && (
+        <LinkCustomersModal
+          currentCustomer={selectedCustomer}
+          customers={customers}
+          onClose={() => setIsLinkModalOpen(false)}
+          onMergeComplete={handleMergeComplete}
         />
       )}
     </div>

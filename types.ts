@@ -127,6 +127,7 @@ export interface Customer {
   vipDiscountPercent?: number; // Percentual de desconto VIP (0-100)
   creditBalance?: number; // Saldo de Crédito
   lastMarketingContact?: string; // Último contato de recuperação/marketing
+  secondaryPhones?: string[];
 }
 
 export interface CustomerHistoryItem {
