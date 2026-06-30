@@ -668,6 +668,9 @@ const App: React.FC = () => {
           tipAmount: a.tip_amount, // Critical: Map tip_amount
           quantity: a.quantity, // Added quantity mapping
           startTimeActual: a.start_time_actual,
+          endTimeActual: a.end_time_actual,
+          checkInTime: a.check_in_time,
+          checkOutTime: a.check_out_time,
           createdAt: a.created_at,
           updatedAt: a.updated_at,
           isReconciled: a.is_reconciled,

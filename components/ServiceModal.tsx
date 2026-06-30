@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, CircleX, ArrowRight, ArrowLeft, CircleCheck, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy, History } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, CircleX, ArrowRight, ArrowLeft, CircleCheck, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy, History, ShieldAlert } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState, Sale } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -12,6 +12,13 @@ import { Toast } from './Toast';
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
 const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+const cleanUUID = (id: string | null | undefined): string | null => {
+    if (!id) return null;
+    const trimmed = id.trim();
+    if (trimmed === '' || trimmed.toLowerCase() === 'null') return null;
+    return isUUID(trimmed) ? trimmed : null;
+};
 
 const calculateEndTime = (startTime: string, durationMinutes: number, provider?: Provider, serviceName?: string) => {
     if (!startTime) return '';
@@ -52,6 +59,8 @@ interface ServiceLine {
     tipAmount: number;
     status?: 'Pendente' | 'Em Andamento' | 'Concluído' | 'Cancelado' | 'Aguardando';
     startTimeActual?: string;
+    endTimeActual?: string;
+    bookedPrice?: number;
 }
 
 const formatLocalDate = (date: Date) => {
@@ -101,6 +110,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     partners = []
 }) => {
     if (!appointment) return null;
+
+    const getValidEndTime = (startTime: string | undefined, endTime: string | undefined, fallbackTime: string) => {
+        let finalEnd = endTime || fallbackTime;
+        const startVal = startTime;
+        if (startVal && finalEnd) {
+            const [sh, sm] = startVal.split(':').map(Number);
+            const [eh, em] = finalEnd.split(':').map(Number);
+            if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+                if ((eh * 60 + em) < (sh * 60 + sm)) {
+                    return startVal;
+                }
+            }
+        }
+        return finalEnd;
+    };
 
     const [status, setStatus] = useState<Appointment['status']>(appointment?.status || 'Pendente');
     const [paymentMethod, setPaymentMethod] = useState(appointment?.paymentMethod || 'Pix');
@@ -306,6 +330,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             endTime: data.end_time,
                             quantity: data.quantity || 1,
                             startTimeActual: data.start_time_actual,
+                            endTimeActual: data.end_time_actual,
+                            checkInTime: data.check_in_time,
+                            checkOutTime: data.check_out_time,
                             tipAmount: data.tip_amount,
                             isRemake: data.is_remake,
                             isReconciled: data.is_reconciled,
@@ -367,7 +394,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 ? apptToUse.status
                 : (apptToUse.startTimeActual ? 'Em Andamento' :
                     (apptToUse.status === 'Aguardando' || apptToUse.status === 'Em Andamento' || apptToUse.status === 'Em atendimento' ? 'Aguardando' : 'Pendente')),
-            startTimeActual: apptToUse.startTimeActual
+            startTimeActual: apptToUse.startTimeActual,
+            endTimeActual: apptToUse.endTimeActual
         }];
 
         if (apptToUse.additionalServices) {
@@ -402,7 +430,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         quantity: extra.quantity || 1,
                         tipAmount: extra.tipAmount || 0,
                         status: (appointment.status === 'Concluído' || appointment.status === 'Cancelado') ? appointment.status : ((extra.status as any) || 'Pendente'),
-                        startTimeActual: extra.startTimeActual
+                        startTimeActual: extra.startTimeActual,
+                        endTimeActual: extra.endTimeActual
                     });
                     seenExtras.add(key);
                 }
@@ -481,7 +510,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         // Fetch existing NFSe
         const fetchNFSe = async () => {
-            if (!appointment.id) return;
+            if (!appointment.id || !isUUID(appointment.id)) return;
             const { data, error } = await supabase
                 .from('nfse_records')
                 .select('*')
@@ -500,7 +529,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         };
 
         const checkConsentForm = async () => {
-            if (!customer.id) return;
+            if (!customer.id || !isUUID(customer.id)) return;
             const { count } = await supabase
                 .from('customer_consent_forms')
                 .select('id', { count: 'exact', head: true })
@@ -903,6 +932,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const handleCheckIn = async () => {
         if (isSaving || restrictionData.isRestricted || handleCheckConflict()) return;
 
+        const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const checkInVal = nowTime;
+
         setIsSaving(true);
         // Check for merge possibility
         if (await checkForCustomerConflictAndMerge()) {
@@ -918,8 +950,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         const combinedNames = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const extrasUnprocessed = updatedLines.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
+            serviceId: cleanUUID(l.serviceId),
+            providerId: cleanUUID(l.providerId),
             isCourtesy: l.isCourtesy,
             discount: l.discount,
             bookedPrice: l.unitPrice,
@@ -934,25 +966,28 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }));
 
         const extras = extrasUnprocessed;
+        const currentAppt = latestAppointment || appointment;
 
         const dataToSave = {
             status: 'Aguardando',
             time: updatedLines[0].startTime,
             date: appointmentDate,
             combined_service_names: combinedNames,
-            service_id: updatedLines[0].serviceId,
-            provider_id: updatedLines[0].providerId,
+            service_id: cleanUUID(updatedLines[0].serviceId),
+            provider_id: cleanUUID(updatedLines[0].providerId),
             booked_price: updatedLines[0].unitPrice,
             main_service_products: updatedLines[0].products,
             additional_services: extras,
             applied_coupon: appliedCampaign?.couponCode,
             discount_amount: couponDiscountAmount,
-            customer_id: customer.id,
+            customer_id: cleanUUID(customer.id),
             payments: payments,
             end_time: updatedLines[0].endTime,
             tip_amount: updatedLines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             quantity: updatedLines[0].quantity || 1,
             start_time_actual: updatedLines[0].startTimeActual,
+            check_in_time: checkInVal,
+            check_out_time: null,
             observation: observation
         };
 
@@ -964,7 +999,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     .filter(id => id && id !== appointment.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
             ));
 
-            const isNew = !/^[0-9a-f]{8}-[0-9a-f]{4}-[45][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(appointment.id);
+            const isNew = !isUUID(appointment.id);
             let result;
 
             if (isNew) {
@@ -1013,7 +1048,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     discountAmount: couponDiscountAmount,
                     payments: payments,
                     endTime: updatedLines[0].endTime,
-                    quantity: updatedLines[0].quantity || 1
+                    quantity: updatedLines[0].quantity || 1,
+                    startTimeActual: updatedLines[0].startTimeActual,
+                    checkInTime: checkInVal,
+                    checkOutTime: null
                 } as Appointment;
 
                 let updated = prev;
@@ -1067,9 +1105,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setIsSaving(true);
 
+        const currentAppt = latestAppointment || appointment;
+        const isReFinalizing = appointment.status === 'Concluído';
+        const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const checkOutVal = isReFinalizing ? (currentAppt.checkOutTime || nowTime) : nowTime;
+        const checkInVal = currentAppt.checkInTime || currentAppt.time || nowTime;
+
         // Check merge (though unlikely in finish flow, better safe)
         if (await checkForCustomerConflictAndMerge()) return;
-        const isReFinalizing = appointment.status === 'Concluído';
 
         // Correct revenue calculation: only services and tips, exclude debt repayment
         const serviceTotal = totalValue - (includeDebt ? (customer.outstandingBalance || 0) : 0);
@@ -1081,8 +1124,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const allProductsUsed = lines.flatMap(l => l.products);
 
         const extrasUnprocessed = lines.slice(1).map(l => ({
-            serviceId: l.serviceId,
-            providerId: l.providerId,
+            serviceId: cleanUUID(l.serviceId),
+            providerId: cleanUUID(l.providerId),
             isCourtesy: l.isCourtesy,
             discount: l.discount,
             bookedPrice: l.unitPrice,
@@ -1094,12 +1137,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             quantity: l.quantity || 1,
             status: 'Concluído',
             startTimeActual: l.startTimeActual,
+            endTimeActual: getValidEndTime(l.startTimeActual, l.endTimeActual, checkOutVal),
             tipAmount: l.tipAmount
         }));
 
         const extras = extrasUnprocessed;
 
-        const dischargeDate = appointment.date || formatLocalDate(new Date());
+        const dischargeDate = isReFinalizing 
+            ? (currentAppt.paymentDate || currentAppt.date || formatLocalDate(new Date())) 
+            : formatLocalDate(new Date());
 
         const updatedData = {
             status: 'Concluído',
@@ -1108,9 +1154,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             payment_method: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
             products_used: allProductsUsed,
             combined_service_names: combinedNames,
-            service_id: lines[0].serviceId, // CRITICAL: Update service to the one selected in checkout
+            service_id: cleanUUID(lines[0].serviceId), // CRITICAL: Update service to the one selected in checkout
             booked_price: lines[0].unitPrice,
-            provider_id: lines[0].providerId, // CRITICAL: Update provider to the one selected in checkout
+            provider_id: cleanUUID(lines[0].providerId), // CRITICAL: Update provider to the one selected in checkout
             is_courtesy: lines[0].isCourtesy,
             main_service_products: lines[0].products,
             additional_services: extras,
@@ -1121,7 +1167,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
             quantity: lines[0].quantity || 1,
             start_time_actual: lines[0].startTimeActual,
-            observation: observation
+            end_time_actual: lines[0].endTimeActual || checkOutVal,
+            check_in_time: checkInVal,
+            check_out_time: checkOutVal,
+            observation: observation,
+            customer_id: cleanUUID(customer.id),
+            date: appointmentDate || appointment.date || dischargeDate,
+            time: appointment.time || lines[0].startTime
         };
 
         try {
@@ -1129,12 +1181,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const secondaryAppointmentIds = Array.from(new Set(
                 lines
                     .map(l => l.appointmentId)
-                    .filter(id => id && id !== appointment.id)
+                    .filter(id => id && id !== appointment.id && isUUID(id))
             ));
 
-            // 1. Update Appointment
-            const { error: apptError } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
-            if (apptError) throw apptError;
+            const isNew = !isUUID(appointment.id);
+            let result;
+
+            if (isNew) {
+                result = await supabase.from('appointments').insert([updatedData]).select().single();
+            } else {
+                result = await supabase.from('appointments').update(updatedData).eq('id', appointment.id).select().single();
+            }
+
+            if (result.error) throw result.error;
+            const savedAppt = result.data;
 
             // 1.1 Handle Secondary Appointments (Auto-Merge)
             if (secondaryAppointmentIds.length > 0) {
@@ -1192,9 +1252,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const updatedAppt = {
                     ...appointment,
                     ...(exists || {}),
+                    id: savedAppt.id,
                     status: 'Concluído',
-                    providerId: lines[0].providerId,
-                    serviceId: lines[0].serviceId,
+                    providerId: cleanUUID(lines[0].providerId),
+                    serviceId: cleanUUID(lines[0].serviceId),
                     pricePaid: serviceTotal,
                     paymentDate: dischargeDate,
                     paymentMethod: payments.length > 1 ? 'Múltiplos' : (payments[0]?.method || paymentMethod),
@@ -1208,7 +1269,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     payments: payments,
                     endTime: lines[0].endTime,
                     tipAmount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
-                    quantity: lines[0].quantity || 1
+                    quantity: lines[0].quantity || 1,
+                    startTimeActual: lines[0].startTimeActual,
+                    endTimeActual: getValidEndTime(lines[0].startTimeActual, lines[0].endTimeActual, checkOutVal),
+                    checkInTime: checkInVal,
+                    checkOutTime: checkOutVal
                 } as Appointment;
 
                 return prev.map(a => {
@@ -1236,7 +1301,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             rating: line.rating,
                             feedback: line.feedback,
                             providerId: line.providerId,
-                            productsUsed: line.products
+                            productsUsed: line.products,
+                            checkInTime: checkInVal,
+                            startTimeActual: line.startTimeActual,
+                            endTimeActual: line.status === 'Concluído' ? getValidEndTime(line.startTimeActual, line.endTimeActual, checkOutVal) : line.endTimeActual,
+                            checkOutTime: checkOutVal,
+                            scheduledTime: line.startTime || appointment.time
                         };
                     });
 
@@ -1289,7 +1359,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             startTimeActual: l.startTimeActual
         }));
 
-        const dischargeDate = appointment.date || formatLocalDate(new Date());
+        const isReFinalizingRemake = appointment.status === 'Concluído';
+        const dischargeDate = isReFinalizingRemake 
+            ? (appointment.paymentDate || appointment.date || formatLocalDate(new Date())) 
+            : formatLocalDate(new Date());
         const remakePaymentMethod = 'Refazer';
 
         const updatedData = {
@@ -1353,6 +1426,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const updatedLines = lines.map(l => {
             if (l.id === lineId) {
                 return { ...l, status: 'Em Andamento' as const, startTimeActual: now };
+            }
+            return l;
+        });
+
+        setLines(updatedLines);
+
+        // Auto-save immediately, do NOT close the modal
+        await handleSave(updatedLines, false);
+    };
+
+    const handleFinishIndividualService = async (lineId: string) => {
+        const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const updatedLines = lines.map(l => {
+            if (l.id === lineId) {
+                return { ...l, status: 'Concluído' as const, endTimeActual: getValidEndTime(l.startTimeActual, now, now) };
             }
             return l;
         });
@@ -1447,8 +1535,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const uniqueNames = Array.from(new Set(serviceNamesArray));
             const combinedNames = uniqueNames.join(' + ');
             const extrasUnprocessed = linesToUseForSave.slice(1).map(l => ({
-                serviceId: l.serviceId,
-                providerId: l.providerId,
+                serviceId: cleanUUID(l.serviceId),
+                providerId: cleanUUID(l.providerId),
                 isCourtesy: l.isCourtesy,
                 discount: l.discount,
                 bookedPrice: l.unitPrice,
@@ -1460,6 +1548,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 quantity: l.quantity || 1,
                 status: l.status || 'Pendente',
                 startTimeActual: l.startTimeActual,
+                endTimeActual: l.endTimeActual,
                 tipAmount: l.tipAmount
             }));
 
@@ -1481,13 +1570,39 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 });
             }
 
+            const currentAppt = latestAppointment || appointment;
+            let checkInTime = currentAppt.checkInTime || null;
+            let checkOutTime = currentAppt.checkOutTime || null;
+
+            if (finalGlobalStatus === 'Aguardando') {
+                if (!checkInTime) {
+                    checkInTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                }
+                checkOutTime = null;
+            } else if (finalGlobalStatus === 'Em Andamento') {
+                if (!checkInTime) {
+                    checkInTime = currentAppt.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                }
+                checkOutTime = null;
+            } else if (finalGlobalStatus === 'Concluído') {
+                if (!checkInTime) {
+                    checkInTime = currentAppt.time || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                }
+                if (!checkOutTime) {
+                    checkOutTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                }
+            } else if (finalGlobalStatus === 'Pendente' || finalGlobalStatus === 'Confirmado' || finalGlobalStatus === 'Cancelado') {
+                checkInTime = null;
+                checkOutTime = null;
+            }
+
             const dataToSave = {
                 time: linesToUseForSave[0].startTime,
                 date: appointmentDate,
                 status: finalGlobalStatus,
                 combined_service_names: combinedNames,
-                service_id: linesToUseForSave[0].serviceId,
-                provider_id: linesToUseForSave[0].providerId,
+                service_id: cleanUUID(linesToUseForSave[0].serviceId),
+                provider_id: cleanUUID(linesToUseForSave[0].providerId),
                 booked_price: linesToUseForSave[0].unitPrice,
                 main_service_products: linesToUseForSave[0].products,
                 additional_services: extras,
@@ -1495,13 +1610,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 discount_amount: couponDiscountAmount,
                 adjustment_amount: adjustmentAmount,
                 adjustment_reason: adjustmentReason,
-                customer_id: customer.id,
+                customer_id: cleanUUID(customer.id),
                 payments: payments,
                 end_time: linesToUseForSave[0].endTime,
                 tip_amount: linesToUseForSave.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
                 recurrence_id: recId,
                 quantity: linesToUseForSave[0].quantity || 1,
                 start_time_actual: linesToUseForSave[0].startTimeActual,
+                end_time_actual: linesToUseForSave[0].endTimeActual,
+                check_in_time: checkInTime,
+                check_out_time: checkOutTime,
                 whatsapp_response_needed: whatsappResponseNeeded,
                 observation: observation
             };
@@ -1587,6 +1705,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     endTime: s.end_time,
                     quantity: s.quantity || 1,
                     startTimeActual: s.start_time_actual,
+                    endTimeActual: s.end_time_actual,
+                    checkInTime: s.check_in_time,
+                    checkOutTime: s.check_out_time,
                     whatsappResponseNeeded: s.whatsapp_response_needed
                 } as Appointment));
 
@@ -1692,7 +1813,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             const extras = extrasUnprocessed;
 
-            const dischargeDate = appointment.date || formatLocalDate(new Date());
+            const isReFinalizingDebt = appointment.status === 'Concluído';
+            const dischargeDate = isReFinalizingDebt 
+                ? (appointment.paymentDate || appointment.date || formatLocalDate(new Date())) 
+                : formatLocalDate(new Date());
 
             const updatedData = {
                 status: 'Concluído',
@@ -2029,7 +2153,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setIsSaving(true);
 
         try {
-            const dischargeDate = appointment.date || formatLocalDate(new Date());
+            const isReFinalizingZero = appointment.status === 'Concluído';
+            const dischargeDate = isReFinalizingZero 
+                ? (appointment.paymentDate || appointment.date || formatLocalDate(new Date())) 
+                : formatLocalDate(new Date());
             const zeroPaymentMethod = 'Justificativa: ' + zeroOutReason;
 
             // 1. Prepare data - only zero out selected lines
@@ -3192,10 +3319,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     <Play size={10} fill="currentColor" /> Iniciar
                                                                 </button>
                                                             )}
+                                                            {line.status === 'Em Andamento' && (appointment.status === 'Aguardando' || appointment.status === 'Em Andamento') && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleFinishIndividualService(line.id)}
+                                                                    className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-emerald-200"
+                                                                >
+                                                                    <Check size={10} /> Finalizar
+                                                                </button>
+                                                            )}
                                                             {line.startTimeActual && (
-                                                                <span className="text-[9px] font-black text-slate-400">
-                                                                    {line.startTimeActual}
-                                                                </span>
+                                                                <div className="flex flex-col text-right">
+                                                                    <span className="text-[9px] font-black text-slate-500 dark:text-zinc-400">
+                                                                        Início: {line.startTimeActual}
+                                                                    </span>
+                                                                    {line.endTimeActual && (
+                                                                        <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400">
+                                                                            Fim: {line.endTimeActual}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </div>
@@ -4307,7 +4450,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 )}
                                 {appointment.observation && (
                                     <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-zinc-700 mt-1">
-                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Observações do Atendimento</p>
+                                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Observações e Sugestões do Atendimento</p>
                                         <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-slate-200 dark:border-zinc-700 leading-relaxed">
                                             {appointment.observation}
                                         </p>

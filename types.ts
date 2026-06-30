@@ -140,6 +140,15 @@ export interface CustomerHistoryItem {
   productsUsed?: string[];
   rating?: number;
   feedback?: string;
+  checkInTime?: string;
+  startTimeActual?: string;
+  endTimeActual?: string;
+  checkOutTime?: string;
+  scheduledTime?: string;
+  serviceId?: string;
+  additionalServices?: Appointment['additionalServices'];
+  observation?: string;
+  paymentDate?: string;
 }
 
 export interface StockUsageLog {
@@ -195,10 +204,11 @@ export interface Appointment {
   endTime?: string;
   status: 'Confirmado' | 'Pendente' | 'Concluído' | 'Cancelado' | 'Em Andamento' | 'Em atendimento' | 'Aguardando';
   startTimeActual?: string; // Horário real do início do atendimento principal
+  endTimeActual?: string; // Horário real do término do atendimento principal
   productsUsed?: string[]; // Legacy / Consolidated list
   groupId?: string; // Tracks services booked together
   recurrenceId?: string; // ID to track recurring appointment series
-  amount: number;
+  amount?: number;
   pricePaid?: number;
   bookedPrice?: number; // Snapshot of price at booking time
   commissionRateSnapshot?: number; // Snapshot da comissão no momento do agendamento
@@ -222,6 +232,7 @@ export interface Appointment {
     startTime?: string; // Horário planejado
     endTime?: string; // Horário planejado
     startTimeActual?: string; // Horário REAL de início
+    endTimeActual?: string; // Horário REAL de término
     status?: 'Pendente' | 'Em Andamento' | 'Concluído' | 'Cancelado' | 'Aguardando';
     products?: string[]; // Lista de produtos vinculados a este serviço extra
     clientName?: string; // Nome do cliente (para acompanhantes)
@@ -240,6 +251,9 @@ export interface Appointment {
   adjustmentAmount?: number;
   adjustmentReason?: string;
   whatsappResponseNeeded?: boolean;
+  checkInTime?: string;
+  checkOutTime?: string;
+  providerName?: string;
 }
 
 export interface ChatMessage {

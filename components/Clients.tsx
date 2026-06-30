@@ -11,6 +11,8 @@ import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewStat
 import { ConsentForm } from './ConsentForm';
 import { LinkCustomersModal } from './LinkCustomersModal';
 
+const isCompleted = (status?: string) => status?.includes('Conclu');
+
 interface ClientsProps {
   customers: Customer[];
   setCustomers: React.Dispatch<React.SetStateAction<Customer[]>>;
@@ -27,6 +29,12 @@ interface ClientsProps {
 }
 
 export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appointments = [], setAppointments, setSales, services = [], userProfile, selectedCustomerId, returnView, onNavigate, providers = [], partners = [] }) => {
+  const formatTimelineDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`);
+    return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('pt-BR');
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit' | 'debt'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -76,7 +84,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
     const newThisMonth = customers.filter(c => {
       // Find the first completed appointment for this customer
-      const customerApps = (appointments || []).filter(a => a.customerId === c.id && a.status === 'Concluído');
+      const customerApps = (appointments || []).filter(a => a.customerId === c.id && isCompleted(a.status));
       if (customerApps.length === 0) {
         // If no finished appointments, check registration date as fallback for leads
         const regDate = new Date(c.registrationDate);
@@ -119,6 +127,56 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
     });
   }, [customers, searchTerm, filterType]);
 
+  const handleUpdateTiming = async (apptId: string, field: 'checkInTime' | 'checkOutTime', currentVal?: string) => {
+    const fieldName = field === 'checkInTime' ? 'Check-in' : 'Check-out';
+    const dbField = field === 'checkInTime' ? 'check_in_time' : 'check_out_time';
+    
+    const now = new Date();
+    const timeSuggestion = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    const input = prompt(
+      `Definir horário de ${fieldName} (formato HH:MM ou HH:MM:SS, ex: ${timeSuggestion}):\n(Deixe vazio e clique OK para limpar/redefinir para Pendente)`,
+      currentVal || ''
+    );
+    
+    if (input === null) return;
+    
+    let formattedTime: string | null = null;
+    if (input.trim() !== '') {
+      const match = input.trim().match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/);
+      if (!match) {
+        alert('Formato inválido! Por favor, use o formato HH:MM ou HH:MM:SS (ex: 14:30).');
+        return;
+      }
+      formattedTime = input.trim();
+      const parts = formattedTime.split(':');
+      if (parts[0].length === 1) {
+        parts[0] = '0' + parts[0];
+      }
+      formattedTime = parts.join(':');
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('appointments')
+        .update({ [dbField]: formattedTime })
+        .eq('id', apptId);
+        
+      if (error) {
+        console.error(`Erro ao atualizar ${fieldName}:`, error);
+        alert(`Erro ao atualizar no banco de dados: ${error.message}`);
+        return;
+      }
+      
+      if (setAppointments) {
+        setAppointments(prev => prev.map(a => a.id === apptId ? { ...a, [field]: formattedTime } : a));
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Ocorreu um erro ao atualizar o horário.');
+    }
+  };
+
   const customerTimeline = useMemo(() => {
     if (!selectedCustomer) return [];
 
@@ -140,7 +198,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
         // Determine Price & Payment Details
         let details = '';
-        if (a.status === 'Concluído') {
+        if (isCompleted(a.status)) {
           const price = (a.pricePaid !== undefined && a.pricePaid !== null) ? `R$ ${a.pricePaid.toFixed(2)}` : (a.bookedPrice ? `R$ ${a.bookedPrice.toFixed(2)}` : '');
           const payment = a.payments && a.payments.length > 0
             ? a.payments.map(p => `${p.method}: R$${(p.amount || 0).toFixed(2)}`).join(', ')
@@ -166,7 +224,16 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
           details: details,
           productsUsed: products,
           rating: a.rating,
-          feedback: a.feedback
+          feedback: a.feedback,
+          checkInTime: a.checkInTime,
+          startTimeActual: a.startTimeActual,
+          endTimeActual: a.endTimeActual,
+          checkOutTime: a.checkOutTime,
+          scheduledTime: a.time,
+          serviceId: a.serviceId,
+          additionalServices: a.additionalServices,
+          observation: a.observation,
+          paymentDate: a.paymentDate
         };
       });
 
@@ -182,6 +249,153 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       const dateB = new Date(b.date + (b.date.includes('T') ? '' : 'T12:00:00')).getTime();
       return dateB - dateA;
     });
+  }, [selectedCustomer, appointments, services]);
+
+  const punctualityStats = useMemo(() => {
+    if (!selectedCustomer) return null;
+    const clientAppts = appointments.filter(a => a.customerId === selectedCustomer.id);
+    const total = clientAppts.length;
+    if (total === 0) return null;
+
+    const completed = clientAppts.filter(a => isCompleted(a.status));
+    const cancelled = clientAppts.filter(a => a.status === 'Cancelado');
+    const cancellationRate = total > 0 ? (cancelled.length / total) * 100 : 0;
+
+    let totalCheckInDelay = 0;
+    let checkInDelayCount = 0;
+    let lateArrivalsCount = 0;
+
+    let totalWaitTime = 0;
+    let waitTimeCount = 0;
+
+    let totalDurationDeviation = 0;
+    let durationDeviationCount = 0;
+
+    let totalSalonTime = 0;
+    let salonTimeCount = 0;
+
+    completed.forEach(a => {
+      // 1. Check-in Delay (Client punctuality)
+      const scheduled = a.time;
+      const actualCheckIn = a.checkInTime;
+      if (scheduled && actualCheckIn) {
+        const [sh, sm] = scheduled.split(':').map(Number);
+        const [ch, cm] = actualCheckIn.split(':').map(Number);
+        if (!isNaN(sh) && !isNaN(sm) && !isNaN(ch) && !isNaN(cm)) {
+          const diff = (ch * 60 + cm) - (sh * 60 + sm);
+          totalCheckInDelay += diff;
+          checkInDelayCount++;
+          if (diff > 5) {
+            lateArrivalsCount++;
+          }
+        }
+      }
+
+      // 2. Wait Time (Check-in to actual start of first service)
+      let earliestStart: string | undefined = a.startTimeActual;
+      if (a.additionalServices && a.additionalServices.length > 0) {
+        a.additionalServices.forEach(extra => {
+          if (extra.startTimeActual) {
+            if (!earliestStart || extra.startTimeActual < earliestStart) {
+              earliestStart = extra.startTimeActual;
+            }
+          }
+        });
+      }
+
+      if (actualCheckIn && earliestStart) {
+        const [ch, cm] = actualCheckIn.split(':').map(Number);
+        const [sth, stm] = earliestStart.split(':').map(Number);
+        if (!isNaN(ch) && !isNaN(cm) && !isNaN(sth) && !isNaN(stm)) {
+          const wait = (sth * 60 + stm) - (ch * 60 + cm);
+          if (wait >= 0) {
+            totalWaitTime += wait;
+            waitTimeCount++;
+          }
+        }
+      }
+
+      // 3. Service Execution Duration vs Planned Duration
+      const mainSrv = services.find(s => s.id === a.serviceId);
+      if (a.startTimeActual && a.endTimeActual && mainSrv) {
+        const [sh, sm] = a.startTimeActual.split(':').map(Number);
+        const [eh, em] = a.endTimeActual.split(':').map(Number);
+        if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+          const actualDuration = (eh * 60 + em) - (sh * 60 + sm);
+          const plannedDuration = mainSrv.durationMinutes || 30;
+          totalDurationDeviation += (actualDuration - plannedDuration);
+          durationDeviationCount++;
+        }
+      }
+
+      if (a.additionalServices && a.additionalServices.length > 0) {
+        a.additionalServices.forEach(extra => {
+          const extraSrv = services.find(s => s.id === extra.serviceId);
+          if (extra.startTimeActual && extra.endTimeActual && extraSrv) {
+            const [sh, sm] = extra.startTimeActual.split(':').map(Number);
+            const [eh, em] = extra.endTimeActual.split(':').map(Number);
+            if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+              const actualDuration = (eh * 60 + em) - (sh * 60 + sm);
+              const plannedDuration = extraSrv.durationMinutes || 30;
+              totalDurationDeviation += (actualDuration - plannedDuration);
+              durationDeviationCount++;
+            }
+          }
+        });
+      }
+
+      // 4. Salon Permanence Time (Check-in to Check-out)
+      if (actualCheckIn && a.checkOutTime) {
+        const [ch, cm] = actualCheckIn.split(':').map(Number);
+        const [oh, om] = a.checkOutTime.split(':').map(Number);
+        if (!isNaN(ch) && !isNaN(cm) && !isNaN(oh) && !isNaN(om)) {
+          const perm = (oh * 60 + om) - (ch * 60 + cm);
+          if (perm > 0) {
+            totalSalonTime += perm;
+            salonTimeCount++;
+          }
+        }
+      }
+    });
+
+    const avgCheckInDelay = checkInDelayCount > 0 ? Math.round(totalCheckInDelay / checkInDelayCount) : 0;
+    const lateArrivalPercent = completed.length > 0 ? (lateArrivalsCount / completed.length) * 100 : 0;
+    const avgWaitTime = waitTimeCount > 0 ? Math.round(totalWaitTime / waitTimeCount) : 0;
+    const avgDurationDeviation = durationDeviationCount > 0 ? Math.round(totalDurationDeviation / durationDeviationCount) : 0;
+    const avgSalonTime = salonTimeCount > 0 ? Math.round(totalSalonTime / salonTimeCount) : 0;
+
+    let punctualityBadge = 'Pontual';
+    let badgeColor = 'bg-emerald-500 text-white';
+    if (completed.length === 0) {
+      punctualityBadge = 'Sem Atendimentos';
+      badgeColor = 'bg-slate-400 text-white';
+    } else if (checkInDelayCount === 0 && durationDeviationCount === 0) {
+      punctualityBadge = 'Sem Auditoria';
+      badgeColor = 'bg-slate-400 text-white';
+    } else if (cancellationRate > 30) {
+      punctualityBadge = 'Desistente Frequente';
+      badgeColor = 'bg-rose-500 text-white';
+    } else if (lateArrivalPercent > 40) {
+      punctualityBadge = 'Atrasos Frequentes';
+      badgeColor = 'bg-amber-500 text-white';
+    } else if (completed.length > 0 && lateArrivalPercent < 15) {
+      punctualityBadge = 'Super Pontual';
+      badgeColor = 'bg-emerald-600 text-white animate-pulse';
+    }
+
+    return {
+      total,
+      completedCount: completed.length,
+      cancelledCount: cancelled.length,
+      cancellationRate,
+      avgCheckInDelay,
+      lateArrivalPercent,
+      avgWaitTime,
+      avgDurationDeviation,
+      avgSalonTime,
+      punctualityBadge,
+      badgeColor
+    };
   }, [selectedCustomer, appointments, services]);
 
   const handleSelectCustomer = (customer: Customer) => {
@@ -649,12 +863,28 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
               <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white tracking-tight uppercase">Base de Clientes</h2>
               <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão do Clube e Fidelidade</p>
             </div>
-            <button
-              onClick={handleNewCustomer}
-              className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-            >
-              <UserPlus size={18} /> <span className="hidden sm:inline">Nova Cliente</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {!isQuickRegisterOpen && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsQuickRegisterOpen(true);
+                    if (searchTerm && isNaN(Number(searchTerm))) {
+                      setQuickRegisterData(prev => ({ ...prev, name: searchTerm }));
+                    }
+                  }}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-white dark:bg-zinc-900 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-zinc-800 rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                >
+                  <Plus size={16} /> <span className="hidden sm:inline">Cadastro Rápido</span>
+                </button>
+              )}
+              <button
+                onClick={handleNewCustomer}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+              >
+                <UserPlus size={18} /> <span className="hidden sm:inline">Nova Cliente</span>
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-1">
@@ -698,18 +928,9 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
             </div>
           </div>
 
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Pesquisar por nome ou celular..."
-              className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-800 focus:border-zinc-950 dark:focus:border-white rounded-2xl text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
 
-          {isQuickRegisterOpen ? (
+
+          {isQuickRegisterOpen && (
             <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-3xl animate-in slide-in-from-top-2">
               <div className="flex justify-between items-center mb-4">
                 <h4 className="font-black text-xs uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
@@ -741,20 +962,6 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                 </button>
               </form>
             </div>
-          ) : (
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setIsQuickRegisterOpen(true);
-                  if (searchTerm && isNaN(Number(searchTerm))) {
-                    setQuickRegisterData(prev => ({ ...prev, name: searchTerm }));
-                  }
-                }}
-                className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-4 py-2 rounded-xl transition-colors"
-              >
-                <Plus size={14} /> Cadastrar Nova Cliente
-              </button>
-            </div>
           )}
         </div>
       )}
@@ -763,23 +970,25 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
 
         {/* MASTER LIST */}
-        <div className={`${showDetail ? 'hidden lg:flex' : 'flex'} w-full lg:w-1/3 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden`}>
-          <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 md:hidden">
+        <div className={`${showDetail ? 'hidden lg:flex' : 'flex'} w-full max-w-[360px] mx-auto lg:max-w-none lg:w-[350px] flex-shrink-0 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden`}>
+          <div className="p-3.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/30 dark:bg-zinc-900/30">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 w-4 h-4" />
               <input
-                type="text" placeholder="Pesquisar..."
-                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl text-xs font-black text-slate-950 dark:text-white outline-none transition-all"
-                value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                type="text" 
+                placeholder="Pesquisar por nome ou celular..."
+                className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 focus:border-indigo-500 dark:focus:border-indigo-400 rounded-xl text-xs font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-zinc-500"
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
-          <div className="divide-y divide-slate-100 dark:divide-zinc-800 overflow-y-auto flex-1 scrollbar-hide">
+          <div className="p-3 overflow-y-auto flex-1 scrollbar-hide space-y-2">
             {filteredCustomers.map(customer => (
               <button
                 key={customer.id}
                 onClick={() => handleSelectCustomer(customer)}
-                className={`w-full text-left p-4 md:p-5 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all active:scale-[0.98] border-l-4 ${selectedCustomer?.id === customer.id ? 'border-indigo-600 bg-indigo-50/30 dark:bg-indigo-900/20' : 'border-transparent'}`}
+                className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all active:scale-[0.98] border-l-4 rounded-2xl ${selectedCustomer?.id === customer.id ? 'border-indigo-600 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-transparent'}`}
               >
                 <div className="flex justify-between items-center gap-3">
                   <div className="min-w-0 flex-1">
@@ -788,7 +997,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       <span className={`text-[9px] md:text-[8px] font-black uppercase px-2 py-0.5 rounded-full border ${(customer.isVip || customer.status === 'VIP') ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-400 border-amber-200 dark:border-amber-800' : customer.status === 'Risco de Churn' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-800 dark:text-rose-400 border-rose-200 dark:border-rose-800' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-700'}`}>
                         {(() => {
                           if (customer.isVip || customer.status === 'VIP') return 'VIP';
-                          const completedCount = (appointments || []).filter(a => a.customerId === customer.id && a.status === 'Concluído').length;
+                          const completedCount = (appointments || []).filter(a => a.customerId === customer.id && isCompleted(a.status)).length;
                           if (completedCount === 0) return 'LEAD';
                           if (completedCount === 1) return 'NOVO';
                           return 'REGULAR';
@@ -835,7 +1044,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         </div>
 
         {/* DETAIL VIEW */}
-        <div className={`${showDetail ? 'flex' : 'hidden lg:flex'} w-full lg:w-2/3 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden animate-in slide-in-from-right md:slide-in-from-none duration-300 relative`}>
+        <div className={`${showDetail ? 'flex' : 'hidden lg:flex'} w-full lg:flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden animate-in slide-in-from-right md:slide-in-from-none duration-300 relative`}>
           {showDetail ? (
             <form onSubmit={handleSave} className="flex flex-col h-full bg-white dark:bg-zinc-900 relative">
               {/* Profile Header */}
@@ -868,7 +1077,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       <span className={`text-[9px] font-black uppercase border px-2 py-0.5 rounded-full ${(formData.isVip || formData.status === 'VIP') ? 'text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/20' : 'text-slate-400 border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800'}`}>
                         {(() => {
                           if (formData.isVip || formData.status === 'VIP') return 'VIP';
-                          const completedCount = (appointments || []).filter(a => a.customerId === formData.id && a.status === 'Concluído').length;
+                          const completedCount = (appointments || []).filter(a => a.customerId === formData.id && isCompleted(a.status)).length;
                           if (completedCount === 0) return 'LEAD';
                           if (completedCount === 1) return 'NOVO';
                           return 'REGULAR';
@@ -985,7 +1194,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Passou Por</span>
                             <p className="text-sm font-black text-slate-950 dark:text-white uppercase">
                               {(() => {
-                                const visits = appointments.filter(a => a.customerId === formData.id && a.status === 'Concluído').length;
+                                const visits = appointments.filter(a => a.customerId === formData.id && isCompleted(a.status)).length;
                                 return visits === 0 ? 'Primeira Visita' : visits === 1 ? '1 Visita' : `${visits} Visitas`;
                               })()}
                             </p>
@@ -1457,6 +1666,98 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
                 {activeTab === 'HISTORY' && (
                   <div className="space-y-4 animate-in slide-in-from-bottom-2">
+                    {punctualityStats && (
+                      <div className="bg-slate-50 dark:bg-zinc-900/60 p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 grid grid-cols-2 lg:grid-cols-6 gap-3 mb-2">
+                        {/* 1. Profile */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Perfil</span>
+                          <div className="mt-2">
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-lg block text-center ${punctualityStats.badgeColor}`}>
+                              {punctualityStats.punctualityBadge}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 2. Check-in Delay */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Atraso Check-in</span>
+                          <div className="mt-2 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black text-slate-900 dark:text-white">
+                                {punctualityStats.avgCheckInDelay > 0 ? `+${punctualityStats.avgCheckInDelay}` : punctualityStats.avgCheckInDelay}
+                              </span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">min</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase mt-0.5">
+                              {Math.round(punctualityStats.lateArrivalPercent)}% das visitas
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 3. Wait Time */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Tempo de Espera</span>
+                          <div className="mt-2 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black text-slate-900 dark:text-white">{punctualityStats.avgWaitTime}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">min</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase mt-0.5">
+                              Check-in ao Início
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 4. Execution Deviation */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Desvio Execução</span>
+                          <div className="mt-2 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className={`text-sm font-black ${
+                                punctualityStats.avgDurationDeviation > 0 
+                                  ? 'text-rose-600 dark:text-rose-400' 
+                                  : punctualityStats.avgDurationDeviation < 0 
+                                    ? 'text-emerald-600 dark:text-emerald-400' 
+                                    : 'text-slate-900 dark:text-white'
+                              }`}>
+                                {punctualityStats.avgDurationDeviation > 0 ? `+${punctualityStats.avgDurationDeviation}` : punctualityStats.avgDurationDeviation}
+                              </span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">min</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase mt-0.5">
+                              vs planejado
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 5. Permanence in Salon */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Permanência</span>
+                          <div className="mt-2 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black text-slate-900 dark:text-white">{punctualityStats.avgSalonTime}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">min</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase mt-0.5">
+                              No salão
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* 6. Cancellations */}
+                        <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col justify-between">
+                          <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Cancelamentos</span>
+                          <div className="mt-2 flex flex-col">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-sm font-black text-slate-900 dark:text-white">{Math.round(punctualityStats.cancellationRate)}%</span>
+                            </div>
+                            <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase mt-0.5">
+                              ({punctualityStats.cancelledCount}/{punctualityStats.total}) total
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {customerTimeline.length > 0 ? (
                       customerTimeline.map((h, i) => (
                         <div key={h.id} className="relative pl-8">
@@ -1487,6 +1788,357 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
                             {h.details && <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium mb-1">{h.details}</p>}
 
+                            {/* Timing Summary Row directly on the visit card line */}
+                            {h.type === 'VISIT' && (
+                              (() => {
+                                // Find earliest start time of all services
+                                let earliestStart = h.startTimeActual;
+                                if (h.additionalServices && h.additionalServices.length > 0) {
+                                  h.additionalServices.forEach(extra => {
+                                    if (extra.startTimeActual) {
+                                      if (!earliestStart || extra.startTimeActual < earliestStart) {
+                                        earliestStart = extra.startTimeActual;
+                                      }
+                                    }
+                                  });
+                                }
+                                return (
+                                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-[9px] font-bold text-slate-500 dark:text-zinc-400 uppercase mt-2 mb-1">
+                                    <span className="bg-slate-50 dark:bg-zinc-900/60 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-800">
+                                      Agendado: <span className="font-black text-slate-800 dark:text-white">{h.scheduledTime || '--:--'}</span>
+                                    </span>
+                                    {h.checkInTime ? (
+                                      <span 
+                                        onClick={() => handleUpdateTiming(h.id, 'checkInTime', h.checkInTime)}
+                                        title="Clique para editar o Check-in"
+                                        className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100/50 dark:border-indigo-900/30 cursor-pointer hover:opacity-85 hover:border-indigo-300 dark:hover:border-indigo-700 select-none"
+                                      >
+                                        Check-in: <span className="font-black">{h.checkInTime}</span>
+                                      </span>
+                                    ) : (
+                                      <span 
+                                        onClick={() => handleUpdateTiming(h.id, 'checkInTime', h.checkInTime)}
+                                        title="Clique para registrar o Check-in"
+                                        className="bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-800 cursor-pointer hover:opacity-85 hover:border-indigo-200 dark:hover:border-indigo-800 select-none"
+                                      >
+                                        Check-in: <span className="font-black">Pendente</span>
+                                      </span>
+                                    )}
+                                    {earliestStart ? (
+                                      <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-100/50 dark:border-emerald-900/30">
+                                        Início: <span className="font-black">{earliestStart}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-800">
+                                        Início: <span className="font-black">Pendente</span>
+                                      </span>
+                                    )}
+                                    {h.checkOutTime ? (
+                                      <span 
+                                        onClick={() => handleUpdateTiming(h.id, 'checkOutTime', h.checkOutTime)}
+                                        title="Clique para editar o Check-out"
+                                        className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded border border-amber-100/50 dark:border-amber-900/30 cursor-pointer hover:opacity-85 hover:border-amber-300 dark:hover:border-amber-700 select-none"
+                                      >
+                                        Check-out: <span className="font-black">
+                                          {h.checkOutTime}
+                                          {h.paymentDate ? ` (${formatTimelineDate(h.paymentDate)})` : ''}
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <span 
+                                        onClick={() => handleUpdateTiming(h.id, 'checkOutTime', h.checkOutTime)}
+                                        title="Clique para registrar o Check-out"
+                                        className="bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-zinc-600 px-1.5 py-0.5 rounded border border-slate-100 dark:border-zinc-800 cursor-pointer hover:opacity-85 hover:border-amber-200 dark:hover:border-amber-800 select-none"
+                                      >
+                                        Check-out: <span className="font-black">Pendente</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })()
+                            )}
+ 
+                            {/* Timing Milestones Flow */}
+                            {h.type === 'VISIT' && (
+                              <div className="mt-3 p-3 bg-slate-50 dark:bg-zinc-900/50 rounded-xl border border-slate-100/50 dark:border-zinc-800/50 space-y-3 text-[10px]">
+                                <h6 className="font-black text-[9px] uppercase tracking-wider text-slate-400 dark:text-zinc-500 mb-1">
+                                  Jornada do Atendimento
+                                </h6>
+                                <div className="space-y-3">
+                                  {/* 1. Agendamento */}
+                                  <div className="flex items-center gap-2 text-[10px]">
+                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
+                                    <span className="font-bold text-slate-500 dark:text-zinc-400 uppercase">1. Agendamento:</span>
+                                    <span className="font-black text-slate-900 dark:text-white">{h.scheduledTime || 'Sem horário'}</span>
+                                  </div>
+
+                                  {/* 2. Check-in */}
+                                  {h.checkInTime ? (
+                                    <div 
+                                      onClick={() => handleUpdateTiming(h.id, 'checkInTime', h.checkInTime)}
+                                      title="Clique para editar o Check-in"
+                                      className="flex items-center gap-2 flex-wrap cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800/50 p-1 -m-1 rounded transition-all select-none text-[10px]"
+                                    >
+                                      <span className={`w-2 h-2 rounded-full ${(() => {
+                                        if (h.scheduledTime) {
+                                          const [sh, sm] = h.scheduledTime.split(':').map(Number);
+                                          const [ch, cm] = h.checkInTime.split(':').map(Number);
+                                          if (!isNaN(sh) && !isNaN(sm) && !isNaN(ch) && !isNaN(cm)) {
+                                            const diff = (ch * 60 + cm) - (sh * 60 + sm);
+                                            return diff > 5 ? 'bg-rose-500' : 'bg-emerald-500';
+                                          }
+                                        }
+                                        return 'bg-indigo-500';
+                                      })()}`} />
+                                      <span className="font-bold text-slate-500 dark:text-zinc-400 uppercase">2. Check-in:</span>
+                                      <span className="font-black text-slate-900 dark:text-white">{h.checkInTime}</span>
+                                      {(() => {
+                                        if (h.scheduledTime) {
+                                          const [sh, sm] = h.scheduledTime.split(':').map(Number);
+                                          const [ch, cm] = h.checkInTime.split(':').map(Number);
+                                          if (!isNaN(sh) && !isNaN(sm) && !isNaN(ch) && !isNaN(cm)) {
+                                            const diff = (ch * 60 + cm) - (sh * 60 + sm);
+                                            if (diff > 0) {
+                                              return <span className="text-rose-600 dark:text-rose-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-rose-50 dark:bg-rose-950/20 rounded">({diff} min de atraso)</span>;
+                                            } else if (diff < 0) {
+                                              return <span className="text-emerald-600 dark:text-emerald-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/20 rounded">({Math.abs(diff)} min adiantado)</span>;
+                                            } else {
+                                              return <span className="text-emerald-600 dark:text-emerald-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/20 rounded">(Pontual)</span>;
+                                            }
+                                          }
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      onClick={() => handleUpdateTiming(h.id, 'checkInTime', h.checkInTime)}
+                                      title="Clique para registrar o Check-in"
+                                      className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800/50 p-1 -m-1 rounded transition-all select-none text-[10px]"
+                                    >
+                                      <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                                      <span className="font-bold uppercase">2. Check-in:</span>
+                                      <span className="italic">Pendente</span>
+                                    </div>
+                                  )}
+
+                                  {/* 3. Início e Execução de Serviços */}
+                                  {(() => {
+                                    let earliestStart = h.startTimeActual;
+                                    if (h.additionalServices && h.additionalServices.length > 0) {
+                                      h.additionalServices.forEach(extra => {
+                                        if (extra.startTimeActual) {
+                                          if (!earliestStart || extra.startTimeActual < earliestStart) {
+                                            earliestStart = extra.startTimeActual;
+                                          }
+                                        }
+                                      });
+                                    }
+
+                                    return (
+                                      <div className="space-y-2">
+                                        {earliestStart ? (
+                                          <div className="flex items-center gap-2 flex-wrap text-[10px]">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            <span className="font-bold text-slate-500 dark:text-zinc-400 uppercase">3. Início:</span>
+                                            <span className="font-black text-slate-900 dark:text-white">{earliestStart}</span>
+                                            {h.checkInTime && (() => {
+                                              const [ch, cm] = h.checkInTime.split(':').map(Number);
+                                              const [sth, stm] = earliestStart.split(':').map(Number);
+                                              if (!isNaN(ch) && !isNaN(cm) && !isNaN(sth) && !isNaN(stm)) {
+                                                const wait = (sth * 60 + stm) - (ch * 60 + cm);
+                                                if (wait > 0) {
+                                                  return <span className="text-amber-600 dark:text-amber-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-amber-50 dark:bg-amber-950/20 rounded">({wait} min de espera)</span>;
+                                                } else {
+                                                  return <span className="text-emerald-600 dark:text-emerald-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-950/20 rounded">(Imediato)</span>;
+                                                }
+                                              }
+                                              return null;
+                                            })()}
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 text-[10px]">
+                                            <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                                            <span className="font-bold uppercase">3. Início:</span>
+                                            <span className="italic">Pendente</span>
+                                          </div>
+                                        )}
+
+                                        {/* Services detailed under Início node */}
+                                        <div className="ml-3 pl-3 border-l border-slate-150 dark:border-zinc-800 space-y-2 py-0.5">
+                                          {/* Main Service */}
+                                          {(() => {
+                                            const srv = services.find(s => s.id === h.serviceId);
+                                            const prv = providers.find(p => p.id === h.providerId);
+                                            return (
+                                              <div className="p-2 bg-slate-50/50 dark:bg-zinc-900/40 rounded-xl border border-slate-100/70 dark:border-zinc-800/80 space-y-1 max-w-xl">
+                                                <div className="flex flex-col gap-0.5">
+                                                  <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1 flex-wrap">
+                                                    Profissional: <span className="text-slate-600 dark:text-zinc-300 font-black">{prv?.name || 'Sem profissional'}</span>
+                                                   {h.rating && h.rating > 0 ? <span className="text-amber-500 font-bold ml-1">{"★".repeat(h.rating)}</span> : null}</span>
+                                                  <span className="font-black text-[10px] text-indigo-600 dark:text-indigo-400 uppercase">
+                                                    {srv?.name || 'Serviço Principal'}
+                                                  </span>
+                                                </div>
+                                                <div className="flex flex-col gap-0.5 text-slate-500 dark:text-zinc-400 text-[9px]">
+                                                  <div>
+                                                    <span className="font-bold">Agendado:</span> {h.scheduledTime || 'Sem horário'}
+                                                  </div>
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold">Realizado:</span>{' '}
+                                                    {h.startTimeActual ? (
+                                                      <span className="font-black text-slate-900 dark:text-white">
+                                                        {h.startTimeActual} {h.endTimeActual ? `às ${h.endTimeActual}` : '(Em andamento)'}
+                                                      </span>
+                                                    ) : (
+                                                      <span className="italic text-slate-400">Não iniciado</span>
+                                                    )}
+                                                    {h.startTimeActual && h.endTimeActual && (() => {
+                                                      const [sh, sm] = h.startTimeActual.split(':').map(Number);
+                                                      const [eh, em] = h.endTimeActual.split(':').map(Number);
+                                                      if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+                                                        const diff = (eh * 60 + em) - (sh * 60 + sm);
+                                                        if (diff > 0) {
+                                                          return <span className="text-indigo-600 dark:text-indigo-400 font-black">({diff} min)</span>;
+                                                        }
+                                                      }
+                                                      return null;
+                                                    })()}
+                                                  </div>
+                                                
+                                                   {h.feedback && (
+                                                     <div className="mt-1 text-[9px] italic text-slate-400 dark:text-zinc-500 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                                                       "{h.feedback}"
+                                                     </div>
+                                                   )}</div>
+                                              </div>
+                                            );
+                                          })()}
+
+                                          {/* Additional Services */}
+                                          {h.additionalServices && h.additionalServices.map((extra, idx) => {
+                                            const srv = services.find(s => s.id === extra.serviceId);
+                                            const prv = providers.find(p => p.id === extra.providerId);
+                                            return (
+                                              <div key={idx} className="p-2 bg-slate-50/50 dark:bg-zinc-900/40 rounded-xl border border-slate-100/70 dark:border-zinc-800/80 space-y-1 max-w-xl">
+                                                <div className="flex flex-col gap-0.5">
+                                                  <span className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider flex items-center gap-1 flex-wrap">
+                                                    Profissional: <span className="text-slate-600 dark:text-zinc-300 font-black">{prv?.name || 'Sem profissional'}</span>
+                                                   {extra.rating && extra.rating > 0 ? <span className="text-amber-500 font-bold ml-1">{"★".repeat(extra.rating)}</span> : null}</span>
+                                                  <span className="font-black text-[10px] text-indigo-600 dark:text-indigo-400 uppercase">
+                                                    {srv?.name || 'Serviço Adicional'} {extra.clientName ? `(para ${extra.clientName})` : ''}
+                                                  </span>
+                                                </div>
+                                                <div className="flex flex-col gap-0.5 text-slate-500 dark:text-zinc-400 text-[9px]">
+                                                  <div>
+                                                    <span className="font-bold">Agendado:</span> {extra.startTime || 'Sem horário'}
+                                                  </div>
+                                                  <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-bold">Realizado:</span>{' '}
+                                                    {extra.startTimeActual ? (
+                                                      <span className="font-black text-slate-900 dark:text-white">
+                                                        {extra.startTimeActual} {extra.endTimeActual ? `às ${extra.endTimeActual}` : '(Em andamento)'}
+                                                      </span>
+                                                    ) : (
+                                                      <span className="italic text-slate-400">Não iniciado</span>
+                                                    )}
+                                                    {extra.startTimeActual && extra.endTimeActual && (() => {
+                                                      const [sh, sm] = extra.startTimeActual.split(':').map(Number);
+                                                      const [eh, em] = extra.endTimeActual.split(':').map(Number);
+                                                      if (!isNaN(sh) && !isNaN(sm) && !isNaN(eh) && !isNaN(em)) {
+                                                        const diff = (eh * 60 + em) - (sh * 60 + sm);
+                                                        if (diff > 0) {
+                                                          return <span className="text-indigo-600 dark:text-indigo-400 font-black">({diff} min)</span>;
+                                                        }
+                                                      }
+                                                      return null;
+                                                    })()}
+                                                  </div>
+                                                
+                                                   {extra.feedback && (
+                                                     <div className="mt-1 text-[9px] italic text-slate-400 dark:text-zinc-500 border-l-2 border-indigo-200 dark:border-indigo-800 pl-2">
+                                                       "{extra.feedback}"
+                                                     </div>
+                                                   )}</div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* 4. Fim */}
+                                  {(() => {
+                                    let latestEnd = h.endTimeActual;
+                                    if (h.additionalServices && h.additionalServices.length > 0) {
+                                      h.additionalServices.forEach(extra => {
+                                        if (extra.endTimeActual) {
+                                          if (!latestEnd || extra.endTimeActual > latestEnd) {
+                                            latestEnd = extra.endTimeActual;
+                                          }
+                                        }
+                                      });
+                                    }
+                                    return latestEnd ? (
+                                      <div className="flex items-center gap-2 flex-wrap text-[10px]">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        <span className="font-bold text-slate-500 dark:text-zinc-400 uppercase">4. Fim:</span>
+                                        <span className="font-black text-slate-900 dark:text-white">{latestEnd}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 text-[10px]">
+                                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                                        <span className="font-bold uppercase">4. Fim:</span>
+                                        <span className="italic">Pendente</span>
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* 5. Check-out */}
+                                  {h.checkOutTime ? (
+                                    <div 
+                                      onClick={() => handleUpdateTiming(h.id, 'checkOutTime', h.checkOutTime)}
+                                      title="Clique para editar o Check-out"
+                                      className="flex items-center gap-2 flex-wrap cursor-pointer bg-amber-50 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/35 px-2 py-1 -m-1 rounded-lg border border-amber-100 dark:border-amber-900/30 transition-all select-none text-[10px] w-full md:w-auto"
+                                    >
+                                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                      <span className="font-bold text-amber-800 dark:text-amber-400 uppercase">5. Check-out:</span>
+                                      <span className="font-black text-amber-900 dark:text-white">{h.checkOutTime}</span>
+                                      {h.paymentDate && (
+                                        <span className="bg-amber-200/50 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 px-1 py-0.2 rounded text-[8px] font-black uppercase">
+                                          {formatTimelineDate(h.paymentDate)}
+                                        </span>
+                                      )}
+                                      {(() => {
+                                        if (h.checkInTime) {
+                                          const [ch, cm] = h.checkInTime.split(':').map(Number);
+                                          const [oh, om] = h.checkOutTime.split(':').map(Number);
+                                          if (!isNaN(ch) && !isNaN(cm) && !isNaN(oh) && !isNaN(om)) {
+                                            const duration = (oh * 60 + om) - (ch * 60 + cm);
+                                            if (duration > 0) {
+                                              return <span className="text-amber-800 dark:text-amber-400 font-black text-[9px] uppercase px-1.5 py-0.2 bg-amber-100 dark:bg-amber-950/40 rounded">({duration} min no salão)</span>;
+                                            }
+                                          }
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
+                                  ) : (
+                                    <div 
+                                      onClick={() => handleUpdateTiming(h.id, 'checkOutTime', h.checkOutTime)}
+                                      title="Clique para registrar o Check-out"
+                                      className="flex items-center gap-2 text-slate-400 dark:text-zinc-500 cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800/50 p-1 -m-1 rounded transition-all select-none text-[10px]"
+                                    >
+                                      <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-zinc-700" />
+                                      <span className="font-bold uppercase">5. Check-out:</span>
+                                      <span className="italic">Pendente</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Products Used */}
                             {h.productsUsed && h.productsUsed.length > 0 && (
                               <div className="flex flex-wrap gap-1 mt-1">
@@ -1502,6 +2154,14 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             {h.feedback && (
                               <div className="mt-2 text-[9px] italic text-slate-400 border-l-2 border-slate-200 pl-2">
                                 "{h.feedback}" {h.rating ? `(${h.rating}⭐)` : ''}
+                              </div>
+                            )}
+
+                            {/* Observações do Atendimento */}
+                            {h.observation && (
+                              <div className="mt-3 p-3 bg-zinc-50 dark:bg-zinc-900/50 rounded-xl border border-zinc-150/50 dark:border-zinc-800/80 text-[10px] text-zinc-700 dark:text-zinc-300 animate-in fade-in duration-300">
+                                <span className="font-black text-[8px] uppercase tracking-wider block mb-1 text-slate-400 dark:text-zinc-500">Observações e Sugestões do Atendimento</span>
+                                <p className="font-medium whitespace-pre-wrap leading-relaxed">{h.observation}</p>
                               </div>
                             )}
                           </div>
