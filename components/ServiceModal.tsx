@@ -4872,6 +4872,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             details = `STATUS: ${a.status.toUpperCase()} | HORÁRIO: ${a.time}${a.observation ? ` | Obs: ${a.observation}` : ''}`;
                                         }
 
+                                        const mainProvName = prov?.name || a.providerName;
+                                        const extraProvNames = (a.additionalServices || [])
+                                            .map(extra => providers.find(p => p.id === extra.providerId)?.name)
+                                            .filter(Boolean);
+                                        const allProvs = [mainProvName, ...extraProvNames]
+                                            .filter(Boolean)
+                                            .filter((val, index, self) => self.indexOf(val) === index);
+                                        const combinedProvs = allProvs.length > 0 ? allProvs.join(' + ') : 'Não informado';
+
                                         return {
                                             id: a.id,
                                             date: a.date,
@@ -4882,7 +4891,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             method: a.paymentMethod || 'Não informado',
                                             observation: a.observation,
                                             feedback: a.feedback,
-                                            providerName: prov?.name || a.providerName || 'Não informado'
+                                            providerName: combinedProvs
                                         };
                                     });
 

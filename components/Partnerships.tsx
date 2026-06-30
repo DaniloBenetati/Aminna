@@ -1463,6 +1463,16 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     {clientAppointments.map((appt) => {
                       const svc = services.find(s => s.id === appt.serviceId);
                       const prov = providers.find(p => p.id === appt.providerId);
+                      
+                      const mainProvName = prov?.name || appt.providerName;
+                      const extraProvNames = (appt.additionalServices || [])
+                        .map(extra => providers.find(p => p.id === extra.providerId)?.name)
+                        .filter(Boolean);
+                      const allProvs = [mainProvName, ...extraProvNames]
+                        .filter(Boolean)
+                        .filter((val, index, self) => self.indexOf(val) === index);
+                      const combinedProvs = allProvs.length > 0 ? allProvs.join(' + ') : 'Não informado';
+
                       return (
                         <div key={appt.id} className="relative flex items-start gap-6 group">
                           {/* Timeline Circle */}
@@ -1487,7 +1497,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                             <div className="flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 mb-4">
                               <div className="flex items-center gap-1.5">
                                 <Users size={12} className="text-slate-400" />
-                                <span>PROFISSIONAL: <span className="text-slate-900 dark:text-white uppercase">{prov?.name || 'Não informado'}</span></span>
+                                <span>PROFISSIONAL: <span className="text-slate-900 dark:text-white uppercase">{combinedProvs}</span></span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-slate-900 dark:text-white font-black">R$ {(appt.pricePaid || 0).toFixed(2)}</span>
