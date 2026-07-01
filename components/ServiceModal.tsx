@@ -4724,7 +4724,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <button 
                                         onClick={() => {
                                             navigator.clipboard.writeText(generateFiscalDetailingText());
-                                            alert('Texto copiado com sucesso! ✅');
+                                            showToast('Texto copiado com sucesso! ✅', 'success');
                                         }}
                                         className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                     >

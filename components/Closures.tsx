@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { Filter, Files, Calendar, MessageCircle, FileText, Download, ChevronDown, CircleCheck, AlertCircle, Search, Copy, Send, X, Printer, Scissors, FileSpreadsheet, FileCode, Heart } from 'lucide-react';
 import { Service, Appointment, Provider, Customer } from '../types';
+import { Toast } from './Toast';
 
 interface ClosuresProps {
   services: Service[];
@@ -12,6 +13,16 @@ interface ClosuresProps {
 
 export const Closures: React.FC<ClosuresProps> = ({ services, appointments, providers, customers }) => {
   const [selectedProvider, setSelectedProvider] = useState<string>('all');
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+    setToast({ show: true, message, type });
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState(() => {
     const now = new Date();
@@ -979,7 +990,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   const { message } = generateWhatsappMessage(whatsappModalData, true);
                   navigator.clipboard.writeText(message);
                   setWhatsappModalData(null);
-                  alert('Texto Detalhado Copiado!');
+                  showToast('Texto Detalhado Copiado!', 'success');
                 }} 
                 className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
               >
@@ -1026,7 +1037,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 onClick={() => {
                   const text = generateFiscalDetailingText(fiscalDetailingData);
                   navigator.clipboard.writeText(text);
-                  alert('Copiado com sucesso! Agora você pode colar na descrição da sua nota fiscal.');
+                  showToast('Copiado com sucesso! Agora você pode colar na descrição da sua nota fiscal.', 'success');
                   setFiscalDetailingData(null);
                 }}
                 className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all"
@@ -1196,7 +1207,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 onClick={() => {
                   const msg = generateProvisionSummary();
                   navigator.clipboard.writeText(msg);
-                  alert('Copiado para a área de transferência!');
+                  showToast('Copiado para a área de transferência!', 'success');
                 }}
                 className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-900 dark:text-white flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
               >
@@ -1382,6 +1393,12 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           </div>
         </div>
       )}
+      <Toast 
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };
