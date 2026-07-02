@@ -2793,7 +2793,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
             : `*Agendamento confirmado | Equipe*`;
 
-        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
@@ -2904,7 +2904,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
         }).join('\n\n');
 
-        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n\n${blocks}`;
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n\n${blocks}\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
