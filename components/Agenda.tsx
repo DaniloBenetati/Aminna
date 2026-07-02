@@ -706,7 +706,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             const uniquePrefNames = Array.from(new Set(prefNames));
             const prefLine = uniquePrefNames.length > 0
                 ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
-                : `Agendamento confirmado | Equipe`;
+                : `*Agendamento confirmado | Equipe*`;
 
             return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
         });

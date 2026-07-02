@@ -2791,7 +2791,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const uniquePrefNames = Array.from(new Set(prefNames));
         const prefLine = uniquePrefNames.length > 0 
             ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
-            : `Agendamento confirmado | Equipe`;
+            : `*Agendamento confirmado | Equipe*`;
 
         const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
 
@@ -2899,7 +2899,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const uniquePrefNames = Array.from(new Set(prefNames));
             const prefLine = uniquePrefNames.length > 0 
                 ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
-                : `Agendamento confirmado | Equipe`;
+                : `*Agendamento confirmado | Equipe*`;
 
             return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
         }).join('\n\n');
