@@ -68,6 +68,7 @@ const App: React.FC = () => {
 
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isMetadataLoaded, setIsMetadataLoaded] = useState(false);
   const [simulatedProfile, setSimulatedProfile] = useState<UserProfile | null>(null);
   const [returnView, setReturnView] = useState<ViewState | null>(null);
 
@@ -106,7 +107,7 @@ const App: React.FC = () => {
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
-      // 0. User Profile
+      // 0. User Profile (Etapa 1 - Rápida)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
@@ -121,244 +122,29 @@ const App: React.FC = () => {
         }
       }
 
-      // Optimization: Filter logs and records by date (last 3 months or start of current year) to prevent slow loading
-      const now = new Date();
-      const threeMonthsAgo = new Date();
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const referenceDate = threeMonthsAgo < startOfYear ? threeMonthsAgo : startOfYear;
-      
-      const minDate = referenceDate.getFullYear() + '-' + String(referenceDate.getMonth() + 1).padStart(2, '0') + '-' + String(referenceDate.getDate()).padStart(2, '0');
-
-      // Helper function to fetch customers in parallel batches
-      const fetchCustomers = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('customers')
-          .select('*', { count: 'exact', head: true });
-
-        if (countError || count === null) {
-          console.error('Error getting customers count:', countError);
-          return [];
-        }
-
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('customers')
-            .select('*')
-            .order('name', { ascending: true })
-            .order('id', { ascending: true })
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-        );
-
-        const results = await Promise.all(promises);
-        const allCustomers = results.flatMap(r => r.data || []);
-        return allCustomers;
-      };
-
-      // Helper function to fetch appointments in parallel batches
-      const fetchAppointments = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('appointments')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', minDate);
-
-        if (countError || count === null) {
-          console.error('Error getting appointments count:', countError);
-          return [];
-        }
-
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('appointments')
-            .select('*')
-            .gte('date', minDate)
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-            .order('date', { ascending: true })
-            .order('time', { ascending: true })
-            .order('id', { ascending: true })
-        );
-
-        const results = await Promise.all(promises);
-        const allAppts = results.flatMap(r => r.data || []);
-        return allAppts;
-      };
-
-      const fetchExpenses = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('expenses')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', minDate);
-
-        if (countError || count === null) {
-          console.error('Error getting expenses count:', countError);
-          return [];
-        }
-
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('expenses')
-            .select('*')
-            .gte('date', minDate)
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-            .order('date', { ascending: false })
-        );
-
-        const results = await Promise.all(promises);
-        return results.flatMap(r => r.data || []);
-      };
-
-      const fetchSales = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('sales')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', minDate);
-
-        if (countError || count === null) {
-          console.error('Error getting sales count:', countError);
-          return [];
-        }
-
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('sales')
-            .select('*')
-            .gte('date', minDate)
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-            .order('date', { ascending: false })
-        );
-
-        const results = await Promise.all(promises);
-        return results.flatMap(r => r.data || []);
-      };
-
+      // --- ETAPA 1: Carregamento de Metadados Críticos ---
       const [
-        { data: providersData },
-        { data: servicesData },
-        { data: stockData },
-        { data: usageLogsData },
-        { data: campaignsData },
-        { data: pantryItemsData },
-        { data: pantryLogsData },
-        { data: leadsData },
-        { data: partnersData },
-        { data: partnerExchangesData },
-        { data: expenseCategoriesData },
-        { data: paymentSettingsData },
-        { data: commissionSettingsData },
-        { data: suppliersData },
-        { data: nfseRecordsData },
-        fetchedCustomers,
-        fetchedAppointments,
-        fetchedSales,
-        fetchedExpenses,
-        { data: financialConfigData },
-        { data: fiscalConfigsData },
-        { data: employeesDataRaw },
-        { data: payrollDataRaw },
-        { data: employeeLoansDataRaw }
+        providersRes,
+        servicesRes,
+        expenseCategoriesRes,
+        paymentSettingsRes,
+        commissionSettingsRes,
+        financialConfigRes,
+        fiscalConfigsRes
       ] = await Promise.all([
         supabase.from('providers').select('*'),
         supabase.from('services').select('*'),
-        supabase.from('stock_items').select('*').eq('active', true).order('created_at', { ascending: false }),
-        supabase.from('usage_logs').select('*').gte('date', minDate),
-        supabase.from('campaigns').select('*'),
-        supabase.from('pantry_items').select('*'),
-        supabase.from('pantry_logs').select('*').gte('date', minDate),
-        supabase.from('leads').select('*'),
-        supabase.from('partners').select('*'),
-        supabase.from('partner_exchanges').select('*'),
         supabase.from('expense_categories').select('*'),
         supabase.from('payment_settings').select('*'),
         supabase.from('commission_settings').select('*'),
-        supabase.from('suppliers').select('*'),
-        supabase.from('nfse_records').select('*').gte('created_at', minDate),
-        fetchCustomers(),
-        fetchAppointments(),
-        fetchSales(),
-        fetchExpenses(),
         supabase.from('financial_config').select('*').order('valid_from', { ascending: false }),
-        supabase.from('professional_fiscal_config').select('*'),
-        supabase.from('employees').select('*'),
-        supabase.from('payroll').select('*'),
-        supabase.from('employee_loans').select('*')
+        supabase.from('professional_fiscal_config').select('*')
       ]);
 
-      console.log('📊 [DATA FETCH] Results:', {
-        providers: providersData?.length || 0,
-        services: servicesData?.length || 0,
-        customers: fetchedCustomers?.length || 0,
-        appointments: fetchedAppointments?.length || 0,
-        sales: fetchedSales?.length || 0,
-        expenses: fetchedExpenses?.length || 0,
-        nfse: nfseRecordsData?.length || 0,
-        employees: employeesDataRaw?.length || 0
-      });
-
-      // Set HR data
-      if (employeesDataRaw) {
-        setEmployees(employeesDataRaw.map((e: any) => ({
-          id: e.id,
-          name: e.name,
-          role: e.role,
-          phone: e.phone,
-          email: e.email,
-          pixKey: e.pix_key,
-          baseSalary: e.base_salary,
-          admissionDate: e.admission_date,
-          active: e.active,
-          avatar: e.avatar,
-          bankInfo: e.bank_info,
-          resignationDate: e.resignation_date
-        })));
-      }
-      if (payrollDataRaw) {
-        setPayroll(payrollDataRaw.map((p: any) => ({
-          id: p.id,
-          employeeId: p.employee_id,
-          month: p.month,
-          year: p.year,
-          baseSalary: p.base_salary,
-          commissions: p.commissions,
-          bonus: p.bonus,
-          deductions: p.deductions,
-          loanDeduction: p.loan_deduction,
-          otherDeductions: p.other_deductions,
-          otherDeductionsReason: p.other_deductions_reason,
-          netSalary: p.net_salary,
-          paymentDate: p.payment_date,
-          status: p.status,
-          notes: p.notes
-        })));
-      }
-      if (employeeLoansDataRaw) {
-        setEmployeeLoans(employeeLoansDataRaw.map((l: any) => ({
-          id: l.id,
-          employeeId: l.employee_id,
-          date: l.date,
-          totalAmount: l.total_amount,
-          installments: l.installments,
-          installmentAmount: l.installment_amount,
-          remainingAmount: l.remaining_amount,
-          status: l.status,
-          reason: l.reason,
-          schedule: l.schedule
-        })));
-      }
-
-
-      // Map and Set Providers
-      if (providersData) {
-        const mappedProviders = providersData.map((p: any) => {
-          const fiscal = (fiscalConfigsData || []).find((f: any) => f.provider_id === p.id);
+      // Mapeamento e Configuração de Metadados
+      if (providersRes.data) {
+        const mappedProviders = providersRes.data.map((p: any) => {
+          const fiscal = (fiscalConfigsRes.data || []).find((f: any) => f.provider_id === p.id);
           return {
             id: p.id,
             name: p.name,
@@ -390,9 +176,8 @@ const App: React.FC = () => {
         setProviders(deduplicatedProviders);
       }
 
-      // Map and Set Services
-      if (servicesData) {
-        setServices(servicesData.map((s: any) => ({
+      if (servicesRes.data) {
+        setServices(servicesRes.data.map((s: any) => ({
           id: s.id,
           name: s.name,
           price: s.price,
@@ -404,9 +189,196 @@ const App: React.FC = () => {
         })));
       }
 
-      // Map and Set Stock
-      if (stockData) {
-        setStock(stockData.map((s: any) => ({
+      if (expenseCategoriesRes.data) {
+        setExpenseCategories(expenseCategoriesRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          dreClass: c.dre_class,
+          isSystem: c.is_system
+        })));
+      }
+
+      if (paymentSettingsRes.data) {
+        setPaymentSettings(paymentSettingsRes.data.map((p: any) => ({
+          id: p.id,
+          method: p.method,
+          fee: parseFloat(p.fee) || 0,
+          days: p.days,
+          color: p.color,
+          iconName: p.icon_name,
+          maxInstallments: p.max_installments
+        })));
+      }
+
+      if (commissionSettingsRes.data) {
+        setCommissionSettings(commissionSettingsRes.data.map((c: any) => ({
+          id: c.id,
+          startDay: c.start_day,
+          endDay: c.end_day,
+          paymentDay: c.payment_day
+        })));
+      }
+
+      if (financialConfigRes.data) {
+        setFinancialConfigs(financialConfigRes.data.map((f: any) => ({
+          id: f.id,
+          anticipationRate: f.anticipation_rate,
+          anticipationEnabled: f.anticipation_enabled,
+          validFrom: f.valid_from,
+          initialBalance: Number(f.initial_balance) || 0,
+          cashFlowReserveRate: f.cash_flow_reserve_rate || 0,
+          createdAt: f.created_at,
+          updatedAt: f.updated_at
+        })));
+      }
+
+      if (fiscalConfigsRes.data) {
+        setFiscalConfigs(fiscalConfigsRes.data);
+      }
+    } catch (error) {
+      console.error('Error fetching metadata (Phase 1):', error);
+    } finally {
+      // Marcar metadados como carregados para liberar a tela principal de bloqueio em qualquer cenário
+      setIsMetadataLoaded(true);
+    }
+
+    // --- ETAPA 2: Carregamento de Dados Pesados em Segundo Plano ---
+    try {
+      const now = new Date();
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const referenceDate = threeMonthsAgo < startOfYear ? threeMonthsAgo : startOfYear;
+      const minDate = referenceDate.getFullYear() + '-' + String(referenceDate.getMonth() + 1).padStart(2, '0') + '-' + String(referenceDate.getDate()).padStart(2, '0');
+
+      // Funções auxiliares para paginação
+      const fetchCustomers = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('customers')
+          .select('*', { count: 'exact', head: true });
+
+        if (countError || count === null) return [];
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('customers')
+            .select('*')
+            .order('name', { ascending: true })
+            .order('id', { ascending: true })
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+        );
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
+      const fetchAppointments = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('appointments')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) return [];
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('appointments')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: true })
+            .order('time', { ascending: true })
+            .order('id', { ascending: true })
+        );
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
+      const fetchSales = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('sales')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) return [];
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('sales')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: false })
+        );
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
+      const fetchExpenses = async () => {
+        const pageSize = 1000;
+        const { count, error: countError } = await supabase
+          .from('expenses')
+          .select('*', { count: 'exact', head: true })
+          .gte('date', minDate);
+
+        if (countError || count === null) return [];
+        const pages = Math.ceil(count / pageSize);
+        const promises = Array.from({ length: pages }, (_, i) =>
+          supabase
+            .from('expenses')
+            .select('*')
+            .gte('date', minDate)
+            .range(i * pageSize, (i + 1) * pageSize - 1)
+            .order('date', { ascending: false })
+        );
+        const results = await Promise.all(promises);
+        return results.flatMap(r => r.data || []);
+      };
+
+      // Carregar dados transacionais adicionais no background
+      const [
+        stockRes,
+        usageLogsRes,
+        campaignsRes,
+        pantryItemsRes,
+        pantryLogsRes,
+        leadsRes,
+        partnersRes,
+        partnerExchangesRes,
+        suppliersRes,
+        nfseRecordsRes,
+        fetchedCustomers,
+        fetchedAppointments,
+        fetchedSales,
+        fetchedExpenses,
+        employeesRes,
+        payrollRes,
+        employeeLoansRes
+      ] = await Promise.all([
+        supabase.from('stock_items').select('*').eq('active', true).order('created_at', { ascending: false }),
+        supabase.from('usage_logs').select('*').gte('date', minDate),
+        supabase.from('campaigns').select('*'),
+        supabase.from('pantry_items').select('*'),
+        supabase.from('pantry_logs').select('*').gte('date', minDate),
+        supabase.from('leads').select('*'),
+        supabase.from('partners').select('*'),
+        supabase.from('partner_exchanges').select('*'),
+        supabase.from('suppliers').select('*'),
+        supabase.from('nfse_records').select('*').gte('created_at', minDate),
+        fetchCustomers(),
+        fetchAppointments(),
+        fetchSales(),
+        fetchExpenses(),
+        supabase.from('employees').select('*'),
+        supabase.from('payroll').select('*'),
+        supabase.from('employee_loans').select('*')
+      ]);
+
+      // Mapeamento dos Estados Pesados
+      if (stockRes.data) {
+        setStock(stockRes.data.map((s: any) => ({
           id: s.id,
           code: s.code,
           name: s.name,
@@ -421,7 +393,7 @@ const App: React.FC = () => {
           imageUrl: s.image_url,
           imageUrls: s.image_urls || [],
           priceHistory: s.price_history || [],
-          usageHistory: (usageLogsData || [])
+          usageHistory: (usageLogsRes.data || [])
             .filter((l: any) => l.stock_item_id === s.id)
             .map((l: any) => ({
               id: l.id,
@@ -434,9 +406,8 @@ const App: React.FC = () => {
         })));
       }
 
-      // Map and Set Campaigns
-      if (campaignsData) {
-        setCampaigns(campaignsData.map((c: any) => ({
+      if (campaignsRes.data) {
+        setCampaigns(campaignsRes.data.map((c: any) => ({
           id: c.id,
           partnerId: c.partner_id,
           name: c.name,
@@ -452,10 +423,8 @@ const App: React.FC = () => {
         })));
       }
 
-
-      // Map and Set Other States
-      if (pantryItemsData) {
-        setPantryItems(pantryItemsData.map((p: any) => ({
+      if (pantryItemsRes.data) {
+        setPantryItems(pantryItemsRes.data.map((p: any) => ({
           ...p,
           minQuantity: p.min_quantity,
           costPrice: p.cost_price,
@@ -463,8 +432,9 @@ const App: React.FC = () => {
           priceHistory: p.price_history
         })));
       }
-      if (pantryLogsData) {
-        setPantryLogs(pantryLogsData.map((l: any) => ({
+
+      if (pantryLogsRes.data) {
+        setPantryLogs(pantryLogsRes.data.map((l: any) => ({
           ...l,
           itemId: l.item_id,
           appointmentId: l.appointment_id,
@@ -474,9 +444,13 @@ const App: React.FC = () => {
           referenceAtMoment: l.reference_at_moment
         })));
       }
-      if (leadsData) setLeads(leadsData.map((l: any) => ({ ...l, createdAt: l.created_at })));
-      if (partnersData) {
-        setPartners(partnersData.map((p: any) => ({
+
+      if (leadsRes.data) {
+        setLeads(leadsRes.data.map((l: any) => ({ ...l, createdAt: l.created_at })));
+      }
+
+      if (partnersRes.data) {
+        setPartners(partnersRes.data.map((p: any) => ({
           ...p,
           socialMedia: p.social_media,
           socialMediaSecondary: p.social_media_secondary,
@@ -492,8 +466,9 @@ const App: React.FC = () => {
           linkedCustomerId: p.linked_customer_id
         })));
       }
-      if (partnerExchangesData) {
-        setPartnerExchanges(partnerExchangesData.map((e: any) => ({
+
+      if (partnerExchangesRes.data) {
+        setPartnerExchanges(partnerExchangesRes.data.map((e: any) => ({
           id: e.id,
           partnerId: e.partner_id,
           receivedItem: e.received_item,
@@ -506,35 +481,9 @@ const App: React.FC = () => {
           notes: e.notes
         })));
       }
-      if (expenseCategoriesData) {
-        setExpenseCategories(expenseCategoriesData.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          dreClass: c.dre_class,
-          isSystem: c.is_system
-        })));
-      }
-      if (paymentSettingsData) {
-        setPaymentSettings(paymentSettingsData.map((p: any) => ({
-          id: p.id,
-          method: p.method,
-          fee: parseFloat(p.fee) || 0,
-          days: p.days,
-          color: p.color,
-          iconName: p.icon_name,
-          maxInstallments: p.max_installments
-        })));
-      }
-      if (commissionSettingsData) {
-        setCommissionSettings(commissionSettingsData.map((c: any) => ({
-          id: c.id,
-          startDay: c.start_day,
-          endDay: c.end_day,
-          paymentDay: c.payment_day
-        })));
-      }
-      if (suppliersData) {
-        setSuppliers(suppliersData.map((s: any) => ({
+
+      if (suppliersRes.data) {
+        setSuppliers(suppliersRes.data.map((s: any) => ({
           id: s.id,
           name: s.name,
           category: s.category,
@@ -544,8 +493,9 @@ const App: React.FC = () => {
           active: s.active
         })));
       }
-      if (nfseRecordsData) {
-        setNfseRecords(nfseRecordsData.map((r: any) => ({
+
+      if (nfseRecordsRes.data) {
+        setNfseRecords(nfseRecordsRes.data.map((r: any) => ({
           id: r.id,
           appointmentId: r.appointment_id,
           providerId: r.provider_id,
@@ -566,45 +516,61 @@ const App: React.FC = () => {
           createdAt: r.created_at,
           updatedAt: r.updated_at
         })));
-
       }
 
-      // Map and Set Financial Config
-      if (financialConfigData) {
-        setFinancialConfigs(financialConfigData.map((f: any) => ({
-          id: f.id,
-          anticipationRate: f.anticipation_rate,
-          anticipationEnabled: f.anticipation_enabled,
-          validFrom: f.valid_from,
-          initialBalance: Number(f.initial_balance) || 0,
-          cashFlowReserveRate: f.cash_flow_reserve_rate || 0,
-          createdAt: f.created_at,
-          updatedAt: f.updated_at
-        })));
-      }
-
-      // Map and Set Expenses
-      if (fetchedExpenses) {
-        setExpenses(fetchedExpenses.map((e: any) => ({
+      if (employeesRes.data) {
+        setEmployees(employeesRes.data.map((e: any) => ({
           id: e.id,
-          description: e.description,
-          category: e.category,
-          subcategory: e.subcategory,
-          dreClass: e.dre_class,
-          amount: Number(e.amount) || 0,
-          date: e.date,
-          status: e.status,
-          paymentMethod: e.payment_method,
-          supplierId: e.supplier_id,
-          providerId: e.provider_id,
-          employeeId: e.employee_id,
-          recurringId: e.recurring_id,
-          isReconciled: e.is_reconciled,
-          payroll_id: e.payroll_id
+          name: e.name,
+          role: e.role,
+          phone: e.phone,
+          email: e.email,
+          pixKey: e.pix_key,
+          baseSalary: e.base_salary,
+          admissionDate: e.admission_date,
+          active: e.active,
+          avatar: e.avatar,
+          bankInfo: e.bank_info,
+          resignationDate: e.resignation_date
         })));
       }
 
-      // Set Customers
+      if (payrollRes.data) {
+        setPayroll(payrollRes.data.map((p: any) => ({
+          id: p.id,
+          employeeId: p.employee_id,
+          month: p.month,
+          year: p.year,
+          baseSalary: p.base_salary,
+          commissions: p.commissions,
+          bonus: p.bonus,
+          deductions: p.deductions,
+          loanDeduction: p.loan_deduction,
+          otherDeductions: p.other_deductions,
+          otherDeductionsReason: p.other_deductions_reason,
+          netSalary: p.net_salary,
+          paymentDate: p.payment_date,
+          status: p.status,
+          notes: p.notes
+        })));
+      }
+
+      if (employeeLoansRes.data) {
+        setEmployeeLoans(employeeLoansRes.data.map((l: any) => ({
+          id: l.id,
+          employeeId: l.employee_id,
+          date: l.date,
+          totalAmount: l.total_amount,
+          installments: l.installments,
+          installmentAmount: l.installment_amount,
+          remainingAmount: l.remaining_amount,
+          status: l.status,
+          reason: l.reason,
+          schedule: l.schedule
+        })));
+      }
+
+      // Clientes
       if (fetchedCustomers && fetchedCustomers.length > 0) {
         const mappedCustomers = fetchedCustomers.map((c: any) => ({
           id: c.id,
@@ -634,13 +600,11 @@ const App: React.FC = () => {
           acquisitionChannel: c.acquisition_channel,
           secondaryPhones: c.secondary_phones || []
         }));
-
-        // Frontend Deduplication
         const uniqueCustomers = Array.from(new Map(mappedCustomers.map(c => [c.id, c])).values());
         setCustomers(uniqueCustomers);
       }
 
-      // Set Appointments
+      // Agendamentos
       if (fetchedAppointments && fetchedAppointments.length > 0) {
         const mappedAppts = fetchedAppointments.map((a: any) => ({
           id: a.id,
@@ -648,7 +612,7 @@ const App: React.FC = () => {
           providerId: a.provider_id,
           serviceId: a.service_id,
           date: a.date,
-          paymentDate: a.payment_date, // Added paymentDate
+          paymentDate: a.payment_date,
           time: a.time,
           endTime: a.end_time,
           status: a.status,
@@ -656,17 +620,17 @@ const App: React.FC = () => {
           payments: a.payments || [],
           amount: a.amount,
           commissionRate: a.commission_rate,
-          commissionRateSnapshot: a.commission_rate_snapshot, // Added commissionRateSnapshot
+          commissionRateSnapshot: a.commission_rate_snapshot,
           observation: a.observation,
           rating: a.rating,
           feedback: a.feedback,
           additionalServices: a.additional_services,
           combinedServiceNames: a.combined_service_names,
           appliedCoupon: a.applied_coupon,
-          pricePaid: a.price_paid, // Critical: Map price_paid
-          bookedPrice: a.booked_price, // Critical: Map booked_price
-          tipAmount: a.tip_amount, // Critical: Map tip_amount
-          quantity: a.quantity, // Added quantity mapping
+          pricePaid: a.price_paid,
+          bookedPrice: a.booked_price,
+          tipAmount: a.tip_amount,
+          quantity: a.quantity,
           startTimeActual: a.start_time_actual,
           endTimeActual: a.end_time_actual,
           checkInTime: a.check_in_time,
@@ -678,13 +642,11 @@ const App: React.FC = () => {
           adjustmentReason: a.adjustment_reason,
           whatsappResponseNeeded: a.whatsapp_response_needed
         }));
-
-        // Frontend Deduplication
         const uniqueAppointments = Array.from(new Map(mappedAppts.map(a => [a.id, a])).values());
         setAppointments(uniqueAppointments);
       }
 
-      // Set Sales
+      // Vendas
       if (fetchedSales) {
         setSales(fetchedSales.map((s: any) => ({
           id: s.id,
@@ -701,9 +663,30 @@ const App: React.FC = () => {
           adjustmentAmount: Number(s.adjustment_amount || 0),
           adjustmentReason: s.adjustment_reason
         })));
-
       }
 
+      // Despesas
+      if (fetchedExpenses) {
+        setExpenses(fetchedExpenses.map((e: any) => ({
+          id: e.id,
+          description: e.description,
+          category: e.category,
+          subcategory: e.subcategory,
+          dreClass: e.dre_class,
+          amount: Number(e.amount) || 0,
+          date: e.date,
+          status: e.status,
+          paymentMethod: e.payment_method,
+          supplierId: e.supplier_id,
+          providerId: e.provider_id,
+          employeeId: e.employee_id,
+          recurringId: e.recurring_id,
+          isReconciled: e.is_reconciled,
+          payroll_id: e.payroll_id
+        })));
+      }
+
+      console.log('📊 [BACKGROUND DATA FETCH] Completed');
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -908,7 +891,7 @@ const App: React.FC = () => {
     }
   };
 
-  if (isLoadingAuth || (isAuthenticated && isLoadingData && services.length === 0)) {
+  if (isLoadingAuth || (isAuthenticated && !isMetadataLoaded)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-zinc-950 transition-colors duration-300">
         <div className="relative flex flex-col items-center">
@@ -937,9 +920,9 @@ const App: React.FC = () => {
       userProfile={simulatedProfile || userProfile}
       isSimulating={!!simulatedProfile}
       onStopSimulation={() => setSimulatedProfile(null)}
+      isLoadingData={isLoadingData}
     >
       {renderView()}
-
     </Layout>
   );
 };

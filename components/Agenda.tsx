@@ -1084,13 +1084,15 @@ export const Agenda: React.FC<AgendaProps> = ({
         setIsServiceModalOpen(true);
     };
 
-    const filteredCustomersForSelection = customers.filter(c => {
+    const filteredCustomersForSelection = useMemo(() => {
         const search = normalizeSearch(customerSearchTerm);
-        const secondaryMatch = c.secondaryPhones?.some(p => normalizeSearch(p).includes(search));
-        return normalizeSearch(c.name).includes(search) ||
-               c.phone.includes(search) ||
-               secondaryMatch;
-    });
+        return customers.filter(c => {
+            const secondaryMatch = c.secondaryPhones?.some(p => normalizeSearch(p).includes(search));
+            return normalizeSearch(c.name).includes(search) ||
+                   c.phone.includes(search) ||
+                   secondaryMatch;
+        }).slice(0, 30); // Limitar a 30 resultados para renderização instantânea
+    }, [customers, customerSearchTerm]);
 
     const handleBlockProfessional = async (providerId: string) => {
         const provider = providers.find(p => p.id === providerId);
@@ -1397,14 +1399,9 @@ export const Agenda: React.FC<AgendaProps> = ({
             days.push(
                 <button
                     key={d}
-                    onClick={(e) => {
-                        // Manual double-click detection to avoid collision with view changes
-                        if (e.detail === 2) {
-                            handleRefresh(current);
-                        } else {
-                            setDateRef(current);
-                            setTimeView('day');
-                        }
+                    onClick={() => {
+                        setDateRef(current);
+                        setTimeView('day');
                     }}
                     className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
                 >
@@ -2473,13 +2470,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             days.push(
                                                 <div
                                                     key={day}
-                                                    onClick={(e) => {
-                                                        if (e.detail === 2) {
-                                                            handleRefresh(new Date(year, month, day));
-                                                        } else {
-                                                            setDateRef(new Date(year, month, day));
-                                                            setTimeView('day');
-                                                        }
+                                                    onClick={() => {
+                                                        setDateRef(new Date(year, month, day));
+                                                        setTimeView('day');
                                                     }}
                                                     className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-lg md:rounded-2xl p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
                                                 >

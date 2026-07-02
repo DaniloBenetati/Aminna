@@ -12,6 +12,7 @@ interface LayoutProps {
   userProfile?: UserProfile | null;
   isSimulating?: boolean;
   onStopSimulation?: () => void;
+  isLoadingData?: boolean;
   children: React.ReactNode;
 }
 
@@ -46,6 +47,7 @@ export const Layout: React.FC<LayoutProps> = ({
   userProfile,
   isSimulating,
   onStopSimulation,
+  isLoadingData = false,
   children
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -150,12 +152,23 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-zinc-950 overflow-hidden text-slate-950 dark:text-slate-100 font-sans transition-colors duration-300">
+      {isLoadingData && (
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 animate-pulse z-[9999]" />
+      )}
       {/* Sidebar - Desktop */}
       <aside className={`bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 flex flex-col hidden sm:flex flex-shrink-0 transition-all duration-300 border-r border-slate-200 dark:border-zinc-800 ${isSidebarCollapsed ? 'w-20' : 'w-64'}`}>
         <div className={`p-6 border-b border-slate-100 dark:border-zinc-800 flex flex-col items-center text-center relative transition-all duration-300 ${isSidebarCollapsed ? 'px-2' : ''}`}>
           <Logo collapsed={isSidebarCollapsed} className={isSidebarCollapsed ? "h-10 w-10" : "h-20 w-auto mb-2"} />
           {!isSidebarCollapsed && (
-            <p className="text-[10px] font-black text-slate-950 dark:text-slate-400 uppercase tracking-[0.2em] opacity-80 mt-1">Gestão Inteligente</p>
+            <>
+              <p className="text-[10px] font-black text-slate-950 dark:text-slate-400 uppercase tracking-[0.2em] opacity-80 mt-1">Gestão Inteligente</p>
+              {isLoadingData && (
+                <div className="mt-2.5 flex items-center gap-1.5 justify-center py-1 px-3 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-100 dark:border-emerald-900/30 animate-pulse">
+                  <Clock className="animate-spin text-emerald-500" size={10} />
+                  <span className="text-[9px] font-black uppercase tracking-widest">Sincronizando</span>
+                </div>
+              )}
+            </>
           )}
 
           <button
