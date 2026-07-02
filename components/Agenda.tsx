@@ -7,6 +7,8 @@ const formatLocalDate = (date: Date) => {
     return `${year}-${month}-${day}`;
 };
 
+const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
 const getDuration = (start: string, end?: string, defaultDuration: number = 30) => {
     if (!end) return defaultDuration;
     const [startH, startM] = start.split(':').map(Number);
@@ -1204,6 +1206,83 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         if (isOnVacation) {
             alert(`⛔ PROFISSIONAL EM FÉRIAS\n\n${targetProvider?.name} está em período de férias nesta data e não pode receber novos agendamentos.`);
+            return;
+        }
+
+        // --- CONCURRENCY CHECK AGAINST LIVE DB ---
+        try {
+            const { data: dbAppointments, error: dbError } = await supabase
+                .from('appointments')
+                .select('*')
+                .eq('date', gridDateStr)
+                .neq('status', 'Cancelado')
+                .neq('id', appointmentId);
+            
+            if (dbError) throw dbError;
+
+            // Helper to convert time "HH:mm" to minutes from 00:00
+            const toMinutes = (time: string) => {
+                if (!time) return 0;
+                const [h, m] = time.split(':').map(Number);
+                return (h || 0) * 60 + (m || 0);
+            };
+
+            const srv = services.find(s => s.id === appt.serviceId);
+            const lineStart = toMinutes(targetTime);
+            const lineDur = appt.endTime ? (toMinutes(appt.endTime) - toMinutes(appt.time)) : (srv?.durationMinutes || 30);
+            const lineEnd = lineStart + lineDur;
+
+            // Map DB appointments to compare fields easily
+            const mappedAppts = dbAppointments.map((s: any) => ({
+                id: s.id,
+                providerId: s.provider_id,
+                serviceId: s.service_id,
+                time: s.time,
+                combinedServiceNames: s.combined_service_names,
+                additionalServices: s.additional_services,
+                endTime: s.end_time
+            }));
+
+            // Find overlapping appointments for targetProviderId
+            const conflict = mappedAppts.find(a => {
+                interface TimeWindow { start: number; end: number; }
+                const windows: TimeWindow[] = [];
+
+                if (a.providerId === targetProviderId) {
+                    const start = toMinutes(a.time);
+                    const srv = services.find(s => s.id === a.serviceId);
+                    const end = a.endTime ? toMinutes(a.endTime) : (start + (srv?.durationMinutes || 30));
+                    windows.push({ start, end });
+                }
+
+                if (a.additionalServices) {
+                    a.additionalServices.forEach((extra: any) => {
+                        if (extra.providerId === targetProviderId) {
+                            const start = toMinutes(extra.startTime || a.time);
+                            const srv = services.find(s => s.id === extra.serviceId);
+                            const end = toMinutes(extra.endTime) || (start + (extra.durationMinutes || srv?.durationMinutes || 30));
+                            windows.push({ start, end });
+                        }
+                    });
+                }
+
+                if (windows.length === 0) return false;
+
+                return windows.some(w => (lineStart < w.end) && (lineEnd > w.start));
+            });
+
+            if (conflict) {
+                const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
+                if (isInternalBlock) {
+                    alert(`⚠️ AGENDA BLOQUEADA\n\n${targetProvider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+                } else {
+                    alert(`⚠️ HORÁRIO INDISPONÍVEL\n\nEste horário para o(a) profissional ${targetProvider?.name || 'selecionado'} acabou de ser ocupado por outro agendamento.\n\nPor favor, atualize a agenda ou selecione outro horário/profissional.`);
+                }
+                return; // Abort move
+            }
+        } catch (dbErr) {
+            console.error("Error doing database concurrency check for move:", dbErr);
+            alert("Erro de conexão ao verificar disponibilidade. Ação cancelada.");
             return;
         }
 

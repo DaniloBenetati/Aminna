@@ -754,6 +754,125 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return false; // No conflicts found or user accepted warnings
     };
 
+    const checkDatabaseConcurrencyConflict = async (linesToUse: ServiceLine[]): Promise<boolean> => {
+        const dateToCheck = appointmentDate;
+        const currentApptId = appointment.id;
+        const secondaryAppointmentIds = Array.from(new Set(
+            linesToUse
+                .map(l => l.appointmentId)
+                .filter((id): id is string => !!id && id !== currentApptId && isUUID(id))
+        ));
+
+        // Fetch latest active appointments from DB for this date
+        let query = supabase
+            .from('appointments')
+            .select('*')
+            .eq('date', dateToCheck)
+            .neq('status', 'Cancelado');
+
+        if (currentApptId && isUUID(currentApptId)) {
+            query = query.neq('id', currentApptId);
+        }
+
+        const { data: dbAppointments, error } = await query;
+        if (error) {
+            console.error('Error fetching appointments for concurrency check:', error);
+            return false;
+        }
+
+        if (!dbAppointments || dbAppointments.length === 0) {
+            return false;
+        }
+
+        const mapDbAppointmentToFrontend = (s: any): Appointment => ({
+            id: s.id,
+            customerId: s.customer_id,
+            providerId: s.provider_id,
+            serviceId: s.service_id,
+            time: s.time,
+            date: s.date,
+            status: s.status,
+            combinedServiceNames: s.combined_service_names,
+            bookedPrice: s.booked_price,
+            mainServiceProducts: s.main_service_products,
+            additionalServices: s.additional_services,
+            appliedCoupon: s.applied_coupon,
+            discountAmount: s.discount_amount,
+            pricePaid: s.price_paid,
+            paymentMethod: s.payment_method,
+            payments: s.payments || [],
+            recurrenceId: s.recurrence_id,
+            endTime: s.end_time,
+            quantity: s.quantity || 1,
+            startTimeActual: s.start_time_actual,
+            endTimeActual: s.end_time_actual,
+            checkInTime: s.check_in_time,
+            checkOutTime: s.check_out_time,
+            whatsappResponseNeeded: s.whatsapp_response_needed,
+            observation: s.observation
+        });
+
+        const mappedAppts: Appointment[] = dbAppointments
+            .map(mapDbAppointmentToFrontend)
+            .filter(a => !secondaryAppointmentIds.includes(a.id));
+
+        const toMinutes = (time: string) => {
+            if (!time) return 0;
+            const [h, m] = time.split(':').map(Number);
+            return (h || 0) * 60 + (m || 0);
+        };
+
+        for (const line of linesToUse) {
+            const providerId = line.providerId;
+            if (!providerId) continue;
+
+            const provider = providers.find(p => p.id === providerId);
+            const lineStart = toMinutes(line.startTime || appointmentTime);
+            const srv = services.find(s => s.id === line.serviceId);
+            const lineDur = line.endTime ? (toMinutes(line.endTime) - lineStart) : (srv?.durationMinutes || 30);
+            const lineEnd = lineStart + lineDur;
+
+            const conflict = mappedAppts.find(a => {
+                interface TimeWindow { start: number; end: number; }
+                const windows: TimeWindow[] = [];
+
+                if (a.providerId === providerId) {
+                    const start = toMinutes(a.time);
+                    const srv = services.find(s => s.id === a.serviceId);
+                    const end = a.endTime ? toMinutes(a.endTime) : (start + (srv?.durationMinutes || 30));
+                    windows.push({ start, end });
+                }
+
+                if (a.additionalServices) {
+                    a.additionalServices.forEach((extra: any) => {
+                        if (extra.providerId === providerId) {
+                            const start = toMinutes(extra.startTime || a.time);
+                            const srv = services.find(s => s.id === extra.serviceId);
+                            const end = toMinutes(extra.endTime) || (start + (extra.durationMinutes || srv?.durationMinutes || 30));
+                            windows.push({ start, end });
+                        }
+                    });
+                }
+
+                if (windows.length === 0) return false;
+
+                return windows.some(w => (lineStart < w.end) && (lineEnd > w.start));
+            });
+
+            if (conflict) {
+                const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
+                if (isInternalBlock) {
+                    alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+                } else {
+                    alert(`⚠️ HORÁRIO INDISPONÍVEL\n\nEste horário para o(a) profissional ${provider?.name || 'selecionado'} acabou de ser ocupado por outro agendamento.\n\nPor favor, atualize a agenda ou selecione outro horário/profissional.`);
+                }
+                return true;
+            }
+        }
+
+        return false;
+    };
+
     const performMerge = async (targetAppt: Appointment) => {
         setIsSaving(true);
         try {
@@ -935,18 +1054,25 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const checkInVal = nowTime;
 
-        setIsSaving(true);
-        // Check for merge possibility
-        if (await checkForCustomerConflictAndMerge()) {
-            setIsSaving(false);
-            return;
-        }
-
         // Update all service lines to 'Aguardando' if they are 'Pendente'
         const updatedLines = lines.map(l => ({
             ...l,
             status: l.status === 'Pendente' ? 'Aguardando' : l.status
         }));
+
+        setIsSaving(true);
+
+        // Fetch live DB records to ensure no near-simultaneous booking conflict exists
+        if (await checkDatabaseConcurrencyConflict(updatedLines)) {
+            setIsSaving(false);
+            return;
+        }
+
+        // Check for merge possibility
+        if (await checkForCustomerConflictAndMerge()) {
+            setIsSaving(false);
+            return;
+        }
 
         const combinedNames = updatedLines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
         const extrasUnprocessed = updatedLines.slice(1).map(l => ({
@@ -1104,6 +1230,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
 
         setIsSaving(true);
+
+        // Fetch live DB records to ensure no near-simultaneous booking conflict exists
+        if (await checkDatabaseConcurrencyConflict(lines)) {
+            setIsSaving(false);
+            return;
+        }
 
         const currentAppt = latestAppointment || appointment;
         const isReFinalizing = appointment.status === 'Concluído';
@@ -1495,6 +1627,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             // --- START SAVING ---
             setIsSaving(true);
+
+            // Fetch live DB records to ensure no near-simultaneous booking conflict exists
+            if (await checkDatabaseConcurrencyConflict(linesToUse)) {
+                setIsSaving(false);
+                return;
+            }
 
             // Check for merge
             if (await checkForCustomerConflictAndMerge()) {
