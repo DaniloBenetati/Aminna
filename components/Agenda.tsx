@@ -712,6 +712,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         });
 
         message += dateBlocks.join('\n\n');
+        message += `\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
 
         return message.trim();
     };
