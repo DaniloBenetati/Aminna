@@ -241,6 +241,70 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
     }, [dateRef]);
 
+    // Background fetch appointments for the selected date on dateRef change
+    React.useEffect(() => {
+        if (!dateRef) return;
+        const fetchAppointmentsForSelectedDate = async () => {
+            const dateStr = toLocalDateStr(dateRef);
+            try {
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .select('*')
+                    .eq('date', dateStr);
+                
+                if (error) throw error;
+                if (!data) return;
+
+                const mappedData: Appointment[] = data.map((a: any) => ({
+                    id: a.id,
+                    customerId: a.customer_id,
+                    providerId: a.provider_id,
+                    serviceId: a.service_id,
+                    date: a.date,
+                    paymentDate: a.payment_date,
+                    time: a.time,
+                    endTime: a.end_time,
+                    status: a.status,
+                    paymentMethod: a.payment_method,
+                    payments: a.payments || [],
+                    amount: a.amount,
+                    commissionRate: a.commission_rate,
+                    commissionRateSnapshot: a.commission_rate_snapshot,
+                    observation: a.observation,
+                    rating: a.rating,
+                    feedback: a.feedback,
+                    additionalServices: a.additional_services,
+                    combinedServiceNames: a.combined_service_names,
+                    appliedCoupon: a.applied_coupon,
+                    pricePaid: a.price_paid,
+                    bookedPrice: a.booked_price,
+                    tipAmount: a.tip_amount,
+                    quantity: a.quantity,
+                    startTimeActual: a.start_time_actual,
+                    endTimeActual: a.end_time_actual,
+                    checkInTime: a.check_in_time,
+                    checkOutTime: a.check_out_time,
+                    createdAt: a.created_at,
+                    updatedAt: a.updated_at,
+                    isReconciled: a.is_reconciled,
+                    adjustmentAmount: a.adjustment_amount,
+                    adjustmentReason: a.adjustment_reason,
+                    whatsappResponseNeeded: a.whatsapp_response_needed
+                }));
+
+                setAppointments(prev => {
+                    const filtered = prev.filter(a => a.date !== dateStr);
+                    const combined = [...filtered, ...mappedData];
+                    return Array.from(new Map(combined.map(a => [a.id, a])).values());
+                });
+            } catch (err) {
+                console.error("Error background fetching appointments for date change:", err);
+            }
+        };
+
+        fetchAppointmentsForSelectedDate();
+    }, [dateRef, setAppointments]);
+
     const [customRange, setCustomRange] = useState({
         start: getLocalDateString(),
         end: getLocalDateString()
