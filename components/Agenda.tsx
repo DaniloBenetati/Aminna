@@ -581,66 +581,73 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         let message = `${greeting}, ${firstName}! 👋\n\n`;
         message += `Sua visita está agendada para:\n\n`;
-        message += `*${customer.name}*\n`;
+        message += `${customer.name}\n`;
 
+        // Group sortedApps by date
+        const groupedByDate: Record<string, Appointment[]> = {};
         sortedApps.forEach(a => {
-            const dateObj = new Date(a.date + 'T12:00:00');
+            if (!groupedByDate[a.date]) {
+                groupedByDate[a.date] = [];
+            }
+            groupedByDate[a.date].push(a);
+        });
+
+        const dateBlocks = Object.entries(groupedByDate).map(([dateStr, apptsOnDate]) => {
+            const dateObj = new Date(dateStr + 'T12:00:00');
             const dayOfWeek = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' }).toUpperCase();
             const day = dateObj.getDate();
             const month = dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
-            
-            message += `${dayOfWeek} ${day} ${month}\n`;
+            const formattedDate = `${dayOfWeek} ${day} ${month}`;
+
+            const dateServices: { name: string; time: string; providerId: string }[] = [];
+            apptsOnDate.forEach(a => {
+                const mainSrv = services.find(s => s.id === a.serviceId);
+                dateServices.push({
+                    name: mainSrv?.name || 'Serviço',
+                    time: a.time,
+                    providerId: a.providerId
+                });
+
+                (a.additionalServices || []).forEach(extra => {
+                    dateServices.push({
+                        name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                        time: extra.startTime || a.time,
+                        providerId: extra.providerId
+                    });
+                });
+            });
+
+            // Sort by time
+            dateServices.sort((a, b) => a.time.localeCompare(b.time));
+
+            const earliestSrv = dateServices[0];
+            const [h, m] = earliestSrv.time.split(':');
+            const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
+
+            const serviceNames = dateServices.map(s => s.name).join(' + ');
 
             const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
-            
-            const getPrefLabel = (providerId: string) => {
-                const pid = String(providerId).trim().toLowerCase();
-                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
-                const nameToUse = prof ? (prof.nickname || prof.name.split(' ')[0]) : 'Equipe';
-                
+            const prefNames: string[] = [];
+            dateServices.forEach(s => {
+                const pid = String(s.providerId).trim().toLowerCase();
                 if (prefIds.includes(pid)) {
-                    return nameToUse;
-                }
-                return nameToUse; // Return name anyway, but the caller handles the label
-            };
-
-            // Lista de todos os serviços (Principal + Adicionais)
-            const mainSrv = services.find(s => s.id === a.serviceId);
-            const allServices = [
-                { 
-                    name: mainSrv?.name || 'Serviço', 
-                    time: a.time, 
-                    providerId: a.providerId 
-                },
-                ...(a.additionalServices || []).map(extra => ({
-                    name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
-                    time: extra.startTime || a.time,
-                    providerId: extra.providerId
-                }))
-            ];
-
-            allServices.forEach(srvItem => {
-                const [h, m] = srvItem.time.split(':');
-                const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
-                
-                const pid = String(srvItem.providerId).trim().toLowerCase();
-                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
-                const isPref = prefIds.includes(pid);
-                const nameToUse = (isPref && prof) ? (prof.nickname || prof.name.split(' ')[0]) : 'Equipe';
-                
-                message += `${displayTime} | ${srvItem.name}\n`;
-                if (isPref) {
-                    message += `*Agendamento com preferência | ${nameToUse}*\n\n`;
-                } else {
-                    message += `*Agendamento confirmado | Equipe*\n\n`;
+                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                    if (prof) {
+                        prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                    }
                 }
             });
+            const uniquePrefNames = Array.from(new Set(prefNames));
+            const prefLine = uniquePrefNames.length > 0
+                ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                : `Agendamento confirmado | Equipe`;
+
+            return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
         });
 
-        message += `Confirma ?\n\n`;
-        message += `Estamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos`;
+        message += dateBlocks.join('\n\n');
 
-        return message;
+        return message.trim();
     };
 
     const handleSendWhatsApp = (e: React.MouseEvent, appt: Appointment) => {

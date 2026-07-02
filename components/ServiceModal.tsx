@@ -2621,29 +2621,41 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
 
-        // Service details list
-        const serviceDetails = lines.map(line => {
+        // Gather and sort all services by startTime
+        const dateServices = lines.map(line => {
             const service = services.find(s => s.id === line.serviceId);
-            const provider = providers.find(p => p.id === line.providerId);
-            const time = line.startTime || appointmentTime;
-            const [hour, minute] = time.split(':');
-            const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
-            
-            const pid = String(line.providerId).trim().toLowerCase();
-            const isPref = prefIds.includes(pid);
-            const nameToUse = (isPref && provider) ? (provider.nickname || provider.name.split(' ')[0]) : 'Equipe';
-            
-            let labelLine = '';
-            if (isPref) {
-                labelLine = `*Agendamento com preferência | ${nameToUse}*`;
-            } else {
-                labelLine = `*Agendamento confirmado | Equipe*`;
+            return {
+                name: service?.name || 'Serviço',
+                time: line.startTime || appointmentTime,
+                providerId: line.providerId
+            };
+        });
+
+        // Sort by time
+        dateServices.sort((a, b) => a.time.localeCompare(b.time));
+
+        const earliestSrv = dateServices[0];
+        const [hour, minute] = earliestSrv.time.split(':');
+        const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+
+        const serviceNames = dateServices.map(s => s.name).join(' + ');
+
+        const prefNames: string[] = [];
+        dateServices.forEach(s => {
+            const pid = String(s.providerId).trim().toLowerCase();
+            if (prefIds.includes(pid)) {
+                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                if (prof) {
+                    prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                }
             }
+        });
+        const uniquePrefNames = Array.from(new Set(prefNames));
+        const prefLine = uniquePrefNames.length > 0 
+            ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+            : `Agendamento confirmado | Equipe`;
 
-            return `${displayTime} | ${service?.name || 'Serviço'}\n${labelLine}`;
-        }).join('\n\n');
-
-        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${serviceDetails}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n${customer.name}\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
@@ -2706,41 +2718,55 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const dateObj = new Date(dateStr + 'T12:00:00');
             const formattedDate = `${weekdays[dateObj.getDay()]} ${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
 
-            const serviceDetails = apptsOnDate.flatMap(appt => {
-                const svcs = [];
-                const formatSvc = (time: string, sId: string, pId: string) => {
-                    const service = services.find(s => s.id === sId);
-                    const provider = providers.find(p => p.id === pId);
-                    const [hour, minute] = (time || '00:00').split(':');
-                    const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
-                    
-                    const pid = String(pId).trim().toLowerCase();
-                    const isPref = prefIds.includes(pid);
-                    const nameToUse = (isPref && provider) ? (provider.nickname || provider.name.split(' ')[0]) : 'Equipe';
-                    
-                    let labelLine = '';
-                    if (isPref) {
-                        labelLine = `*Agendamento com preferência | ${nameToUse}*`;
-                    } else {
-                        labelLine = `*Agendamento confirmado | Equipe*`;
-                    }
-                    return `${displayTime} | ${service?.name || 'Serviço'}\n${labelLine}`;
-                };
-
-                svcs.push(formatSvc(appt.time, appt.serviceId, appt.providerId));
+            // Gather all services for all appointments on this date
+            const dateServices: { name: string; time: string; providerId: string }[] = [];
+            apptsOnDate.forEach(appt => {
+                const mainSrv = services.find(s => s.id === appt.serviceId);
+                dateServices.push({
+                    name: mainSrv?.name || 'Serviço',
+                    time: appt.time,
+                    providerId: appt.providerId
+                });
 
                 if (appt.additionalServices) {
                     appt.additionalServices.forEach((extra: any) => {
-                        svcs.push(formatSvc(extra.startTime || appt.time, extra.serviceId, extra.providerId));
+                        dateServices.push({
+                            name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                            time: extra.startTime || appt.time,
+                            providerId: extra.providerId
+                        });
                     });
                 }
-                return svcs;
-            }).join('\n\n');
+            });
 
-            return `${formattedDate}\n${serviceDetails}`;
+            // Sort by time
+            dateServices.sort((a, b) => a.time.localeCompare(b.time));
+
+            const earliestSrv = dateServices[0];
+            const [hour, minute] = earliestSrv.time.split(':');
+            const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+
+            const serviceNames = dateServices.map(s => s.name).join(' + ');
+
+            const prefNames: string[] = [];
+            dateServices.forEach(s => {
+                const pid = String(s.providerId).trim().toLowerCase();
+                if (prefIds.includes(pid)) {
+                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                    if (prof) {
+                        prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                    }
+                }
+            });
+            const uniquePrefNames = Array.from(new Set(prefNames));
+            const prefLine = uniquePrefNames.length > 0 
+                ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                : `Agendamento confirmado | Equipe`;
+
+            return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
         }).join('\n\n');
 
-        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${blocks}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
+        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n${customer.name}\n\n${blocks}`;
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
