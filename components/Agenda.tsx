@@ -581,7 +581,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         let message = `${greeting}, ${firstName}! 👋\n\n`;
         message += `Sua visita está agendada para:\n\n`;
-        message += `${customer.name}\n`;
+        message += `*${customer.name}*\n`;
 
         // Group sortedApps by date
         const groupedByDate: Record<string, Appointment[]> = {};
