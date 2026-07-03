@@ -380,6 +380,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     localStorage.setItem('active_marketing_tab', activeMarketingTab);
   }, [activeMarketingTab]);
 
+  const [isBackgroundSyncing, setIsBackgroundSyncing] = useState(false);
   const [campaigns, setCampaigns] = useState<MetaCampaign[]>([]);
   const [adSets, setAdSets] = useState<AdSet[]>([]);
   const [ads, setAds] = useState<AdInsight[]>([]);
@@ -684,13 +685,27 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         .sort((a, b) => b.date.localeCompare(a.date));
   }, [appointments, customers, services, providers, firstVisits, isAppointmentInMarketingPeriod]);
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (isBackground = false) => {
     if (!adAccountId || !token) return;
     setLoading(true);
     setError(null);
-    setDailyTimeSeries([]);
-    setDailyConversations([]);
+    setIsBackgroundSyncing(isBackground);
+    if (!isBackground) {
+      setDailyTimeSeries([]);
+      setDailyConversations([]);
+      setCampaigns([]);
+      setAdSets([]);
+      setAds([]);
+      setTotalFollowers(0);
+      setFollowerSeries([]);
+      setOrganicData(null);
+    }
     setHasFetched(true);
+
+    let cache_totalFollowers = 0;
+    let cache_followerSeries: any[] = [];
+    let cache_organicData: any = null;
+    let cache_timeseries: any[] = [];
 
     try {
       const today = new Date();
@@ -971,6 +986,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
         setDailyTimeSeries(timeseries);
         setDailyConversations(timeseries); 
+        cache_timeseries = timeseries;
         
         if (timeseries.length > 0) {
            setDateRange({ 
@@ -988,6 +1004,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           const igData = await fetchFromMeta(token, selectedIgAccountId, { fields: 'followers_count' });
           if (igData && igData.followers_count !== undefined) {
             setTotalFollowers(igData.followers_count);
+            cache_totalFollowers = igData.followers_count;
           }
           
           // Fetch follower series
@@ -1040,8 +1057,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                };
             });
             setFollowerSeries(series);
+            cache_followerSeries = series;
           } else {
             setFollowerSeries([]);
+            cache_followerSeries = [];
           }
 
           try {
@@ -1262,7 +1281,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               fetchMonthData(3, 'Abril')
             ]);
 
-            setOrganicData({
+            const orgDataObj = {
                followerPct, nonFollowerPct,
                reachSeries: reachList.map((v:any) => ({
                    day: new Date(v.end_time).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
@@ -1276,23 +1295,75 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                posts,
                taggedPosts,
                monthsBreakdown: monthsData
-            });
+            };
+            setOrganicData(orgDataObj);
+            cache_organicData = orgDataObj;
           } catch(e) { console.error("Error fetching organic details", e); }
         }
       } catch (e) { console.error("Error fetching followers", e); }
+
+      // Salvar no cache após sucesso na busca geral
+      try {
+        const cacheKey = `meta_cache_${adAccountId}_${selectedIgAccountId}_${datePreset}_${customStartDate}_${customEndDate}`;
+        const cacheData = {
+          campaigns: parsedCampaigns,
+          adSets: finalAdSets,
+          ads: parsedAds,
+          dailyTimeSeries: cache_timeseries,
+          dailyConversations: cache_timeseries,
+          totalFollowers: cache_totalFollowers,
+          followerSeries: cache_followerSeries,
+          organicData: cache_organicData,
+          dateRange: cache_timeseries.length > 0 ? { 
+            start: cache_timeseries[0].date, 
+            stop: cache_timeseries[cache_timeseries.length - 1].date 
+          } : { start: startDateStr, stop: endDateStr }
+        };
+        localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      } catch (cacheErr) {
+        console.error("Erro ao salvar cache no localStorage", cacheErr);
+      }
 
     } catch (e: any) {
       setError(`Erro ao buscar dados da Meta API: ${e.message}`);
     } finally {
       setLoading(false);
+      setIsBackgroundSyncing(false);
     }
   }, [adAccountId, token, datePreset, customStartDate, customEndDate, selectedIgAccountId]);
 
   useEffect(() => {
     if (token && adAccountId && (activeMarketingTab === 'paid' || activeMarketingTab === 'reports')) {
-      fetchAll();
+      // 1. Tentar carregar dados do cache primeiro
+      const cacheKey = `meta_cache_${adAccountId}_${selectedIgAccountId}_${datePreset}_${customStartDate}_${customEndDate}`;
+      const cached = localStorage.getItem(cacheKey);
+      let hasCache = false;
+
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed.campaigns && parsed.campaigns.length > 0) {
+            setCampaigns(parsed.campaigns);
+            if (parsed.adSets) setAdSets(parsed.adSets);
+            if (parsed.ads) setAds(parsed.ads);
+            if (parsed.dailyTimeSeries) setDailyTimeSeries(parsed.dailyTimeSeries);
+            if (parsed.dailyConversations) setDailyConversations(parsed.dailyConversations);
+            if (parsed.totalFollowers !== undefined) setTotalFollowers(parsed.totalFollowers);
+            if (parsed.followerSeries) setFollowerSeries(parsed.followerSeries);
+            if (parsed.organicData) setOrganicData(parsed.organicData);
+            if (parsed.dateRange) setDateRange(parsed.dateRange);
+            setHasFetched(true);
+            hasCache = true;
+          }
+        } catch (e) {
+          console.error("Erro ao ler cache", e);
+        }
+      }
+
+      // 2. Chamar fetchAll (se tem cache, faz busca em background)
+      fetchAll(hasCache);
     }
-  }, [token, adAccountId, fetchAll, activeMarketingTab]);
+  }, [token, adAccountId, selectedIgAccountId, datePreset, customStartDate, customEndDate, fetchAll, activeMarketingTab]);
 
   const getMatchingCouponAppts = (cName: string) => {
     const nameLower = cName.toLowerCase();
@@ -1906,6 +1977,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
           {/* Período (esquerda) e Botão Filtrar (direita) unificados em uma linha */}
           <div className="flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
+            {isBackgroundSyncing && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 text-[8px] md:text-[9px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider animate-pulse bg-indigo-50 dark:bg-indigo-950/40 rounded-md">
+                <RefreshCw size={10} className="animate-spin" />
+                <span className="hidden sm:inline">Sincronizando...</span>
+              </div>
+            )}
+            
             <p className="text-[7px] sm:text-[8px] md:text-[9px] text-slate-400 dark:text-slate-500 uppercase tracking-normal font-bold whitespace-nowrap">
               <span className="hidden sm:inline">Análise estratégica · </span>{
                 datePreset === 'last_7d' ? '7 dias' : 
@@ -2160,7 +2238,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
               {!hasFetched ? (
                 renderEmpty()
-              ) : loading ? (
+              ) : (loading && !campaigns.length) ? (
                 <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-2xl animate-bounce">
                     <BarChart3 size={32} className="text-white" />

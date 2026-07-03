@@ -241,10 +241,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         }
     }, [dateRef]);
 
-    // Background fetch appointments for the selected date on dateRef change
+    // Background fetch appointments for the selected date on dateRef change and periodic background updates
     React.useEffect(() => {
         if (!dateRef) return;
         const fetchAppointmentsForSelectedDate = async () => {
+            if (document.hidden) return; // avoid querying if tab is inactive
             const dateStr = toLocalDateStr(dateRef);
             try {
                 const { data, error } = await supabase
@@ -303,6 +304,18 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         fetchAppointmentsForSelectedDate();
+
+        const intervalId = setInterval(fetchAppointmentsForSelectedDate, 15000); // 15 seconds
+
+        const handleFocus = () => {
+            fetchAppointmentsForSelectedDate();
+        };
+        window.addEventListener('focus', handleFocus);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener('focus', handleFocus);
+        };
     }, [dateRef, setAppointments]);
 
     const [customRange, setCustomRange] = useState({
@@ -337,6 +350,8 @@ export const Agenda: React.FC<AgendaProps> = ({
         providerName: string;
         reason: string;
     }>({ open: false, providerName: '', reason: '' });
+
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string } | null>(null);
 
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
         show: false,
@@ -1343,7 +1358,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 if (isInternalBlock) {
                     alert(`⚠️ AGENDA BLOQUEADA\n\n${targetProvider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
                 } else {
-                    alert(`⚠️ HORÁRIO INDISPONÍVEL\n\nEste horário para o(a) profissional ${targetProvider?.name || 'selecionado'} acabou de ser ocupado por outro agendamento.\n\nPor favor, atualize a agenda ou selecione outro horário/profissional.`);
+                    setConflictAlert({ providerName: targetProvider?.name || 'selecionado' });
                 }
                 return; // Abort move
             }
@@ -3084,6 +3099,34 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
                             >
                                 Prosseguir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {conflictAlert && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center pt-10">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
+                                <AlertCircle size={40} className="animate-pulse" />
+                            </div>
+                            
+                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                Horário Indisponível
+                            </h3>
+                            
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+                                Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.<br /><br />
+                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                            </p>
+                            
+                            <button
+                                onClick={() => setConflictAlert(null)}
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                            >
+                                OK
                             </button>
                         </div>
                     </div>

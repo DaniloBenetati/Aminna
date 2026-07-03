@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, CircleX, ArrowRight, ArrowLeft, CircleCheck, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy, History, ShieldAlert } from 'lucide-react';
+import { X, Plus, Check, Star, Smartphone, Trash2, Search, CreditCard, Wallet, DollarSign, AlertOctagon, AlertCircle, Edit3, Package, PencilLine, Tag, Sparkles, Calendar, AlertTriangle, Ban, Save, CircleX, ArrowRight, ArrowLeft, CircleCheck, User, Landmark, Banknote, Ticket, ChevronDown, ChevronLeft, FileText, RefreshCw, Play, Coins, Clock, Copy, History, ShieldAlert } from 'lucide-react';
 import { Appointment, Customer, CustomerHistoryItem, Service, Campaign, PaymentSetting, Provider, StockItem, PaymentInfo, ViewState, Sale } from '../types';
 import { Avatar } from './Avatar';
 import { supabase } from '../services/supabase';
@@ -183,6 +183,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
     const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
     const [showFutureAgendaOptions, setShowFutureAgendaOptions] = useState(false);
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string } | null>(null);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // NFSe State
     const [nfseStatus, setNfseStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -864,7 +866,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 if (isInternalBlock) {
                     alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
                 } else {
-                    alert(`⚠️ HORÁRIO INDISPONÍVEL\n\nEste horário para o(a) profissional ${provider?.name || 'selecionado'} acabou de ser ocupado por outro agendamento.\n\nPor favor, atualize a agenda ou selecione outro horário/profissional.`);
+                    setConflictAlert({ providerName: provider?.name || 'selecionado' });
                 }
                 return true;
             }
@@ -2539,10 +2541,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleDeleteAppointment = async () => {
-        const confirmDelete = window.confirm('⚠️ ATENÇÃO: EXCLUIR AGENDAMENTO\n\nEsta ação excluirá PERMANENTEMENTE este agendamento do banco de dados.\nNão será possível recuperar os dados.\n\nDeseja realmente excluir este agendamento?');
-        if (!confirmDelete) return;
+    const handleDeleteAppointment = () => {
+        setShowDeleteConfirm(true);
+    };
 
+    const executeDeleteAppointment = async () => {
+        setShowDeleteConfirm(false);
         setIsSaving(true);
 
         try {
@@ -5165,6 +5169,79 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     partners={partners}
                 />
             )}
+
+            {conflictAlert && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center pt-10">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
+                                <AlertCircle size={40} className="animate-pulse" />
+                            </div>
+                            
+                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                Horário Indisponível
+                            </h3>
+                            
+                            <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+                                Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.<br /><br />
+                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                            </p>
+                            
+                            <button
+                                onClick={() => setConflictAlert(null)}
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteConfirm && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center pt-10">
+                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
+                                <Trash2 size={40} className="animate-pulse" />
+                            </div>
+                            
+                            <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
+                                ATENÇÃO: EXCLUIR AGENDAMENTO
+                            </h3>
+                            
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-6 mb-6 border border-slate-100 dark:border-zinc-800 space-y-2 text-left">
+                                <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Esta ação excluirá <span className="text-rose-600 dark:text-rose-400 font-black">PERMANENTEMENTE</span> este agendamento do banco de dados.
+                                </p>
+                                <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    Não será possível recuperar os dados.
+                                </p>
+                            </div>
+
+                            <p className="text-sm font-black text-slate-900 dark:text-white mb-6">
+                                Deseja realmente excluir este agendamento?
+                            </p>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setShowDeleteConfirm(false)}
+                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={executeDeleteAppointment}
+                                    className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Custom Restriction Alert Modal */}
             {restrictionAlert.open && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
