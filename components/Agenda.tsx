@@ -1766,11 +1766,11 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                     {/* Zoom Controls */}
                     <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 p-1 rounded-xl border border-slate-100 dark:border-zinc-700">
-                        <button onClick={() => setRowHeight(prev => Math.max(40, prev - 10))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Diminuir Altura"><ZoomOut size={14} /></button>
-                        <button onClick={() => setRowHeight(prev => Math.min(200, prev + 10))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Aumentar Altura"><ZoomIn size={14} /></button>
+                        <button onClick={() => setRowHeight(prev => Math.max(25, prev - 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Diminuir Altura"><ZoomOut size={14} /></button>
+                        <button onClick={() => setRowHeight(prev => Math.min(200, prev + 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Aumentar Altura"><ZoomIn size={14} /></button>
                         <div className="h-4 w-px bg-slate-200 dark:bg-zinc-700 mx-0.5"></div>
-                        <button onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Estreitar Colunas"><ChevronLeft size={14} /></button>
-                        <button onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Alargar Colunas"><ChevronRight size={14} /></button>
+                        <button onClick={() => setZoomLevel(prev => Math.max(0.3, prev - 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Estreitar Colunas"><ChevronLeft size={14} /></button>
+                        <button onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Alargar Colunas"><ChevronRight size={14} /></button>
                     </div>
 
                     {/* Action Buttons */}
@@ -2192,7 +2192,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                         >
                                                                             <div
                                                                                 onClick={() => handleAppointmentClick(appt)}
-                                                                                className={`h-full w-full group p-1.5 rounded-xl border text-left cursor-pointer transition-all active:scale-95 shadow-sm 
+                                                                                className={`h-full w-full group text-left cursor-pointer transition-all active:scale-95 shadow-sm border
+                                                                    ${rowHeight < 50 ? 'p-0.5 rounded-md' : rowHeight < 75 ? 'p-1 rounded-lg' : 'p-1.5 rounded-xl'}
                                                                     ${appt.whatsappResponseNeeded ? 'bg-amber-400 border-amber-500 text-amber-950' :
                                                                                     (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
                                                                                         localStatus === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
@@ -2204,7 +2205,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             >
                                                                                 <div className="flex justify-between items-start">
                                                                                     <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
-                                                                                        <p className={`text-[10px] font-black uppercase leading-none truncate ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
+                                                                                        <p className={`font-black uppercase leading-none truncate ${rowHeight < 50 ? 'text-[7.5px]' : rowHeight < 75 ? 'text-[8.5px]' : 'text-[10px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
                                                                                             {customer?.name || 'Cliente'}
                                                                                         </p>
                                                                                         {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
@@ -2214,9 +2215,13 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                             <span className="bg-pink-600 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
                                                                                         )}
                                                                                     </div>
-                                                                                    <span className={`text-[8px] font-mono ${appt.whatsappResponseNeeded ? 'text-amber-800' : 'text-white/70'}`}>{displayTime.split(':')[1]}</span>
+                                                                                    {rowHeight >= 45 && (
+                                                                                        <span className={`${rowHeight < 65 ? 'text-[7px]' : 'text-[8px]'} font-mono ${appt.whatsappResponseNeeded ? 'text-amber-800' : 'text-white/70'}`}>{displayTime.split(':')[1]}</span>
+                                                                                    )}
                                                                                 </div>
-                                                                                 <div className={`text-[8.5px] font-bold truncate mt-0.5 ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>{displayServiceName}</div>
+                                                                                {rowHeight >= 40 && (
+                                                                                    <div className={`font-bold truncate mt-0.5 ${rowHeight < 60 ? 'text-[7px]' : rowHeight < 75 ? 'text-[8px]' : 'text-[8.5px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>{displayServiceName}</div>
+                                                                                )}
 
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
