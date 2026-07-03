@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
-import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy } from 'lucide-react';
+import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy, Heart } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
 import { PARTNERS } from '../constants';
 import { toLocalDateStr, calculateAppointmentProduction, parseDateSafe, isFirstAppointment, getMinDate } from '../services/financialService';
@@ -1337,8 +1337,47 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 };
             })
             .filter(item => item.value > 0)
-            .sort((a, b) => b.value - a.value);
     }, [vettedAppointments, providers]);
+ 
+    // Profissionais com Preferência de Cliente
+    const providerPreferencesCount = useMemo(() => {
+        const counts: Record<string, number> = {};
+        
+        // Inicializa todos os profissionais com 0
+        (providers || []).forEach(p => {
+            counts[p.id] = 0;
+        });
+
+        (customers || []).forEach(c => {
+            const ids: string[] = [];
+            if (c.assignedProviderIds && Array.isArray(c.assignedProviderIds)) {
+                c.assignedProviderIds.forEach(id => {
+                    if (id) ids.push(String(id));
+                });
+            } else if (c.assignedProviderId) {
+                ids.push(String(c.assignedProviderId));
+            }
+
+            // Garante IDs únicos por cliente
+            const uniqueIds = Array.from(new Set(ids));
+            uniqueIds.forEach(id => {
+                counts[id] = (counts[id] || 0) + 1;
+            });
+        });
+
+        return Object.entries(counts)
+            .map(([id, val]) => {
+                const p = (providers || []).find(p => p.id === id);
+                const name = p?.name?.trim() || 'Não Identificado';
+                const displayName = name.toLowerCase().includes('maria alice') || name.toLowerCase() === 'maria' ? 'MARIA' : name.split(' ')[0];
+                return {
+                    name: displayName,
+                    value: val
+                };
+            })
+            .filter(item => item.value > 0)
+            .sort((a, b) => b.value - a.value);
+    }, [customers, providers]);
 
     // 12. Serviços Mais Agendados (Volume)
     const topServicesVolume = useMemo(() => {
@@ -2038,6 +2077,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         return null;
     };
 
+    // Tooltip specifically for Client Preferences
+    const PreferenceTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            return (
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                    <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
+                    <p className="text-rose-700 dark:text-rose-400 font-bold text-sm">
+                        {payload[0].value} {payload[0].value === 1 ? 'Preferência' : 'Preferências'}
+                    </p>
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
         <div className="space-y-6 relative pb-20 md:pb-0 w-full max-w-full overflow-x-hidden">
 
@@ -2663,7 +2717,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </div>
 
                     {activeSubTab === 'charts' ? (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             {/* Profissionais por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
@@ -2715,6 +2769,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             <Tooltip cursor={{ fill: 'transparent' }} content={<CurrencyTooltip />} />
                                             <Bar dataKey="ticketMedio" fill="#d97706" radius={[0, 4, 4, 0]} barSize={16}>
                                                 <LabelList dataKey="ticketMedio" position="right" fill="#64748b" fontSize={8} fontWeight={900} formatter={(v: number) => `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+
+                            {/* Preferências por Profissional */}
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
+                                    <Heart size={16} className="text-rose-600 dark:text-rose-400" /> Preferência dos Clientes
+                                </h3>
+                                <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerPreferencesCount.length * 32)}px` }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={providerPreferencesCount} layout="vertical" margin={{ left: 0, right: 30 }}>
+                                            <XAxis type="number" hide />
+                                            <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={70} tick={{ fontSize: 8, fontWeight: 800, fill: '#64748b' }} />
+                                            <Tooltip cursor={{ fill: 'transparent' }} content={<PreferenceTooltip />} />
+                                            <Bar dataKey="value" fill="#e11d48" radius={[0, 4, 4, 0]} barSize={16}>
+                                                <LabelList dataKey="value" position="right" fill="#64748b" fontSize={8} fontWeight={900} />
                                             </Bar>
                                         </BarChart>
                                     </ResponsiveContainer>
