@@ -183,7 +183,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
     const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
     const [showFutureAgendaOptions, setShowFutureAgendaOptions] = useState(false);
-    const [conflictAlert, setConflictAlert] = useState<{ providerName: string } | null>(null);
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: string; onConfirm?: () => void } | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // NFSe State
@@ -666,7 +666,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return { isRestricted: false, providerName: '', reason: '' };
     }, [lines, customer]);
 
-    const handleCheckConflict = () => {
+    const handleCheckConflict = (onConfirm: () => void): boolean => {
         // IDs of all appointments currently represented in this modal lines
         const currentApptIds = new Set(lines.map(l => l.appointmentId).filter(Boolean));
         if (appointment.id) currentApptIds.add(appointment.id);
@@ -740,15 +740,34 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const conflictStart = toMinutes(conflict.time);
 
                 if (isInternalBlock) {
-                    alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+                    setConflictAlert({
+                        providerName: provider?.name || 'selecionado',
+                        title: '⚠️ AGENDA BLOQUEADA',
+                        message: `${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.`
+                    });
                     return true; // Stop
                 } else if (conflictStart === lineStart) {
-                    // Even if same start, we make it a warning instead of a block, unless it's a manual block
-                    const proceed = window.confirm(`⚠️ CONFLITO DE HORÁRIO\n\n${provider?.name || 'A profissional'} já possui um atendimento que inicia exatamente às ${conflict.time}.\n\nDeseja agendar em duplicidade neste horário?`);
-                    if (!proceed) return true;
+                    setConflictAlert({
+                        providerName: provider?.name || 'selecionado',
+                        title: '⚠️ CONFLITO DE HORÁRIO',
+                        message: `${provider?.name || 'A profissional'} já possui um atendimento que inicia exatamente às ${conflict.time}.`,
+                        onConfirm: () => {
+                            setConflictAlert(null);
+                            onConfirm();
+                        }
+                    });
+                    return true;
                 } else {
-                    const proceed = window.confirm(`⚠️ AVISO DE INTERFERÊNCIA\n\n${provider?.name || 'A profissional'} possui um atendimento (${conflict.time}) que se sobrepõe a este horário.\n\nDeseja continuar mesmo assim?`);
-                    if (!proceed) return true;
+                    setConflictAlert({
+                        providerName: provider?.name || 'selecionado',
+                        title: '⚠️ AVISO DE INTERFERÊNCIA',
+                        message: `${provider?.name || 'A profissional'} possui um atendimento (${conflict.time}) que se sobrepõe a este horário.`,
+                        onConfirm: () => {
+                            setConflictAlert(null);
+                            onConfirm();
+                        }
+                    });
+                    return true;
                 }
             }
         }
@@ -756,7 +775,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return false; // No conflicts found or user accepted warnings
     };
 
-    const checkDatabaseConcurrencyConflict = async (linesToUse: ServiceLine[]): Promise<boolean> => {
+    const checkDatabaseConcurrencyConflict = async (
+        linesToUse: ServiceLine[],
+        onConfirm: () => Promise<void>
+    ): Promise<boolean> => {
         const dateToCheck = appointmentDate;
         const currentApptId = appointment.id;
         const secondaryAppointmentIds = Array.from(new Set(
@@ -866,7 +888,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 if (isInternalBlock) {
                     alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
                 } else {
-                    setConflictAlert({ providerName: provider?.name || 'selecionado' });
+                    setConflictAlert({ 
+                        providerName: provider?.name || 'selecionado',
+                        onConfirm: async () => {
+                            setConflictAlert(null);
+                            await onConfirm();
+                        }
+                    });
                 }
                 return true;
             }
@@ -1049,9 +1077,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setAppliedCampaign(null);
         setCouponCode('');
     };
+    const handleCheckIn = async (bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
+        if (isSaving || restrictionData.isRestricted) return;
 
-    const handleCheckIn = async () => {
-        if (isSaving || restrictionData.isRestricted || handleCheckConflict()) return;
+        if (!bypassMemoryConflict && handleCheckConflict(() => handleCheckIn(bypassConcurrency, true))) return;
 
         const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const checkInVal = nowTime;
@@ -1065,11 +1094,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setIsSaving(true);
 
         // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-        if (await checkDatabaseConcurrencyConflict(updatedLines)) {
+        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(updatedLines, () => handleCheckIn(true, true))) {
             setIsSaving(false);
             return;
         }
-
         // Check for merge possibility
         if (await checkForCustomerConflictAndMerge()) {
             setIsSaving(false);
@@ -1209,8 +1237,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleFinishService = async () => {
-        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+    const handleFinishService = async (bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
+
+        if (!bypassMemoryConflict && handleCheckConflict(() => handleFinishService(bypassConcurrency, true))) return;
         
         setIsSaving(true);
         
@@ -1234,7 +1264,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setIsSaving(true);
 
         // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-        if (await checkDatabaseConcurrencyConflict(lines)) {
+        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(lines, () => handleFinishService(true, true))) {
             setIsSaving(false);
             return;
         }
@@ -1585,7 +1615,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         await handleSave(updatedLines, false);
     };
 
-    const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true) => {
+    const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true, bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
         if (isSaving) return;
 
         try {
@@ -1617,8 +1647,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 return;
             }
 
-            if (handleCheckConflict()) {
-                showToast('Conflito de horário detectado.', 'warning');
+            if (!bypassMemoryConflict && handleCheckConflict(() => handleSave(manualLines, closeAfter, bypassConcurrency, true))) {
                 return;
             }
 
@@ -1631,7 +1660,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             setIsSaving(true);
 
             // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-            if (await checkDatabaseConcurrencyConflict(linesToUse)) {
+            if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(linesToUse, () => handleSave(manualLines, closeAfter, true, true))) {
                 setIsSaving(false);
                 return;
             }
@@ -1924,8 +1953,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setMode(previousMode);
     };
 
-    const handleCreateDebt = async (forced = false) => {
-        if (isSaving || restrictionData.isRestricted || customer.isBlocked || handleCheckConflict()) return;
+    const handleCreateDebt = async (forced = false, bypassMemoryConflict: boolean = false) => {
+        if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
+
+        if (!bypassMemoryConflict && handleCheckConflict(() => handleCreateDebt(forced, true))) return;
 
         if (!forced) {
             setShowDebtConfirmModal(true);
@@ -3905,7 +3936,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 (appointment.status === 'Confirmado' || appointment.status === 'Pendente') ? (
                                                     <button
                                                         type="button"
-                                                        onClick={handleCheckIn}
+                                                        onClick={() => handleCheckIn()}
                                                         disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
                                                         className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
@@ -4508,7 +4539,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="pt-2 flex flex-col gap-3">
                                 <button
                                     type="button"
-                                    onClick={handleFinishService}
+                                    onClick={() => handleFinishService()}
                                     disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
                                     className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
                                 >
@@ -5179,20 +5210,56 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </div>
                             
                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Horário Indisponível
+                                {conflictAlert.title || "Horário Indisponível"}
                             </h3>
                             
                             <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-                                Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.<br /><br />
-                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                                {conflictAlert.message ? (
+                                    conflictAlert.message
+                                ) : (
+                                    <>
+                                        Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.
+                                        {conflictAlert.onConfirm ? (
+                                            <>
+                                                <br /><br />
+                                                Deseja prosseguir com o agendamento em duplicidade mesmo assim?
+                                            </>
+                                        ) : (
+                                            <>
+                                                <br /><br />
+                                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                                            </>
+                                        )}
+                                    </>
+                                )}
                             </p>
                             
-                            <button
-                                onClick={() => setConflictAlert(null)}
-                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
-                            >
-                                OK
-                            </button>
+                            {conflictAlert.onConfirm ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setConflictAlert(null)}
+                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            conflictAlert.onConfirm?.();
+                                            setConflictAlert(null);
+                                        }}
+                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                    >
+                                        Prosseguir
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setConflictAlert(null)}
+                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                >
+                                    OK
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

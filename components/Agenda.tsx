@@ -351,8 +351,8 @@ export const Agenda: React.FC<AgendaProps> = ({
         reason: string;
     }>({ open: false, providerName: '', reason: '' });
 
-    const [conflictAlert, setConflictAlert] = useState<{ providerName: string } | null>(null);
 
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: string; onConfirm?: () => void } | null>(null);
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
         show: false,
         message: '',
@@ -1291,6 +1291,37 @@ export const Agenda: React.FC<AgendaProps> = ({
             return;
         }
 
+        const proceedMove = async () => {
+            // Optimistic UI
+            const originalAppointments = [...appointments];
+            setAppointments(prev => prev.map(a =>
+                a.id === appointmentId ? { ...a, providerId: targetProviderId, time: targetTime } : a
+            ));
+
+            try {
+                const { error } = await supabase
+                    .from('appointments')
+                    .update({
+                        provider_id: targetProviderId,
+                        time: targetTime
+                    })
+                    .eq('id', appointmentId);
+
+                if (error) {
+                    if (error.code === '23505') {
+                        alert("⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.");
+                        setAppointments(originalAppointments);
+                        return;
+                    }
+                    throw error;
+                }
+            } catch (error) {
+                console.error("Error moving appointment:", error);
+                setAppointments(originalAppointments);
+                alert("Erro ao mover atendimento. Revertendo...");
+            }
+        };
+
         // --- CONCURRENCY CHECK AGAINST LIVE DB ---
         try {
             const { data: dbAppointments, error: dbError } = await supabase
@@ -1358,7 +1389,10 @@ export const Agenda: React.FC<AgendaProps> = ({
                 if (isInternalBlock) {
                     alert(`⚠️ AGENDA BLOQUEADA\n\n${targetProvider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
                 } else {
-                    setConflictAlert({ providerName: targetProvider?.name || 'selecionado' });
+                    setConflictAlert({ 
+                        providerName: targetProvider?.name || 'selecionado',
+                        onConfirm: proceedMove
+                    });
                 }
                 return; // Abort move
             }
@@ -1368,34 +1402,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             return;
         }
 
-        // Optimistic UI
-        const originalAppointments = [...appointments];
-        setAppointments(prev => prev.map(a =>
-            a.id === appointmentId ? { ...a, providerId: targetProviderId, time: targetTime } : a
-        ));
-
-        try {
-            const { error } = await supabase
-                .from('appointments')
-                .update({
-                    provider_id: targetProviderId,
-                    time: targetTime
-                })
-                .eq('id', appointmentId);
-
-            if (error) {
-                if (error.code === '23505') {
-                    alert("⚠️ OPS! JÁ EXISTE UM AGENDAMENTO IDÊNTICO.\n\nEste atendimento para a mesma cliente, hora e profissional já existe. Vamos redirecionar você para o agendamento existente para que possa ADICIONAR os serviços lá.");
-                    setAppointments(originalAppointments);
-                    return;
-                }
-                throw error;
-            }
-        } catch (error) {
-            console.error("Error moving appointment:", error);
-            setAppointments(originalAppointments);
-            alert("Erro ao mover atendimento. Revertendo...");
-        }
+        await proceedMove();
     };
 
     const MiniCalendar = () => {
@@ -3114,20 +3121,56 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </div>
                             
                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight mb-4 leading-tight">
-                                Horário Indisponível
+                                {conflictAlert.title || "Horário Indisponível"}
                             </h3>
                             
                             <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
-                                Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.<br /><br />
-                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                                {conflictAlert.message ? (
+                                    conflictAlert.message
+                                ) : (
+                                    <>
+                                        Este horário para o(a) profissional <span className="font-black text-slate-950 dark:text-white">{conflictAlert.providerName}</span> acabou de ser ocupado por outro agendamento.
+                                        {conflictAlert.onConfirm ? (
+                                            <>
+                                                <br /><br />
+                                                Deseja prosseguir com o agendamento em duplicidade mesmo assim?
+                                            </>
+                                        ) : (
+                                            <>
+                                                <br /><br />
+                                                Por favor, atualize a agenda ou selecione outro horário/profissional.
+                                            </>
+                                        )}
+                                    </>
+                                )}
                             </p>
                             
-                            <button
-                                onClick={() => setConflictAlert(null)}
-                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
-                            >
-                                OK
-                            </button>
+                            {conflictAlert.onConfirm ? (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setConflictAlert(null)}
+                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            conflictAlert.onConfirm?.();
+                                            setConflictAlert(null);
+                                        }}
+                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                    >
+                                        Prosseguir
+                                    </button>
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={() => setConflictAlert(null)}
+                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                >
+                                    OK
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
