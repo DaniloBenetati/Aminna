@@ -183,7 +183,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [showDebtConfirmModal, setShowDebtConfirmModal] = useState(false);
     const [showWhatsAppOptions, setShowWhatsAppOptions] = useState(false);
     const [showFutureAgendaOptions, setShowFutureAgendaOptions] = useState(false);
-    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: string; onConfirm?: () => void } | null>(null);
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: React.ReactNode; onConfirm?: () => void } | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // NFSe State
@@ -666,118 +666,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         return { isRestricted: false, providerName: '', reason: '' };
     }, [lines, customer]);
 
-    const handleCheckConflict = (onConfirm: () => void): boolean => {
-        // IDs of all appointments currently represented in this modal lines
-        const currentApptIds = new Set(lines.map(l => l.appointmentId).filter(Boolean));
-        if (appointment.id) currentApptIds.add(appointment.id);
-
-        const currentCustomerId = customer.id;
-
-        // Helper to convert time "HH:mm" to minutes from 00:00
-        const toMinutes = (time: string) => {
-            if (!time) return 0;
-            const [h, m] = time.split(':').map(Number);
-            return (h || 0) * 60 + (m || 0);
-        };
-
-        const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-        const modalDate = appointmentDate;
-
-        // CHECK EACH LINE INDIVIDUALLY FOR ITS SPECIFIC PROVIDER
-        for (const line of lines) {
-            const providerId = line.providerId;
-            if (!providerId) continue;
-
-            const provider = providers.find(p => p.id === providerId);
-            const lineStart = toMinutes(line.startTime || appointmentTime);
-            const srv = services.find(s => s.id === line.serviceId);
-            const lineDur = line.endTime ? (toMinutes(line.endTime) - lineStart) : (srv?.durationMinutes || 30);
-            const lineEnd = lineStart + lineDur;
-
-            // Find any overlapping appointment for THIS provider on THIS line
-            const conflict = allAppointments.find(a => {
-                // 1. Basic exclusions
-                if (currentApptIds.has(a.id)) return false;
-                if (a.date !== modalDate) return false;
-                // if (a.customerId === currentCustomerId) return false; // REMOVED: Should detect if same customer is double-booked
-
-                const isInternalBlock = a.combinedServiceNames === 'BLOQUEIO_INTERNO';
-                if (a.status === 'Cancelado' && !isInternalBlock) return false;
-
-                // 2. Determine all time windows for 'providerId' within appointment 'a'
-                interface TimeWindow { start: number; end: number; }
-                const windows: TimeWindow[] = [];
-
-                if (a.providerId === providerId) {
-                    const start = toMinutes(a.time);
-                    const srv = services.find(s => s.id === a.serviceId);
-                    const end = a.endTime ? toMinutes(a.endTime) : (start + (srv?.durationMinutes || 30));
-                    windows.push({ start, end });
-                }
-
-                if (a.additionalServices) {
-                    a.additionalServices.forEach((extra: any) => {
-                        if (extra.providerId === providerId) {
-                            const start = toMinutes(extra.startTime || a.time);
-                            const srv = services.find(s => s.id === extra.serviceId);
-                            const end = toMinutes(extra.endTime) || (start + (extra.durationMinutes || srv?.durationMinutes || 30));
-                            windows.push({ start, end });
-                        }
-                    });
-                }
-
-                // If this provider isn't even in appt 'a', no conflict
-                if (windows.length === 0) return false;
-
-                // 3. Precise overlap check: (lineStart < w.end) && (lineEnd > w.start)
-                const hasOverlap = windows.some(w => (lineStart < w.end) && (lineEnd > w.start));
-                return hasOverlap;
-            });
-
-            if (conflict) {
-                const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
-                const conflictStart = toMinutes(conflict.time);
-
-                if (isInternalBlock) {
-                    setConflictAlert({
-                        providerName: provider?.name || 'selecionado',
-                        title: '⚠️ AGENDA BLOQUEADA',
-                        message: `${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.`
-                    });
-                    return true; // Stop
-                } else if (conflictStart === lineStart) {
-                    setConflictAlert({
-                        providerName: provider?.name || 'selecionado',
-                        title: '⚠️ CONFLITO DE HORÁRIO',
-                        message: `${provider?.name || 'A profissional'} já possui um atendimento que inicia exatamente às ${conflict.time}.`,
-                        onConfirm: () => {
-                            setConflictAlert(null);
-                            onConfirm();
-                        }
-                    });
-                    return true;
-                } else {
-                    setConflictAlert({
-                        providerName: provider?.name || 'selecionado',
-                        title: '⚠️ AVISO DE INTERFERÊNCIA',
-                        message: `${provider?.name || 'A profissional'} possui um atendimento (${conflict.time}) que se sobrepõe a este horário.`,
-                        onConfirm: () => {
-                            setConflictAlert(null);
-                            onConfirm();
-                        }
-                    });
-                    return true;
-                }
-            }
-        }
-
-        return false; // No conflicts found or user accepted warnings
-    };
-
     const checkDatabaseConcurrencyConflict = async (
         linesToUse: ServiceLine[],
-        onConfirm: () => Promise<void>
+        onConfirm: () => void | Promise<void>
     ): Promise<boolean> => {
         const dateToCheck = appointmentDate;
         const currentApptId = appointment.id;
@@ -885,18 +776,54 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             if (conflict) {
                 const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
+                const conflictStart = toMinutes(conflict.time);
+
                 if (isInternalBlock) {
-                    alert(`⚠️ AGENDA BLOQUEADA\n\n${provider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
-                } else {
-                    setConflictAlert({ 
+                    setConflictAlert({
                         providerName: provider?.name || 'selecionado',
+                        title: '⚠️ AGENDA BLOQUEADA',
+                        message: (
+                            <>
+                                <span className="font-black text-slate-950 dark:text-white">{provider?.name || 'A profissional'}</span> está com a agenda bloqueada neste horário.
+                            </>
+                        )
+                    });
+                    return true;
+                } else if (conflictStart === lineStart) {
+                    setConflictAlert({
+                        providerName: provider?.name || 'selecionado',
+                        title: '⚠️ CONFLITO DE HORÁRIO',
+                        message: (
+                            <>
+                                <span className="font-black text-slate-950 dark:text-white">{provider?.name || 'A profissional'}</span> já possui um atendimento que inicia exatamente às <span className="font-black text-slate-950 dark:text-white">{conflict.time}</span>.
+                                <br /><br />
+                                Deseja prosseguir com o agendamento em duplicidade mesmo assim?
+                            </>
+                        ),
                         onConfirm: async () => {
                             setConflictAlert(null);
                             await onConfirm();
                         }
                     });
+                    return true;
+                } else {
+                    setConflictAlert({
+                        providerName: provider?.name || 'selecionado',
+                        title: '⚠️ AVISO DE INTERFERÊNCIA',
+                        message: (
+                            <>
+                                <span className="font-black text-slate-950 dark:text-white">{provider?.name || 'A profissional'}</span> possui um atendimento (<span className="font-black text-slate-950 dark:text-white">{conflict.time}</span>) que se sobrepõe a este horário.
+                                <br /><br />
+                                Deseja prosseguir com o agendamento em duplicidade mesmo assim?
+                            </>
+                        ),
+                        onConfirm: async () => {
+                            setConflictAlert(null);
+                            await onConfirm();
+                        }
+                    });
+                    return true;
                 }
-                return true;
             }
         }
 
@@ -1077,10 +1004,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setAppliedCampaign(null);
         setCouponCode('');
     };
-    const handleCheckIn = async (bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
+    const handleCheckIn = async (bypassConcurrency: boolean = false) => {
         if (isSaving || restrictionData.isRestricted) return;
-
-        if (!bypassMemoryConflict && handleCheckConflict(() => handleCheckIn(bypassConcurrency, true))) return;
 
         const nowTime = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const checkInVal = nowTime;
@@ -1094,7 +1019,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setIsSaving(true);
 
         // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(updatedLines, () => handleCheckIn(true, true))) {
+        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(updatedLines, () => handleCheckIn(true))) {
             setIsSaving(false);
             return;
         }
@@ -1237,11 +1162,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleFinishService = async (bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
+    const handleFinishService = async (bypassConcurrency: boolean = false) => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
 
-        if (!bypassMemoryConflict && handleCheckConflict(() => handleFinishService(bypassConcurrency, true))) return;
-        
         setIsSaving(true);
         
         if (totalPaid < totalValue - 0.01) {
@@ -1264,7 +1187,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setIsSaving(true);
 
         // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(lines, () => handleFinishService(true, true))) {
+        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(lines, () => handleFinishService(true))) {
             setIsSaving(false);
             return;
         }
@@ -1615,7 +1538,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         await handleSave(updatedLines, false);
     };
 
-    const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true, bypassConcurrency: boolean = false, bypassMemoryConflict: boolean = false) => {
+    const handleSave = async (manualLines?: ServiceLine[], closeAfter: boolean = true, bypassConcurrency: boolean = false) => {
         if (isSaving) return;
 
         try {
@@ -1647,10 +1570,6 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 return;
             }
 
-            if (!bypassMemoryConflict && handleCheckConflict(() => handleSave(manualLines, closeAfter, bypassConcurrency, true))) {
-                return;
-            }
-
             if (restrictionData.isRestricted) {
                 setRestrictionAlert({ open: true, providerName: restrictionData.providerName, reason: restrictionData.reason });
                 return;
@@ -1660,7 +1579,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             setIsSaving(true);
 
             // Fetch live DB records to ensure no near-simultaneous booking conflict exists
-            if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(linesToUse, () => handleSave(manualLines, closeAfter, true, true))) {
+            if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(linesToUse, () => handleSave(manualLines, closeAfter, true))) {
                 setIsSaving(false);
                 return;
             }
@@ -1953,10 +1872,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         setMode(previousMode);
     };
 
-    const handleCreateDebt = async (forced = false, bypassMemoryConflict: boolean = false) => {
+    const handleCreateDebt = async (forced = false, bypassConcurrency = false) => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
-
-        if (!bypassMemoryConflict && handleCheckConflict(() => handleCreateDebt(forced, true))) return;
 
         if (!forced) {
             setShowDebtConfirmModal(true);
@@ -1965,6 +1882,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         setShowDebtConfirmModal(false);
         setIsSaving(true);
+
+        if (!bypassConcurrency && await checkDatabaseConcurrencyConflict(lines, () => handleCreateDebt(forced, true))) {
+            setIsSaving(false);
+            return;
+        }
 
         try {
             const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');

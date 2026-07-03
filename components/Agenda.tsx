@@ -352,7 +352,7 @@ export const Agenda: React.FC<AgendaProps> = ({
     }>({ open: false, providerName: '', reason: '' });
 
 
-    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: string; onConfirm?: () => void } | null>(null);
+    const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: React.ReactNode; onConfirm?: () => void } | null>(null);
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
         show: false,
         message: '',
@@ -1387,10 +1387,28 @@ export const Agenda: React.FC<AgendaProps> = ({
             if (conflict) {
                 const isInternalBlock = conflict.combinedServiceNames === 'BLOQUEIO_INTERNO';
                 if (isInternalBlock) {
-                    alert(`⚠️ AGENDA BLOQUEADA\n\n${targetProvider?.name || 'A profissional'} está com a agenda bloqueada neste horário.\n\nPor favor, escolha outro horário ou profissional.`);
+                    setConflictAlert({
+                        providerName: targetProvider?.name || 'selecionado',
+                        title: '⚠️ AGENDA BLOQUEADA',
+                        message: (
+                            <>
+                                <span className="font-black text-slate-950 dark:text-white">{targetProvider?.name || 'A profissional'}</span> está com a agenda bloqueada neste horário.
+                            </>
+                        )
+                    });
                 } else {
+                    const conflictStart = toMinutes(conflict.time);
+                    const isExact = conflictStart === lineStart;
                     setConflictAlert({ 
                         providerName: targetProvider?.name || 'selecionado',
+                        title: isExact ? '⚠️ CONFLITO DE HORÁRIO' : '⚠️ AVISO DE INTERFERÊNCIA',
+                        message: (
+                            <>
+                                <span className="font-black text-slate-950 dark:text-white">{targetProvider?.name || 'A profissional'}</span> {isExact ? 'já possui um atendimento que inicia exatamente às' : 'possui um atendimento que se sobrepõe a este horário às'} <span className="font-black text-slate-950 dark:text-white">{conflict.time}</span>.
+                                <br /><br />
+                                Deseja prosseguir com o agendamento em duplicidade mesmo assim?
+                            </>
+                        ),
                         onConfirm: proceedMove
                     });
                 }
