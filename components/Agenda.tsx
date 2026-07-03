@@ -1727,164 +1727,99 @@ export const Agenda: React.FC<AgendaProps> = ({
                 </div>
             )}
             {/* Sidebar (Left) */}
-            <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
+            <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 gap-2 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
-                <ProviderFilter />
-                <ServiceFilter />
+
+                {/* Controls below calendar */}
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm p-3 space-y-3 animate-in fade-in duration-300">
+                    {/* View selector: Dia / Mês / Ano / Período */}
+                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700">
+                        {(['day', 'month', 'year', 'custom'] as const).map(v => (
+                            <button
+                                key={v}
+                                onClick={(e) => {
+                                    if (e.detail === 2) {
+                                        handleRefresh();
+                                    } else {
+                                        setTimeView(v);
+                                        if (v !== 'custom') setDateRef(new Date());
+                                    }
+                                }}
+                                className={`flex-1 px-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            >
+                                {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Per.'}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Filtrar cliente..."
+                            className="w-full pl-7 pr-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-[9px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Zoom Controls */}
+                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 p-1 rounded-xl border border-slate-100 dark:border-zinc-700">
+                        <button onClick={() => setRowHeight(prev => Math.max(40, prev - 10))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Diminuir Altura"><ZoomOut size={14} /></button>
+                        <button onClick={() => setRowHeight(prev => Math.min(200, prev + 10))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Aumentar Altura"><ZoomIn size={14} /></button>
+                        <div className="h-4 w-px bg-slate-200 dark:bg-zinc-700 mx-0.5"></div>
+                        <button onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Estreitar Colunas"><ChevronLeft size={14} /></button>
+                        <button onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Alargar Colunas"><ChevronRight size={14} /></button>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <button
+                        onClick={() => setIsFinanceModalOpen(true)}
+                        className="w-full flex items-center justify-center gap-2 bg-slate-50 dark:bg-zinc-800 text-emerald-600 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider"
+                        title="Resumo Financeiro"
+                    >
+                        <Wallet size={14} /> Financeiro
+                    </button>
+
+                    <button
+                        onClick={() => setIsWhatsAppModalOpen(true)}
+                        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                    >
+                        <MessageCircle size={14} /> Confirmações
+                    </button>
+                </div>
             </div>
 
-            <div className="flex-1 flex flex-col space-y-4 min-w-0">
-                {/* Header Controls (Date & New) */}
-                <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors">
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <button
-                            onClick={() => {
-                                // On large screens >= 1024px toggle sidebar; on smaller screens (including iPad portrait) open drawer
-                                if (window.innerWidth >= 1024) {
-                                    setIsSidebarOpen(!isSidebarOpen);
-                                } else {
-                                    setIsMobileDrawerOpen(true);
-                                }
-                            }}
-                            className={`flex p-3 rounded-full transition-all border shadow-sm ${(isSidebarOpen || isMobileDrawerOpen) ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-900'} ${isSidebarOpen ? 'lg:flex' : ''}`}
-                            title="Alternar Filtros"
-                        >
-                            <Filter size={18} />
-                        </button>
+            <div className="flex-1 flex flex-col space-y-0 min-w-0">
+                {/* Mobile Header Controls (visible only on mobile / small screens) */}
+                <div className="lg:hidden flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-3 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors mb-4">
+                    <button
+                        onClick={() => setIsMobileDrawerOpen(true)}
+                        className={`flex p-2.5 rounded-full transition-all border shadow-sm ${isMobileDrawerOpen ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                    >
+                        <Filter size={16} />
+                    </button>
 
-                        {/* Date Filters */}
-                        <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto">
-                            <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
-                                {(['day', 'month', 'year', 'custom'] as const).map(v => (
-                                    <button
-                                        key={v}
-                                        onClick={(e) => { 
-                                            if (e.detail === 2) {
-                                                handleRefresh();
-                                            } else {
-                                                setTimeView(v); 
-                                                if (v !== 'custom') setDateRef(new Date()); 
-                                            }
-                                        }}
-                                        className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                                    >
-                                        {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {timeView === 'custom' ? (
-                                <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
-                                    <CalendarRange size={16} className="text-slate-400" />
-                                    <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                                    <span className="text-slate-300">-</span>
-                                    <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setIsMobileDrawerOpen(true)}
-                                            className="md:hidden p-2 bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-700 text-slate-500 active:scale-95 transition-all"
-                                        >
-                                            <Filter size={16} />
-                                        </button>
-                                        <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
-                                    </div>
-                                    <div 
-                                        className="flex flex-col items-center min-w-[140px] cursor-pointer"
-                                        onClick={(e) => {
-                                            if (e.detail === 2) {
-                                                handleRefresh();
-                                            }
-                                        }}
-                                        title="Clique duplo para atualizar"
-                                    >
-                                        <span className="text-[10px] sm:text-xs font-black uppercase text-slate-900 dark:text-white tracking-widest leading-tight">{getDateLabel()}</span>
-                                    </div>
-                                    <button onClick={() => navigateDate('next')} className="p-2 hover:bg-white dark:hover:bg-zinc-700 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
-                                </div>
-                            )}
-                        </div>
+                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl flex-1 justify-between">
+                        <button onClick={() => navigateDate('prev')} className="p-1.5 text-slate-400"><ChevronLeft size={14} /></button>
+                        <span className="text-[9px] font-black uppercase text-slate-900 dark:text-white tracking-widest">{getDateLabel()}</span>
+                        <button onClick={() => navigateDate('next')} className="p-1.5 text-slate-400"><ChevronRight size={14} /></button>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 w-full xl:w-auto items-center">
-                        <div className={`relative transition-all duration-300 ${isSearchExpanded ? 'flex-1 md:min-w-[250px]' : 'w-12'}`}>
-                            <button 
-                                onClick={() => setIsSearchExpanded(!isSearchExpanded)}
-                                className={`flex items-center justify-center rounded-2xl transition-all ${isSearchExpanded ? 'absolute left-0 top-0 bottom-0 w-10 text-slate-400' : 'w-12 h-12 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 text-slate-500 shadow-sm active:scale-95'}`}
-                            >
-                                <Search size={18} />
-                            </button>
-                            {isSearchExpanded && (
-                                <input
-                                    type="text"
-                                    autoFocus
-                                    placeholder="Filtrar cliente..."
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    onBlur={() => !searchTerm && setIsSearchExpanded(false)}
-                                />
-                            )}
-                        </div>
-                        
-                        {/* Zoom Controls (Visible on Tablets and Desktop) */}
-                        <div className="hidden lg:flex items-center gap-1 bg-white dark:bg-zinc-900 p-1 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-sm">
-                            <button
-                                onClick={() => setRowHeight(prev => Math.max(40, prev - 10))}
-                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
-                                title="Diminuir Altura"
-                            >
-                                <ZoomOut size={16} />
-                            </button>
-                            <button
-                                onClick={() => setRowHeight(prev => Math.min(200, prev + 10))}
-                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
-                                title="Aumentar Altura"
-                            >
-                                <ZoomIn size={16} />
-                            </button>
-                            <div className="h-4 w-px bg-slate-100 dark:bg-zinc-700 mx-1"></div>
-                            <button
-                                onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
-                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
-                                title="Estreitar Colunas"
-                            >
-                                <ChevronLeft size={16} />
-                            </button>
-                            <button
-                                onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
-                                className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
-                                title="Alargar Colunas"
-                            >
-                                <ChevronRight size={16} />
-                            </button>
-                        </div>
+                    <button
+                        onClick={() => setIsWhatsAppModalOpen(true)}
+                        className="flex items-center gap-1.5 bg-emerald-500 text-white px-3 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                    >
+                        <MessageCircle size={14} />
+                    </button>
 
-
-                        <button
-                            onClick={() => setIsFinanceModalOpen(true)}
-                            className="flex items-center justify-center bg-white dark:bg-zinc-900 text-emerald-600 px-4 py-3 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 shadow-lg active:scale-95 transition-all"
-                            title="Resumo Financeiro"
-                        >
-                            <Wallet size={18} />
-                        </button>
-
-                        <button
-                            onClick={() => setIsWhatsAppModalOpen(true)}
-                            className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 sm:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                        >
-                            <MessageCircle size={16} /> <span className="hidden sm:inline">Confirmações</span>
-                        </button>
-
-                        <button
-                            onClick={() => handleNewAppointment()}
-                            className="flex items-center gap-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-3 sm:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
-                        >
-                            <Plus size={16} /> <span className="hidden sm:inline">Novo</span>
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => handleNewAppointment()}
+                        className="flex items-center gap-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-3 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                    >
+                        <Plus size={14} />
+                    </button>
                 </div>
 
                 {/* Agenda Grid */}
