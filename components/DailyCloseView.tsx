@@ -37,7 +37,8 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
     vipMetrics = { value: 0, count: 0 },
     isAlreadyClosed = false,
     canReopen = false,
-    onReopenRegister
+    onReopenRegister,
+    customers = []
 }) => {
     const dateStr = toLocalDateStr(date);
 
