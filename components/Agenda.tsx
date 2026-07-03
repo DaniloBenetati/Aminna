@@ -2225,15 +2225,19 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
-                                                                                        <div className="flex items-center gap-1">
-                                                                                             <span className={`w-2 h-2 rounded-full ${appt.whatsappResponseNeeded ? 'bg-amber-950' : (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
-                                                                                                localStatus === 'Confirmado' ? 'bg-[#01A4C6]' :
+                                                                                        <div className="flex items-center gap-1 min-w-0 max-w-full">
+                                                                                             <span className={`w-2 h-2 rounded-full flex-shrink-0 ${appt.whatsappResponseNeeded ? 'bg-amber-950' : (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-white' :
+                                                                                                localStatus === 'Confirmado' ? 'bg-[#00708a]' :
                                                                                                     (localStatus === 'Em Andamento' || localStatus === 'Em atendimento') ? 'bg-[#22c55e]' :
                                                                                                         localStatus === 'Aguardando' ? 'bg-amber-400' :
                                                                                                             localStatus === 'Concluído' ? 'bg-slate-400' :
                                                                                                                 'bg-amber-400'
                                                                                                 }`}></span>
-                                                                                             <span className={`text-[7.5px] font-black uppercase ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950/80' : 'text-white/80'}`}>{(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : (localStatus === 'Aguardando' ? 'Aguardando Recepção' : localStatus)}</span>
+                                                                                             {zoomLevel >= 0.45 && (
+                                                                                                 <span className={`font-black uppercase truncate ${zoomLevel < 0.65 ? 'text-[6.5px] max-w-[45px]' : 'text-[7.5px] max-w-[85px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950/80' : 'text-white/80'}`}>
+                                                                                                     {(appt.isRemake || appt.paymentMethod === 'Refazer') ? 'REFAZER' : (localStatus === 'Aguardando' ? 'AGUARDANDO' : localStatus)}
+                                                                                                 </span>
+                                                                                             )}
                                                                                         </div>
                                                                                         {appt.status === 'Concluído' && (
                                                                                             (() => {
