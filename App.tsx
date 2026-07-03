@@ -640,7 +640,10 @@ const App: React.FC = () => {
           isReconciled: a.is_reconciled,
           adjustmentAmount: a.adjustment_amount,
           adjustmentReason: a.adjustment_reason,
-          whatsappResponseNeeded: a.whatsapp_response_needed
+          whatsappResponseNeeded: a.whatsapp_response_needed,
+          creditGenerated: Number(a.credit_generated) || 0,
+          creditUsed: Number(a.credit_used) || 0,
+          debtPaid: Number(a.debt_paid) || 0
         }));
         const uniqueAppointments = Array.from(new Map(mappedAppts.map(a => [a.id, a])).values());
         setAppointments(uniqueAppointments);

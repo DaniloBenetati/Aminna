@@ -341,7 +341,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             adjustmentAmount: data.adjustment_amount,
                             adjustmentReason: data.adjustment_reason,
                             observation: data.observation,
-                            whatsappResponseNeeded: data.whatsapp_response_needed
+                            whatsappResponseNeeded: data.whatsapp_response_needed,
+                            creditGenerated: Number(data.credit_generated) || 0,
+                            creditUsed: Number(data.credit_used) || 0,
+                            debtPaid: Number(data.debt_paid) || 0
                         };
                         setLatestAppointment(mapped);
                     }
@@ -1234,6 +1237,19 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             ? (currentAppt.paymentDate || currentAppt.date || formatLocalDate(new Date())) 
             : formatLocalDate(new Date());
 
+        const prevCreditGen = currentAppt.creditGenerated || 0;
+        const prevCreditUsed = currentAppt.creditUsed || 0;
+        const prevDebtPaid = currentAppt.debtPaid || 0;
+
+        let usedCredit = 0;
+        payments.forEach(p => {
+            if (p.method === 'Crédito Aminna' || p.method === 'Crédito') usedCredit += (p.amount || 0);
+        });
+
+        const newDebtPaid = includeDebt ? (prevDebtPaid + (customer.outstandingBalance || 0)) : 0;
+        const creditAdjustment = (overpayment - usedCredit) - (prevCreditGen - prevCreditUsed);
+        const outstandingAdjustment = prevDebtPaid - newDebtPaid;
+
         const updatedData = {
             status: 'Concluído',
             price_paid: serviceTotal,
@@ -1260,7 +1276,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             observation: observation,
             customer_id: cleanUUID(customer.id),
             date: appointmentDate || appointment.date || dischargeDate,
-            time: appointment.time || lines[0].startTime
+            time: appointment.time || lines[0].startTime,
+            credit_generated: overpayment,
+            credit_used: usedCredit,
+            debt_paid: newDebtPaid
         };
 
         try {
@@ -1303,35 +1322,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // Actually, customers table in Supabase doesn't have a 'history' JSONB yet in my plan,
             // but the UI uses it. Let's assume we update the customer's totals in DB.
             // 3. Update Customer History and Balance
-            let newOutstandingBalance = customer.outstandingBalance || 0;
-            let usedCredit = 0;
-            payments.forEach(p => {
-                if (p.method === 'Crédito Aminna' || p.method === 'Crédito') usedCredit += (p.amount || 0);
-            });
-
-            // If paying debt, reduce it (but ensure it doesn't go below zero if strict)
-            if (includeDebt) {
-                newOutstandingBalance = 0; // Paying off total debt
-            }
-
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + priceDifference,
-                outstanding_balance: newOutstandingBalance,
+                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
                 status: customer.status === 'Novo' ? 'Regular' : customer.status,
-                credit_balance: (customer.creditBalance || 0) + overpayment - usedCredit
+                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
             }).eq('id', customer.id);
             if (custError) throw custError;
 
             // Notify about credit update
-            if (overpayment > 0) {
-                alert(`✅ Crédito Aminna Gerado!\n\nValor Excedente: R$ ${overpayment.toFixed(2)}\nNovo Saldo: R$ ${((customer.creditBalance || 0) + overpayment - usedCredit).toFixed(2)}`);
+            if (overpayment > 0 && creditAdjustment > 0) {
+                alert(`✅ Crédito Aminna Gerado!\n\nValor Excedente: R$ ${overpayment.toFixed(2)}\nNovo Saldo: R$ ${(Math.max(0, (customer.creditBalance || 0) + creditAdjustment)).toFixed(2)}`);
             }
 
             // Notify about credit update
             if (usedCredit > 0) {
-                const finalBalance = (customer.creditBalance || 0) - usedCredit;
-                alert(`✅ Crédito Aminna Utilizado!\n\nValor Debitado: R$ ${usedCredit.toFixed(2)}\nSaldo Restante: R$ ${finalBalance.toFixed(2)}`);
+                alert(`✅ Crédito Aminna Utilizado!\n\nValor Debitado: R$ ${usedCredit.toFixed(2)}\nSaldo Restante: R$ ${(Math.max(0, (customer.creditBalance || 0) + creditAdjustment)).toFixed(2)}`);
             }
 
             onUpdateAppointments(prev => {
@@ -1360,7 +1367,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     startTimeActual: lines[0].startTimeActual,
                     endTimeActual: getValidEndTime(lines[0].startTimeActual, lines[0].endTimeActual, checkOutVal),
                     checkInTime: checkInVal,
-                    checkOutTime: checkOutVal
+                    checkOutTime: checkOutVal,
+                    creditGenerated: overpayment,
+                    creditUsed: usedCredit,
+                    debtPaid: newDebtPaid
                 } as Appointment;
 
                 return prev.map(a => {
@@ -1403,8 +1413,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         totalSpent: c.totalSpent + priceDifference,
                         status: c.status === 'Novo' ? 'Regular' : c.status,
                         history: isReFinalizing ? c.history : [...newEntries, ...c.history],
-                        creditBalance: (c.creditBalance || 0) + overpayment - usedCredit,
-                        outstandingBalance: newOutstandingBalance
+                        creditBalance: Math.max(0, (c.creditBalance || 0) + creditAdjustment),
+                        outstandingBalance: Math.max(0, (c.outstandingBalance || 0) + outstandingAdjustment)
                     };
                 }
                 return c;
@@ -1452,6 +1462,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             : formatLocalDate(new Date());
         const remakePaymentMethod = 'Refazer';
 
+        // Reconcile and calculate net adjustments
+        const currentAppt = latestAppointment || appointment;
+        const wasCompleted = currentAppt.status === 'Concluído';
+        const prevCreditGen = currentAppt.creditGenerated || 0;
+        const prevCreditUsed = currentAppt.creditUsed || 0;
+        const prevDebtPaid = currentAppt.debtPaid || 0;
+        const prevServiceTotal = wasCompleted 
+            ? (currentAppt.paymentMethod === 'Dívida' 
+                ? (currentAppt.payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || 0)
+                : (currentAppt.pricePaid || 0)) 
+            : 0;
+
+        const totalSpentAdjustment = 0 - prevServiceTotal;
+        const creditAdjustment = 0 - (prevCreditGen - prevCreditUsed);
+        const outstandingAdjustment = prevDebtPaid - (currentAppt.paymentMethod === 'Dívida' ? prevServiceTotal : 0);
+
         const updatedData = {
             status: 'Concluído',
             price_paid: 0,
@@ -1470,10 +1496,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             end_time: lines[0].endTime,
             tip_amount: 0,
             start_time_actual: lines[0].startTimeActual,
-            is_remake: true
+            is_remake: true,
+            credit_generated: 0,
+            credit_used: 0,
+            debt_paid: 0
         };
 
         try {
+            // Apply customer changes
+            const { error: custError } = await supabase.from('customers').update({
+                total_spent: customer.totalSpent + totalSpentAdjustment,
+                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
+                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
+            }).eq('id', customer.id);
+            if (custError) throw custError;
+
             const { error } = await supabase.from('appointments').update(updatedData).eq('id', appointment.id);
             if (error) throw error;
 
@@ -1495,8 +1532,18 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 endTime: lines[0].endTime,
                 tipAmount: 0,
                 startTimeActual: lines[0].startTimeActual,
-                isRemake: true
+                isRemake: true,
+                creditGenerated: 0,
+                creditUsed: 0,
+                debtPaid: 0
             } : a));
+
+            onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
+                ...c,
+                totalSpent: c.totalSpent + totalSpentAdjustment,
+                outstandingBalance: Math.max(0, (c.outstandingBalance || 0) + outstandingAdjustment),
+                creditBalance: Math.max(0, (c.creditBalance || 0) + creditAdjustment)
+            } : c));
 
             alert('Atendimento marcado como REFAZER com sucesso.');
             onClose();
@@ -1906,10 +1953,25 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             const extras = extrasUnprocessed;
 
-            const isReFinalizingDebt = appointment.status === 'Concluído';
+            const currentAppt = latestAppointment || appointment;
+            const wasCompleted = currentAppt.status === 'Concluído';
+            const isReFinalizingDebt = wasCompleted;
             const dischargeDate = isReFinalizingDebt 
-                ? (appointment.paymentDate || appointment.date || formatLocalDate(new Date())) 
+                ? (currentAppt.paymentDate || currentAppt.date || formatLocalDate(new Date())) 
                 : formatLocalDate(new Date());
+
+            const prevCreditGen = currentAppt.creditGenerated || 0;
+            const prevCreditUsed = currentAppt.creditUsed || 0;
+            const prevDebtPaid = currentAppt.debtPaid || 0;
+            const prevServiceTotal = wasCompleted 
+                ? (currentAppt.paymentMethod === 'Dívida' 
+                    ? (currentAppt.payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || totalValue)
+                    : (currentAppt.pricePaid || 0)) 
+                : 0;
+
+            const totalSpentAdjustment = totalValue - prevServiceTotal;
+            const creditAdjustment = 0 - (prevCreditGen - prevCreditUsed);
+            const outstandingAdjustment = totalValue + prevDebtPaid;
 
             const updatedData = {
                 status: 'Concluído',
@@ -1930,7 +1992,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 discount_amount: couponDiscountAmount,
                 payments: [{ id: 'debt-' + Date.now(), method: 'Dívida', amount: totalValue }],
                 tip_amount: lines.reduce((acc, l) => acc + (l.tipAmount || 0), 0),
-                observation: observation
+                observation: observation,
+                credit_generated: 0,
+                credit_used: 0,
+                debt_paid: 0
             };
 
             // 0. Identify secondary appointments to "cancel/merge"
@@ -1959,11 +2024,11 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // 2. Create Sale Record REMOVED
 
             // 3. Update Customer Balance
-            const currentBalance = customer.outstandingBalance || 0;
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
-                total_spent: customer.totalSpent + totalValue,
-                outstanding_balance: currentBalance + totalValue
+                total_spent: customer.totalSpent + totalSpentAdjustment,
+                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
+                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
             }).eq('id', customer.id);
 
             if (custError) throw custError;
@@ -1987,7 +2052,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     additionalServices: extras,
                     appliedCoupon: appliedCampaign?.couponCode,
                     discountAmount: couponDiscountAmount,
-                    tipAmount: lines[0].tipAmount
+                    tipAmount: lines[0].tipAmount,
+                    creditGenerated: 0,
+                    creditUsed: 0,
+                    debtPaid: 0
                 } as Appointment;
 
                 if (exists) {
@@ -2021,8 +2089,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     return {
                         ...c,
                         lastVisit: dischargeDate,
-                        totalSpent: c.totalSpent + totalValue,
-                        outstandingBalance: (c.outstandingBalance || 0) + totalValue,
+                        totalSpent: c.totalSpent + totalSpentAdjustment,
+                        outstandingBalance: Math.max(0, (c.outstandingBalance || 0) + outstandingAdjustment),
+                        creditBalance: Math.max(0, (c.creditBalance || 0) + creditAdjustment),
                         history: [...newEntries, ...c.history]
                     };
                 }
@@ -2323,6 +2392,21 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 }
             });
 
+            const currentAppt = latestAppointment || appointment;
+            const wasCompleted = currentAppt.status === 'Concluído';
+            const prevCreditGen = currentAppt.creditGenerated || 0;
+            const prevCreditUsed = currentAppt.creditUsed || 0;
+            const prevDebtPaid = currentAppt.debtPaid || 0;
+            const prevServiceTotal = wasCompleted 
+                ? (currentAppt.paymentMethod === 'Dívida' 
+                    ? (currentAppt.payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || totalValue)
+                    : (currentAppt.pricePaid || 0)) 
+                : 0;
+
+            const totalSpentAdjustment = 0 - prevServiceTotal;
+            const creditAdjustment = 0 - (prevCreditGen - prevCreditUsed);
+            const outstandingAdjustment = prevDebtPaid - (currentAppt.paymentMethod === 'Dívida' ? prevServiceTotal : 0);
+
             const updatedData: any = {
                 status: 'Concluído',
                 price_paid: 0,
@@ -2341,7 +2425,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 tip_amount: 0,
                 start_time_actual: updatedLines[0].startTimeActual,
                 is_remake: true,
-                observation: (observation ? observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`
+                observation: (observation ? observation + '\n' : '') + `JUSTIFICATIVA: ${zeroOutReason.toUpperCase()}`,
+                credit_generated: 0,
+                credit_used: 0,
+                debt_paid: 0
             };
 
             // Identify secondary appointments to "cancel/merge"
@@ -2368,7 +2455,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             }
 
             const { error: custError } = await supabase.from('customers').update({
-                last_visit: dischargeDate
+                last_visit: dischargeDate,
+                total_spent: customer.totalSpent + totalSpentAdjustment,
+                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
+                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -2393,7 +2483,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         tipAmount: 0,
                         startTimeActual: updatedLines[0].startTimeActual,
                         isRemake: true,
-                        observation: updatedData.observation
+                        observation: updatedData.observation,
+                        creditGenerated: 0,
+                        creditUsed: 0,
+                        debtPaid: 0
                     } as Appointment;
                 }
                 if (secondaryAppointmentIds.includes(a.id)) {
@@ -2404,7 +2497,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
                 ...c,
-                lastVisit: dischargeDate
+                lastVisit: dischargeDate,
+                totalSpent: c.totalSpent + totalSpentAdjustment,
+                outstandingBalance: Math.max(0, (c.outstandingBalance || 0) + outstandingAdjustment),
+                creditBalance: Math.max(0, (c.creditBalance || 0) + creditAdjustment)
             } : c));
 
             alert('Comanda zerada com sucesso.');
@@ -2460,6 +2556,30 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // 6. Update local state for customers (both observations and history)
             onUpdateCustomers(prev => prev.map(c => {
                 if (c.id === customer.id) {
+                    const currentAppt = latestAppointment || appointment;
+                    const wasCompleted = currentAppt.status === 'Concluído';
+                    let newCreditBalance = c.creditBalance || 0;
+                    let newTotalSpent = c.totalSpent || 0;
+                    let newOutstandingBalance = c.outstandingBalance || 0;
+
+                    if (wasCompleted) {
+                        const prevCreditGen = currentAppt.creditGenerated || 0;
+                        const prevCreditUsed = currentAppt.creditUsed || 0;
+                        const prevDebtPaid = currentAppt.debtPaid || 0;
+                        const isDebtCreation = currentAppt.paymentMethod === 'Dívida';
+                        const prevServiceTotal = isDebtCreation
+                            ? (currentAppt.payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || totalValue)
+                            : (currentAppt.pricePaid || 0);
+
+                        const creditReversion = prevCreditGen - prevCreditUsed;
+                        const totalSpentReversion = prevServiceTotal;
+                        const outstandingReversion = isDebtCreation ? prevServiceTotal : -prevDebtPaid;
+
+                        newCreditBalance = Math.max(0, newCreditBalance - creditReversion);
+                        newTotalSpent = Math.max(0, newTotalSpent - totalSpentReversion);
+                        newOutstandingBalance = Math.max(0, newOutstandingBalance + outstandingReversion);
+                    }
+
                     const cancelEntry: CustomerHistoryItem = {
                         id: `cancel-${Date.now()}`,
                         date: today,
@@ -2472,14 +2592,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     // Update database
                     supabase.from('customers').update({
-                        history: updatedHistory
+                        history: updatedHistory,
+                        credit_balance: newCreditBalance,
+                        total_spent: newTotalSpent,
+                        outstanding_balance: newOutstandingBalance
                     }).eq('id', customer.id).then(({ error }) => {
-                        if (error) console.error('Error updating customer history in DB:', error);
+                        if (error) console.error('Error updating customer in DB:', error);
                     });
 
                     return {
                         ...c,
-                        history: updatedHistory
+                        history: updatedHistory,
+                        creditBalance: newCreditBalance,
+                        totalSpent: newTotalSpent,
+                        outstandingBalance: newOutstandingBalance
                     };
                 }
                 return c;
@@ -2527,6 +2653,46 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 .in('id', allAppointmentIdsToDelete);
 
             if (deleteError) throw deleteError;
+
+            // 2.1 Revert financials on customer if it was completed
+            const currentAppt = latestAppointment || appointment;
+            const wasCompleted = currentAppt.status === 'Concluído';
+            if (wasCompleted) {
+                const prevCreditGen = currentAppt.creditGenerated || 0;
+                const prevCreditUsed = currentAppt.creditUsed || 0;
+                const prevDebtPaid = currentAppt.debtPaid || 0;
+                const isDebtCreation = currentAppt.paymentMethod === 'Dívida';
+                const prevServiceTotal = isDebtCreation
+                    ? (currentAppt.payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || totalValue)
+                    : (currentAppt.pricePaid || 0);
+
+                const creditReversion = prevCreditGen - prevCreditUsed;
+                const totalSpentReversion = prevServiceTotal;
+                const outstandingReversion = isDebtCreation ? prevServiceTotal : -prevDebtPaid;
+
+                const newCreditBalance = Math.max(0, (customer.creditBalance || 0) - creditReversion);
+                const newTotalSpent = Math.max(0, (customer.totalSpent || 0) - totalSpentReversion);
+                const newOutstandingBalance = Math.max(0, (customer.outstandingBalance || 0) + outstandingReversion);
+
+                // Update database
+                const { error: custError } = await supabase
+                    .from('customers')
+                    .update({
+                        credit_balance: newCreditBalance,
+                        total_spent: newTotalSpent,
+                        outstanding_balance: newOutstandingBalance
+                    })
+                    .eq('id', customer.id);
+                if (custError) console.error('Error updating customer financials in DB on delete:', custError);
+
+                // Update local state
+                onUpdateCustomers(prev => prev.map(c => c.id === customer.id ? {
+                    ...c,
+                    creditBalance: newCreditBalance,
+                    totalSpent: newTotalSpent,
+                    outstandingBalance: newOutstandingBalance
+                } : c));
+            }
 
             // 3. Update local state
             onUpdateAppointments(prev => prev.filter(a => !allAppointmentIdsToDelete.includes(a.id)));

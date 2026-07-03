@@ -239,6 +239,8 @@ export interface Appointment {
     clientPhone?: string; // Telefone do cliente (para acompanhantes)
     quantity?: number;
     tipAmount?: number;
+    rating?: number;
+    feedback?: string;
   }[];
   combinedServiceNames?: string;
   rating?: number;
@@ -254,6 +256,9 @@ export interface Appointment {
   checkInTime?: string;
   checkOutTime?: string;
   providerName?: string;
+  creditGenerated?: number;
+  creditUsed?: number;
+  debtPaid?: number;
 }
 
 export interface ChatMessage {
