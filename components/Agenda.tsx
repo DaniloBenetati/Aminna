@@ -773,11 +773,12 @@ export const Agenda: React.FC<AgendaProps> = ({
         }));
     };
 
-    const hours = Array.from({ length: 25 }, (_, i) => {
-        const h = Math.floor(i / 2) + 8;
-        const m = i % 2 === 0 ? '00' : '30';
+    const hours = Array.from({ length: 24 }, (_, i) => {
+        const index = i + 1;
+        const h = Math.floor(index / 2) + 8;
+        const m = index % 2 === 0 ? '00' : '30';
         return `${String(h).padStart(2, '0')}:${m}`;
-    }); // 08:00 to 20:00 in 30min slots
+    }); // 08:30 to 20:00 in 30min slots
 
     const getCellAppointments = (providerId: string, timeSlot: string) => {
         // Parse slot time to get hour and minute
