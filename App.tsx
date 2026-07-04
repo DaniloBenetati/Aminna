@@ -25,7 +25,7 @@ import { ViewState, Customer, Appointment, Sale, Expense, StockItem, Service, Ca
 import { CUSTOMERS, APPOINTMENTS, SALES, STOCK, SERVICES, CAMPAIGNS, PANTRY_ITEMS, PANTRY_LOGS, LEADS } from './constants';
 
 const App: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>(() => {
     const saved = localStorage.getItem('currentView');
     return (saved as ViewState) || ViewState.DASHBOARD;
@@ -93,8 +93,26 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    setIsAuthenticated(true);
-    setIsLoadingAuth(false);
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setIsAuthenticated(!!session);
+      } catch (error) {
+        console.error('Error checking session:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoadingAuth(false);
+      }
+    };
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Fetch Data on Authentication
@@ -699,6 +717,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    setIsAuthenticated(false);
     setCurrentView(ViewState.DASHBOARD);
   };
 
