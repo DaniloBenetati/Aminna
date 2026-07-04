@@ -18,12 +18,15 @@
       (function() {
         function updateViewport() {
           const ua = navigator.userAgent;
-          const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+          const isIPad = /iPad/i.test(ua) || (navigator.maxTouchPoints > 1 && ua.includes('Macintosh'));
+          const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua) || isIPad;
           const viewport = document.getElementById('viewport');
           
           // Se o UA não for mobile (indicando que a flag "Site para Computador" está ativa)
-          // ou se for uma tela muito larga (como o Fold aberto em modo tablet), forçamos o modo desktop
-          if (!isMobileUA || window.innerWidth > 900) {
+          // ou se for uma tela muito larga, forçamos o modo desktop.
+          // Alterado de 900 para 1024 para permitir que tablets e iPads no modo retrato/telas menores
+          // usem a visualização mobile responsiva (como o Z Fold).
+          if (!isMobileUA || window.innerWidth > 1024) {
             if (viewport) {
               // 1024px é o padrão industrial para "Desktop Mode" que garante o acionamento 
               // dos breakpoints 'lg' sem ser excessivamente largo para telas verticais.
