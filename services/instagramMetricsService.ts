@@ -36,6 +36,8 @@ export interface IGPost {
   is_collab: boolean;
   influencer_name: string;
   estimated_followers: number;
+  thumbnail_url?: string;
+  media_url?: string;
   ig_user_id?: string;
   synced_at?: string;
 }
@@ -101,7 +103,7 @@ export async function fetchIGInsights(token: string, igUserId: string, period: s
 }
 
 export async function fetchIGMedia(token: string, igUserId: string, limit = 50) {
-  const fields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url';
+  const fields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,collaborators';
   let allMedia: any[] = [];
   let nextUrl: string | null = null;
   
@@ -192,9 +194,20 @@ export async function syncAllMetrics(
     const totalInteractions = likes + comments + shares + saved;
     const engRate = reach > 0 ? (totalInteractions / reach) * 100 : 0;
 
-    // Detect collab from caption
+    // Detect collab: official collaborators field OR @mention in caption
     const caption = m.caption || '';
-    const isCollab = caption.toLowerCase().includes('collab') || caption.includes('@') && caption.toLowerCase().includes('parceria');
+    // collaborators field from Meta API: array of {id, username}
+    const collaboratorsList: any[] = m.collaborators?.data || [];
+    const hasOfficialCollab = collaboratorsList.length > 0;
+    // Fallback: any @mention in caption suggests a collab/partnership
+    const hasMentionCollab = caption.includes('@');
+    const isCollab = hasOfficialCollab || hasMentionCollab;
+    // Store collaborator names (official first, then @mentions from caption)
+    const officialNames = collaboratorsList.map((c: any) => c.username).join(', ');
+    const mentionNames = hasMentionCollab
+      ? (caption.match(/@[\w.]+/g) || []).join(', ')
+      : '';
+    const influencerName = officialNames || mentionNames;
     
     posts.push({
       id: m.id,
@@ -212,8 +225,10 @@ export async function syncAllMetrics(
       total_interactions: totalInteractions,
       engagement_rate: Math.round(engRate * 100) / 100,
       is_collab: isCollab,
-      influencer_name: '',
+      influencer_name: influencerName,
       estimated_followers: 0,
+      thumbnail_url: m.thumbnail_url || m.media_url || '',
+      media_url: m.media_url || '',
       ig_user_id: igUserId
     });
 
@@ -272,6 +287,8 @@ async function persistPosts(posts: IGPost[]) {
       is_collab: p.is_collab,
       influencer_name: p.influencer_name,
       estimated_followers: p.estimated_followers,
+      thumbnail_url: p.thumbnail_url || '',
+      media_url: p.media_url || '',
       ig_user_id: p.ig_user_id,
       synced_at: new Date().toISOString()
     }, { onConflict: 'id' });
@@ -324,6 +341,8 @@ export async function loadHistoryFromDB(igUserId?: string) {
       is_collab: p.is_collab,
       influencer_name: p.influencer_name || '',
       estimated_followers: p.estimated_followers,
+      thumbnail_url: p.thumbnail_url || '',
+      media_url: p.media_url || '',
       ig_user_id: p.ig_user_id,
       synced_at: p.synced_at
     }))
