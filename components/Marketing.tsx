@@ -11,6 +11,7 @@ import {
 
 import { InstagramOrganic } from './InstagramOrganic';
 import { MarketingReports } from './MarketingReports';
+import { InstagramMetrics } from './InstagramMetrics';
 import { supabase } from '../services/supabase';
 import { GeoTrafficMap } from './GeoTrafficMap';
 import { 
@@ -339,8 +340,8 @@ const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
 export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [] }) => {
-  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'reports'>(() => 
-    (localStorage.getItem('active_marketing_tab') as 'paid' | 'reports') || 'paid'
+  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'reports' | 'metrics'>(() => 
+    (localStorage.getItem('active_marketing_tab') as 'paid' | 'reports' | 'metrics') || 'paid'
   );
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -1973,6 +1974,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             >
               Apresentações
             </button>
+            <button
+              onClick={() => setActiveMarketingTab('metrics')}
+              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'metrics' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+            >
+              Métricas
+            </button>
           </div>
 
           {/* Período (esquerda) e Botão Filtrar (direita) unificados em uma linha */}
@@ -2199,7 +2206,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         </div>
 
         <div className="flex-1 p-4 md:p-8">
-          {activeMarketingTab === 'reports' ? (
+          {activeMarketingTab === 'metrics' ? (
+            <InstagramMetrics token={token} igUserId={selectedIgAccountId} />
+          ) : activeMarketingTab === 'reports' ? (
             <MarketingReports 
               campaigns={campaignsWithCRM}
               totalSpend={totalSpend}

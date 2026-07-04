@@ -2205,24 +2205,26 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                     }`}
                                                                             >
                                                                                 <div className="flex justify-between items-start">
-                                                                                    <div className="flex items-center flex-wrap gap-0.5 max-w-[85%]">
+                                                                                    <div className="flex flex-col min-w-0 max-w-[85%]">
                                                                                         <p className={`font-black uppercase leading-none truncate ${rowHeight < 50 ? 'text-[7.5px]' : rowHeight < 75 ? 'text-[8.5px]' : 'text-[10px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
                                                                                             {customer?.name || 'Cliente'}
                                                                                         </p>
-                                                                                        {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
-                                                                                            <span className="bg-white text-indigo-600 text-[7px] font-black px-1 rounded-sm uppercase shadow-sm">Novo</span>
-                                                                                        )}
-                                                                                        {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
-                                                                                            <span className="bg-pink-600 text-white text-[7px] font-black px-1 rounded-sm uppercase ml-1">Preferida</span>
-                                                                                        )}
+                                                                                        <p className={`font-bold uppercase leading-none truncate mt-1 ${rowHeight < 50 ? 'text-[6.5px]' : rowHeight < 75 ? 'text-[7.5px]' : 'text-[8.5px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>
+                                                                                            {displayServiceName}
+                                                                                        </p>
+                                                                                        <div className="flex items-center flex-wrap gap-0.5 mt-1">
+                                                                                            {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
+                                                                                                <span className="bg-white text-indigo-600 text-[6.5px] font-black px-1 rounded-sm uppercase shadow-sm">Novo</span>
+                                                                                            )}
+                                                                                            {(customer?.assignedProviderIds && customer.assignedProviderIds.length > 0) && (
+                                                                                                <span className="bg-pink-600 text-white text-[6.5px] font-black px-1 rounded-sm uppercase">Preferida</span>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                     {rowHeight >= 45 && (
                                                                                         <span className={`${rowHeight < 65 ? 'text-[7px]' : 'text-[8px]'} font-mono ${appt.whatsappResponseNeeded ? 'text-amber-800' : 'text-white/70'}`}>{displayTime.split(':')[1]}</span>
                                                                                     )}
                                                                                 </div>
-                                                                                {rowHeight >= 40 && (
-                                                                                    <div className={`font-bold truncate mt-0.5 ${rowHeight < 60 ? 'text-[7px]' : rowHeight < 75 ? 'text-[8px]' : 'text-[8.5px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>{displayServiceName}</div>
-                                                                                )}
 
                                                                                 {cardHeight > 40 && (
                                                                                     <div className="flex justify-between items-center mt-1.5">
