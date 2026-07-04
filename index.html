@@ -28,9 +28,8 @@
           // usem a visualização mobile responsiva (como o Z Fold).
           if (!isMobileUA || window.innerWidth > 1024) {
             if (viewport) {
-              // 1200px garante mais espaço horizontal para exibir colunas na agenda
-              // e outros dashboards sem ficar excessivamente espremido.
-              viewport.setAttribute('content', 'width=1200');
+              // 1280px (xl breakpoint) garante ainda mais espaço para colunas e tabelas na horizontal
+              viewport.setAttribute('content', 'width=1280');
             }
             document.documentElement.classList.add('force-desktop');
           } else {
@@ -93,8 +92,8 @@
 
       /* ===== Samsung Galaxy Fold / Foldable Support ===== */
       /* No modo desktop forçado, usamos larguras flexíveis para evitar cortes */
-      .force-desktop body { min-width: 1200px; overflow-x: auto; }
-      .force-desktop #root { min-width: 1200px; width: 100%; }
+      .force-desktop body { min-width: 1280px; overflow-x: auto; }
+      .force-desktop #root { min-width: 1280px; width: 100%; }
 
       html, body, #root { max-width: 100vw; }
       .force-desktop html, .force-desktop body { max-width: none; }
