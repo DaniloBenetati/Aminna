@@ -604,6 +604,7 @@ const App: React.FC = () => {
           outstandingBalance: c.outstanding_balance,
           history: c.history || [],
           status: c.status || 'Ativo',
+          isBlocked: c.is_blocked || false,
           blockReason: c.block_reason,
           assignedProviderId: c.assigned_provider_id,
           assignedProviderIds: c.assigned_provider_ids || [],

@@ -36,7 +36,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   };
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit' | 'debt'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'vip' | 'credit' | 'debt' | 'blocked'>('all');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isNew, setIsNew] = useState(false);
@@ -122,6 +122,10 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
       if (filterType === 'debt') {
         return (c.outstandingBalance || 0) > 0;
+      }
+
+      if (filterType === 'blocked') {
+        return c.isBlocked;
       }
 
       return true;
@@ -941,14 +945,16 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                 { id: 'all', label: 'Todos', icon: Users, color: 'indigo' },
                 { id: 'vip', label: 'VIPs', icon: Crown, color: 'amber', count: customers.filter(c => c.isVip || c.status === 'VIP').length },
                 { id: 'credit', label: 'Com Crédito', icon: Wallet, color: 'emerald', count: customers.filter(c => (c.creditBalance || 0) > 0).length },
-                { id: 'debt', label: 'Com Dívida', icon: AlertTriangle, color: 'rose', count: customers.filter(c => (c.outstandingBalance || 0) > 0).length }
+                { id: 'debt', label: 'Com Dívida', icon: AlertTriangle, color: 'rose', count: customers.filter(c => (c.outstandingBalance || 0) > 0).length },
+                { id: 'blocked', label: 'Bloqueados', icon: Ban, color: 'red', count: customers.filter(c => c.isBlocked).length }
               ].map((btn) => {
                 const isActive = filterType === btn.id;
                 const colorClasses = {
                   indigo: isActive ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-indigo-300 dark:hover:border-indigo-800',
                   amber: isActive ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-amber-300 dark:hover:border-amber-800',
                   emerald: isActive ? 'bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-emerald-300 dark:hover:border-emerald-800',
-                  rose: isActive ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-rose-300 dark:hover:border-rose-800'
+                  rose: isActive ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-rose-300 dark:hover:border-rose-800',
+                  red: isActive ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-100 dark:shadow-none' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-red-300 dark:hover:border-red-800'
                 };
 
                 return (

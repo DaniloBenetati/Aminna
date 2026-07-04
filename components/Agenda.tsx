@@ -351,6 +351,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         reason: string;
     }>({ open: false, providerName: '', reason: '' });
 
+    const [blockedAlert, setBlockedAlert] = useState<{
+        open: boolean;
+        customerName: string;
+        reason: string;
+    }>({ open: false, customerName: '', reason: '' });
 
     const [conflictAlert, setConflictAlert] = useState<{ providerName: string; title?: string; message?: React.ReactNode; onConfirm?: () => void } | null>(null);
     const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' | 'info' | 'warning' }>({
@@ -979,7 +984,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         if (!draftAppointment) return;
 
         if (customer.isBlocked) {
-            alert(`⛔ CLIENTE BLOQUEADA\n\nMotivo: ${customer.blockReason || 'Não informado'}\n\nNão é possível realizar agendamentos para clientes bloqueadas.`);
+            setBlockedAlert({
+                open: true,
+                customerName: customer.name,
+                reason: customer.blockReason || 'Não informado'
+            });
             return;
         }
 
@@ -2760,7 +2769,6 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     {c.isBlocked && <Ban size={14} className="text-rose-600 dark:text-rose-400 flex-shrink-0" />}
                                                 </div>
                                                 <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{c.phone}</p>
-                                                {c.isBlocked && <p className="text-[9px] font-black text-rose-500 uppercase mt-0.5">BLOQUEADA: {c.blockReason || 'SEM MOTIVO'}</p>}
                                             </div>
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${c.isBlocked ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-300' : 'bg-slate-100 dark:bg-zinc-800 group-hover:bg-indigo-200 dark:group-hover:bg-indigo-800 text-slate-400 dark:text-slate-500 group-hover:text-indigo-700 dark:group-hover:text-white'}`}>
                                                 {c.isBlocked ? <CircleX size={16} /> : <Plus size={16} />}
@@ -3031,6 +3039,44 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     {isSubmittingBlock ? 'Salvando...' : 'Confirmar Bloqueio'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Custom Blocked Customer Alert Modal */}
+            {blockedAlert.open && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                        <div className="p-8 text-center">
+                            <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <Ban size={40} className="text-rose-600 dark:text-rose-400" />
+                            </div>
+                            
+                            <h3 className="text-lg font-black text-slate-950 dark:text-white uppercase tracking-tighter mb-2">
+                                Cliente Bloqueada
+                            </h3>
+                            
+                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-6">
+                                Cliente: <span className="text-rose-600 dark:text-rose-400 font-black">{blockedAlert.customerName}</span>
+                            </p>
+                            
+                            <div className="bg-rose-50/50 dark:bg-rose-950/10 rounded-2xl p-5 border border-rose-100/50 dark:border-rose-900/30 mb-6">
+                                <p className="text-[9px] font-black text-rose-500/70 dark:text-rose-400/70 uppercase tracking-widest mb-2">Motivo do Bloqueio:</p>
+                                <p className="text-xs font-black text-rose-950 dark:text-rose-200 italic leading-relaxed">
+                                    "{blockedAlert.reason}"
+                                </p>
+                            </div>
+                            
+                            <p className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-widest text-center leading-tight mb-8">
+                                Não é possível realizar agendamentos para clientes bloqueadas.
+                            </p>
+                            
+                            <button
+                                onClick={() => setBlockedAlert({ ...blockedAlert, open: false })}
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                            >
+                                Entendi
+                            </button>
                         </div>
                     </div>
                 </div>
