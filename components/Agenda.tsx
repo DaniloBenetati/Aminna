@@ -1737,7 +1737,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                 </div>
             )}
             {/* Sidebar (Left) */}
-            <div className={`hidden lg:flex flex-col w-52 transition-all duration-300 flex-shrink-0 gap-2 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
+            <div className={`hidden md:flex flex-col w-52 transition-all duration-300 flex-shrink-0 gap-2 ${isSidebarOpen ? 'translate-x-0 opacity-100' : 'translate-x-[-110%] opacity-0 absolute left-0'}`}>
                 <MiniCalendar />
 
                 {/* Controls below calendar */}
@@ -1803,7 +1803,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             <div className="flex-1 flex flex-col space-y-0 min-w-0">
                 {/* Mobile Header Controls (visible only on mobile / small screens) */}
-                <div className="lg:hidden flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-3 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors mb-4">
+                <div className="md:hidden flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-3 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors mb-4">
                     <button
                         onClick={() => setIsMobileDrawerOpen(true)}
                         className={`flex p-2.5 rounded-full transition-all border shadow-sm ${isMobileDrawerOpen ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
@@ -1835,9 +1835,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                 {/* Agenda Grid */}
                 <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col relative transition-colors">
 
-                    {/* Mobile Day List — visible only on < lg (including iPad Portrait) */}
+                    {/* Mobile Day List — visible only on < md (including mobile Portrait) */}
                     {timeView === 'day' && (
-                        <div className="lg:hidden flex-1 overflow-y-auto p-3 space-y-4">
+                        <div className="md:hidden flex-1 overflow-y-auto p-3 space-y-4">
                             {activeVisibileProviders.length === 0 ? (
                                 <div className="text-center py-16 text-slate-400">
                                     <CalendarIcon size={40} className="mx-auto mb-3 opacity-20" />
@@ -1957,8 +1957,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                         </div>
                     )}
 
-                    {/* Agenda Content Container — hidden on < lg when in day view (uses list above) */}
-                    <div ref={gridScrollRef} className={`flex-1 overflow-auto scrollbar-hide relative ${timeView === 'day' ? 'hidden lg:flex lg:flex-col' : 'flex flex-col'}`}>
+                    {/* Agenda Content Container — hidden on < md when in day view (uses list above) */}
+                    <div ref={gridScrollRef} className={`flex-1 overflow-auto scrollbar-hide relative ${timeView === 'day' ? 'hidden md:flex md:flex-col' : 'flex flex-col'}`}>
                         {/* Day View Grid */}
                         {timeView === 'day' && (
                             <DndContext
@@ -2627,10 +2627,10 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             {/* ============================================================
                 MOBILE SIDEBAR BOTTOM DRAWER
-                Shown only on < lg when isMobileDrawerOpen is true.
+                Shown only on < md when isMobileDrawerOpen is true.
             ============================================================ */}
             {isMobileDrawerOpen && (
-                <div className="lg:hidden fixed inset-0 z-[200] flex flex-col justify-end">
+                <div className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end">
                     {/* Backdrop */}
                     <div
                         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
