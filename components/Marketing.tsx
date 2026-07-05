@@ -339,7 +339,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
 const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
-export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [] }) => {
+export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[], partners?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [], partners = [] }) => {
   const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'reports' | 'metrics'>(() => 
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'reports' | 'metrics') || 'paid'
   );
@@ -2207,7 +2207,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
         <div className="flex-1 p-4 md:p-8">
           {activeMarketingTab === 'metrics' ? (
-            <InstagramMetrics token={token} igUserId={selectedIgAccountId} />
+            <InstagramMetrics token={token} igUserId={selectedIgAccountId} partners={partners} />
           ) : activeMarketingTab === 'reports' ? (
             <MarketingReports 
               campaigns={campaignsWithCRM}

@@ -3,16 +3,16 @@ import { RefreshCw, Users, Eye, Heart, MessageCircle, Share2, Bookmark, Trending
 import { syncAllMetrics, loadHistoryFromDB, calculateSummary, IGMetricSnapshot, IGPost } from '../services/instagramMetricsService';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
-interface Props { token: string; igUserId: string; }
+interface Props { token: string; igUserId: string; partners?: any[]; }
 
-export const InstagramMetrics: React.FC<Props> = ({ token, igUserId }) => {
+export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = [] }) => {
   const [snapshot, setSnapshot] = useState<IGMetricSnapshot | null>(null);
   const [posts, setPosts] = useState<IGPost[]>([]);
   const [history, setHistory] = useState<IGMetricSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState({ msg: '', pct: 0 });
   const [lastSync, setLastSync] = useState<string>('');
-  const [tab, setTab] = useState<'kpi'|'posts'|'rankings'|'charts'|'history'>('kpi');
+  const [tab, setTab] = useState<'kpi'|'posts'|'rankings'|'charts'|'history'|'partners'>('kpi');
 
   useEffect(() => {
     loadHistoryFromDB(igUserId).then(({ snapshots, posts: dbPosts }) => {
@@ -70,11 +70,11 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId }) => {
     <div className="space-y-6 animate-in fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-1">
-          {(['kpi','history','posts','rankings','charts'] as const).map(t => (
+        <div className="flex gap-1 flex-wrap">
+          {(['kpi','history','posts','rankings','charts','partners'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
-              {t === 'kpi' ? 'Visão Geral' : t === 'history' ? 'Seguidores' : t === 'posts' ? 'Publicações' : t === 'rankings' ? 'Rankings' : 'Gráficos'}
+              {t === 'kpi' ? 'Visão Geral' : t === 'history' ? 'Seguidores' : t === 'posts' ? 'Publicações' : t === 'rankings' ? 'Rankings' : t === 'charts' ? 'Gráficos' : 'Parcerias'}
             </button>
           ))}
         </div>
@@ -207,7 +207,10 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId }) => {
       )}
 
       {/* Rankings Tab */}
-      {tab === 'rankings' && <RankingsSection posts={posts} />}
+      {tab === 'rankings' && <RankingsSection posts={posts} partners={partners} />}
+
+      {/* Partners Tab */}
+      {tab === 'partners' && <PartnersTabSection posts={posts} partners={partners} />}
 
       {/* Charts Tab */}
       {tab === 'charts' && <ChartsSection posts={posts} history={history} />}
@@ -216,7 +219,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId }) => {
 };
 
 // ─── Rankings Sub-component ────────────────────────────────────────────────
-const RankingsSection: React.FC<{ posts: IGPost[] }> = ({ posts }) => {
+const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ posts, partners = [] }) => {
   const [rankTab, setRankTab] = useState(0);
   const rankings = useMemo(() => {
     const s = (arr: IGPost[]) => arr.slice(0, 10);
@@ -233,6 +236,24 @@ const RankingsSection: React.FC<{ posts: IGPost[] }> = ({ posts }) => {
       { label: '🤝 Collabs', data: s([...posts].filter(p => p.is_collab).sort((a, b) => b.total_interactions - a.total_interactions)), key: 'total_interactions' as const },
     ];
   }, [posts]);
+
+  // Helper to match raw influencer user name to a partner name in our system
+  const getLinkedPartnerName = (rawName: string) => {
+    if (!rawName) return '';
+    const cleanRaw = rawName.replace('@', '').trim().toLowerCase();
+    
+    // Find a partner whose socialMedia handles match cleanRaw
+    const matched = partners.find(pt => {
+      const socialList = [
+        pt.socialMedia,
+        pt.socialMediaSecondary,
+        ...(pt.socialMediaList || [])
+      ].filter(Boolean).map(s => s.replace('@', '').trim().toLowerCase());
+      return socialList.includes(cleanRaw);
+    });
+
+    return matched ? matched.name : '';
+  };
 
   const r = rankings[rankTab];
   return (
@@ -266,6 +287,7 @@ const RankingsSection: React.FC<{ posts: IGPost[] }> = ({ posts }) => {
           </tr></thead>
           <tbody>{(r?.data || []).map((p, i) => {
             const thumb = p.thumbnail_url || p.media_url || '';
+            const registeredPartner = getLinkedPartnerName(p.influencer_name);
             return (
             <tr key={p.id} className="border-b border-slate-50 dark:border-zinc-800 hover:bg-slate-50/50 dark:hover:bg-zinc-800/30">
               <td className="px-4 py-2 text-xs font-black text-indigo-600">{i + 1}</td>
@@ -285,8 +307,19 @@ const RankingsSection: React.FC<{ posts: IGPost[] }> = ({ posts }) => {
               <td className="px-4 py-2 text-[10px] font-bold">{new Date(p.timestamp).toLocaleDateString('pt-BR')}</td>
               <td className="px-4 py-2 text-[10px]">{p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : 'Post'}</td>
               {r?.label === '🤝 Collabs' && (
-                <td className="px-4 py-2 text-[10px] text-indigo-600 font-bold max-w-[160px] truncate">
-                  {p.influencer_name || <span className="text-slate-300">—</span>}
+                <td className="px-4 py-2 text-[10px] text-indigo-600 font-bold max-w-[200px]">
+                  {p.influencer_name ? (
+                    <div className="flex flex-col">
+                      <span className="truncate">{p.influencer_name}</span>
+                      {registeredPartner && (
+                        <span className="text-[9px] text-emerald-600 font-black uppercase tracking-wider mt-0.5">
+                          👤 {registeredPartner}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-slate-300">—</span>
+                  )}
                 </td>
               )}
               <td className="px-4 py-2 text-xs font-black text-right">{typeof p[r.key] === 'number' ? (p[r.key] as number).toLocaleString('pt-BR') : p[r.key]}</td>
@@ -347,6 +380,153 @@ const ChartsSection: React.FC<{ posts: IGPost[]; history: IGMetricSnapshot[] }> 
       <Chart title="Comparação por Tipo de Conteúdo">
         <BarChart data={byType}><CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="type" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 8 }} /><Tooltip /><Bar dataKey="totalReach" fill="#6366f1" radius={[4,4,0,0]} name="Alcance Total" /></BarChart>
       </Chart>
+    </div>
+  );
+};
+
+// ─── Partners Tab Sub-component ─────────────────────────────────────────────
+const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ posts, partners }) => {
+  const partnersPerformance = useMemo(() => {
+    return partners.map(pt => {
+      // Find matching user handles
+      const socialList = [
+        pt.socialMedia,
+        pt.socialMediaSecondary,
+        ...(pt.socialMediaList || [])
+      ].filter(Boolean).map(s => s.replace('@', '').trim().toLowerCase());
+
+      // Filter posts that reference this partner (official collab or mentions)
+      const matchingPosts = posts.filter(p => {
+        // 1. Direct check in influencer_name if registered as collab
+        if (p.influencer_name) {
+          const names = p.influencer_name.split(',').map(n => n.replace('@', '').trim().toLowerCase());
+          if (names.some(name => socialList.includes(name))) return true;
+        }
+
+        // 2. Fallback check: Does the caption mention any of this partner's social usernames?
+        const caption = (p.caption || '').toLowerCase();
+        return socialList.some(username => {
+          if (!username) return false;
+          // check for @username or username in caption
+          return caption.includes(`@${username}`) || caption.includes(username);
+        });
+      });
+
+      const totalInteractions = matchingPosts.reduce((s, p) => s + p.total_interactions, 0);
+      const totalReach = matchingPosts.reduce((s, p) => s + p.reach, 0);
+      const totalImpressions = matchingPosts.reduce((s, p) => s + p.impressions, 0);
+      const estimatedFollowers = matchingPosts.reduce((s, p) => s + (p.estimated_followers || 0), 0);
+      const avgEngRate = matchingPosts.length > 0 
+        ? matchingPosts.reduce((s, p) => s + p.engagement_rate, 0) / matchingPosts.length 
+        : 0;
+
+      return {
+        partner: pt,
+        postsCount: matchingPosts.length,
+        totalInteractions,
+        totalReach,
+        totalImpressions,
+        estimatedFollowers,
+        avgEngRate: Math.round(avgEngRate * 100) / 100,
+        posts: matchingPosts.slice(0, 5) // keep top 5 posts
+      };
+    }).filter(p => p.postsCount > 0 || p.partner.active); // show active partners or anyone with posts
+  }, [posts, partners]);
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4">
+        <h3 className="text-xs font-black uppercase tracking-widest mb-2 text-slate-800 dark:text-white">Performance de Parcerias Orgânicas</h3>
+        <p className="text-[10px] text-slate-400">
+          Abaixo estão listados os parceiros ativos cadastrados no sistema cruzados com as publicações orgânicas e collabs do Instagram que os mencionam.
+        </p>
+      </div>
+
+      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-x-auto shadow-sm">
+        <table className="w-full text-left min-w-[800px]">
+          <thead>
+            <tr className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
+              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase">Parceiro</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase">Usuário</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-center">Tipo</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-center">Posts Collab</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-right">Alcance</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-right">Interações</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-right">Taxa Eng.</th>
+              <th className="px-3 py-3 text-[9px] font-black text-slate-400 uppercase text-right">Seg. Est.</th>
+              <th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase">Posts Recentes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {partnersPerformance.map(perf => {
+              const pt = perf.partner;
+              return (
+                <tr key={pt.id} className="border-b border-slate-50 dark:border-zinc-800 hover:bg-slate-50/50 dark:hover:bg-zinc-800/30 text-[11px]">
+                  <td className="px-4 py-3 font-black text-slate-800 dark:text-white">
+                    <div className="flex flex-col">
+                      <span>{pt.name}</span>
+                      <div className="flex gap-1 items-center mt-0.5">
+                        {pt.active ? (
+                          <span className="text-[7px] text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 font-bold px-1 rounded uppercase">Ativo</span>
+                        ) : (
+                          <span className="text-[7px] text-slate-400 bg-slate-100 dark:bg-zinc-800 font-bold px-1 rounded uppercase">Inativo</span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400 text-[10px]">
+                      {pt.socialMedia || '@sem_usuario'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-center">
+                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${pt.partnershipType === 'PERMUTA' ? 'bg-purple-100 text-purple-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                      {pt.partnershipType}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 font-black text-center text-slate-700 dark:text-zinc-300">
+                    {perf.postsCount}
+                  </td>
+                  <td className="px-3 py-3 font-black text-right text-slate-700 dark:text-zinc-300">
+                    {perf.totalReach.toLocaleString('pt-BR')}
+                  </td>
+                  <td className="px-3 py-3 font-black text-right text-slate-700 dark:text-zinc-300">
+                    {perf.totalInteractions.toLocaleString('pt-BR')}
+                  </td>
+                  <td className="px-3 py-3 font-black text-right text-emerald-600">
+                    {perf.avgEngRate}%
+                  </td>
+                  <td className="px-3 py-3 font-black text-right text-purple-600">
+                    {perf.estimatedFollowers > 0 ? `+${perf.estimatedFollowers}` : '-'}
+                  </td>
+                  <td className="px-4 py-2">
+                    {perf.posts.length > 0 ? (
+                      <div className="flex gap-1">
+                        {perf.posts.map(p => {
+                          const thumb = p.thumbnail_url || p.media_url;
+                          return (
+                            <a key={p.id} href={p.permalink} target="_blank" rel="noreferrer" title={`Alcance: ${p.reach.toLocaleString('pt-BR')} | Engajamento: ${p.total_interactions}`}>
+                              {thumb ? (
+                                <img src={thumb} alt="post thumb" className="w-8 h-8 object-cover rounded-lg border border-slate-200 dark:border-zinc-700 hover:scale-105 transition-transform" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-[8px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
+                                  {p.media_type === 'VIDEO' ? '▶' : '📷'}
+                                </div>
+                              )}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <span className="text-[9px] text-slate-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
