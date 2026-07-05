@@ -179,11 +179,9 @@ export async function syncAllMetrics(
   const rawMedia = await fetchIGMedia(token, igUserId, 50);
 
   const posts: IGPost[] = [];
-  for (let i = 0; i < rawMedia.length; i++) {
-    const m = rawMedia[i];
-    onProgress?.(`Analisando publicação ${i + 1}/${rawMedia.length}...`, 30 + Math.round((i / rawMedia.length) * 60));
-    
-    const ins = await fetchMediaInsights(token, m.id, m.media_type);
+  const BATCH_SIZE = 5;
+
+  function buildPost(m: any, ins: Record<string, number>): IGPost {
     const likes = m.like_count || 0;
     const comments = m.comments_count || 0;
     const shares = ins.shares || 0;
@@ -196,20 +194,17 @@ export async function syncAllMetrics(
 
     // Detect collab: official collaborators field OR @mention in caption
     const caption = m.caption || '';
-    // collaborators field from Meta API: array of {id, username}
     const collaboratorsList: any[] = m.collaborators?.data || [];
     const hasOfficialCollab = collaboratorsList.length > 0;
-    // Fallback: any @mention in caption suggests a collab/partnership
     const hasMentionCollab = caption.includes('@');
     const isCollab = hasOfficialCollab || hasMentionCollab;
-    // Store collaborator names (official first, then @mentions from caption)
     const officialNames = collaboratorsList.map((c: any) => c.username).join(', ');
     const mentionNames = hasMentionCollab
       ? (caption.match(/@[\w.]+/g) || []).join(', ')
       : '';
     const influencerName = officialNames || mentionNames;
-    
-    posts.push({
+
+    return {
       id: m.id,
       permalink: m.permalink || '',
       media_type: m.media_type || 'IMAGE',
@@ -230,12 +225,25 @@ export async function syncAllMetrics(
       thumbnail_url: m.thumbnail_url || m.media_url || '',
       media_url: m.media_url || '',
       ig_user_id: igUserId
-    });
+    };
+  }
 
-    // Rate limiting: small delay between requests
-    if (i < rawMedia.length - 1) {
-      await new Promise(r => setTimeout(r, 200));
-    }
+  // Process in parallel batches to avoid rate limits while being fast
+  for (let i = 0; i < rawMedia.length; i += BATCH_SIZE) {
+    const batch = rawMedia.slice(i, i + BATCH_SIZE);
+    onProgress?.(
+      `Analisando publicações ${i + 1}–${Math.min(i + BATCH_SIZE, rawMedia.length)} de ${rawMedia.length}...`,
+      30 + Math.round((i / rawMedia.length) * 60)
+    );
+
+    const batchResults = await Promise.all(
+      batch.map(async (m: any) => {
+        const ins = await fetchMediaInsights(token, m.id, m.media_type);
+        return buildPost(m, ins);
+      })
+    );
+
+    posts.push(...batchResults);
   }
 
   onProgress?.('Salvando no banco de dados...', 92);
@@ -268,31 +276,33 @@ async function persistSnapshot(s: IGMetricSnapshot) {
 }
 
 async function persistPosts(posts: IGPost[]) {
-  for (const p of posts) {
-    await supabase.from('ig_posts').upsert({
-      id: p.id,
-      permalink: p.permalink,
-      media_type: p.media_type,
-      caption: p.caption,
-      timestamp: p.timestamp,
-      like_count: p.like_count,
-      comments_count: p.comments_count,
-      shares_count: p.shares_count,
-      saved: p.saved,
-      reach: p.reach,
-      impressions: p.impressions,
-      video_views: p.video_views,
-      total_interactions: p.total_interactions,
-      engagement_rate: p.engagement_rate,
-      is_collab: p.is_collab,
-      influencer_name: p.influencer_name,
-      estimated_followers: p.estimated_followers,
-      thumbnail_url: p.thumbnail_url || '',
-      media_url: p.media_url || '',
-      ig_user_id: p.ig_user_id,
-      synced_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-  }
+  if (posts.length === 0) return;
+  const now = new Date().toISOString();
+  const rows = posts.map(p => ({
+    id: p.id,
+    permalink: p.permalink,
+    media_type: p.media_type,
+    caption: p.caption,
+    timestamp: p.timestamp,
+    like_count: p.like_count,
+    comments_count: p.comments_count,
+    shares_count: p.shares_count,
+    saved: p.saved,
+    reach: p.reach,
+    impressions: p.impressions,
+    video_views: p.video_views,
+    total_interactions: p.total_interactions,
+    engagement_rate: p.engagement_rate,
+    is_collab: p.is_collab,
+    influencer_name: p.influencer_name,
+    estimated_followers: p.estimated_followers,
+    thumbnail_url: p.thumbnail_url || '',
+    media_url: p.media_url || '',
+    ig_user_id: p.ig_user_id,
+    synced_at: now
+  }));
+  // Single batch upsert instead of one request per post
+  await supabase.from('ig_posts').upsert(rows, { onConflict: 'id' });
 }
 
 export async function loadHistoryFromDB(igUserId?: string) {
