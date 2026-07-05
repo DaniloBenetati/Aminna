@@ -1813,9 +1813,17 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                     <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl flex-1 justify-between">
                         <button onClick={() => navigateDate('prev')} className="p-1.5 text-slate-400"><ChevronLeft size={14} /></button>
-                        <span className="text-[9px] font-black uppercase text-slate-900 dark:text-white tracking-widest">{getDateLabel()}</span>
+                        <span className="text-[9px] font-black uppercase text-slate-900 dark:text-white tracking-widest whitespace-nowrap">{getDateLabel()}</span>
                         <button onClick={() => navigateDate('next')} className="p-1.5 text-slate-400"><ChevronRight size={14} /></button>
                     </div>
+
+                    <button
+                        onClick={() => setIsFinanceModalOpen(true)}
+                        className="flex p-2.5 rounded-full transition-all border border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 text-emerald-600 shadow-sm active:scale-95"
+                        title="Resumo Financeiro"
+                    >
+                        <Wallet size={16} />
+                    </button>
 
                     <button
                         onClick={() => setIsWhatsAppModalOpen(true)}
