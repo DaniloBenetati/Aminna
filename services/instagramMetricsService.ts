@@ -130,10 +130,13 @@ export async function fetchIGMedia(token: string, igUserId: string, limit = 50) 
   const collabFields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,username';
   const tagFields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,username';
 
-  const [ownMedia, collaborativeMedia, taggedMedia] = await Promise.all([
+  const [ownMedia, collaborativeMedia, taggedMedia, storiesMedia] = await Promise.all([
     fetchIGEdge(token, igUserId, 'media', mediaFields, limit),
     fetchIGEdge(token, igUserId, 'collaborative_media', collabFields, limit),
     fetchIGEdge(token, igUserId, 'tags', tagFields, limit),
+    fetchIGEdge(token, igUserId, 'stories', collabFields, limit).then(items =>
+      items.map(item => ({ ...item, media_type: 'STORY' }))
+    ),
   ]);
 
   const merged: any[] = [];
@@ -151,6 +154,7 @@ export async function fetchIGMedia(token: string, igUserId: string, limit = 50) 
   addItems(ownMedia);
   addItems(collaborativeMedia);
   addItems(taggedMedia);
+  addItems(storiesMedia);
 
   // Ordenar decrescentemente pelo timestamp
   merged.sort((a, b) => {
@@ -490,6 +494,7 @@ export function calculateSummary(
   const reels = filtered.filter(p => p.media_type === 'VIDEO' || p.media_type === 'REEL');
   const carousels = filtered.filter(p => p.media_type === 'CAROUSEL_ALBUM');
   const images = filtered.filter(p => p.media_type === 'IMAGE');
+  const stories = filtered.filter(p => p.media_type === 'STORY');
 
   const best = filtered.length > 0 ? [...filtered].sort((a, b) => b.total_interactions - a.total_interactions)[0] : null;
 
@@ -513,7 +518,7 @@ export function calculateSummary(
     totalViews,
     accountsReached: snapshot?.accounts_reached || 0,
     reelsCount: reels.length,
-    storiesCount: 0,
+    storiesCount: stories.length,
     postsCount: images.length,
     carouselCount: carousels.length,
     newFollowers,

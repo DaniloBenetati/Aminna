@@ -141,6 +141,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
           <KPI label="Publicações" value={summary.postsCount} icon={BarChart3} />
           <KPI label="Reels" value={summary.reelsCount} icon={BarChart3} color="rose" />
           <KPI label="Carrosséis" value={summary.carouselCount} icon={BarChart3} color="amber" />
+          <KPI label="Stories" value={summary.storiesCount} icon={BarChart3} color="purple" />
           <KPI label="Alcance Total" value={summary.totalReach} icon={Eye} color="sky" />
           <KPI label="Impressões" value={summary.totalImpressions} icon={Eye} color="purple" />
           <KPI label="Contas Alcançadas" value={summary.accountsReached} icon={Users} color="sky" />
@@ -229,12 +230,12 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
                     </a>
                   ) : (
                     <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 text-[8px] font-bold border border-slate-200 dark:border-zinc-700">
-                      {p.media_type === 'VIDEO' ? '▶' : '📷'}
+                      {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'STORY' ? '⭕' : '📷'}
                     </div>
                   )}
                 </td>
                 <td className="px-3 py-2 font-bold text-slate-600">{p.timestamp ? new Date(p.timestamp).toLocaleDateString('pt-BR') : '-'}</td>
-                <td className="px-3 py-2"><span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${p.media_type === 'VIDEO' ? 'bg-rose-100 text-rose-600' : p.media_type === 'CAROUSEL_ALBUM' ? 'bg-amber-100 text-amber-600' : 'bg-indigo-100 text-indigo-600'}`}>{p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : p.media_type === 'VIDEO' ? 'Reel' : 'Post'}</span></td>
+                <td className="px-3 py-2"><span className={`px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${p.media_type === 'VIDEO' ? 'bg-rose-100 text-rose-600' : p.media_type === 'CAROUSEL_ALBUM' ? 'bg-amber-100 text-amber-600' : p.media_type === 'STORY' ? 'bg-purple-100 text-purple-600' : 'bg-indigo-100 text-indigo-600'}`}>{p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'STORY' ? 'Story' : 'Post'}</span></td>
                 <td className="px-3 py-2 font-bold">{p.reach.toLocaleString('pt-BR')}</td>
                 <td className="px-3 py-2">{p.impressions.toLocaleString('pt-BR')}</td>
                 <td className="px-3 py-2">{p.like_count.toLocaleString('pt-BR')}</td>
@@ -276,6 +277,7 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
       { label: 'Mais Salvos', data: s([...posts].sort((a, b) => b.saved - a.saved)), key: 'saved' as const },
       { label: 'Top Reels', data: s([...posts].filter(p => p.media_type === 'VIDEO').sort((a, b) => b.total_interactions - a.total_interactions)), key: 'total_interactions' as const },
       { label: 'Top Carrosséis', data: s([...posts].filter(p => p.media_type === 'CAROUSEL_ALBUM').sort((a, b) => b.total_interactions - a.total_interactions)), key: 'total_interactions' as const },
+      { label: 'Top Stories', data: s([...posts].filter(p => p.media_type === 'STORY').sort((a, b) => b.total_interactions - a.total_interactions)), key: 'total_interactions' as const },
       { label: 'Maior Engajamento', data: s([...posts].sort((a, b) => b.engagement_rate - a.engagement_rate)), key: 'engagement_rate' as const },
       { label: 'Mais Seg. Estimados', data: s([...posts].sort((a, b) => b.estimated_followers - a.estimated_followers)), key: 'estimated_followers' as const },
       { label: '🤝 Collabs', data: s([...posts].filter(p => p.is_collab).sort((a, b) => b.total_interactions - a.total_interactions)), key: 'total_interactions' as const },
@@ -344,13 +346,13 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
                 ) : (
                   <a href={p.permalink} target="_blank" rel="noreferrer">
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-black shadow-sm hover:opacity-80 transition-opacity">
-                      {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'CAROUSEL_ALBUM' ? '⊞' : '📷'}
+                      {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'CAROUSEL_ALBUM' ? '⊞' : p.media_type === 'STORY' ? '⭕' : '📷'}
                     </div>
                   </a>
                 )}
               </td>
               <td className="px-4 py-2 text-[10px] font-bold">{new Date(p.timestamp).toLocaleDateString('pt-BR')}</td>
-              <td className="px-4 py-2 text-[10px]">{p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : 'Post'}</td>
+              <td className="px-4 py-2 text-[10px]">{p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : p.media_type === 'STORY' ? 'Story' : 'Post'}</td>
               {r?.label === '🤝 Collabs' && (
                 <td className="px-4 py-2 text-[10px] text-indigo-600 font-bold max-w-[200px]">
                   {p.influencer_name ? (
@@ -394,11 +396,11 @@ const ChartsSection: React.FC<{ posts: IGPost[]; history: IGMetricSnapshot[] }> 
   }, [posts]);
 
   const byType = useMemo(() => {
-    const types = ['IMAGE', 'VIDEO', 'CAROUSEL_ALBUM'];
+    const types = ['IMAGE', 'VIDEO', 'CAROUSEL_ALBUM', 'STORY'];
     return types.map(t => {
       const filtered = posts.filter(p => p.media_type === t);
       const avgEng = filtered.length > 0 ? filtered.reduce((s, p) => s + p.engagement_rate, 0) / filtered.length : 0;
-      return { type: t === 'IMAGE' ? 'Post' : t === 'VIDEO' ? 'Reel' : 'Carrossel', count: filtered.length, avgEng: Math.round(avgEng * 100) / 100, totalReach: filtered.reduce((s, p) => s + p.reach, 0) };
+      return { type: t === 'IMAGE' ? 'Post' : t === 'VIDEO' ? 'Reel' : t === 'CAROUSEL_ALBUM' ? 'Carrossel' : 'Story', count: filtered.length, avgEng: Math.round(avgEng * 100) / 100, totalReach: filtered.reduce((s, p) => s + p.reach, 0) };
     });
   }, [posts]);
 
@@ -590,16 +592,43 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                   </td>
                   <td className="px-4 py-2">
                     {perf.posts.length > 0 ? (
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         {perf.posts.map(p => {
                           const thumb = p.thumbnail_url || p.media_url;
+                          const labelType = p.media_type === 'VIDEO' ? 'Reel' : p.media_type === 'STORY' ? 'Story' : p.media_type === 'CAROUSEL_ALBUM' ? 'Carrossel' : 'Post';
+                          const tooltip = `${labelType}${p.is_collab ? ' (Collab)' : ''} | Alcance: ${p.reach.toLocaleString('pt-BR')} | Engajamento: ${p.total_interactions}`;
+                          
                           return (
-                            <a key={p.id} href={p.permalink} target="_blank" rel="noreferrer" title={`Alcance: ${p.reach.toLocaleString('pt-BR')} | Engajamento: ${p.total_interactions}`}>
+                            <a key={p.id} href={p.permalink} target="_blank" rel="noreferrer" title={tooltip} className="relative block group">
                               {thumb ? (
-                                <img src={thumb} alt="post thumb" className="w-8 h-8 object-cover rounded-lg border border-slate-200 dark:border-zinc-700 hover:scale-105 transition-transform" />
+                                <div className={`transition-transform duration-200 group-hover:scale-105 ${p.media_type === 'STORY' ? 'p-[1px] bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 rounded-full' : ''}`}>
+                                  <img 
+                                    src={thumb} 
+                                    alt="post thumb" 
+                                    className={`w-8 h-8 object-cover border border-slate-200 dark:border-zinc-700 ${p.media_type === 'STORY' ? 'rounded-full' : 'rounded-lg'}`} 
+                                  />
+                                </div>
                               ) : (
-                                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950 flex items-center justify-center text-[8px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
-                                  {p.media_type === 'VIDEO' ? '▶' : '📷'}
+                                <div className={`w-8 h-8 flex items-center justify-center text-[8px] font-bold border transition-transform duration-200 group-hover:scale-105 ${
+                                  p.media_type === 'STORY' 
+                                    ? 'bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900 rounded-full' 
+                                    : p.media_type === 'VIDEO'
+                                      ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900 rounded-lg'
+                                      : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900 rounded-lg'
+                                }`}>
+                                  {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'STORY' ? '⭕' : '📷'}
+                                </div>
+                              )}
+                              
+                              {/* Icon overlays for Reels and Collabs */}
+                              {thumb && p.media_type === 'VIDEO' && (
+                                <div className="absolute bottom-0 right-0 bg-black/70 text-white text-[6px] w-2.5 h-2.5 rounded-sm flex items-center justify-center font-black pointer-events-none shadow">
+                                  ▶
+                                </div>
+                              )}
+                              {thumb && p.is_collab && (
+                                <div className="absolute top-0 left-0 bg-indigo-600 text-white text-[6px] w-2.5 h-2.5 rounded-sm flex items-center justify-center font-black pointer-events-none shadow" title="Collab">
+                                  🤝
                                 </div>
                               )}
                             </a>
