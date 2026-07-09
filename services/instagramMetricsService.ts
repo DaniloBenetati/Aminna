@@ -246,12 +246,14 @@ export async function syncAllMetrics(
     posts.push(...batchResults);
   }
 
-  onProgress?.('Salvando no banco de dados...', 92);
+  onProgress?.('Salvando histórico de métricas...', 92);
   await persistSnapshot(snapshot);
-  await persistPosts(posts);
 
-  onProgress?.('Calculando estimativas de seguidores...', 96);
+  onProgress?.('Calculando estimativas de seguidores...', 95);
   const enriched = await estimateFollowersPerPost(posts, igUserId);
+
+  onProgress?.('Salvando publicações no banco...', 98);
+  await persistPosts(enriched);
 
   onProgress?.('Sincronização concluída!', 100);
   return { snapshot, posts: enriched };

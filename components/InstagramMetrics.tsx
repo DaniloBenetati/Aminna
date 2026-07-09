@@ -1,9 +1,42 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshCw, Users, Eye, Heart, MessageCircle, Share2, Bookmark, TrendingUp, BarChart3, Instagram, Loader2 } from 'lucide-react';
 import { syncAllMetrics, loadHistoryFromDB, calculateSummary, IGMetricSnapshot, IGPost } from '../services/instagramMetricsService';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area } from 'recharts';
 
 interface Props { token: string; igUserId: string; partners?: any[]; }
+
+const extractUsername = (social: string): string => {
+  if (!social) return '';
+  let cleaned = social.trim();
+  cleaned = cleaned.split('?')[0]; // Remove query params like ?igsh=...
+  if (cleaned.includes('instagram.com/')) {
+    const parts = cleaned.split('instagram.com/')[1].split('/');
+    cleaned = parts[0] || '';
+  } else if (cleaned.includes('/')) {
+    const parts = cleaned.split('/').filter(Boolean);
+    cleaned = parts[parts.length - 1] || '';
+  }
+  return cleaned.replace('@', '').trim().toLowerCase();
+};
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800/80 text-left">
+        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-2">{label}</p>
+        <div className="space-y-1">
+          {payload.map((p: any, idx: number) => (
+            <p key={idx} className="text-xs font-black flex items-center justify-between gap-4" style={{ color: p.color || p.fill }}>
+              <span className="uppercase">{p.name}:</span>
+              <span>{typeof p.value === 'number' ? p.value.toLocaleString('pt-BR') : p.value}</span>
+            </p>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = [] }) => {
   const [snapshot, setSnapshot] = useState<IGMetricSnapshot | null>(null);
@@ -126,17 +159,29 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
       {tab === 'history' && (
         <div className="space-y-4">
           {followerChart.length > 1 && (
-            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800">
-              <h3 className="text-xs font-black uppercase tracking-widest mb-4">Evolução de Seguidores</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart data={followerChart}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} />
-                  <YAxis tick={{ fontSize: 9 }} domain={['dataMin - 10', 'dataMax + 10']} />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
+            <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
+              <div className="flex items-center gap-2 mb-1">
+                <Users size={16} className="text-indigo-600 dark:text-indigo-400" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none">Evolução de Seguidores</h4>
+              </div>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-6">Histórico detalhado do crescimento da sua audiência</p>
+              <div className="h-80 w-full mt-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={followerChart} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="historyFollowers" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dx={-5} domain={['dataMin - 100', 'dataMax + 100']} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="followers" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#historyFollowers)" name="Seguidores" dot={{ fill: '#6366f1', r: 2 }} activeDot={{ r: 4 }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
@@ -240,7 +285,7 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
   // Helper to match raw influencer user name to a partner name in our system
   const getLinkedPartnerName = (rawName: string) => {
     if (!rawName) return '';
-    const cleanRaw = rawName.replace('@', '').trim().toLowerCase();
+    const cleanRaw = extractUsername(rawName);
     
     // Find a partner whose socialMedia handles match cleanRaw
     const matched = partners.find(pt => {
@@ -248,7 +293,7 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
         pt.socialMedia,
         pt.socialMediaSecondary,
         ...(pt.socialMediaList || [])
-      ].filter(Boolean).map(s => s.replace('@', '').trim().toLowerCase());
+      ].filter(Boolean).map(extractUsername).filter(Boolean);
       return socialList.includes(cleanRaw);
     });
 
@@ -357,28 +402,72 @@ const ChartsSection: React.FC<{ posts: IGPost[]; history: IGMetricSnapshot[] }> 
     });
   }, [posts]);
 
-  const Chart = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-slate-100 dark:border-zinc-800">
-      <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white mb-3">{title}</h4>
-      <ResponsiveContainer width="100%" height={250}>{children as any}</ResponsiveContainer>
+
+
+  const Chart = ({ title, subtitle, icon: Icon, children }: { title: string; subtitle?: string; icon: any; children: React.ReactNode }) => (
+    <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
+        <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none">{title}</h4>
+      </div>
+      {subtitle && <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-6">{subtitle}</p>}
+      <div className="h-64 w-full mt-2">
+        <ResponsiveContainer width="100%" height="100%">
+          {children as any}
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <Chart title="Evolução de Seguidores">
-        <LineChart data={[...history].reverse().slice(-48).map(h => ({ label: new Date(h.synced_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), v: h.followers_count }))}>
-          <CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="label" tick={{ fontSize: 8 }} /><YAxis tick={{ fontSize: 8 }} domain={['dataMin-10','dataMax+10']} /><Tooltip /><Line type="monotone" dataKey="v" stroke="#6366f1" strokeWidth={2} dot={false} name="Seguidores" />
-        </LineChart>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <Chart title="Evolução de Seguidores" subtitle="Histórico recente do crescimento da sua base de seguidores" icon={Users}>
+        <AreaChart data={[...history].reverse().slice(-48).map(h => ({ label: new Date(h.synced_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }), v: h.followers_count }))} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+              <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dy={10} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dx={-5} domain={['dataMin-100','dataMax+100']} />
+          <Tooltip content={<CustomTooltip />} />
+          <Area type="monotone" dataKey="v" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorFollowers)" name="Seguidores" dot={{ fill: '#6366f1', r: 2 }} activeDot={{ r: 4 }} />
+        </AreaChart>
       </Chart>
-      <Chart title="Alcance Diário">
-        <BarChart data={dailyEng}><CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="label" tick={{ fontSize: 8 }} /><YAxis tick={{ fontSize: 8 }} /><Tooltip /><Bar dataKey="reach" fill="#6366f1" radius={[4,4,0,0]} name="Alcance" /></BarChart>
+
+      <Chart title="Alcance Diário" subtitle="Alcance total das publicações orgânicas por dia" icon={Eye}>
+        <BarChart data={dailyEng} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dy={10} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dx={-5} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.2 }} />
+          <Bar dataKey="reach" fill="#6366f1" radius={[6,6,0,0]} name="Alcance" />
+        </BarChart>
       </Chart>
-      <Chart title="Engajamento Diário">
-        <BarChart data={dailyEng}><CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="label" tick={{ fontSize: 8 }} /><YAxis tick={{ fontSize: 8 }} /><Tooltip /><Bar dataKey="likes" fill="#f43f5e" stackId="a" name="Curtidas" /><Bar dataKey="comments" fill="#f59e0b" stackId="a" name="Comentários" /><Bar dataKey="shares" fill="#10b981" stackId="a" name="Compartilhamentos" /><Bar dataKey="saved" fill="#8b5cf6" stackId="a" name="Salvamentos" /></BarChart>
+
+      <Chart title="Engajamento Diário" subtitle="Detalhamento de interações diárias nas publicações" icon={TrendingUp}>
+        <BarChart data={dailyEng} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dy={10} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dx={-5} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.2 }} />
+          <Bar dataKey="likes" fill="#f43f5e" stackId="a" radius={[0,0,0,0]} name="Curtidas" />
+          <Bar dataKey="comments" fill="#f59e0b" stackId="a" radius={[0,0,0,0]} name="Comentários" />
+          <Bar dataKey="shares" fill="#10b981" stackId="a" radius={[0,0,0,0]} name="Compartilhamentos" />
+          <Bar dataKey="saved" fill="#8b5cf6" stackId="a" radius={[6,6,0,0]} name="Salvamentos" />
+        </BarChart>
       </Chart>
-      <Chart title="Comparação por Tipo de Conteúdo">
-        <BarChart data={byType}><CartesianGrid strokeDasharray="3 3" opacity={0.1} /><XAxis dataKey="type" tick={{ fontSize: 9 }} /><YAxis tick={{ fontSize: 8 }} /><Tooltip /><Bar dataKey="totalReach" fill="#6366f1" radius={[4,4,0,0]} name="Alcance Total" /></BarChart>
+
+      <Chart title="Comparação por Tipo de Conteúdo" subtitle="Análise comparativa de alcance total por tipo de mídia" icon={BarChart3}>
+        <BarChart data={byType} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+          <XAxis dataKey="type" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dy={10} />
+          <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} dx={-5} />
+          <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.2 }} />
+          <Bar dataKey="totalReach" fill="#6366f1" radius={[6,6,0,0]} name="Alcance Total" />
+        </BarChart>
       </Chart>
     </div>
   );
@@ -393,7 +482,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
         pt.socialMedia,
         pt.socialMediaSecondary,
         ...(pt.socialMediaList || [])
-      ].filter(Boolean).map(s => s.replace('@', '').trim().toLowerCase());
+      ].filter(Boolean).map(extractUsername).filter(Boolean);
 
       // Filter posts that reference this partner (official collab or mentions)
       const matchingPosts = posts.filter(p => {

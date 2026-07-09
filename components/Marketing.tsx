@@ -1450,15 +1450,36 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const totalSpend = campaignsWithCRM.reduce((s, c) => s + c.spend, 0);
   const totalImpressions = campaignsWithCRM.reduce((s, c) => s + c.impressions, 0);
   const totalClicks = campaignsWithCRM.reduce((s, c) => s + c.clicks, 0);
-  const totalConversions = campaignsWithCRM.reduce((s, c) => {
-    const matchingCouponAppts = getMatchingCouponAppts(c.name);
-    return s + matchingCouponAppts.length;
-  }, 0);
+
+  // Deduplicate appointments to fix double counting in totals
+  const deduplicatedAppts = useMemo(() => {
+    const map = new Map<string, any>();
+    campaignsWithCRM.forEach(c => {
+      if (!c.isConversation) return;
+      const appts = getMatchingCouponAppts(c.name);
+      appts.forEach(a => {
+        if (!map.has(a.id)) {
+          map.set(a.id, a);
+        }
+      });
+    });
+    return Array.from(map.values());
+  }, [campaignsWithCRM, appointments, services, firstVisits, partnerCampaigns]);
+
+  const totalConversions = deduplicatedAppts.length;
   const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
   const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
   const avgCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
   const avgCPA = totalConversions > 0 ? totalSpend / totalConversions : 0;
-  const totalCRMRevenue = campaignsWithCRM.reduce((s, c) => s + c.crmRevenue, 0);
+
+  const totalCRMRevenue = useMemo(() => {
+    return deduplicatedAppts.reduce((sum, a) => {
+      const svc = services.find(s => s.id === a.serviceId);
+      const rev = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((s: number, ex: any) => s + (ex.bookedPrice ?? services.find(srv => srv.id === ex.serviceId)?.price ?? 0), 0);
+      return sum + rev;
+    }, 0);
+  }, [deduplicatedAppts, services]);
+
   const totalROAS = totalSpend > 0 ? totalCRMRevenue / totalSpend : 0;
   
   const totalMessageStarts = campaignsWithCRM.reduce((s, c) => {
