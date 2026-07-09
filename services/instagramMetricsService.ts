@@ -102,26 +102,64 @@ export async function fetchIGInsights(token: string, igUserId: string, period: s
   }
 }
 
-export async function fetchIGMedia(token: string, igUserId: string, limit = 50) {
-  const fields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,collaborators';
-  let allMedia: any[] = [];
-  let nextUrl: string | null = null;
-  
-  const first = await fetchMeta(token, `${igUserId}/media`, { fields, limit: String(limit) });
-  allMedia = first.data || [];
-  nextUrl = first.paging?.next || null;
-
-  // Fetch up to 3 pages max
-  let pages = 0;
-  while (nextUrl && pages < 2) {
-    const res = await fetch(nextUrl);
-    if (!res.ok) break;
-    const data = await res.json();
-    allMedia = [...allMedia, ...(data.data || [])];
-    nextUrl = data.paging?.next || null;
-    pages++;
+async function fetchIGEdge(token: string, igUserId: string, edge: string, fields: string, limit = 50) {
+  try {
+    let allMedia: any[] = [];
+    const first = await fetchMeta(token, `${igUserId}/${edge}`, { fields, limit: String(limit) });
+    allMedia = first.data || [];
+    let nextUrl = first.paging?.next || null;
+    
+    let pages = 0;
+    while (nextUrl && pages < 2) {
+      const res = await fetch(nextUrl);
+      if (!res.ok) break;
+      const data = await res.json();
+      allMedia = [...allMedia, ...(data.data || [])];
+      nextUrl = data.paging?.next || null;
+      pages++;
+    }
+    return allMedia;
+  } catch (err) {
+    console.error(`Erro ao buscar edge ${edge}:`, err);
+    return [];
   }
-  return allMedia;
+}
+
+export async function fetchIGMedia(token: string, igUserId: string, limit = 50) {
+  const mediaFields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,collaborators,username';
+  const collabFields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,username';
+  const tagFields = 'id,caption,media_type,permalink,timestamp,like_count,comments_count,media_url,thumbnail_url,username';
+
+  const [ownMedia, collaborativeMedia, taggedMedia] = await Promise.all([
+    fetchIGEdge(token, igUserId, 'media', mediaFields, limit),
+    fetchIGEdge(token, igUserId, 'collaborative_media', collabFields, limit),
+    fetchIGEdge(token, igUserId, 'tags', tagFields, limit),
+  ]);
+
+  const merged: any[] = [];
+  const seenIds = new Set<string>();
+
+  const addItems = (items: any[]) => {
+    for (const item of items) {
+      if (item && item.id && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        merged.push(item);
+      }
+    }
+  };
+
+  addItems(ownMedia);
+  addItems(collaborativeMedia);
+  addItems(taggedMedia);
+
+  // Ordenar decrescentemente pelo timestamp
+  merged.sort((a, b) => {
+    const tA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    return tB - tA;
+  });
+
+  return merged;
 }
 
 export async function fetchMediaInsights(token: string, mediaId: string, mediaType: string) {
@@ -181,6 +219,8 @@ export async function syncAllMetrics(
   const posts: IGPost[] = [];
   const BATCH_SIZE = 5;
 
+  const myUsername = (profile.username || '').toLowerCase();
+
   function buildPost(m: any, ins: Record<string, number>): IGPost {
     const likes = m.like_count || 0;
     const comments = m.comments_count || 0;
@@ -192,17 +232,29 @@ export async function syncAllMetrics(
     const totalInteractions = likes + comments + shares + saved;
     const engRate = reach > 0 ? (totalInteractions / reach) * 100 : 0;
 
-    // Detect collab: official collaborators field OR @mention in caption
+    // Detect collab: official collaborators field OR @mention in caption OR different creator username
     const caption = m.caption || '';
     const collaboratorsList: any[] = m.collaborators?.data || [];
     const hasOfficialCollab = collaboratorsList.length > 0;
     const hasMentionCollab = caption.includes('@');
-    const isCollab = hasOfficialCollab || hasMentionCollab;
+    const isExternalOwner = m.username && m.username.toLowerCase() !== myUsername;
+    const isCollab = hasOfficialCollab || hasMentionCollab || isExternalOwner;
+    
     const officialNames = collaboratorsList.map((c: any) => c.username).join(', ');
     const mentionNames = hasMentionCollab
       ? (caption.match(/@[\w.]+/g) || []).join(', ')
       : '';
-    const influencerName = officialNames || mentionNames;
+      
+    let influencerName = officialNames || mentionNames;
+    if (isExternalOwner) {
+      if (influencerName) {
+        if (!influencerName.toLowerCase().includes(m.username.toLowerCase())) {
+          influencerName = `${influencerName}, ${m.username}`;
+        }
+      } else {
+        influencerName = m.username;
+      }
+    }
 
     return {
       id: m.id,
