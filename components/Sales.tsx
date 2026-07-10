@@ -1,8 +1,23 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { supabase } from '../services/supabase';
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    useSortable,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CircleCheck, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent, Sparkles, Info, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Calendar, User, Package, Check, X, DollarSign, Wallet, TrendingUp, BarChart3, Filter, CreditCard, ArrowUpRight, ChevronDown, Trash2, ShoppingBag, ChevronLeft, ChevronRight, CalendarRange, Camera, Loader2, ArrowRight, Save, CircleCheck, FileText, ShieldCheck, Clock, Edit, Pencil, RefreshCw, Percent, Sparkles, Info, AlertCircle, CheckCircle2, GripVertical } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { CUSTOMERS } from '../constants';
 import { Sale, StockItem, PaymentSetting, Customer, PaymentInfo, Provider } from '../types';
@@ -13,7 +28,72 @@ import { ReservationsManagement } from './ReservationsManagement';
 
 const CARD_BRANDS = ['Visa', 'Mastercard', 'Elo', 'Hipercard', 'Amex', 'Diners', 'Outros'];
 
+// Componente sortable para o card do catálogo no modo organizar
+function SortableCatalogCard({ product }: { product: StockItem }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: product.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+        zIndex: isDragging ? 999 : undefined,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className={`bg-white dark:bg-zinc-800 rounded-3xl border-2 p-3 flex flex-col gap-3 relative overflow-hidden select-none ${
+                isDragging
+                    ? 'shadow-2xl border-indigo-400 scale-105'
+                    : 'border-dashed border-indigo-200 dark:border-indigo-800'
+            }`}
+        >
+            {/* Drag Handle */}
+            <div
+                {...attributes}
+                {...listeners}
+                className="absolute top-2 right-2 z-10 p-1.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-lg cursor-grab active:cursor-grabbing text-indigo-400 hover:text-indigo-600 touch-none"
+                title="Arrastar para reorganizar"
+            >
+                <GripVertical size={14} />
+            </div>
+
+            <div className="aspect-square rounded-[1.5rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                {product.imageUrl ? (
+                    <img
+                        src={sanitizeImageUrl(product.imageUrl)}
+                        alt={product.name}
+                        className="w-full h-full object-cover pointer-events-none"
+                        referrerPolicy="no-referrer"
+                        loading="lazy"
+                    />
+                ) : (
+                    <Package size={32} className="text-slate-200 dark:text-zinc-700" />
+                )}
+            </div>
+            <div className="px-1">
+                <p className="text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight">
+                    {product.name}
+                </p>
+                <div className="flex justify-between items-end mt-2">
+                    <p className="text-sm font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">{product.quantity} un</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 interface SalesProps {
+
     sales: Sale[];
     setSales: React.Dispatch<React.SetStateAction<Sale[]>>;
     stock: StockItem[];
@@ -67,6 +147,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     const [triedToSubmit, setTriedToSubmit] = useState(false);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
+    const [isOrganizeMode, setIsOrganizeMode] = useState(false);
+    const [orderedCatalog, setOrderedCatalog] = useState<StockItem[]>([]);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
 
     const [adjustmentAmount, setAdjustmentAmount] = useState(0);
     const [adjustmentReason, setAdjustmentReason] = useState('');
@@ -342,6 +425,39 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             return matchesGroup && matchesSubGroup && matchesSearch;
         });
     }, [saleProducts, selectedGroup, selectedSubGroup, productSearch]);
+
+    // Sync orderedCatalog when filteredCatalog changes
+    useEffect(() => {
+        setOrderedCatalog(filteredCatalog);
+    }, [filteredCatalog]);
+
+    const dndSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    );
+
+    const handleCatalogDragEnd = useCallback(async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        setOrderedCatalog(prev => {
+            const oldIndex = prev.findIndex(p => p.id === active.id);
+            const newIndex = prev.findIndex(p => p.id === over.id);
+            const newOrder = arrayMove(prev, oldIndex, newIndex);
+
+            // Save to database in background
+            const updates = newOrder.map((item, index) => ({
+                id: item.id,
+                catalog_order: index + 1
+            }));
+
+            setIsSavingOrder(true);
+            Promise.all(
+                updates.map(u => supabase.from('stock_items').update({ catalog_order: u.catalog_order }).eq('id', u.id))
+            ).finally(() => setIsSavingOrder(false));
+
+            return newOrder;
+        });
+    }, []);
 
     useEffect(() => {
         if (uniqueGroups.length === 1 && selectedGroup === 'all') {
@@ -1519,7 +1635,27 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             </div>
 
                             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                                {cart.length > 0 && (
+                                {isOrganizeMode ? (
+                                    <button
+                                        onClick={() => setIsOrganizeMode(false)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${
+                                            isSavingOrder
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400'
+                                                : 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-200'
+                                        }`}
+                                    >
+                                        {isSavingOrder ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+                                        {isSavingOrder ? 'Salvando...' : 'Concluir'}
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => { setIsOrganizeMode(true); setOrderedCatalog(filteredCatalog); }}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-500 hover:border-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all"
+                                    >
+                                        <GripVertical size={12} /> Organizar
+                                    </button>
+                                )}
+                                {!isOrganizeMode && cart.length > 0 && (
                                     <button 
                                         onClick={() => setIsModalOpen(true)}
                                         className="px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-base font-black flex items-center justify-center animate-bounce-subtle border border-indigo-100 dark:border-indigo-800"
@@ -1552,6 +1688,17 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </div>
                             )}
 
+                        {isOrganizeMode ? (
+                            <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleCatalogDragEnd}>
+                                <SortableContext items={orderedCatalog.map(p => p.id)} strategy={rectSortingStrategy}>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                                        {orderedCatalog.map(product => (
+                                            <SortableCatalogCard key={product.id} product={product} />
+                                        ))}
+                                    </div>
+                                </SortableContext>
+                            </DndContext>
+                        ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                             {filteredCatalog.map(product => (
                                     <button
@@ -1610,6 +1757,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 ))
                             }
                         </div>
+                        )}
 
                         {filteredCatalog.length === 0 && (
                             <div className="py-32 text-center opacity-50 bg-slate-50 dark:bg-zinc-800/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-zinc-700">

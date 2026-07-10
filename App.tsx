@@ -375,7 +375,7 @@ const App: React.FC = () => {
         payrollRes,
         employeeLoansRes
       ] = await Promise.all([
-        supabase.from('stock_items').select('*').eq('active', true).order('created_at', { ascending: false }),
+        supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true }),
         supabase.from('usage_logs').select('*').gte('date', minDate),
         supabase.from('campaigns').select('*'),
         supabase.from('pantry_items').select('*'),
@@ -411,6 +411,7 @@ const App: React.FC = () => {
           imageUrl: s.image_url,
           imageUrls: s.image_urls || [],
           priceHistory: s.price_history || [],
+          catalogOrder: s.catalog_order ?? 9999,
           usageHistory: (usageLogsRes.data || [])
             .filter((l: any) => l.stock_item_id === s.id)
             .map((l: any) => ({

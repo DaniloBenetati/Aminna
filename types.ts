@@ -176,6 +176,7 @@ export interface StockItem {
   costPrice: number;
   imageUrl?: string;
   imageUrls?: string[];
+  catalogOrder?: number; // Posição manual no catálogo
 }
 
 export interface Sale {
