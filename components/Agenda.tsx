@@ -1940,7 +1940,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${statusColor} shadow-lg shadow-${statusColor.split('[')[1]?.split(']')[0] || 'indigo'}/20`} />
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-center gap-2">
-                                                                    <p className="text-[12px] font-black text-slate-900 dark:text-white uppercase truncate">{customer?.name || 'Cliente'}</p>
+                                                                    <p className={`text-[12px] font-black uppercase truncate ${customer ? 'text-slate-900 dark:text-white' : 'text-orange-500 dark:text-orange-400'}`}>{customer?.name || '⚠ Avulso'}</p>
                                                                     {customer?.id && isFirstAppointment(customer.id, gridDateStr, appointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                                                         <span className="bg-emerald-600 text-white text-[7px] font-black px-1 rounded-sm uppercase">Novo</span>
                                                                     )}
@@ -2223,8 +2223,8 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             >
                                                                                 <div className="flex justify-between items-start">
                                                                                     <div className="flex flex-col min-w-0 max-w-[85%]">
-                                                                                        <p className={`font-black uppercase leading-none truncate ${rowHeight < 50 ? 'text-[7.5px]' : rowHeight < 75 ? 'text-[8.5px]' : 'text-[10px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
-                                                                                            {customer?.name || 'Cliente'}
+                                                                                        <p className={`font-black uppercase leading-none truncate ${rowHeight < 50 ? 'text-[7.5px]' : rowHeight < 75 ? 'text-[8.5px]' : 'text-[10px]'} ${!customer ? 'text-orange-200' : appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-950' : 'text-white'}`}>
+                                                                                            {customer?.name || '⚠ Avulso'}
                                                                                         </p>
                                                                                         <p className={`font-bold uppercase leading-none truncate mt-1 ${rowHeight < 50 ? 'text-[6.5px]' : rowHeight < 75 ? 'text-[7.5px]' : 'text-[8.5px]'} ${appt.whatsappResponseNeeded || localStatus === 'Aguardando' ? 'text-amber-900/80' : 'text-white/90'}`}>
                                                                                             {displayServiceName}
@@ -2879,7 +2879,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                     <ServiceModal
                         appointment={selectedAppointment}
                         allAppointments={appointments}
-                        customer={customers.find(c => c.id === selectedAppointment.customerId) || customers[0]}
+                        customer={customers.find(c => c.id === selectedAppointment.customerId)}
                         onClose={() => { setIsServiceModalOpen(false); setSelectedAppointment(null); }}
                         onUpdateAppointments={setAppointments}
                         onUpdateCustomers={setCustomers}
