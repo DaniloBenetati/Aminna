@@ -417,13 +417,15 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     }, [saleProducts, selectedGroup]);
 
     const filteredCatalog = useMemo(() => {
-        return saleProducts.filter(item => {
+        const filtered = saleProducts.filter(item => {
             const matchesGroup = selectedGroup === 'all' || item.group === selectedGroup;
             const matchesSubGroup = selectedSubGroup === 'all' || item.subGroup === selectedSubGroup;
             const matchesSearch = item.name.toLowerCase().includes(productSearch.toLowerCase()) ||
                                 (item.code || '').toLowerCase().includes(productSearch.toLowerCase());
             return matchesGroup && matchesSubGroup && matchesSearch;
         });
+        
+        return filtered.sort((a, b) => (a.catalog_order || 0) - (b.catalog_order || 0));
     }, [saleProducts, selectedGroup, selectedSubGroup, productSearch]);
 
     // Sync orderedCatalog when filteredCatalog changes
@@ -454,10 +456,22 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             Promise.all(
                 updates.map(u => supabase.from('stock_items').update({ catalog_order: u.catalog_order }).eq('id', u.id))
             ).finally(() => setIsSavingOrder(false));
+            
+            // Atualiza o estado global para não resetar quando recarregar o saleProducts
+            setStock(prevStock => {
+                const stockCopy = [...prevStock];
+                updates.forEach(u => {
+                    const idx = stockCopy.findIndex(s => s.id === u.id);
+                    if (idx !== -1) {
+                        stockCopy[idx] = { ...stockCopy[idx], catalog_order: u.catalog_order };
+                    }
+                });
+                return stockCopy;
+            });
 
             return newOrder;
         });
-    }, []);
+    }, [setStock]);
 
     useEffect(() => {
         if (uniqueGroups.length === 1 && selectedGroup === 'all') {
