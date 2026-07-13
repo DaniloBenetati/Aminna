@@ -260,6 +260,35 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const FutureClientTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+        <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Nível: Projeção de Novos</p>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Clientes:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.value || 0}</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Faturamento:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">R$ {(data.revenue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+            </div>
+            <div className="flex justify-between items-center gap-4">
+              <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Serviços:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.services || 0}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 const CAMPAIGN_COLORS = [
   '#6366f1', // Indigo (Azul/Roxo)
   '#f97316', // Orange (Laranja vivo)
@@ -410,6 +439,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'reports' | 'metrics') || 'paid'
   );
   const [refreshKey, setRefreshKey] = useState(0);
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
 
   // Persistence to Supabase
   useEffect(() => {
@@ -742,6 +772,68 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return data;
   }, [firstVisits, appointments, isAppointmentInMarketingPeriod, customStartDate, customEndDate, dateRange, services]);
 
+  const futureChartData = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    // Obter primeira data de visita absoluta para cada cliente (qualquer status diferente de Cancelado)
+    const firstVisitsAll: Record<string, string> = {};
+    customers.forEach(c => {
+      const customerApps = appointments.filter(a => a.customerId === c.id && a.status !== 'Cancelado');
+      if (customerApps.length > 0) {
+        const sorted = [...customerApps].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+        firstVisitsAll[c.id] = sorted[0].date;
+      }
+    });
+
+    // Mapear dados diários futuros
+    const dailyFuture: Record<string, { count: number, revenue: number, services: number }> = {};
+    
+    // Contar novos clientes cuja primeira visita absoluta está agendada para hoje ou no futuro
+    Object.entries(firstVisitsAll).forEach(([customerId, dateStr]) => {
+      if (dateStr >= todayStr) {
+        dailyFuture[dateStr] = dailyFuture[dateStr] || { count: 0, revenue: 0, services: 0 };
+        dailyFuture[dateStr].count++;
+      }
+    });
+
+    // Calcular o faturamento projetado e quantidade de serviços para esses clientes novos futuros
+    appointments.filter(a => a.status !== 'Cancelado' && a.date >= todayStr).forEach(a => {
+      const firstDate = firstVisitsAll[a.customerId];
+      // Apenas se o agendamento pertence a um cliente novo futuro na data de sua primeira visita
+      if (firstDate && firstDate === a.date) {
+        const svc = services.find(s => s.id === a.serviceId);
+        const appRevenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + 
+          (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
+
+        dailyFuture[a.date] = dailyFuture[a.date] || { count: 0, revenue: 0, services: 0 };
+        dailyFuture[a.date].revenue += appRevenue;
+        dailyFuture[a.date].services += (1 + (a.additionalServices || []).length);
+      }
+    });
+
+    // Gerar lista de 60 dias para a frente (a partir de hoje)
+    const data = [];
+    let curr = new Date(todayStr + 'T12:00:00');
+    for (let i = 0; i < 60; i++) {
+      const dStr = curr.toISOString().split('T')[0];
+      const day = dailyFuture[dStr] || { count: 0, revenue: 0, services: 0 };
+      if (day.count > 0) {
+        data.push({
+          name: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
+          value: day.count,
+          revenue: day.revenue,
+          services: day.services
+        });
+      }
+      curr.setDate(curr.getDate() + 1);
+    }
+    return data;
+  }, [customers, appointments, services]);
+
   const couponsListData = useMemo(() => {
     return appointments
         .filter(a => a.status === 'Concluído' && a.appliedCoupon && isAppointmentInMarketingPeriod(a.date))
@@ -1043,7 +1135,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             campDailyBudget = daily + lifetime;
 
             if (campDailyBudget === 0) {
-              const campAdSets = parsedAdSets.filter((a: any) => a.campaign_id === camp.id);
+              const campAdSets = parsedAdSets.filter((a: any) => a.campaign_id === camp.id && a.status === 'ACTIVE');
               campAdSets.forEach((a: any) => {
                 const adSetDaily = a.daily_budget ? (a.daily_budget / 100) : 0;
                 const adSetLifetime = a.lifetime_budget ? ((a.lifetime_budget / 100) / 30) : 0;
@@ -1924,23 +2016,70 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                          {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
                       </p>
                    </div>
-                </div>
+                 </div>
 
-                {hasProblem && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
-                     <Zap size={10} className="text-blue-500" />
-                     <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Recomendação Disponível</span>
-                  </div>
-                )}
-             </div>
-           );
-        })}
-      </div>
-    </div>
+                 {hasProblem && (
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                      <Zap size={10} className="text-blue-500" />
+                      <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Recomendação Disponível</span>
+                   </div>
+                 )}
+              </div>
+            );
+         })}
+       </div>
+     </div>
   );
 
   const renderAdSets = () => {
     const activeAdSets = [...adSets].filter(a => a.status === 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
+
+    // Agrupar adsets por campanha
+    const campaignsMap: Record<string, {
+      campaignName: string;
+      spend: number;
+      clicks: number;
+      conversations: number;
+      conversions: number;
+      impressions: number;
+      roasMax: number;
+      items: typeof activeAdSets;
+    }> = {};
+
+    activeAdSets.forEach(a => {
+      const campName = a.campaign_name || 'Campanha Sem Nome';
+      if (!campaignsMap[campName]) {
+        campaignsMap[campName] = {
+          campaignName: campName,
+          spend: 0,
+          clicks: 0,
+          conversations: 0,
+          conversions: 0,
+          impressions: 0,
+          roasMax: 0,
+          items: []
+        };
+      }
+      const camp = campaignsMap[campName];
+      camp.spend += a.spend || 0;
+      camp.clicks += a.clicks || 0;
+      camp.conversations += a.conversations_started || 0;
+      camp.conversions += a.conversions || 0;
+      camp.impressions += a.impressions || 0;
+      camp.roasMax = Math.max(camp.roasMax, a.roas || 0);
+      camp.items.push(a);
+    });
+
+    const toggleCampaign = (campName: string) => {
+      setExpandedCampaigns(prev => ({
+        ...prev,
+        [campName]: !prev[campName]
+      }));
+    };
+
+    // Ordenar as campanhas pela quantidade de adsets (anúncios) decrescente
+    const sortedCampaignGroups = Object.values(campaignsMap).sort((a, b) => b.items.length - a.items.length);
+
     return (
     <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
       {/* Desktop Version */}
@@ -1948,70 +2087,139 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50/50 dark:bg-zinc-800/50 text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-100 dark:border-zinc-800">
-              <th className="px-4 py-2 text-left">Conjunto</th>
-              <th className="px-4 py-2 text-left">Campanha</th>
-              <th className="px-4 py-2 text-right">Gasto</th>
-              <th className="px-4 py-2 text-right">Cliques</th>
-              <th className="px-4 py-2 text-right">Conversas</th>
-              <th className="px-4 py-2 text-right">CTR</th>
-              <th className="px-4 py-2 text-right">CPC</th>
-              <th className="px-4 py-2 text-right">CPA</th>
-              <th className="px-4 py-2 text-right">ROAS</th>
-              <th className="px-4 py-2 text-right">Conv.</th>
+              <th className="px-4 py-3 text-left">Campanha / Conjunto</th>
+              <th className="px-4 py-3 text-right">Gasto</th>
+              <th className="px-4 py-3 text-right">Cliques</th>
+              <th className="px-4 py-3 text-right">Conversas</th>
+              <th className="px-4 py-3 text-right">CTR</th>
+              <th className="px-4 py-3 text-right">CPC</th>
+              <th className="px-4 py-3 text-right">CPA</th>
+              <th className="px-4 py-3 text-right">ROAS</th>
+              <th className="px-4 py-3 text-right">Conv.</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
-            {activeAdSets.map(a => (
-              <tr key={a.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/30 transition-colors border-b border-slate-100 dark:border-zinc-800 last:border-0">
-                <td className="px-4 py-2">
-                  <p className="font-bold text-[10px] text-slate-900 dark:text-white leading-tight">{a.name}</p>
-                  <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
-                </td>
-                <td className="px-4 py-2 text-[10px] text-slate-500">{a.campaign_name}</td>
-                <td className="px-4 py-2 font-black text-[10px] text-right">{fmt.currency(a.spend)}</td>
-                <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{a.clicks.toLocaleString('pt-BR')}</td>
-                <td className="px-4 py-2 font-black text-[10px] text-right text-emerald-600">{(a.conversations_started || 0).toLocaleString('pt-BR')}</td>
-                <td className="px-4 py-2 font-bold text-[10px] text-right text-indigo-600">{fmt.percent(a.ctr)}</td>
-                <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.cpc)}</td>
-                <td className="px-4 py-2 font-bold text-[10px] text-right text-rose-600">{fmt.currency(a.cpa)}</td>
-                <td className="px-4 py-2 font-black text-[10px] text-right text-emerald-600">{a.roas ? `${a.roas.toFixed(2)}x` : '—'}</td>
-                <td className="px-4 py-2 font-black text-[10px] text-right text-indigo-600">{a.conversions}</td>
-              </tr>
-            ))}
+            {sortedCampaignGroups.map(group => {
+              const isExpanded = !!expandedCampaigns[group.campaignName];
+              const campCtr = group.impressions > 0 ? (group.clicks / group.impressions) * 100 : 0;
+              const campCpc = group.clicks > 0 ? group.spend / group.clicks : 0;
+              const campCpa = group.conversations > 0 ? group.spend / group.conversations : 0;
+
+              return (
+                <React.Fragment key={group.campaignName}>
+                  {/* Linha da Campanha */}
+                  <tr 
+                    onClick={() => toggleCampaign(group.campaignName)}
+                    className="cursor-pointer select-none bg-slate-50/30 hover:bg-slate-100/50 dark:bg-zinc-800/10 dark:hover:bg-zinc-800/20 transition-colors font-black border-b border-slate-100 dark:border-zinc-800"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 dark:text-zinc-500 flex-shrink-0 transition-transform">
+                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                        <div>
+                          <p className="text-[10px] sm:text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">{group.campaignName}</p>
+                          <p className="text-[8px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mt-0.5">{group.items.length} conjunto{group.items.length > 1 ? 's' : ''} ativo{group.items.length > 1 ? 's' : ''}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-black text-[10px] text-right text-slate-900 dark:text-white">{fmt.currency(group.spend)}</td>
+                    <td className="px-4 py-3 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{group.clicks.toLocaleString('pt-BR')}</td>
+                    <td className="px-4 py-3 font-black text-[10px] text-right text-emerald-600">{group.conversations.toLocaleString('pt-BR')}</td>
+                    <td className="px-4 py-3 font-bold text-[10px] text-right text-indigo-600">{fmt.percent(campCtr)}</td>
+                    <td className="px-4 py-3 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(campCpc)}</td>
+                    <td className="px-4 py-3 font-bold text-[10px] text-right text-rose-600">{fmt.currency(campCpa)}</td>
+                    <td className="px-4 py-3 font-black text-[10px] text-right text-emerald-600">{group.roasMax > 0 ? `${group.roasMax.toFixed(2)}x` : '—'}</td>
+                    <td className="px-4 py-3 font-black text-[10px] text-right text-indigo-600">{group.conversions}</td>
+                  </tr>
+
+                  {/* Linhas dos AdSets (Filhas) */}
+                  {isExpanded && group.items.map(a => (
+                    <tr key={a.id} className="bg-white hover:bg-slate-50/40 dark:bg-zinc-900 dark:hover:bg-zinc-800/10 transition-colors border-b border-slate-100 dark:border-zinc-800 last:border-0">
+                      <td className="px-4 py-2.5 pl-8">
+                        <div className="flex items-start gap-2">
+                          <span className="text-slate-300 dark:text-zinc-700 select-none mt-0.5">↳</span>
+                          <div>
+                            <p className="font-bold text-[10px] text-slate-700 dark:text-zinc-300 leading-tight">{a.name}</p>
+                            <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</td>
+                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{a.clicks.toLocaleString('pt-BR')}</td>
+                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{(a.conversations_started || 0).toLocaleString('pt-BR')}</td>
+                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-indigo-500/80">{fmt.percent(a.ctr)}</td>
+                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{fmt.currency(a.cpc)}</td>
+                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-rose-500/80">{fmt.currency(a.cpa)}</td>
+                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{a.roas ? `${a.roas.toFixed(2)}x` : '—'}</td>
+                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-indigo-500/80">{a.conversions}</td>
+                    </tr>
+                  ))}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* Mobile Card Version */}
       <div className="sm:hidden divide-y divide-slate-100 dark:divide-zinc-800/50">
-        {activeAdSets.map(a => (
-          <div key={a.id} className="p-4 space-y-2">
-            <div className="flex justify-between items-start gap-2">
-              <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{a.name}</p>
-              <span className="text-[10px] font-black text-emerald-600">{fmt.currency(a.spend)}</span>
-            </div>
-            <div className="flex justify-between items-center gap-2">
-              <div className="min-w-0">
-                <p className="text-[10px] font-bold text-indigo-500 leading-tight truncate">
-                  {a.targeting_desc || '—'}
-                </p>
-                <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
+        {sortedCampaignGroups.map(group => {
+          const isExpanded = !!expandedCampaigns[group.campaignName];
+          return (
+            <div key={group.campaignName} className="p-4 space-y-2">
+              <div 
+                onClick={() => toggleCampaign(group.campaignName)}
+                className="flex justify-between items-start gap-2 cursor-pointer select-none"
+              >
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-slate-400 dark:text-zinc-500 transition-transform">
+                      {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </span>
+                    <p className="text-xs font-black text-slate-900 dark:text-white uppercase leading-tight">{group.campaignName}</p>
+                  </div>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 ml-5">{group.items.length} conjunto{group.items.length > 1 ? 's' : ''} ativo{group.items.length > 1 ? 's' : ''}</p>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <span className="text-xs font-black text-slate-900 dark:text-white">{fmt.currency(group.spend)}</span>
+                  <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full mt-1 whitespace-nowrap">
+                    {group.conversations} Conversas
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                <p className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {a.conversations_started || 0} Conversas
-                </p>
-                <p className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  {a.conversions} Conv.
-                </p>
-              </div>
+
+              {isExpanded && (
+                <div className="pl-4 border-l border-slate-100 dark:border-zinc-800 mt-3 space-y-3 pt-2">
+                  {group.items.map(a => (
+                    <div key={a.id} className="space-y-1">
+                      <div className="flex justify-between items-start gap-2">
+                        <p className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 uppercase leading-tight">{a.name}</p>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</span>
+                      </div>
+                      <div className="flex justify-between items-center gap-2">
+                        <p className="text-[9px] font-bold text-indigo-500 leading-tight truncate">{a.targeting_desc || '—'}</p>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          <p className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            {a.conversations_started || 0} Conversas
+                          </p>
+                          <p className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                            {a.conversions} Conv.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
-  );
-};
+    );
+  };
+
 
   const renderAds = () => {
     const activeAds = [...ads].filter(ad => ad.status === 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
@@ -2561,6 +2769,64 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </div>
                     </section>
 
+                    {/* Novo Gráfico: Projeção de Clientes Novos (Próximos 60 dias) */}
+                    <section id="conversao-clientes-projetados" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <BarChart3 size={16} className="text-slate-500" /> Projeção de Clientes Novos (Próximos 60 dias)
+                              </h3>
+                              <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Clientes novos futuros com visitas agendadas (Projetado)</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('novos-clientes-projetados')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
+                          </div>
+                          <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Projetado</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                  {futureChartData.reduce((sum: number, d: any) => sum + (d.value || 0), 0)}
+                                </p>
+                              </div>
+                              <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Faturamento Est.</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                  R$ {futureChartData.reduce((sum: number, d: any) => sum + (d.revenue || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                                </p>
+                              </div>
+                              <div className="w-px h-5 sm:h-8 bg-zinc-200 dark:bg-zinc-700" />
+                              <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
+                                <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços Est.</p>
+                                <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
+                                  {futureChartData.reduce((sum: number, d: any) => sum + (d.services || 0), 0)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-80 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={futureChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <Tooltip content={<FutureClientTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.4 }} />
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <Bar dataKey="value" name="Projetado" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={16} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    </section>
+
                     {/* Gráfico de Conversas Diárias */}
                     <section id="conversas-diarias" className="scroll-mt-32">
                       <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
@@ -2916,6 +3182,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               <div>
                 <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-widest flex items-center gap-2">
                   {maximizedChart === 'novos-clientes' && <>📊 Novos Clientes por Dia</>}
+                  {maximizedChart === 'novos-clientes-projetados' && <>🔮 Projeção de Novos Clientes por Dia (Próximos 60 dias)</>}
                   {maximizedChart === 'conversas-diarias' && <>💬 Conversas Iniciadas por Dia</>}
                   {maximizedChart === 'comparativo-conversas' && <>📈 Comparativo com a Semana Anterior</>}
                   {maximizedChart === 'consumo-orcamento' && <>💵 Consumo de Orçamento Diário</>}
@@ -2948,6 +3215,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMktMax)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
                     </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {maximizedChart === 'novos-clientes-projetados' && (
+                <div className="w-full h-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={futureChartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
+                      <Tooltip content={<FutureClientTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.4 }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <Bar dataKey="value" name="Projetado" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={24} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
