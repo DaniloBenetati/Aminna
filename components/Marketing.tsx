@@ -16,7 +16,8 @@ import { supabase } from '../services/supabase';
 import { GeoTrafficMap } from './GeoTrafficMap';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, 
-  Tooltip, ResponsiveContainer, BarChart, Bar, LabelList 
+  Tooltip, ResponsiveContainer, BarChart, Bar, LabelList,
+  ComposedChart, Line, Legend
 } from 'recharts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -253,6 +254,65 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+const CAMPAIGN_COLORS = [
+  '#6366f1', // Indigo (Azul/Roxo)
+  '#f97316', // Orange (Laranja vivo)
+  '#10b981', // Emerald (Verde)
+  '#ec4899', // Pink (Rosa)
+  '#06b6d4', // Cyan (Ciano)
+  '#eab308', // Yellow (Amarelo)
+  '#ef4444', // Red (Vermelho)
+  '#8b5cf6', // Violet (Roxo escuro)
+  '#84cc16', // Lime (Verde Limão)
+  '#14b8a6'  // Teal (Azul Piscina)
+];
+
+const getColorForIndex = (index: number) => {
+  return CAMPAIGN_COLORS[index % CAMPAIGN_COLORS.length];
+};
+
+const ConversasTooltip = ({ active, payload, campaignsList }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[220px] max-w-xs">
+        <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">
+          Dia: {data.day}
+        </p>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <div className="flex justify-between items-center gap-4 mb-2">
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">CONVERSAS TOTAIS:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.conversations || 0}</span>
+            </div>
+            
+            <div className="space-y-1 pl-1 border-l-2 border-indigo-100 dark:border-indigo-900/40">
+              {campaignsList.map((camp: string) => {
+                const val = data[camp] || 0;
+                if (val === 0) return null;
+                return (
+                  <div key={camp} className="flex justify-between items-center gap-4 text-[9px] text-slate-500 dark:text-zinc-400">
+                    <span className="truncate max-w-[150px] font-semibold">{camp}:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">{val}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex justify-between items-center gap-4 mt-2 border-t border-slate-50 dark:border-zinc-700 pt-2">
+              <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">GASTO:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                R$ {(data.spend || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -409,6 +469,20 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const [followerSeries, setFollowerSeries] = useState<any[]>([]);
   const [organicData, setOrganicData] = useState<any>(null);
   const [dailyConversations, setDailyConversations] = useState<any[]>([]);
+
+  const campaignsList = useMemo(() => {
+    const names = new Set<string>();
+    dailyConversations.forEach(day => {
+      if (day.campaignConvs) {
+        Object.keys(day.campaignConvs).forEach(name => {
+          if (day.campaignConvs[name] > 0) {
+            names.add(name);
+          }
+        });
+      }
+    });
+    return Array.from(names);
+  }, [dailyConversations]);
 
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_STORAGE_KEY) || '');
   const [tokenInput, setTokenInput] = useState<string>('');
@@ -917,7 +991,16 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           const campName = (d.campaign_name || '').toLowerCase();
           const isFollower = campName.includes('seguidores');
           const isManicure = campName.includes('manicures');
-          const isAgendamento = !isFollower && !isManicure && (campName.includes('conversas') || campName.includes('lead') || campName.includes('cupom') || campName.includes('trafego') || campName.includes('estetica') || campName.includes('estética'));
+          const isAgendamento = !isFollower && !isManicure && (
+            campName.includes('conversas') || 
+            campName.includes('lead') || 
+            campName.includes('cupom') || 
+            campName.includes('trafego') || 
+            campName.includes('estetica') || 
+            campName.includes('estética') ||
+            campName.includes('laboratorio') ||
+            campName.includes('teste')
+          );
           
           if (!isAgendamento) return;
 
@@ -929,7 +1012,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           )?.value || d.conversions || 0;
           
           const dateKey = d.date_start;
-          const current = dailyMap.get(dateKey) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
+          const current = dailyMap.get(dateKey) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0, campaignConvs: {} };
+
+          const campNameReal = d.campaign_name || 'Campanha Sem Nome';
+          const campConvs = parseInt(msgStarted, 10);
+          
+          const newCampConvs = { ...current.campaignConvs };
+          newCampConvs[campNameReal] = (newCampConvs[campNameReal] || 0) + campConvs;
 
           const camp = parsedCampaigns.find((c: any) => c.id === d.campaign_id);
           let campDailyBudget = 0;
@@ -952,8 +1041,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             spend: current.spend + parseFloat(d.spend || '0'),
             impressions: current.impressions + parseInt(d.impressions || '0', 10),
             clicks: current.clicks + parseInt(d.clicks || '0', 10),
-            conversations: current.conversations + parseInt(msgStarted, 10),
-            budget: current.budget + campDailyBudget
+            conversations: current.conversations + campConvs,
+            budget: current.budget + campDailyBudget,
+            campaignConvs: newCampConvs
           });
         });
 
@@ -967,8 +1057,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           prevDate.setDate(prevDate.getDate() - 7);
           const prevDStr = prevDate.toISOString().split('T')[0];
 
-          const currentVal = dailyMap.get(dStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
-          const prevVal = dailyMap.get(prevDStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0 };
+          const currentVal = dailyMap.get(dStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0, campaignConvs: {} };
+          const prevVal = dailyMap.get(prevDStr) || { spend: 0, impressions: 0, clicks: 0, conversations: 0, budget: 0, campaignConvs: {} };
 
           timeseries.push({
             date: dStr,
@@ -979,7 +1069,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             conversations: currentVal.conversations,
             prevConversations: prevVal.conversations,
             prevSpend: prevVal.spend,
-            budget: currentVal.budget || 0
+            budget: currentVal.budget || 0,
+            campaignConvs: currentVal.campaignConvs || {},
+            ...(currentVal.campaignConvs || {})
           });
 
           curr.setDate(curr.getDate() + 1);
@@ -2396,38 +2488,40 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                         </div>
                         <div className="h-64 mt-4">
                           <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailyConversations}>
+                            <ComposedChart data={dailyConversations}>
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                               <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <Tooltip 
                                 cursor={{ fill: '#f1f5f9' }}
-                                content={({ active, payload }) => {
-                                  if (active && payload && payload.length) {
-                                    const data = payload[0].payload;
-                                    return (
-                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
-                                        <div className="space-y-1">
-                                          <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-4">
-                                            <span>CONVERSAS:</span>
-                                            <span>{data.conversations}</span>
-                                          </p>
-                                          <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-4">
-                                            <span>GASTO:</span>
-                                            <span>{fmt.currency(data.spend)}</span>
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                }}
+                                content={<ConversasTooltip campaignsList={campaignsList} />}
                               />
-                              <Bar dataKey="conversations" name="Conversas" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={24}>
-                                <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} />
-                              </Bar>
-                            </BarChart>
+                              <Legend 
+                                verticalAlign="top" 
+                                height={36} 
+                                iconType="circle" 
+                                wrapperStyle={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', paddingBottom: 10 }} 
+                              />
+                              {campaignsList.map((campaignName, idx) => (
+                                <Bar 
+                                  key={campaignName}
+                                  dataKey={campaignName}
+                                  name={campaignName}
+                                  stackId="a"
+                                  fill={getColorForIndex(idx)}
+                                  barSize={24}
+                                />
+                              ))}
+                              <Line 
+                                type="monotone" 
+                                dataKey="conversations" 
+                                stroke="transparent" 
+                                activeDot={false} 
+                                dot={false}
+                              >
+                                <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} offset={6} />
+                              </Line>
+                            </ComposedChart>
                           </ResponsiveContainer>
                         </div>
                       </div>
@@ -2756,38 +2850,40 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               {maximizedChart === 'conversas-diarias' && (
                 <div className="w-full h-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dailyConversations} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
+                    <ComposedChart data={dailyConversations} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
                       <Tooltip 
                         cursor={{ fill: '#f1f5f9' }}
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 p-4 rounded-2xl shadow-xl text-left max-w-sm">
-                                <p className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase leading-none mb-2">Dia: {data.day}</p>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Conversas</span>
-                                    <span className="text-xs font-black text-indigo-600 mt-0.5 block">{data.conversations}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Investido</span>
-                                    <span className="text-xs font-black text-slate-800 dark:text-zinc-200 mt-0.5 block">R$ {data.spend.toFixed(2)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
+                        content={<ConversasTooltip campaignsList={campaignsList} />}
                       />
-                      <Bar dataKey="conversations" name="Conversas" fill="#6366f1" radius={[8, 8, 0, 0]} maxBarSize={45}>
-                        <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={11} fontWeight={900} />
-                      </Bar>
-                    </BarChart>
+                      <Legend 
+                        verticalAlign="top" 
+                        height={36} 
+                        iconType="circle" 
+                        wrapperStyle={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', paddingBottom: 10 }} 
+                      />
+                      {campaignsList.map((campaignName, idx) => (
+                        <Bar 
+                          key={campaignName}
+                          dataKey={campaignName}
+                          name={campaignName}
+                          stackId="a"
+                          fill={getColorForIndex(idx)}
+                          maxBarSize={45}
+                        />
+                      ))}
+                      <Line 
+                        type="monotone" 
+                        dataKey="conversations" 
+                        stroke="transparent" 
+                        activeDot={false} 
+                        dot={false}
+                      >
+                        <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={11} fontWeight={900} offset={6} />
+                      </Line>
+                    </ComposedChart>
                   </ResponsiveContainer>
                 </div>
               )}
