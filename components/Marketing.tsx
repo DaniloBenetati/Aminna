@@ -484,6 +484,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return Array.from(names);
   }, [dailyConversations]);
 
+  const [showInactiveAds, setShowInactiveAds] = useState(false);
+
   const [token, setToken] = useState<string>(() => localStorage.getItem(TOKEN_STORAGE_KEY) || '');
   const [tokenInput, setTokenInput] = useState<string>('');
   const [showTokenPanel, setShowTokenPanel] = useState<boolean>(false);
@@ -1993,60 +1995,139 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderAds = () => {
     const activeAds = [...ads].filter(ad => ad.status === 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
+    const inactiveAds = [...ads].filter(ad => ad.status !== 'ACTIVE').sort((a, b) => b.clicks - a.clicks);
     
+    const activeCount = activeAds.length;
+    const inactiveCount = inactiveAds.length;
+    
+    const displayedAds = showInactiveAds ? [...activeAds, ...inactiveAds] : activeAds;
+
+    // Agrupamento por Campanha
+    const campaignGroupsMap: Record<string, { id: string, name: string, ads: typeof ads }> = {};
+    displayedAds.forEach(ad => {
+      const campId = ad.campaign_id || 'unknown';
+      const campName = ad.campaign_name || 'Campanha Sem Nome';
+      if (!campaignGroupsMap[campId]) {
+        campaignGroupsMap[campId] = {
+          id: campId,
+          name: campName,
+          ads: []
+        };
+      }
+      campaignGroupsMap[campId].ads.push(ad);
+    });
+
+    const campaignGroups = Object.values(campaignGroupsMap).sort((a, b) => b.ads.length - a.ads.length);
+
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-1.5">
-        {activeAds.map(ad => (
-          <a 
-            key={ad.id} 
-            href={ad.creative?.instagram_permalink_url || `https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad"
+      <div className="space-y-4">
+        {/* Sumário de Anúncios e Controle */}
+        <div className="flex flex-wrap items-center gap-2 mb-2 bg-slate-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-800/80 w-fit">
+          <span className="bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 cursor-default select-none">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Ativos: {activeCount}
+          </span>
+          <button 
+            onClick={() => setShowInactiveAds(!showInactiveAds)}
+            className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all select-none ${showInactiveAds ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
           >
-            <div className="flex gap-1.5 mb-1.5">
-               <div className="relative flex-shrink-0">
-                 {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-10 h-10 rounded-md object-cover" alt="" />}
-                 <div className="absolute inset-0 bg-indigo-600/0 group-hover/ad:bg-indigo-600/20 transition-colors rounded-md flex items-center justify-center">
-                    <ArrowUpRight size={12} className="text-white opacity-0 group-hover/ad:opacity-100 transition-opacity" />
-                 </div>
-               </div>
-               <div className="min-w-0">
-                  <p className="font-black text-[7px] text-slate-900 dark:text-white mb-0.5 uppercase tracking-tighter leading-tight line-clamp-2" title={ad.name}>{ad.name}</p>
-                  <div className="flex flex-wrap gap-1 items-center">
-                     <StatusBadge status={ad.status} small />
-                     {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
-                        <span className={`text-[5px] font-black px-1 py-0 rounded uppercase tracking-tighter ${
-                           ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
-                           ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                           'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                        }`}>
-                           {ad.quality_ranking.includes('BELOW') ? 'Fadiga' : ad.quality_ranking.includes('ABOVE') ? 'Alta' : 'Média'}
-                        </span>
-                     )}
-                  </div>
-               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
-               <div>
-                  <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
-                  <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
-               </div>
-               <div className="text-right">
-                  <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>
-                  <p className="text-[8px] font-black text-indigo-600 leading-none">{ad.clicks.toLocaleString('pt-BR')}</p>
-               </div>
-            </div>
-          </a>
-      ))}
-      {activeAds.length === 0 && !loading && hasFetched && (
-        <div className="col-span-full py-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
-           Nenhum anúncio ativo encontrado
+            <span className={`w-1.5 h-1.5 rounded-full ${showInactiveAds ? 'bg-indigo-500' : 'bg-slate-400'}`} />
+            Inativos: {inactiveCount} {showInactiveAds ? '(Exibidos)' : '(Ocultos - Clique para ver)'}
+          </button>
         </div>
-      )}
-    </div>
-  );
-};
+
+        {/* Listagem por Campanha */}
+        <div className="space-y-6">
+          {campaignGroups.map(group => {
+            const groupActiveCount = group.ads.filter(a => a.status === 'ACTIVE').length;
+            const groupInactiveCount = group.ads.filter(a => a.status !== 'ACTIVE').length;
+
+            return (
+              <div key={group.id} className="bg-slate-50/40 dark:bg-zinc-900/10 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-900 shadow-sm space-y-4">
+                {/* Cabeçalho da Campanha */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800/40">
+                  <div className="flex items-center gap-2">
+                    <Megaphone size={14} className="text-indigo-500 flex-shrink-0" />
+                    <h4 className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-wider truncate max-w-lg" title={group.name}>
+                      {group.name}
+                    </h4>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {groupActiveCount > 0 && (
+                      <span className="bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-lg text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                        {groupActiveCount} {groupActiveCount === 1 ? 'Ativo' : 'Ativos'}
+                      </span>
+                    )}
+                    {groupInactiveCount > 0 && (
+                      <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg text-[8px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">
+                        {groupInactiveCount} {groupInactiveCount === 1 ? 'Inativo' : 'Inativos'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Grid de Anúncios */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-1.5">
+                  {group.ads.map(ad => {
+                    const isActive = ad.status === 'ACTIVE';
+                    return (
+                      <a 
+                        key={ad.id} 
+                        href={ad.creative?.instagram_permalink_url || `https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad ${!isActive ? 'opacity-55 saturate-50 hover:opacity-100 hover:saturate-100' : ''}`}
+                      >
+                        <div className="flex gap-1.5 mb-1.5">
+                           <div className="relative flex-shrink-0">
+                             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-10 h-10 rounded-md object-cover" alt="" />}
+                             <div className="absolute inset-0 bg-indigo-600/0 group-hover/ad:bg-indigo-600/20 transition-colors rounded-md flex items-center justify-center">
+                                <ArrowUpRight size={12} className="text-white opacity-0 group-hover/ad:opacity-100 transition-opacity" />
+                             </div>
+                           </div>
+                           <div className="min-w-0">
+                              <p className="font-black text-[7px] text-slate-900 dark:text-white mb-0.5 uppercase tracking-tighter leading-tight line-clamp-2" title={ad.name}>{ad.name}</p>
+                              <div className="flex flex-wrap gap-1 items-center">
+                                 <StatusBadge status={ad.status} small />
+                                 {ad.quality_ranking && ad.quality_ranking !== 'UNKNOWN' && (
+                                    <span className={`text-[5px] font-black px-1 py-0 rounded uppercase tracking-tighter ${
+                                       ad.quality_ranking.includes('BELOW') ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                                       ad.quality_ranking.includes('ABOVE') ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                       'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                                    }`}>
+                                       {ad.quality_ranking.includes('BELOW') ? 'Fadiga' : ad.quality_ranking.includes('ABOVE') ? 'Alta' : 'Média'}
+                                    </span>
+                                 )}
+                              </div>
+                           </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
+                           <div>
+                              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
+                              <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>
+                              <p className="text-[8px] font-black text-indigo-600 leading-none">{ad.clicks.toLocaleString('pt-BR')}</p>
+                           </div>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+          
+          {campaignGroups.length === 0 && !loading && hasFetched && (
+            <div className="col-span-full py-8 text-center text-slate-500 font-bold text-xs uppercase tracking-widest">
+               Nenhum anúncio encontrado
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderFunil = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
