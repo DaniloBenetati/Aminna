@@ -207,6 +207,8 @@ const StatusBadge = ({ status, small }: { status: string, small?: boolean }) => 
   const map: Record<string, { label: string; cls: string }> = {
     ACTIVE: { label: 'Ativa', cls: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
     PAUSED: { label: 'Pausada', cls: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
+    CAMPAIGN_PAUSED: { label: 'Campanha Pausada', cls: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
+    ADSET_PAUSED: { label: 'Conjunto Pausado', cls: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400' },
     DELETED: { label: 'Excluída', cls: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400' },
     ARCHIVED: { label: 'Arquivada', cls: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400' },
   };
@@ -911,7 +913,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       });
 
       const adFields = [
-        'id', 'name', 'status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
+        'id', 'name', 'status', 'effective_status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
         `insights${insightsRange}{spend,impressions,clicks,ctr,conversions,cost_per_conversion,quality_ranking,engagement_rate_ranking}`,
         'creative{thumbnail_url,instagram_permalink_url,effective_object_story_id}'
       ].join(',');
@@ -930,7 +932,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           campaign_id: ad.campaign_id,
           campaign_name: ad.campaign?.name || '—',
           name: ad.name,
-          status: ad.status,
+          status: ad.effective_status || ad.status,
           creative: ad.creative,
           quality_ranking: insight?.quality_ranking || 'UNKNOWN',
           ...parseInsight(insight),
