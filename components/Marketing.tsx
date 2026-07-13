@@ -63,6 +63,7 @@ interface AdSet {
   cpc: number;
   cpm: number;
   conversions: number;
+  conversations_started?: number;
   cpa: number;
   frequency: number;
   targeting_desc?: string;
@@ -86,6 +87,7 @@ interface AdInsight {
   ctr: number;
   cpc: number;
   conversions: number;
+  conversations_started?: number;
   creative?: { 
     thumbnail_url?: string;
     instagram_permalink_url?: string;
@@ -125,6 +127,7 @@ function parseInsight(insight: any) {
   const getActionValue = (type: string) => parseFloat(String(actions.find((a: any) => a.action_type === type)?.value || 0));
 
   const conversions = getActionValue('purchase') + getActionValue('lead') + getActionValue('complete_registration') + getActionValue('omni_purchase');
+  const conversations_started = getActionValue('onsite_conversion.messaging_conversation_started_7d');
   const landingPageViews = getActionValue('landing_page_view');
   const addToCart = getActionValue('add_to_cart');
   const initiateCheckout = getActionValue('initiate_checkout');
@@ -143,6 +146,7 @@ function parseInsight(insight: any) {
     cpc: parseFloat(insight?.cpc || '0'),
     cpm: parseFloat(insight?.cpm || '0'),
     conversions,
+    conversations_started,
     cpa: conversions > 0 ? spend / conversions : 0,
     roas,
     frequency: parseFloat(insight?.frequency || '0'),
@@ -878,7 +882,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       const adSetFields = [
         'id', 'name', 'status', 'campaign_id', 'campaign{name}', 'targeting', 'daily_budget', 'lifetime_budget',
-        `insights${insightsRange}{spend,impressions,clicks,ctr,cpc,cpm,conversions,cost_per_conversion,frequency}`
+        `insights${insightsRange}{spend,impressions,clicks,ctr,cpc,cpm,conversions,actions,cost_per_conversion,frequency}`
       ].join(',');
 
       const adsetData = await fetchFromMeta(token, `${adAccountId}/adsets`, {
@@ -914,7 +918,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       const adFields = [
         'id', 'name', 'status', 'effective_status', 'adset_id', 'adset{name}', 'campaign_id', 'campaign{name}',
-        `insights${insightsRange}{spend,impressions,clicks,ctr,conversions,cost_per_conversion,quality_ranking,engagement_rate_ranking}`,
+        `insights${insightsRange}{spend,impressions,clicks,ctr,conversions,actions,cost_per_conversion,quality_ranking,engagement_rate_ranking}`,
         'creative{thumbnail_url,instagram_permalink_url,effective_object_story_id}'
       ].join(',');
 
@@ -947,6 +951,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           const sumImpressions = matchingAds.reduce((acc, ad) => acc + (ad.impressions || 0), 0);
           const sumClicks = matchingAds.reduce((acc, ad) => acc + (ad.clicks || 0), 0);
           const sumConversions = matchingAds.reduce((acc, ad) => acc + (ad.conversions || 0), 0);
+          const sumConversations = matchingAds.reduce((acc, ad) => acc + (ad.conversations_started || 0), 0);
           
           const ctr = sumImpressions > 0 ? (sumClicks / sumImpressions) * 100 : 0;
           const cpc = sumClicks > 0 ? sumSpend / sumClicks : 0;
@@ -959,9 +964,15 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               impressions: sumImpressions,
               clicks: sumClicks,
               conversions: sumConversions,
+              conversations_started: sumConversations,
               ctr,
               cpc,
               cpa
+            };
+          } else {
+            return {
+              ...adset,
+              conversations_started: adset.conversations_started || sumConversations
             };
           }
         }
@@ -1941,6 +1952,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               <th className="px-4 py-2 text-left">Campanha</th>
               <th className="px-4 py-2 text-right">Gasto</th>
               <th className="px-4 py-2 text-right">Cliques</th>
+              <th className="px-4 py-2 text-right">Conversas</th>
               <th className="px-4 py-2 text-right">CTR</th>
               <th className="px-4 py-2 text-right">CPC</th>
               <th className="px-4 py-2 text-right">CPA</th>
@@ -1958,6 +1970,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 <td className="px-4 py-2 text-[10px] text-slate-500">{a.campaign_name}</td>
                 <td className="px-4 py-2 font-black text-[10px] text-right">{fmt.currency(a.spend)}</td>
                 <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{a.clicks.toLocaleString('pt-BR')}</td>
+                <td className="px-4 py-2 font-black text-[10px] text-right text-emerald-600">{(a.conversations_started || 0).toLocaleString('pt-BR')}</td>
                 <td className="px-4 py-2 font-bold text-[10px] text-right text-indigo-600">{fmt.percent(a.ctr)}</td>
                 <td className="px-4 py-2 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.cpc)}</td>
                 <td className="px-4 py-2 font-bold text-[10px] text-right text-rose-600">{fmt.currency(a.cpa)}</td>
@@ -1984,9 +1997,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase truncate max-w-[150px]">{a.campaign_name}</p>
               </div>
-              <p className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                {a.conversions} Conv.
-              </p>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                <p className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {a.conversations_started || 0} Conversas
+                </p>
+                <p className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {a.conversions} Conv.
+                </p>
+              </div>
             </div>
           </div>
         ))}
@@ -2103,10 +2121,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               </div>
                            </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
+                        <div className="grid grid-cols-3 gap-1 border-t border-slate-50 dark:border-zinc-800/20 pt-1.5">
                            <div>
                               <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Gasto</p>
                               <p className="text-[8px] font-black text-slate-900 dark:text-white leading-none">{fmt.currency(ad.spend)}</p>
+                           </div>
+                           <div className="text-center">
+                              <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Conversas</p>
+                              <p className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 leading-none">{(ad.conversations_started || 0).toLocaleString('pt-BR')}</p>
                            </div>
                            <div className="text-right">
                               <p className="text-[7px] text-slate-400 font-bold uppercase tracking-tighter">Cliques</p>

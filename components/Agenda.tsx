@@ -667,7 +667,15 @@ export const Agenda: React.FC<AgendaProps> = ({
 
         let message = `${greeting}, ${firstName}! 👋\n\n`;
         message += `Sua visita está agendada para:\n\n`;
-        message += `*${customer.name}*\n`;
+
+        // Check if there are any companion services in these appointments
+        const hasCompanions = sortedApps.some(a =>
+            (a.additionalServices || []).some(extra => extra.isCompanion || !!extra.clientName)
+        );
+
+        if (!hasCompanions) {
+            message += `*${customer.name}*\n`;
+        }
 
         // Group sortedApps by date
         const groupedByDate: Record<string, Appointment[]> = {};
@@ -685,50 +693,151 @@ export const Agenda: React.FC<AgendaProps> = ({
             const month = dateObj.toLocaleDateString('pt-BR', { month: 'long' }).toUpperCase();
             const formattedDate = `${dayOfWeek} ${day} ${month}`;
 
-            const dateServices: { name: string; time: string; providerId: string }[] = [];
-            apptsOnDate.forEach(a => {
-                const mainSrv = services.find(s => s.id === a.serviceId);
-                dateServices.push({
-                    name: mainSrv?.name || 'Serviço',
-                    time: a.time,
-                    providerId: a.providerId
-                });
-
-                (a.additionalServices || []).forEach(extra => {
+            if (!hasCompanions) {
+                // Comportamento Original (sem acompanhantes)
+                const dateServices: { name: string; time: string; providerId: string }[] = [];
+                apptsOnDate.forEach(a => {
+                    const mainSrv = services.find(s => s.id === a.serviceId);
                     dateServices.push({
-                        name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
-                        time: extra.startTime || a.time,
-                        providerId: extra.providerId
+                        name: mainSrv?.name || 'Serviço',
+                        time: a.time,
+                        providerId: a.providerId
+                    });
+
+                    (a.additionalServices || []).forEach(extra => {
+                        dateServices.push({
+                            name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                            time: extra.startTime || a.time,
+                            providerId: extra.providerId
+                        });
                     });
                 });
-            });
 
-            // Sort by time
-            dateServices.sort((a, b) => a.time.localeCompare(b.time));
+                // Sort by time
+                dateServices.sort((a, b) => a.time.localeCompare(b.time));
 
-            const earliestSrv = dateServices[0];
-            const [h, m] = earliestSrv.time.split(':');
-            const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
+                const earliestSrv = dateServices[0];
+                const [h, m] = earliestSrv.time.split(':');
+                const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
 
-            const serviceNames = dateServices.map(s => s.name).join(' + ');
+                const serviceNames = dateServices.map(s => s.name).join(' + ');
 
-            const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
-            const prefNames: string[] = [];
-            dateServices.forEach(s => {
-                const pid = String(s.providerId).trim().toLowerCase();
-                if (prefIds.includes(pid)) {
-                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
-                    if (prof) {
-                        prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
+                const prefNames: string[] = [];
+                dateServices.forEach(s => {
+                    const pid = String(s.providerId).trim().toLowerCase();
+                    if (prefIds.includes(pid)) {
+                        const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                        if (prof) {
+                            prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                        }
                     }
-                }
-            });
-            const uniquePrefNames = Array.from(new Set(prefNames));
-            const prefLine = uniquePrefNames.length > 0
-                ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
-                : `*Agendamento confirmado | Equipe*`;
+                });
+                const uniquePrefNames = Array.from(new Set(prefNames));
+                const prefLine = uniquePrefNames.length > 0
+                    ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                    : `*Agendamento confirmado | Equipe*`;
 
-            return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
+                return `${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
+            } else {
+                // Comportamento com Acompanhantes
+                const mainServices: { name: string; time: string; providerId: string }[] = [];
+                const companionServices: { companionName: string; name: string; time: string; providerId: string }[] = [];
+
+                apptsOnDate.forEach(a => {
+                    const mainSrv = services.find(s => s.id === a.serviceId);
+                    mainServices.push({
+                        name: mainSrv?.name || 'Serviço',
+                        time: a.time,
+                        providerId: a.providerId
+                    });
+
+                    (a.additionalServices || []).forEach(extra => {
+                        const isComp = extra.isCompanion || !!extra.clientName;
+                        if (isComp) {
+                            companionServices.push({
+                                companionName: extra.clientName || 'Acompanhante',
+                                name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                                time: extra.startTime || a.time,
+                                providerId: extra.providerId
+                            });
+                        } else {
+                            mainServices.push({
+                                name: services.find(s => s.id === extra.serviceId)?.name || 'Serviço',
+                                time: extra.startTime || a.time,
+                                providerId: extra.providerId
+                            });
+                        }
+                    });
+                });
+
+                const blocks: string[] = [];
+
+                // Bloco do Cliente Principal
+                if (mainServices.length > 0) {
+                    mainServices.sort((a, b) => a.time.localeCompare(b.time));
+                    const earliestSrv = mainServices[0];
+                    const [h, m] = earliestSrv.time.split(':');
+                    const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
+                    const serviceNames = mainServices.map(s => s.name).join(' + ');
+
+                    const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
+                    const prefNames: string[] = [];
+                    mainServices.forEach(s => {
+                        const pid = String(s.providerId).trim().toLowerCase();
+                        if (prefIds.includes(pid)) {
+                            const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                            if (prof) {
+                                prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                            }
+                        }
+                    });
+                    const uniquePrefNames = Array.from(new Set(prefNames));
+                    const prefLine = uniquePrefNames.length > 0
+                        ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                        : `*Agendamento confirmado | Equipe*`;
+
+                    blocks.push(`${customer.name}\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`);
+                }
+
+                // Bloco dos Acompanhantes
+                if (companionServices.length > 0) {
+                    const companionGroups: Record<string, typeof companionServices> = {};
+                    companionServices.forEach(cs => {
+                        const key = cs.companionName;
+                        if (!companionGroups[key]) {
+                            companionGroups[key] = [];
+                        }
+                        companionGroups[key].push(cs);
+                    });
+
+                    Object.entries(companionGroups).forEach(([compName, srvs]) => {
+                        srvs.sort((a, b) => a.time.localeCompare(b.time));
+                        const earliestSrv = srvs[0];
+                        const [h, m] = earliestSrv.time.split(':');
+                        const displayTime = m === '00' ? `${h}H` : `${h}H${m}h`;
+                        const serviceNames = srvs.map(s => s.name).join(' + ');
+
+                        // Preferências do acompanhante
+                        const prefNames: string[] = [];
+                        srvs.forEach(s => {
+                            const prof = providers.find(p => String(p.id).trim().toLowerCase() === String(s.providerId).trim().toLowerCase());
+                            if (prof) {
+                                prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                            }
+                        });
+                        const uniquePrefNames = Array.from(new Set(prefNames));
+                        const prefLine = uniquePrefNames.length > 0
+                            ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                            : `*Agendamento confirmado | Equipe*`;
+
+                        const blockTitle = `*${customer.name} | ${compName}*`;
+                        blocks.push(`${blockTitle}\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`);
+                    });
+                }
+
+                return blocks.join('\n\n');
+            }
         });
 
         message += dateBlocks.join('\n\n');

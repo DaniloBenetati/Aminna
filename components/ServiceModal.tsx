@@ -2882,41 +2882,138 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
         const prefIds = (customer.assignedProviderIds || (customer.assignedProviderId ? [customer.assignedProviderId] : [])).map(id => String(id).trim().toLowerCase());
 
-        // Gather and sort all services by startTime
-        const dateServices = lines.map(line => {
-            const service = services.find(s => s.id === line.serviceId);
-            return {
-                name: service?.name || 'Serviço',
-                time: line.startTime || appointmentTime,
-                providerId: line.providerId
-            };
-        });
+        // Check if there are any companion services
+        const hasCompanions = lines.some(line => line.isCompanion || !!line.clientName);
 
-        // Sort by time
-        dateServices.sort((a, b) => a.time.localeCompare(b.time));
+        let message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n`;
 
-        const earliestSrv = dateServices[0];
-        const [hour, minute] = earliestSrv.time.split(':');
-        const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+        if (!hasCompanions) {
+            // Gather and sort all services by startTime
+            const dateServices = lines.map(line => {
+                const service = services.find(s => s.id === line.serviceId);
+                return {
+                    name: service?.name || 'Serviço',
+                    time: line.startTime || appointmentTime,
+                    providerId: line.providerId
+                };
+            });
 
-        const serviceNames = dateServices.map(s => s.name).join(' + ');
+            // Sort by time
+            dateServices.sort((a, b) => a.time.localeCompare(b.time));
 
-        const prefNames: string[] = [];
-        dateServices.forEach(s => {
-            const pid = String(s.providerId).trim().toLowerCase();
-            if (prefIds.includes(pid)) {
-                const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
-                if (prof) {
-                    prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+            const earliestSrv = dateServices[0];
+            const [hour, minute] = earliestSrv.time.split(':');
+            const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+
+            const serviceNames = dateServices.map(s => s.name).join(' + ');
+
+            const prefNames: string[] = [];
+            dateServices.forEach(s => {
+                const pid = String(s.providerId).trim().toLowerCase();
+                if (prefIds.includes(pid)) {
+                    const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                    if (prof) {
+                        prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                    }
                 }
-            }
-        });
-        const uniquePrefNames = Array.from(new Set(prefNames));
-        const prefLine = uniquePrefNames.length > 0 
-            ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
-            : `*Agendamento confirmado | Equipe*`;
+            });
+            const uniquePrefNames = Array.from(new Set(prefNames));
+            const prefLine = uniquePrefNames.length > 0 
+                ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                : `*Agendamento confirmado | Equipe*`;
 
-        const message = `${greeting}, ${customer.name.split(' ')[0]}! 👋\n\nSua visita está agendada para:\n\n*${customer.name}*\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
+            message += `*${customer.name}*\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`;
+        } else {
+            const mainServices: { name: string; time: string; providerId: string }[] = [];
+            const companionServices: { companionName: string; name: string; time: string; providerId: string }[] = [];
+
+            lines.forEach(line => {
+                const service = services.find(s => s.id === line.serviceId);
+                const isComp = line.isCompanion || !!line.clientName;
+                if (isComp) {
+                    companionServices.push({
+                        companionName: line.clientName || 'Acompanhante',
+                        name: service?.name || 'Serviço',
+                        time: line.startTime || appointmentTime,
+                        providerId: line.providerId
+                    });
+                } else {
+                    mainServices.push({
+                        name: service?.name || 'Serviço',
+                        time: line.startTime || appointmentTime,
+                        providerId: line.providerId
+                    });
+                }
+            });
+
+            const blocks: string[] = [];
+
+            // Bloco do Cliente Principal
+            if (mainServices.length > 0) {
+                mainServices.sort((a, b) => a.time.localeCompare(b.time));
+                const earliestSrv = mainServices[0];
+                const [hour, minute] = earliestSrv.time.split(':');
+                const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+                const serviceNames = mainServices.map(s => s.name).join(' + ');
+
+                const prefNames: string[] = [];
+                mainServices.forEach(s => {
+                    const pid = String(s.providerId).trim().toLowerCase();
+                    if (prefIds.includes(pid)) {
+                        const prof = providers.find(p => String(p.id).trim().toLowerCase() === pid);
+                        if (prof) {
+                            prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                        }
+                    }
+                });
+                const uniquePrefNames = Array.from(new Set(prefNames));
+                const prefLine = uniquePrefNames.length > 0 
+                    ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                    : `*Agendamento confirmado | Equipe*`;
+
+                blocks.push(`${customer.name}\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`);
+            }
+
+            // Bloco dos Acompanhantes
+            if (companionServices.length > 0) {
+                const companionGroups: Record<string, typeof companionServices> = {};
+                companionServices.forEach(cs => {
+                    const key = cs.companionName;
+                    if (!companionGroups[key]) {
+                        companionGroups[key] = [];
+                    }
+                    companionGroups[key].push(cs);
+                });
+
+                Object.entries(companionGroups).forEach(([compName, srvs]) => {
+                    srvs.sort((a, b) => a.time.localeCompare(b.time));
+                    const earliestSrv = srvs[0];
+                    const [hour, minute] = earliestSrv.time.split(':');
+                    const displayTime = minute === '00' ? `${hour}H` : `${hour}H${minute}h`;
+                    const serviceNames = srvs.map(s => s.name).join(' + ');
+
+                    // Preferências do acompanhante
+                    const prefNames: string[] = [];
+                    srvs.forEach(s => {
+                        const prof = providers.find(p => String(p.id).trim().toLowerCase() === String(s.providerId).trim().toLowerCase());
+                        if (prof) {
+                            prefNames.push(prof.nickname || prof.name.split(' ')[0]);
+                        }
+                    });
+                    const uniquePrefNames = Array.from(new Set(prefNames));
+                    const prefLine = uniquePrefNames.length > 0 
+                        ? `Agendamento com preferência | ${uniquePrefNames.join(' e ')}`
+                        : `*Agendamento confirmado | Equipe*`;
+
+                    const blockTitle = `*${customer.name} | ${compName}*`;
+                    blocks.push(`${blockTitle}\n${formattedDate}\n${displayTime} | ${serviceNames}\n${prefLine}`);
+                });
+            }
+
+            message += blocks.join('\n\n');
+        }
+
+        message += `\n\nConfirma ?\n\nEstamos ansiosos para atendê-la. Se um meteoro cair e não puder vir, fique tranquila e reagendamos.`;
 
         if (action === 'COPY') {
             navigator.clipboard.writeText(message).then(() => {
