@@ -2751,19 +2751,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                         </div>
                         <div className="h-80 mt-4">
                           <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={trafficChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                              <defs>
-                                <linearGradient id="colorNewMkt" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
+                            <BarChart data={trafficChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                              <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                              <Tooltip content={<NewClientTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.4 }} />
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                              <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMkt)" dot={{ fill: '#10b981', r: 3 }} activeDot={{ r: 5 }} />
-                            </AreaChart>
+                              <Bar dataKey="value" name="Novos" fill="#10b981" radius={[4, 4, 0, 0]} barSize={16} />
+                            </BarChart>
                           </ResponsiveContainer>
                         </div>
                       </div>
@@ -3202,19 +3196,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               {maximizedChart === 'novos-clientes' && (
                 <div className="w-full h-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={trafficChartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
-                      <defs>
-                        <linearGradient id="colorNewMktMax" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.15}/>
-                          <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
+                    <BarChart data={trafficChartData} margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
-                      <Tooltip content={<NewClientTooltip />} cursor={{ stroke: '#cbd5e1', strokeWidth: 1 }} />
+                      <Tooltip content={<NewClientTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.4 }} />
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <Area type="monotone" dataKey="value" name="Novos" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNewMktMax)" dot={{ fill: '#10b981', r: 4 }} activeDot={{ r: 6 }} />
-                    </AreaChart>
+                      <Bar dataKey="value" name="Novos" fill="#10b981" radius={[4, 4, 0, 0]} barSize={24} />
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               )}
