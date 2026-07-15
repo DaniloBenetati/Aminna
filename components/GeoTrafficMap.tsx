@@ -57,13 +57,14 @@ interface TargetLocation {
   spend: number;
   conversions: number;
   clicks: number;
+  conversations: number;
   isActive: boolean;
   type: 'city' | 'custom' | 'unknown';
 }
 
 const SALON_REF = { lat: -23.5874, lng: -46.6576, name: "Aminna Salão" };
 
-export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boolean, hasFetched?: boolean }> = ({ adSets = [], ads = [], loading = false, hasFetched = false }) => {
+export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: any[], loading?: boolean, hasFetched?: boolean }> = ({ campaigns = [], adSets = [], ads = [], loading = false, hasFetched = false }) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const layersGroupRef = useRef<L.FeatureGroup | null>(null);
@@ -74,6 +75,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [geocodingCache, setGeocodingCache] = useState<Record<string, { lat: number; lng: number }>>({});
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
 
   // 1. Monitor theme change
   useEffect(() => {
@@ -109,6 +111,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         spend: 420.50,
         conversions: 35,
         clicks: 145,
+        conversations: 35,
         isActive: true,
         type: 'custom'
       },
@@ -123,6 +126,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         spend: 280.00,
         conversions: 24,
         clicks: 95,
+        conversations: 24,
         isActive: true,
         type: 'custom'
       },
@@ -137,6 +141,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         spend: 580.40,
         conversions: 48,
         clicks: 180,
+        conversations: 48,
         isActive: true,
         type: 'custom'
       },
@@ -151,6 +156,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         spend: 150.00,
         conversions: 8,
         clicks: 50,
+        conversations: 8,
         isActive: false,
         type: 'city'
       },
@@ -165,6 +171,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         spend: 390.20,
         conversions: 31,
         clicks: 130,
+        conversations: 31,
         isActive: true,
         type: 'custom'
       }
@@ -174,11 +181,15 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
   // 3. Main geocoding logic
   useEffect(() => {
     const parseMetaAdSets = async () => {
-      const activeAdSets = [...adSets].filter(a => a.status === 'ACTIVE' || a.status === 'PAUSED');
+      const activeAdSets = [...adSets].filter(a => {
+        const campaign = campaigns.find(c => c.id === a.campaign_id);
+        const isCampActive = campaign ? campaign.status === 'ACTIVE' : true;
+        return a.status === 'ACTIVE' && isCampActive;
+      });
 
       if (activeAdSets.length === 0) {
         // Fallback to mock data if no adsets are returned from Meta
-        setGeocodedLocations(getMockLocations());
+        setGeocodedLocations(getMockLocations().filter(l => l.isActive));
         return;
       }
 
@@ -192,6 +203,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         const spend = a.spend || 0;
         const conversions = a.conversions || 0;
         const clicks = a.clicks || 0;
+        const conversations = a.conversations_started || 0;
         const isActive = a.status === 'ACTIVE';
 
         // Process custom coordinate locations
@@ -209,6 +221,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
               spend,
               conversions,
               clicks,
+              conversations,
               isActive,
               type: 'custom'
             });
@@ -236,6 +249,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
                 spend,
                 conversions,
                 clicks,
+                conversations,
                 isActive,
                 type: 'city'
               });
@@ -253,6 +267,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
                 spend,
                 conversions,
                 clicks,
+                conversations,
                 isActive,
                 type: 'city'
               });
@@ -266,22 +281,24 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
                 });
                 const data = await resp.json();
                 if (data && data[0]) {
-                  const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                  const realLat = parseFloat(data[0].lat);
+                  const realLng = parseFloat(data[0].lon);
                   
                   // Save to cache
-                  setGeocodingCache(prev => ({ ...prev, [cityNameClean]: coords }));
+                  setGeocodingCache(prev => ({ ...prev, [cityNameClean]: { lat: realLat, lng: realLng } }));
                   
                   parsedPoints.push({
                     id: `${a.id}-city-${city.key}`,
                     name: city.name,
-                    lat: coords.lat,
-                    lng: coords.lng,
+                    lat: realLat,
+                    lng: realLng,
                     radiusMeters,
                     adSetName: a.name,
                     campaignName: a.campaign_name || 'Campanha',
                     spend,
                     conversions,
                     clicks,
+                    conversations,
                     isActive,
                     type: 'city'
                   });
@@ -294,12 +311,12 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
         }
       }
 
-      setGeocodedLocations(parsedPoints.length > 0 ? parsedPoints : getMockLocations());
+      setGeocodedLocations(parsedPoints.length > 0 ? parsedPoints : getMockLocations().filter(l => l.isActive));
       setIsGeocoding(false);
     };
 
     parseMetaAdSets();
-  }, [adSets, hasFetched]);
+  }, [campaigns, adSets, hasFetched]);
 
   // 4. Initialize Leaflet Map Instance
   useEffect(() => {
@@ -544,6 +561,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
       spend: number;
       conversions: number;
       clicks: number;
+      conversations: number;
       isActive: boolean;
       locations: TargetLocation[];
     }> = {};
@@ -558,6 +576,7 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
           spend: loc.spend,
           conversions: loc.conversions,
           clicks: loc.clicks,
+          conversations: loc.conversations,
           isActive: loc.isActive,
           locations: [],
         };
@@ -570,6 +589,35 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
     
     return Object.values(groups).sort((a, b) => (b.clicks || 0) - (a.clicks || 0));
   }, [geocodedLocations]);
+
+  const campaignsGrouped = React.useMemo(() => {
+    const campaignMap: Record<string, {
+      campaignName: string;
+      spend: number;
+      clicks: number;
+      conversations: number;
+      adSets: typeof groupedAdSets;
+    }> = {};
+
+    groupedAdSets.forEach(adSet => {
+      const campName = adSet.campaignName || 'Outras Campanhas';
+      if (!campaignMap[campName]) {
+        campaignMap[campName] = {
+          campaignName: campName,
+          spend: 0,
+          clicks: 0,
+          conversations: 0,
+          adSets: [],
+        };
+      }
+      campaignMap[campName].spend += adSet.spend;
+      campaignMap[campName].clicks += adSet.clicks;
+      campaignMap[campName].conversations += adSet.conversations || 0;
+      campaignMap[campName].adSets.push(adSet);
+    });
+
+    return Object.values(campaignMap).sort((a, b) => b.clicks - a.clicks);
+  }, [groupedAdSets]);
 
   const audit = getAuditStatus();
 
@@ -649,152 +697,171 @@ export const GeoTrafficMap: React.FC<{ adSets: any[], ads?: any[], loading?: boo
 
         {/* Sidebar */}
         <div className={`xl:col-span-1 flex flex-col gap-4 ${isFullscreen ? 'min-h-0 h-full' : ''}`}>
-          {/* AdSets Targeting List */}
+          {/* Campaigns/AdSets Targeting List */}
           <div className={`flex flex-col gap-3 overflow-y-auto no-scrollbar pr-1 ${
             isFullscreen ? 'flex-1 min-h-0' : 'max-h-[380px] sm:max-h-[450px]'
           }`}>
             <div className="flex justify-between items-center px-1 mb-1">
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Conjuntos de Anúncios</span>
-              <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">{groupedAdSets.length} Ativos</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Campanhas e Públicos</span>
+              <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-full">{campaignsGrouped.length} Campanhas</span>
             </div>
 
-            {groupedAdSets.map((group) => {
-              const isSelected = selectedAdSetId === group.adSetId;
-              const matchingAds = ads.filter(ad => ad.adset_id === group.adSetId);
+            {campaignsGrouped.map((campGroup) => {
+              const isCampExpanded = expandedCampaigns[campGroup.campaignName] ?? true; // expanded by default
               
               return (
-                <div
-                  key={group.adSetId}
-                  onClick={() => setSelectedAdSetId(isSelected ? null : group.adSetId)}
-                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none group text-left ${
-                    isSelected 
-                      ? 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800/40 shadow-sm' 
-                      : 'bg-slate-50/50 hover:bg-slate-50 border-slate-100 hover:border-slate-200 dark:bg-zinc-800/20 dark:border-zinc-800/60 dark:hover:bg-zinc-800/40'
-                  }`}
-                >
-                  <div className="flex justify-between items-start gap-3">
+                <div key={campGroup.campaignName} className="space-y-2 border border-slate-100 dark:border-zinc-800/80 rounded-2xl p-2 bg-slate-50/30 dark:bg-zinc-800/10">
+                  {/* Campaign Header */}
+                  <div 
+                    onClick={() => setExpandedCampaigns(prev => ({ ...prev, [campGroup.campaignName]: !isCampExpanded }))}
+                    className="flex justify-between items-center p-2 hover:bg-slate-100/50 dark:hover:bg-zinc-800/30 rounded-xl cursor-pointer select-none"
+                  >
                     <div className="min-w-0">
-                      <p className={`text-[10px] font-black uppercase tracking-tight leading-snug ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-white'}`}>
-                        {group.adSetName}
+                      <p className="text-[10px] font-extrabold text-slate-900 dark:text-white uppercase truncate max-w-[180px]">
+                        {campGroup.campaignName}
                       </p>
-                      <p className="text-[7.5px] font-bold text-slate-400 uppercase mt-1 truncate leading-none">
-                        Campanha: {group.campaignName}
+                      <p className="text-[7.5px] font-bold text-slate-400 uppercase mt-0.5">
+                        R$ {campGroup.spend.toFixed(0)} • {campGroup.clicks} cliques • {campGroup.conversations} conversas
                       </p>
                     </div>
-                    <span className={`flex-shrink-0 inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${
-                      group.isActive 
-                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
-                        : 'bg-slate-200 text-slate-600 dark:bg-zinc-700 dark:text-zinc-400'
-                    }`}>
-                      {group.isActive ? 'Ativo' : 'Pausado'}
+                    <span className="flex items-center gap-1 text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase">
+                      {isCampExpanded ? 'Fechar' : 'Abrir'} 
+                      <ChevronRight size={10} className={`transform transition-transform ${isCampExpanded ? 'rotate-90' : ''}`} />
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-slate-200/40 dark:border-zinc-800/40">
-                    <div>
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase block tracking-wider">Investido</span>
-                      <span className="text-[9.5px] font-black text-slate-700 dark:text-zinc-300">R$ {group.spend.toFixed(0)}</span>
-                    </div>
-                    <div>
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase block tracking-wider">Cliques</span>
-                      <span className="text-[9.5px] font-black text-indigo-600 dark:text-indigo-400">{group.clicks || 0} cliques</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase block tracking-wider">Áreas Foco</span>
-                      <span className="text-[9.5px] font-black text-slate-700 dark:text-zinc-300">{group.locations.length} pinos</span>
-                    </div>
-                  </div>
+                  {/* Campaign's Ad Sets */}
+                  {isCampExpanded && (
+                    <div className="space-y-2 pl-2 border-l border-slate-200 dark:border-zinc-800/60 transition-all duration-300">
+                      {campGroup.adSets.map((group) => {
+                        const isSelected = selectedAdSetId === group.adSetId;
+                        const matchingAds = ads.filter(ad => ad.adset_id === group.adSetId && ad.status === 'ACTIVE');
+                        
+                        return (
+                          <div
+                            key={group.adSetId}
+                            onClick={() => setSelectedAdSetId(isSelected ? null : group.adSetId)}
+                            className={`p-3 rounded-xl border transition-all cursor-pointer select-none group text-left ${
+                              isSelected 
+                                ? 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800/40 shadow-sm' 
+                                : 'bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200 dark:bg-zinc-950 dark:border-zinc-900/60 dark:hover:bg-zinc-850'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-3">
+                              <div className="min-w-0">
+                                <p className={`text-[9.5px] font-black uppercase tracking-tight leading-snug ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-white'}`}>
+                                  {group.adSetName}
+                                </p>
+                              </div>
+                              <span className={`flex-shrink-0 inline-block px-1.5 py-0.5 rounded text-[7px] font-black uppercase ${
+                                group.isActive 
+                                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400' 
+                                  : 'bg-slate-200 text-slate-600 dark:bg-zinc-700 dark:text-zinc-400'
+                              }`}>
+                                {group.isActive ? 'Ativo' : 'Pausado'}
+                              </span>
+                            </div>
 
-                  <div className="flex justify-between items-center mt-2.5 pt-2 border-t border-slate-200/20 dark:border-zinc-800/20 text-[8.5px] font-bold text-slate-500">
-                    <span className="flex items-center gap-1 uppercase tracking-tight">
-                      <Globe size={9} className="text-indigo-500" /> Detalhes do Conjunto
-                    </span>
-                    <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-black uppercase">
-                      {isSelected ? 'Ocultar' : 'Expandir'} <ChevronRight size={10} className={`transform transition-transform ${isSelected ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} />
-                    </span>
-                  </div>
+                            <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-slate-200/40 dark:border-zinc-800/40">
+                              <div>
+                                <span className="text-[7px] font-black text-slate-400 uppercase block tracking-wider">Investido</span>
+                                <span className="text-[9px] font-black text-slate-700 dark:text-zinc-300">R$ {group.spend.toFixed(0)}</span>
+                              </div>
+                              <div>
+                                <span className="text-[7px] font-black text-slate-400 uppercase block tracking-wider">Cliques</span>
+                                <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400">{group.clicks || 0} clks</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[7px] font-black text-slate-400 uppercase block tracking-wider">Áreas Foco</span>
+                                <span className="text-[9px] font-black text-slate-700 dark:text-zinc-300">{group.locations.length} pinos</span>
+                              </div>
+                            </div>
 
-                  {/* Expanded drill down content */}
-                  {isSelected && (
-                    <div 
-                      onClick={(e) => e.stopPropagation()} 
-                      className="mt-3.5 pt-3.5 border-t border-slate-200/60 dark:border-zinc-800/60 space-y-4 animate-fadeIn"
-                    >
-                      {/* Focos de Cobertura */}
-                      <div className="space-y-1.5">
-                        <p className="text-[7.5px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                          <MapPin size={8} /> Focos de Cobertura ({group.locations.length})
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {group.locations.map((loc) => (
-                            <button
-                              key={loc.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (mapInstanceRef.current) {
-                                  mapInstanceRef.current.setView([loc.lat, loc.lng], 13, { animate: true, duration: 1.0 });
-                                }
-                              }}
-                              className="px-2 py-1 bg-white dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl text-[8.5px] font-black border border-slate-100 dark:border-zinc-800/80 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center gap-1 shadow-sm active:scale-95"
-                            >
-                              <Navigation size={8} className="text-indigo-500" />
-                              <span className="truncate max-w-[120px]">{loc.name}</span>
-                              <span className="opacity-60">({(loc.radiusMeters / 1000).toFixed(0)} km)</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                            <div className="flex justify-between items-center mt-2 pt-1.5 border-t border-slate-200/20 dark:border-zinc-800/20 text-[8px] font-bold text-slate-500">
+                              <span className="flex items-center gap-1 uppercase tracking-tight">
+                                <Globe size={8} className="text-indigo-500" /> Detalhes do Conjunto
+                              </span>
+                              <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400 font-black uppercase">
+                                {isSelected ? 'Ocultar' : 'Expandir'} <ChevronRight size={10} className={`transform transition-transform ${isSelected ? 'rotate-90' : 'group-hover:translate-x-0.5'}`} />
+                              </span>
+                            </div>
 
-                      {/* Desempenho por Anúncio */}
-                      {matchingAds.length > 0 && (
-                        <div className="space-y-1.5">
-                          <p className="text-[7.5px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
-                            <BarChart2 size={8} /> Desempenho por Anúncio ({matchingAds.length})
-                          </p>
-                          <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-0.5 no-scrollbar">
-                            {matchingAds.map((ad: any) => (
+                            {/* Expanded drill down content */}
+                            {isSelected && (
                               <div 
-                                key={ad.id} 
-                                className="flex items-center justify-between p-1.5 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800/50 hover:border-indigo-100 dark:hover:border-indigo-950/40 transition-colors"
+                                onClick={(e) => e.stopPropagation()} 
+                                className="mt-3 pt-3 border-t border-slate-200/60 dark:border-zinc-800/60 space-y-3 animate-fadeIn"
                               >
-                                <div className="flex items-center gap-2 min-w-0">
-                                  {ad.creative?.thumbnail_url ? (
-                                    <img 
-                                      src={ad.creative.thumbnail_url} 
-                                      alt={ad.name}
-                                      className="w-6 h-6 rounded object-cover border border-slate-100 dark:border-zinc-800 flex-shrink-0"
-                                    />
-                                  ) : (
-                                    <div className="w-6 h-6 rounded bg-slate-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                                      <MapIcon size={10} className="text-slate-400" />
-                                    </div>
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="text-[9px] font-black text-slate-800 dark:text-zinc-200 truncate max-w-[110px] sm:max-w-[130px]">
-                                      {ad.name}
-                                    </p>
-                                    <span className={`inline-block text-[6.5px] font-extrabold uppercase px-1 rounded-sm mt-0.5 ${
-                                      ad.status === 'ACTIVE' 
-                                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' 
-                                        : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400'
-                                    }`}>
-                                      {ad.status === 'ACTIVE' ? 'Ativo' : 'Pausado'}
-                                    </span>
+                                {/* Focos de Cobertura */}
+                                <div className="space-y-1.5">
+                                  <p className="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                    <MapPin size={8} /> Focos de Cobertura ({group.locations.length})
+                                  </p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {group.locations.map((loc) => (
+                                      <button
+                                        key={loc.id}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (mapInstanceRef.current) {
+                                            mapInstanceRef.current.setView([loc.lat, loc.lng], 13, { animate: true, duration: 1.0 });
+                                          }
+                                        }}
+                                        className="px-1.5 py-0.5 bg-slate-50 dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg text-[8px] font-black border border-slate-100 dark:border-zinc-800/80 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                      >
+                                        <Navigation size={7} className="text-indigo-500" />
+                                        <span className="truncate max-w-[100px]">{loc.name}</span>
+                                        <span className="opacity-60">({(loc.radiusMeters / 1000).toFixed(0)} km)</span>
+                                      </button>
+                                    ))}
                                   </div>
                                 </div>
-                                <div className="text-right flex-shrink-0 pl-2">
-                                  <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 block">
-                                    {ad.clicks?.toLocaleString('pt-BR') || 0} clks
-                                  </span>
-                                  <span className="text-[7.5px] font-bold text-slate-400 block mt-0.5">
-                                    R$ {ad.spend?.toFixed(0) || 0}
-                                  </span>
-                                </div>
+
+                                {/* Desempenho por Anúncio */}
+                                {matchingAds.length > 0 && (
+                                  <div className="space-y-1.5">
+                                    <p className="text-[7px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-widest mb-1 flex items-center gap-1">
+                                      <BarChart2 size={8} /> Desempenho por Anúncio ({matchingAds.length})
+                                    </p>
+                                    <div className="space-y-1 max-h-[140px] overflow-y-auto pr-0.5 no-scrollbar">
+                                      {matchingAds.map((ad: any) => (
+                                        <div 
+                                          key={ad.id} 
+                                          className="flex items-center justify-between p-1 bg-slate-50 dark:bg-zinc-900 rounded-lg border border-slate-105 dark:border-zinc-800/50 hover:border-indigo-100 dark:hover:border-indigo-950/40 transition-colors"
+                                        >
+                                          <div className="flex items-center gap-1.5 min-w-0">
+                                            {ad.creative?.thumbnail_url ? (
+                                              <img 
+                                                src={ad.creative.thumbnail_url} 
+                                                alt={ad.name}
+                                                className="w-5 h-5 rounded object-cover border border-slate-100 dark:border-zinc-800 flex-shrink-0"
+                                              />
+                                            ) : (
+                                              <div className="w-5 h-5 rounded bg-slate-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                                                <MapIcon size={8} className="text-slate-400" />
+                                              </div>
+                                            )}
+                                            <div className="min-w-0">
+                                              <p className="text-[8px] font-black text-slate-800 dark:text-zinc-200 truncate max-w-[90px] sm:max-w-[110px]">
+                                                {ad.name}
+                                              </p>
+                                            </div>
+                                          </div>
+                                          <div className="text-right flex-shrink-0 pl-1">
+                                            <span className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 block">
+                                              {ad.clicks?.toLocaleString('pt-BR') || 0} clks
+                                            </span>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                            ))}
+                            )}
                           </div>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   )}
                 </div>

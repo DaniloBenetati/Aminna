@@ -94,6 +94,8 @@ interface AdInsight {
     effective_object_story_id?: string;
   };
   quality_ranking?: string;
+  cpa?: number;
+  roas?: number;
 }
 
 const META_GRAPH_URL = 'https://graph.facebook.com/v19.0';
@@ -253,6 +255,28 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.services || 0}</span>
             </div>
           </div>
+          {data.creationDates && data.creationDates.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-50 dark:border-zinc-700">
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Origem dos Leads (Data de Agendamento):</p>
+              <div className="space-y-0.5 max-h-24 overflow-y-auto pl-1 border-l-2 border-emerald-100 dark:border-emerald-900/40">
+                {Object.entries(
+                  data.creationDates.reduce((acc: Record<string, { count: number, revenue: number }>, item: { date: string, revenue: number }) => {
+                    if (!acc[item.date]) acc[item.date] = { count: 0, revenue: 0 };
+                    acc[item.date].count++;
+                    acc[item.date].revenue += item.revenue;
+                    return acc;
+                  }, {})
+                ).map(([date, val]: [string, any]) => (
+                  <div key={date} className="flex justify-between items-center gap-4 text-[9px] text-slate-500 dark:text-zinc-400">
+                    <span>Agendado em {date}:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {val.count} {val.count === 1 ? 'lead' : 'leads'} (R$ {val.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -282,6 +306,28 @@ const FutureClientTooltip = ({ active, payload, label }: any) => {
               <span className="text-xs font-black text-slate-700 dark:text-slate-200">{data.services || 0}</span>
             </div>
           </div>
+          {data.creationDates && data.creationDates.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-50 dark:border-zinc-700">
+              <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Origem dos Leads (Data de Agendamento):</p>
+              <div className="space-y-0.5 max-h-24 overflow-y-auto pl-1 border-l-2 border-slate-100 dark:border-zinc-700">
+                {Object.entries(
+                  data.creationDates.reduce((acc: Record<string, { count: number, revenue: number }>, item: { date: string, revenue: number }) => {
+                    if (!acc[item.date]) acc[item.date] = { count: 0, revenue: 0 };
+                    acc[item.date].count++;
+                    acc[item.date].revenue += item.revenue;
+                    return acc;
+                  }, {})
+                ).map(([date, val]: [string, any]) => (
+                  <div key={date} className="flex justify-between items-center gap-4 text-[9px] text-slate-500 dark:text-zinc-400">
+                    <span>Agendado em {date}:</span>
+                    <span className="font-bold text-slate-700 dark:text-slate-200">
+                      {val.count} {val.count === 1 ? 'lead' : 'leads'} (R$ {val.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -306,9 +352,55 @@ const getColorForIndex = (index: number) => {
   return CAMPAIGN_COLORS[index % CAMPAIGN_COLORS.length];
 };
 
-const ConversasTooltip = ({ active, payload, campaignsList }: any) => {
+const ConversasTooltip = ({ active, payload, campaignsList, appointments, services, customers }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
+    const dStr = data.date; // e.g. "2026-07-13"
+
+    // Calcular leads criados em dStr
+    const firstVisitsAll: Record<string, string> = {};
+    if (customers && appointments) {
+      customers.forEach((c: any) => {
+        const customerApps = appointments.filter((a: any) => a.customerId === c.id && a.status !== 'Cancelado');
+        if (customerApps.length > 0) {
+          const sorted = [...customerApps].sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return (a.time || '').localeCompare(b.time || '');
+          });
+          firstVisitsAll[c.id] = sorted[0].date;
+        }
+      });
+    }
+
+    let dayLeadsCount = 0;
+    let dayLeadsRevenue = 0;
+    const leadDetails: { date: string, revenue: number }[] = [];
+
+    if (appointments && services) {
+      Object.entries(firstVisitsAll).forEach(([customerId, firstVisitDate]) => {
+        const customerApps = appointments.filter((a: any) => a.customerId === customerId && a.status !== 'Cancelado');
+        const sorted = [...customerApps].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+        const firstApp = sorted[0];
+        if (firstApp && firstApp.createdAt && firstApp.createdAt.startsWith(dStr)) {
+          dayLeadsCount++;
+          const svc = services.find((s: any) => s.id === firstApp.serviceId);
+          const appRevenue = (firstApp.pricePaid ?? firstApp.bookedPrice ?? svc?.price ?? 0) + 
+            (firstApp.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find((s: any) => s.id === extra.serviceId)?.price ?? 0), 0);
+          dayLeadsRevenue += appRevenue;
+
+          let dateFormatted = firstApp.date;
+          if (firstApp.date && firstApp.date.includes('-')) {
+            const parts = firstApp.date.split('-');
+            dateFormatted = `${parts[2]}/${parts[1]}`;
+          }
+          leadDetails.push({ date: dateFormatted, revenue: appRevenue });
+        }
+      });
+    }
+
     return (
       <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[220px] max-w-xs">
         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">
@@ -340,6 +432,36 @@ const ConversasTooltip = ({ active, payload, campaignsList }: any) => {
                 R$ {(data.spend || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
+
+            {dayLeadsCount > 0 && (
+              <div className="flex flex-col mt-1 border-t border-slate-50 dark:border-zinc-700 pt-1">
+                <div className="flex justify-between items-center gap-4">
+                  <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Leads Agendados:</span>
+                  <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                    {dayLeadsCount} (R$ {dayLeadsRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
+                  </span>
+                </div>
+                {leadDetails.length > 0 && (
+                  <div className="mt-1.5 pl-2 border-l-2 border-indigo-100 dark:border-indigo-900/40 space-y-0.5 max-h-24 overflow-y-auto">
+                    {Object.entries(
+                      leadDetails.reduce((acc: Record<string, { count: number, revenue: number }>, item: { date: string, revenue: number }) => {
+                        if (!acc[item.date]) acc[item.date] = { count: 0, revenue: 0 };
+                        acc[item.date].count++;
+                        acc[item.date].revenue += item.revenue;
+                        return acc;
+                      }, {})
+                    ).map(([date, val]: [string, any]) => (
+                      <div key={date} className="flex justify-between items-center gap-4 text-[9px] text-slate-500 dark:text-zinc-400">
+                        <span>Agendado para {date}:</span>
+                        <span className="font-bold text-slate-700 dark:text-slate-200">
+                          {val.count} {val.count === 1 ? 'lead' : 'leads'} (R$ {val.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -440,6 +562,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
+  const [expandedAdSets, setExpandedAdSets] = useState<Record<string, boolean>>({});
 
   // Persistence to Supabase
   useEffect(() => {
@@ -687,12 +810,32 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   }, [customers, appointments]);
 
   const trafficChartData = useMemo(() => {
-    const dailyData: Record<string, { count: number, recurring: number, services: number, recurringServices: number, revenue: number, recurringRevenue: number, coupons: number, recurringCoupons: number }> = {};
+    const dailyData: Record<string, { count: number, recurring: number, services: number, recurringServices: number, revenue: number, recurringRevenue: number, coupons: number, recurringCoupons: number, creationDates: { date: string, revenue: number }[] }> = {};
     
-    Object.values(firstVisits).forEach((v: any) => {
+    Object.entries(firstVisits).forEach(([customerId, v]: [string, any]) => {
       if (isAppointmentInMarketingPeriod(v.date)) {
-        dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
+        dailyData[v.date] = dailyData[v.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0, creationDates: [] };
         dailyData[v.date].count++;
+
+        // Encontrar a data de criação do primeiro agendamento desse cliente
+        const customerApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído');
+        const sorted = [...customerApps].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+        const firstApp = sorted[0];
+        if (firstApp && firstApp.createdAt) {
+          const svc = services.find(s => s.id === firstApp.serviceId);
+          const appRevenue = (firstApp.pricePaid ?? firstApp.bookedPrice ?? svc?.price ?? 0) + 
+            (firstApp.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
+
+          const createdDate = new Date(firstApp.createdAt);
+          const formatted = createdDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+          dailyData[v.date].creationDates.push({
+            date: formatted,
+            revenue: appRevenue
+          });
+        }
       }
     });
 
@@ -703,13 +846,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       const appRevenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
 
       if (fv && fv.date !== a.date) {
-        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0, creationDates: [] };
         dailyData[a.date].recurring++;
         dailyData[a.date].recurringRevenue += appRevenue;
         dailyData[a.date].recurringServices += (1 + (a.additionalServices || []).length);
         if (a.appliedCoupon) dailyData[a.date].recurringCoupons++;
       } else if (fv && fv.date === a.date) {
-        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
+        dailyData[a.date] = dailyData[a.date] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0, creationDates: [] };
         dailyData[a.date].revenue += appRevenue;
         dailyData[a.date].services += (1 + (a.additionalServices || []).length);
         if (a.appliedCoupon) dailyData[a.date].coupons++;
@@ -755,7 +898,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     
     while (curr <= last) {
       const dStr = curr.toISOString().split('T')[0];
-      const day = dailyData[dStr] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0 };
+      const day = dailyData[dStr] || { count: 0, recurring: 0, services: 0, recurringServices: 0, revenue: 0, recurringRevenue: 0, coupons: 0, recurringCoupons: 0, creationDates: [] };
       data.push({
         name: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
         value: day.count,
@@ -765,7 +908,8 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         revenue: day.revenue,
         recurringRevenue: day.recurringRevenue,
         coupons: day.coupons,
-        recurringCoupons: day.recurringCoupons
+        recurringCoupons: day.recurringCoupons,
+        creationDates: day.creationDates || []
       });
       curr.setDate(curr.getDate() + 1);
     }
@@ -790,13 +934,33 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     });
 
     // Mapear dados diários futuros
-    const dailyFuture: Record<string, { count: number, revenue: number, services: number }> = {};
+    const dailyFuture: Record<string, { count: number, revenue: number, services: number, creationDates: { date: string, revenue: number }[] }> = {};
     
     // Contar novos clientes cuja primeira visita absoluta está agendada para hoje ou no futuro
     Object.entries(firstVisitsAll).forEach(([customerId, dateStr]) => {
       if (dateStr >= todayStr) {
-        dailyFuture[dateStr] = dailyFuture[dateStr] || { count: 0, revenue: 0, services: 0 };
+        dailyFuture[dateStr] = dailyFuture[dateStr] || { count: 0, revenue: 0, services: 0, creationDates: [] };
         dailyFuture[dateStr].count++;
+
+        // Encontrar a data de criação do primeiro agendamento desse cliente
+        const customerApps = appointments.filter(a => a.customerId === customerId && a.status !== 'Cancelado');
+        const sorted = [...customerApps].sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+        const firstApp = sorted[0];
+        if (firstApp && firstApp.createdAt) {
+          const svc = services.find(s => s.id === firstApp.serviceId);
+          const appRevenue = (firstApp.pricePaid ?? firstApp.bookedPrice ?? svc?.price ?? 0) + 
+            (firstApp.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
+
+          const createdDate = new Date(firstApp.createdAt);
+          const formatted = createdDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+          dailyFuture[dateStr].creationDates.push({
+            date: formatted,
+            revenue: appRevenue
+          });
+        }
       }
     });
 
@@ -809,7 +973,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         const appRevenue = (a.pricePaid ?? a.bookedPrice ?? svc?.price ?? 0) + 
           (a.additionalServices || []).reduce((sum: number, extra: any) => sum + (extra.bookedPrice ?? services.find(s => s.id === extra.serviceId)?.price ?? 0), 0);
 
-        dailyFuture[a.date] = dailyFuture[a.date] || { count: 0, revenue: 0, services: 0 };
+        dailyFuture[a.date] = dailyFuture[a.date] || { count: 0, revenue: 0, services: 0, creationDates: [] };
         dailyFuture[a.date].revenue += appRevenue;
         dailyFuture[a.date].services += (1 + (a.additionalServices || []).length);
       }
@@ -820,13 +984,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     let curr = new Date(todayStr + 'T12:00:00');
     for (let i = 0; i < 60; i++) {
       const dStr = curr.toISOString().split('T')[0];
-      const day = dailyFuture[dStr] || { count: 0, revenue: 0, services: 0 };
+      const day = dailyFuture[dStr] || { count: 0, revenue: 0, services: 0, creationDates: [] };
       if (day.count > 0) {
         data.push({
           name: curr.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }),
           value: day.count,
           revenue: day.revenue,
-          services: day.services
+          services: day.services,
+          creationDates: day.creationDates || []
         });
       }
       curr.setDate(curr.getDate() + 1);
@@ -2077,6 +2242,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       }));
     };
 
+    const toggleAdSet = (adsetId: string) => {
+      setExpandedAdSets(prev => ({
+        ...prev,
+        [adsetId]: !prev[adsetId]
+      }));
+    };
+
     // Ordenar as campanhas pela quantidade de adsets (anúncios) decrescente
     const sortedCampaignGroups = Object.values(campaignsMap).sort((a, b) => b.items.length - a.items.length);
 
@@ -2134,27 +2306,96 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   </tr>
 
                   {/* Linhas dos AdSets (Filhas) */}
-                  {isExpanded && group.items.map(a => (
-                    <tr key={a.id} className="bg-white hover:bg-slate-50/40 dark:bg-zinc-900 dark:hover:bg-zinc-800/10 transition-colors border-b border-slate-100 dark:border-zinc-800 last:border-0">
-                      <td className="px-4 py-2.5 pl-8">
-                        <div className="flex items-start gap-2">
-                          <span className="text-slate-300 dark:text-zinc-700 select-none mt-0.5">↳</span>
-                          <div>
-                            <p className="font-bold text-[10px] text-slate-700 dark:text-zinc-300 leading-tight">{a.name}</p>
-                            <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</td>
-                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{a.clicks.toLocaleString('pt-BR')}</td>
-                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{(a.conversations_started || 0).toLocaleString('pt-BR')}</td>
-                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-indigo-500/80">{fmt.percent(a.ctr)}</td>
-                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{fmt.currency(a.cpc)}</td>
-                      <td className="px-4 py-2.5 font-medium text-[10px] text-right text-rose-500/80">{fmt.currency(a.cpa)}</td>
-                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{a.roas ? `${a.roas.toFixed(2)}x` : '—'}</td>
-                      <td className="px-4 py-2.5 font-bold text-[10px] text-right text-indigo-500/80">{a.conversions}</td>
-                    </tr>
-                  ))}
+                  {isExpanded && group.items.map(a => {
+                    const isAdSetExpanded = !!expandedAdSets[a.id];
+                    const matchingAds = ads
+                      .filter(ad => ad.adset_id === a.id && (showInactiveAds || ad.status === 'ACTIVE'))
+                      .sort((a, b) => b.clicks - a.clicks);
+                    const hasAds = matchingAds.length > 0;
+
+                    return (
+                      <React.Fragment key={a.id}>
+                        {/* Linha do AdSet */}
+                        <tr 
+                          onClick={() => hasAds && toggleAdSet(a.id)}
+                          className={`bg-white hover:bg-slate-50/40 dark:bg-zinc-900 dark:hover:bg-zinc-800/10 transition-colors border-b border-slate-100 dark:border-zinc-800 last:border-0 ${hasAds ? 'cursor-pointer' : ''}`}
+                        >
+                          <td className="px-4 py-2.5 pl-8">
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-300 dark:text-zinc-700 select-none mt-0.5">↳</span>
+                              {hasAds && (
+                                <span className="text-slate-400 dark:text-zinc-500 mt-0.5 flex-shrink-0 transition-transform">
+                                  {isAdSetExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                </span>
+                              )}
+                              <div>
+                                <p className="font-bold text-[10px] text-slate-700 dark:text-zinc-300 leading-tight">{a.name}</p>
+                                <p className="text-[9px] text-indigo-500 font-bold mt-0.5 leading-tight">{a.targeting_desc || '—'}</p>
+                                {hasAds && (
+                                  <p className="text-[7.5px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest mt-0.5">
+                                    {matchingAds.length} anúncio{matchingAds.length > 1 ? 's' : ''} {showInactiveAds ? '' : 'ativo'}{matchingAds.length > 1 && !showInactiveAds ? 's' : ''}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 font-bold text-[10px] text-right text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</td>
+                          <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{a.clicks.toLocaleString('pt-BR')}</td>
+                          <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{(a.conversations_started || 0).toLocaleString('pt-BR')}</td>
+                          <td className="px-4 py-2.5 font-medium text-[10px] text-right text-indigo-500/80">{fmt.percent(a.ctr)}</td>
+                          <td className="px-4 py-2.5 font-medium text-[10px] text-right text-slate-500">{fmt.currency(a.cpc)}</td>
+                          <td className="px-4 py-2.5 font-medium text-[10px] text-right text-rose-500/80">{fmt.currency(a.cpa)}</td>
+                          <td className="px-4 py-2.5 font-bold text-[10px] text-right text-emerald-600/80">{a.roas ? `${a.roas.toFixed(2)}x` : '—'}</td>
+                          <td className="px-4 py-2.5 font-bold text-[10px] text-right text-indigo-500/80">{a.conversions}</td>
+                        </tr>
+
+                        {/* Linhas dos Anúncios (Netas) */}
+                        {isAdSetExpanded && matchingAds.map(ad => {
+                          const isAdActive = ad.status === 'ACTIVE';
+                          return (
+                            <tr key={ad.id} className={`bg-slate-50/20 hover:bg-slate-100/30 dark:bg-zinc-950/20 dark:hover:bg-zinc-950/40 transition-colors border-b border-slate-100/50 dark:border-zinc-800/50 last:border-0 ${!isAdActive ? 'opacity-60' : ''}`}>
+                              <td className="px-4 py-2 pl-16">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-slate-300 dark:text-zinc-800 select-none">↳↳</span>
+                                  {ad.creative?.thumbnail_url && (
+                                    <img src={ad.creative.thumbnail_url} className="w-6 h-6 rounded object-cover flex-shrink-0" alt="" />
+                                  )}
+                                  <div className="min-w-0">
+                                    {ad.creative?.instagram_permalink_url ? (
+                                      <a 
+                                        href={ad.creative.instagram_permalink_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="font-bold text-[9px] text-slate-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 leading-tight block hover:underline truncate max-w-[200px]"
+                                        title={ad.name}
+                                      >
+                                        {ad.name}
+                                      </a>
+                                    ) : (
+                                      <p className="font-bold text-[9px] text-slate-600 dark:text-zinc-400 leading-tight truncate max-w-[200px]" title={ad.name}>
+                                        {ad.name}
+                                      </p>
+                                    )}
+                                    <div className="flex gap-1 items-center mt-0.5">
+                                      <StatusBadge status={ad.status} small />
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-slate-500">{fmt.currency(ad.spend)}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-slate-500">{ad.clicks.toLocaleString('pt-BR')}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-emerald-600/70">{(ad.conversations_started || 0).toLocaleString('pt-BR')}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-indigo-500/70">{fmt.percent(ad.ctr)}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-slate-500">{fmt.currency(ad.cpc)}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-rose-500/70">{fmt.currency(ad.cpa)}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-emerald-600/70">{ad.roas ? `${ad.roas.toFixed(2)}x` : '—'}</td>
+                              <td className="px-4 py-2 font-medium text-[9px] text-right text-indigo-500/70">{ad.conversions}</td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
                 </React.Fragment>
               );
             })}
@@ -2191,25 +2432,80 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
               {isExpanded && (
                 <div className="pl-4 border-l border-slate-100 dark:border-zinc-800 mt-3 space-y-3 pt-2">
-                  {group.items.map(a => (
-                    <div key={a.id} className="space-y-1">
-                      <div className="flex justify-between items-start gap-2">
-                        <p className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 uppercase leading-tight">{a.name}</p>
-                        <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</span>
-                      </div>
-                      <div className="flex justify-between items-center gap-2">
-                        <p className="text-[9px] font-bold text-indigo-500 leading-tight truncate">{a.targeting_desc || '—'}</p>
-                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                          <p className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                            {a.conversations_started || 0} Conversas
-                          </p>
-                          <p className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
-                            {a.conversions} Conv.
-                          </p>
+                  {group.items.map(a => {
+                    const isAdSetExpanded = !!expandedAdSets[a.id];
+                    const matchingAds = ads
+                      .filter(ad => ad.adset_id === a.id && (showInactiveAds || ad.status === 'ACTIVE'))
+                      .sort((a, b) => b.clicks - a.clicks);
+                    const hasAds = matchingAds.length > 0;
+
+                    return (
+                      <div key={a.id} className="space-y-2 border-b border-slate-50 dark:border-zinc-800/40 pb-2 last:border-0 last:pb-0">
+                        <div 
+                          onClick={() => hasAds && toggleAdSet(a.id)}
+                          className={`space-y-1 ${hasAds ? 'cursor-pointer select-none' : ''}`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex items-center gap-1">
+                              {hasAds && (
+                                <span className="text-slate-400 dark:text-zinc-500 transition-transform">
+                                  {isAdSetExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                </span>
+                              )}
+                              <p className="text-[11px] font-bold text-slate-700 dark:text-zinc-300 uppercase leading-tight">{a.name}</p>
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400">{fmt.currency(a.spend)}</span>
+                          </div>
+                          <div className="flex justify-between items-center gap-2">
+                            <p className="text-[9px] font-bold text-indigo-500 leading-tight truncate">{a.targeting_desc || '—'}</p>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <p className="text-[8px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {a.conversations_started || 0} Conversas
+                              </p>
+                              <p className="text-[8px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                {a.conversions} Conv.
+                              </p>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Mobile Ads list inside AdSet */}
+                        {isAdSetExpanded && matchingAds.map(ad => {
+                          const isAdActive = ad.status === 'ACTIVE';
+                          return (
+                            <div key={ad.id} className={`pl-4 border-l border-slate-200 dark:border-zinc-800 space-y-1 py-1 ${!isAdActive ? 'opacity-60' : ''}`}>
+                              <div className="flex justify-between items-start gap-2">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="text-slate-300 dark:text-zinc-700 select-none text-[9px]">↳</span>
+                                  {ad.creative?.thumbnail_url && (
+                                    <img src={ad.creative.thumbnail_url} className="w-5 h-5 rounded object-cover flex-shrink-0" alt="" />
+                                  )}
+                                  {ad.creative?.instagram_permalink_url ? (
+                                    <a 
+                                      href={ad.creative.instagram_permalink_url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="font-bold text-[9px] text-slate-500 hover:text-indigo-600 truncate max-w-[150px]"
+                                    >
+                                      {ad.name}
+                                    </a>
+                                  ) : (
+                                    <p className="font-bold text-[9px] text-slate-500 truncate max-w-[150px]">{ad.name}</p>
+                                  )}
+                                </div>
+                                <span className="text-[9px] text-slate-500 font-bold">{fmt.currency(ad.spend)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[8px] text-slate-400 font-bold uppercase tracking-wider pl-4">
+                                <span>Cliques: {ad.clicks}</span>
+                                <span>CTR: {fmt.percent(ad.ctr)}</span>
+                                <span className="text-emerald-600">Convs: {ad.conversions}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -2859,7 +3155,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
                               <Tooltip 
                                 cursor={{ fill: '#f1f5f9' }}
-                                content={<ConversasTooltip campaignsList={campaignsList} />}
+                                content={<ConversasTooltip campaignsList={campaignsList} appointments={appointments} services={services} customers={customers} />}
                               />
                               <Legend 
                                 verticalAlign="top" 
@@ -3150,7 +3446,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                     </section>
 
                     <section id="geolocalizacao-trafego" className="scroll-mt-32">
-                      <GeoTrafficMap adSets={adSets} ads={ads} loading={loading} hasFetched={hasFetched} />
+                      <GeoTrafficMap campaigns={campaigns} adSets={adSets} ads={ads} loading={loading} hasFetched={hasFetched} />
                     </section>
 
 
@@ -3230,7 +3526,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 800, fill: '#64748b' }} />
                       <Tooltip 
                         cursor={{ fill: '#f1f5f9' }}
-                        content={<ConversasTooltip campaignsList={campaignsList} />}
+                        content={<ConversasTooltip campaignsList={campaignsList} appointments={appointments} services={services} customers={customers} />}
                       />
                       <Legend 
                         verticalAlign="top" 
