@@ -19,6 +19,26 @@ const extractUsername = (social: string): string => {
   return cleaned.replace('@', '').trim().toLowerCase();
 };
 
+const getPartnerUsernames = (pt: any): string[] => {
+  if (!pt) return [];
+  const rawList = [
+    pt.socialMedia,
+    pt.socialMediaSecondary,
+    ...(pt.socialMediaList || [])
+  ].filter(Boolean);
+  
+  const usernames: string[] = [];
+  rawList.forEach(str => {
+    const parts = String(str).split(',').map(s => s.trim()).filter(Boolean);
+    parts.forEach(p => {
+      const username = extractUsername(p);
+      if (username) usernames.push(username);
+    });
+  });
+  
+  return Array.from(new Set(usernames));
+};
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -313,11 +333,7 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
     
     // Find a partner whose socialMedia handles match cleanRaw
     const matched = partners.find(pt => {
-      const socialList = [
-        pt.socialMedia,
-        pt.socialMediaSecondary,
-        ...(pt.socialMediaList || [])
-      ].filter(Boolean).map(extractUsername).filter(Boolean);
+      const socialList = getPartnerUsernames(pt);
       return socialList.includes(cleanRaw);
     });
 
@@ -518,11 +534,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
   const partnersPerformance = useMemo(() => {
     return partners.map(pt => {
       // Find matching user handles
-      const socialList = [
-        pt.socialMedia,
-        pt.socialMediaSecondary,
-        ...(pt.socialMediaList || [])
-      ].filter(Boolean).map(extractUsername).filter(Boolean);
+      const socialList = getPartnerUsernames(pt);
 
       // Filter posts that reference this partner (official collab or mentions)
       const matchingPosts = posts.filter(p => {
@@ -573,12 +585,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
 
   const selectedPartner = partners.find(pt => pt.id === selectedPartnerId);
   const selectedSocialList = useMemo(() => {
-    if (!selectedPartner) return [];
-    return [
-      selectedPartner.socialMedia,
-      selectedPartner.socialMediaSecondary,
-      ...(selectedPartner.socialMediaList || [])
-    ].filter(Boolean).map(extractUsername).filter(Boolean);
+    return getPartnerUsernames(selectedPartner);
   }, [selectedPartner]);
 
   const partnerPosts = useMemo(() => {
@@ -786,11 +793,16 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                 onChange={(e) => setSelectedPartnerId(e.target.value)}
                 className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
-                {partners.map(pt => (
-                  <option key={pt.id} value={pt.id}>
-                    {pt.name} ({extractUsername(pt.socialMedia) ? `@${extractUsername(pt.socialMedia)}` : 'sem_usuario'})
-                  </option>
-                ))}
+                {partnersPerformance.map(perf => {
+                  const pt = perf.partner;
+                  const usernames = getPartnerUsernames(pt);
+                  const handlesText = usernames.map(u => `@${u}`).join(', ');
+                  return (
+                    <option key={pt.id} value={pt.id}>
+                      {pt.name} ({handlesText || 'sem_usuario'})
+                    </option>
+                  );
+                })}
               </select>
             </div>
             <div className="text-right flex-shrink-0 self-end">

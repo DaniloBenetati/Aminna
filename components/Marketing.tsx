@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 
 import { InstagramOrganic } from './InstagramOrganic';
-import { MarketingReports } from './MarketingReports';
 import { InstagramMetrics } from './InstagramMetrics';
 import { supabase } from '../services/supabase';
 import { GeoTrafficMap } from './GeoTrafficMap';
@@ -557,8 +556,8 @@ const TOKEN_STORAGE_KEY = 'meta_ads_token';
 const ACCOUNT_STORAGE_KEY = 'meta_ads_account_id';
 
 export const Marketing: React.FC<{ appointments: any[], customers: any[], services: any[], providers?: any[], partnerCampaigns?: any[], partners?: any[] }> = ({ appointments = [], customers = [], services = [], providers = [], partnerCampaigns = [], partners = [] }) => {
-  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'reports' | 'metrics'>(() => 
-    (localStorage.getItem('active_marketing_tab') as 'paid' | 'reports' | 'metrics') || 'paid'
+  const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'metrics'>(() => 
+    (localStorage.getItem('active_marketing_tab') as 'paid' | 'metrics') || 'paid'
   );
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
@@ -1698,7 +1697,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   }, [adAccountId, token, datePreset, customStartDate, customEndDate, selectedIgAccountId]);
 
   useEffect(() => {
-    if (token && adAccountId && (activeMarketingTab === 'paid' || activeMarketingTab === 'reports')) {
+    if (token && adAccountId && activeMarketingTab === 'paid') {
       // 1. Tentar carregar dados do cache primeiro
       const cacheKey = `meta_cache_${adAccountId}_${selectedIgAccountId}_${datePreset}_${customStartDate}_${customEndDate}`;
       const cached = localStorage.getItem(cacheKey);
@@ -2690,12 +2689,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             >
               Tráfego Pago
             </button>
-            <button
-              onClick={() => setActiveMarketingTab('reports')}
-              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'reports' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              Apresentações
-            </button>
+
             <button
               onClick={() => setActiveMarketingTab('metrics')}
               className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'metrics' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
@@ -2747,11 +2741,11 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 hidden">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
-                {activeMarketingTab === 'paid' ? <Megaphone size={20} /> : <Presentation size={20} />}
+                <Megaphone size={20} />
               </div>
               <div>
                 <h1 className="text-sm md:text-base font-black text-slate-900 dark:text-white tracking-tight uppercase leading-none">
-                  {activeMarketingTab === 'reports' ? 'Apresentações' : 'Tráfego Pago'}
+                  Tráfego Pago
                 </h1>
                 <p className="text-[9px] md:text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest mt-1">
                   Análise estratégica · {
@@ -2783,7 +2777,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           {isFiltersVisible && (
             <div className="flex flex-wrap items-center gap-4 mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in slide-in-from-top-2 duration-300">
               <div className="flex flex-col md:flex-row gap-4 items-center">
-                {(activeMarketingTab === 'paid' || activeMarketingTab === 'reports') && (
+                {activeMarketingTab === 'paid' && (
                   <div className="flex flex-col">
                     <span className="text-[8px] font-black text-slate-400 uppercase ml-3 mb-1">Conta de Anúncios</span>
                     <select
@@ -2861,10 +2855,10 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
               <button
                 onClick={() => {
-                  if (activeMarketingTab === 'paid' || activeMarketingTab === 'reports') fetchAll();
+                  if (activeMarketingTab === 'paid') fetchAll();
                   else setRefreshKey(prev => prev + 1);
                 }}
-                disabled={loading || ((activeMarketingTab === 'paid' || activeMarketingTab === 'reports') && !adAccountId) || !token}
+                disabled={loading || (activeMarketingTab === 'paid' && !adAccountId) || !token}
                 className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] md:text-xs font-black rounded-xl shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -2930,31 +2924,6 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         <div className="flex-1 p-4 md:p-8">
           {activeMarketingTab === 'metrics' ? (
             <InstagramMetrics token={token} igUserId={selectedIgAccountId} partners={partners} />
-          ) : activeMarketingTab === 'reports' ? (
-            <MarketingReports 
-              campaigns={campaignsWithCRM}
-              totalSpend={totalSpend}
-              totalRevenue={totalCRMRevenue}
-              totalROAS={totalROAS}
-              totalConversions={totalConversions}
-              totalFollowers={totalFollowers}
-              avgCPA={avgCPA}
-              avgCTR={avgCTR}
-              dateLabel={
-                datePreset === 'last_7d' ? 'Últimos 7 dias' : 
-                datePreset === 'last_30d' ? 'Últimos 30 dias' : 
-                datePreset === 'last_90d' ? 'Últimos 90 dias' :
-                datePreset === 'this_month' ? 'Este mês' :
-                datePreset === 'last_month' ? 'Mês anterior' :
-                datePreset === 'this_year' ? 'Este ano' :
-                datePreset === 'custom' ? `${customStartDate.split('-').reverse().join('/')} até ${customEndDate.split('-').reverse().join('/')}` :
-                'Período selecionado'
-              }
-              dailyData={dailyTimeSeries}
-              followerSeries={followerSeries}
-              organicData={organicData}
-              activeBudget={activeAgendamentoBudget}
-            />
           ) : (
             <div className="w-full">
               {error && (
