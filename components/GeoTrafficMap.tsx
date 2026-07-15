@@ -657,14 +657,6 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
         </div>
       </div>
 
-      {/* Audit Banner */}
-      <div className={`p-4 rounded-2xl border flex gap-3 items-start transition-all duration-300 flex-shrink-0 ${audit.color}`}>
-        <audit.icon size={18} className="mt-0.5 flex-shrink-0" />
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-wider">{audit.label}</p>
-          <p className="text-[10px] font-medium leading-relaxed mt-1 opacity-90">{audit.desc}</p>
-        </div>
-      </div>
 
       {/* Main Grid Map + List */}
       <div className={`grid grid-cols-1 xl:grid-cols-3 gap-6 ${isFullscreen ? 'flex-1 min-h-0' : ''}`}>
