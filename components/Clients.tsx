@@ -723,7 +723,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
 
       if (error) {
         console.error('Error updating customer:', error);
-        alert('Erro ao atualizar cliente no banco de dados.');
+        alert(`Erro ao atualizar cliente: ${error.message}\nDetalhes: ${error.details || ''}`);
         return;
       }
 
