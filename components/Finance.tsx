@@ -2381,7 +2381,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     };
 
     const fetchExpenses = async () => {
-        const { data } = await supabase.from('expenses').select('*').limit(10000);
+        const { data } = await supabase.from('expenses').select('id, description, category, subcategory, dre_class, amount, date, status, payment_method, supplier_id, provider_id, employee_id, payroll_id, recurring_id, is_reconciled, document_number').limit(10000);
         if (data) {
             setExpenses(data.map((e: any) => ({
                 id: e.id,
