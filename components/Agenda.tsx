@@ -89,7 +89,7 @@ import {
     ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, Search,
     Clock, CircleCheck, AlertCircle, MessageSquare, MessageCircle, Filter, X,
     User, ZoomIn, ZoomOut, Check, Copy, CalendarRange, Loader2, Save, Ban, CircleX, MoreVertical, Trash2, PencilLine, ArrowLeft, ExternalLink, UserPlus, ShieldAlert,
-    Wallet, Sparkles
+    Wallet, Sparkles, EyeOff, Eye
 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { ViewState, Appointment, Customer, Service, Campaign, Provider, Lead, PaymentSetting, StockItem, NFSeRecord, FiscalConfig, UserProfile, FinancialConfig } from '../types';
@@ -370,6 +370,14 @@ export const Agenda: React.FC<AgendaProps> = ({
     const [isSubmittingBlock, setIsSubmittingBlock] = useState(false);
 
     const [sidebarSearch, setSidebarSearch] = useState('');
+    const [hideFullyBlocked, setHideFullyBlocked] = useState(() => {
+        return localStorage.getItem('agenda_hide_fully_blocked') === 'true';
+    });
+
+    React.useEffect(() => {
+        localStorage.setItem('agenda_hide_fully_blocked', hideFullyBlocked.toString());
+    }, [hideFullyBlocked]);
+
     // Financial Modal States
     const [isFinanceModalOpen, setIsFinanceModalOpen] = useState(false);
     const [physicalCash, setPhysicalCash] = useState('');
@@ -641,10 +649,28 @@ export const Agenda: React.FC<AgendaProps> = ({
             ? activeProviders.filter(p => visibleProviderIds.length === 0 || visibleProviderIds.some(vid => String(vid).trim().toLowerCase() === String(p.id).trim().toLowerCase()))
             : activeProviders.filter(p => String(p.id).trim().toLowerCase() === String(selectedProviderId).trim().toLowerCase());
 
-        const sorted = filtered.sort((a, b) => (a.order || 0) - (b.order || 0));
+        let result = filtered;
+        if (hideFullyBlocked) {
+            result = result.filter(p => {
+                const providerBlocks = appointments.filter(a =>
+                    a.providerId === p.id &&
+                    a.date === gridDateStr &&
+                    a.combinedServiceNames === 'BLOQUEIO_INTERNO'
+                );
+                const isFullDayBlock = providerBlocks.some(a => isFullDayBlockCheck(a));
+                
+                const isVacationPeriod = p.vacationStart && p.vacationEnd && gridDateStr >= p.vacationStart && gridDateStr <= p.vacationEnd;
+                const isDayOff = p.daysOff?.includes(gridDateStr);
+                const isOnVacation = isVacationPeriod || isDayOff;
+                
+                return !(isFullDayBlock || isOnVacation);
+            });
+        }
+
+        const sorted = result.sort((a, b) => (a.order || 0) - (b.order || 0));
         console.log('🔍 [AGENDA] activeVisibileProviders output:', sorted.map(p => ({ id: p.id, name: p.name })));
         return sorted;
-    }, [activeProviders, selectedProviderId, visibleProviderIds]);
+    }, [activeProviders, selectedProviderId, visibleProviderIds, hideFullyBlocked, appointments, gridDateStr]);
 
 
     // Confirmações Range)
@@ -1906,6 +1932,19 @@ export const Agenda: React.FC<AgendaProps> = ({
                         className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                     >
                         <MessageCircle size={14} /> Confirmações
+                    </button>
+                    
+                    <button
+                        onClick={() => setHideFullyBlocked(!hideFullyBlocked)}
+                        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all border ${
+                            hideFullyBlocked 
+                                ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 border-indigo-200 dark:border-indigo-800' 
+                                : 'bg-slate-50 dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700'
+                        }`}
+                        title="Ocultar colaboradores com bloqueio de dia inteiro"
+                    >
+                        {hideFullyBlocked ? <Eye size={14} /> : <EyeOff size={14} />}
+                        {hideFullyBlocked ? 'Mostrar Bloqueados' : 'Ocultar Bloqueados'}
                     </button>
                 </div>
             </div>
