@@ -3176,7 +3176,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <Maximize2 size={13} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3">
+                          <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3">
                             <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Média Período Atual</p>
                                 <p className="text-sm font-black text-indigo-600">
@@ -3311,7 +3311,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               <Maximize2 size={13} />
                             </button>
                           </div>
-                          <div className="flex flex-wrap items-center gap-3">
+                          <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3">
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
                                 <p className="text-sm font-black text-emerald-600">{fmt.currency(budgetVsSpendMetrics.totalSpend)}</p>
