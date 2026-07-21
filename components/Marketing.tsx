@@ -2004,7 +2004,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
       <KPICard label="Impressões" value={fmt.number(totalImpressions, 0)} icon={Eye} color="sky" />
       <KPICard label="Cliques Totais" value={fmt.number(totalClicks, 0)} icon={MousePointer} color="indigo" />
-      <KPICard label="Campanhas Ativas" value={fmt.number(activeCampaigns.length, 0)} icon={Activity} color="sky" />
+
     </div>
   );
 
