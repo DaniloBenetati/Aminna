@@ -432,6 +432,13 @@ const ConversasTooltip = ({ active, payload, campaignsList, appointments, servic
               </span>
             </div>
 
+            <div className="flex justify-between items-center gap-4 mt-1">
+              <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wider">Custo p/ Res:</span>
+              <span className="text-xs font-black text-slate-700 dark:text-slate-200">
+                {data.conversations > 0 ? `R$ ${((data.spend || 0) / data.conversations).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+              </span>
+            </div>
+
             {dayLeadsCount > 0 && (
               <div className="flex flex-col mt-1 border-t border-slate-50 dark:border-zinc-700 pt-1">
                 <div className="flex justify-between items-center gap-4">
@@ -1982,7 +1989,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   );
 
   const renderKPICards = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-1.5 sm:gap-2">
+    <div className="grid grid-cols-4 sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))] gap-1.5 sm:gap-2">
       <KPICard label="Total Investido" value={fmt.currency(totalSpend)} icon={DollarSign} color="indigo" />
       <KPICard label="Retorno CRM" value={fmt.currency(totalCRMRevenue)} icon={DollarSign} color="emerald" />
       <KPICard label="ROI CRM" value={totalROAS > 0 ? `${fmt.number(totalROAS, 2)}x` : '—'} icon={TrendingUp} color="emerald" />
@@ -2128,59 +2135,65 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    <span className="text-[13px] font-black text-slate-900 dark:text-white leading-tight uppercase">{c.name}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-0.5">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resultados</p>
-                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
-                         {c.results ? fmt.number(c.results.count, 0) : '—'} 
-                         <span className="text-[9px] font-medium text-slate-400 ml-1">
-                            {c.results?.name?.split(' ')[0] || 'Res.'}
-                         </span>
-                      </p>
-                   </div>
-                   <div className="space-y-0.5 text-right">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Custo p/ Res.</p>
-                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
-                         {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
-                      </p>
-                   </div>
-
-                   <div className="space-y-0.5">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Orçamento</p>
-                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
-                         {fmt.currency((c.daily_budget || c.lifetime_budget || 0) / 100)}
-                         <span className="text-[8px] text-slate-400 font-bold ml-1">{c.daily_budget ? 'DIA' : 'VIT.'}</span>
-                      </p>
+                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-800 divide-y divide-slate-100 dark:divide-zinc-800">
+                   <div className="grid grid-cols-2 gap-4 p-3">
+                      <div className="space-y-0.5">
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resultados</p>
+                         <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                            {c.results ? fmt.number(c.results.count, 0) : '—'} 
+                            <span className="text-[9px] font-medium text-slate-400 ml-1">
+                               {c.results?.name?.split(' ')[0] || 'Res.'}
+                            </span>
+                         </p>
+                      </div>
+                      <div className="space-y-0.5 text-right">
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Custo p/ Res.</p>
+                         <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                            {c.cost_per_result ? fmt.currency(c.cost_per_result) : '—'}
+                         </p>
+                      </div>
                    </div>
 
-                   <div className="space-y-0.5 text-right">
-                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Investido</p>
-                      <p className="text-[11px] font-black text-slate-900 dark:text-white">
-                         {fmt.currency(c.spend)}
-                      </p>
+                   <div className="grid grid-cols-2 gap-4 p-3">
+                      <div className="space-y-0.5">
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Orçamento</p>
+                         <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                            {fmt.currency((c.daily_budget || c.lifetime_budget || 0) / 100)}
+                            <span className="text-[8px] text-slate-400 font-bold ml-1">{c.daily_budget ? 'DIA' : 'VIT.'}</span>
+                         </p>
+                      </div>
+                      <div className="space-y-0.5 text-right">
+                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Investido</p>
+                         <p className="text-[11px] font-black text-slate-900 dark:text-white">
+                            {fmt.currency(c.spend)}
+                         </p>
+                      </div>
                    </div>
 
-                   <div className="space-y-0.5">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Novos Clientes</p>
-                      <p className={`text-[11px] font-black ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
-                         {c.crmCustomers && c.crmCustomers > 0 ? fmt.number(c.crmCustomers, 0) : '—'}
-                      </p>
+                   <div className="grid grid-cols-2 gap-4 p-3">
+                      <div className="space-y-0.5">
+                         <p className={`text-[8px] font-black uppercase tracking-widest ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Novos Clientes</p>
+                         <p className={`text-[11px] font-black ${c.crmCustomers && c.crmCustomers > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                            {c.crmCustomers && c.crmCustomers > 0 ? fmt.number(c.crmCustomers, 0) : '—'}
+                         </p>
+                      </div>
+                      <div className="space-y-0.5 text-right">
+                         <p className={`text-[8px] font-black uppercase tracking-widest ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
+                         <p className={`text-[11px] font-black ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
+                            {crmRevenue > 0 ? fmt.currency(crmRevenue) : '—'}
+                         </p>
+                      </div>
                    </div>
 
-                   <div className="space-y-0.5 text-right">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>Retorno CRM</p>
-                      <p className={`text-[11px] font-black ${crmRevenue > 0 ? 'text-emerald-600' : 'text-slate-900 dark:text-white'}`}>
-                         {crmRevenue > 0 ? fmt.currency(crmRevenue) : '—'}
-                      </p>
+                   <div className="grid grid-cols-2 gap-4 p-3">
+                      <div className="space-y-0.5">
+                         <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
+                         <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                            {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
+                         </p>
+                      </div>
                    </div>
-
-                   <div className="space-y-0.5">
-                      <p className={`text-[8px] font-black uppercase tracking-widest ${crmROI >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>ROI CRM</p>
-                      <p className={`text-[11px] font-black ${crmROI >= 1 ? 'text-emerald-600' : crmROI > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                         {crmROI > 0 ? `${fmt.number(crmROI, 1)}x` : '—'}
-                      </p>
-                   </div>
-                 </div>
+                </div>
 
                  {hasProblem && (
                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
@@ -3113,6 +3126,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
                                 <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
                                 <p className="text-sm font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
+                            </div>
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
+                                <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Res.</p>
+                                <p className="text-sm font-black text-violet-600">
+                                  {dailyConversations.reduce((sum, d) => sum + d.conversations, 0) > 0 
+                                    ? fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0) / dailyConversations.reduce((sum, d) => sum + d.conversations, 0))
+                                    : '—'}
+                                </p>
                             </div>
                           </div>
                         </div>
