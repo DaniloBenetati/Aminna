@@ -37,6 +37,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
   const [isPrinting, setIsPrinting] = useState(false);
   const [whatsappModalData, setWhatsappModalData] = useState<any | null>(null);
   const [fiscalDetailingData, setFiscalDetailingData] = useState<any | null>(null);
+  const [rescisaoModalData, setRescisaoModalData] = useState<{ providerId: string | 'all', type: 'single' | 'all' } | null>(null);
   const [dasAmounts, setDasAmounts] = useState<Record<string, number>>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('aminna_das_amounts');
@@ -125,7 +126,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
-  const getFinancials = (providerId: string) => {
+  const getFinancials = (providerId: string, customStart?: string, customEnd?: string) => {
     const provider = providers.find(p => p.id === providerId);
     const defaultRate = provider?.commissionRate || 0;
 
@@ -138,7 +139,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
     appointments.forEach(app => {
       const referenceDate = app.date ? app.date.substring(0, 10) : (app.paymentDate ? app.paymentDate.substring(0, 10) : '');
-      const inRange = referenceDate >= startDate && referenceDate <= endDate;
+      const inRange = referenceDate >= (customStart || startDate) && referenceDate <= (customEnd || endDate);
       const validStatus = app.status === 'Concluído';
 
       if (!inRange || !validStatus) return;
@@ -336,6 +337,52 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     };
   }, [reportData]);
 
+  const getRescisaoData = (providerId: string) => {
+    const [y, m] = startDate.split('-').map(Number);
+    const monthsData = [];
+    
+    for (let i = 2; i >= 0; i--) {
+      const targetDate = new Date(y, m - 1 - i, 1);
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const startStr = `${year}-${month}-01`;
+      const lastDay = new Date(year, targetDate.getMonth() + 1, 0).getDate();
+      const endStr = `${year}-${month}-${lastDay}`;
+      const monthName = targetDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      
+      const fin = getFinancials(providerId, startStr, endStr);
+      const das = dasAmounts[providerId] || 0;
+      const discount = otherDiscounts[providerId] || 0;
+      const finalToPay = fin.commissionVal - das - discount;
+      
+      monthsData.push({
+        label: `Mês ${3 - i}`, // i=2 -> Mês 1, i=1 -> Mês 2, i=0 -> Mês 3
+        monthName,
+        value: finalToPay > 0 ? finalToPay : 0
+      });
+    }
+    
+    const media = monthsData.reduce((acc, m) => acc + m.value, 0) / 3;
+    const provider = providers.find(p => p.id === providerId);
+    return {
+      provider,
+      months: monthsData,
+      media
+    };
+  };
+
+  const rescisaoTableData = useMemo(() => {
+    if (!rescisaoModalData) return [];
+    if (rescisaoModalData.type === 'single' && rescisaoModalData.providerId !== 'all') {
+      return [getRescisaoData(rescisaoModalData.providerId)];
+    } else {
+      return providers
+        .filter(p => selectedProvider === 'all' || p.id === selectedProvider)
+        .map(p => getRescisaoData(p.id))
+        .filter(r => r.media > 0);
+    }
+  }, [rescisaoModalData, providers, startDate, endDate, appointments, services, dasAmounts, otherDiscounts]);
+
   const handleGenerateReceipts = (data: any | null = null, hideFat: boolean = false, mode: 'auditoria' | 'receipt' = 'receipt') => {
     setHideFaturamento(hideFat);
     setPrintMode(mode);
@@ -441,6 +488,64 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       setIsPrinting(false);
       setIsPrintingProvision(false);
     }, 500);
+  };
+
+  const handlePrintRescisao = () => {
+    const wrapper = document.getElementById('rescisao-print-wrapper');
+    if (!wrapper) return;
+    const printContents = wrapper.innerHTML;
+    const newWin = window.open('', '_blank');
+    if (!newWin) return;
+    
+    newWin.document.write(`
+      <html>
+        <head>
+          <title>Média para Rescisão - Aminna</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+          <style>
+            @media print {
+              @page { size: A4 landscape; margin: 10mm; }
+              body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
+              .no-print { display: none !important; }
+              table { width: 100%; border-collapse: collapse; }
+              th, td { border-bottom: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+              th { background-color: #f8fafc !important; }
+            }
+            body { font-family: 'Inter', sans-serif; padding: 40px; background: #f8fafc; }
+            .header-print { text-align: center; margin-bottom: 30px; }
+            .print-container { max-width: 1200px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+          </style>
+        </head>
+        <body>
+          <div class="no-print" style="position:fixed; top:20px; right:20px; display:flex; gap:12px;">
+            <button onclick="downloadPDF()" style="padding:12px 24px; background:#4f46e5; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:800; text-transform:uppercase; font-size:12px;">Baixar PDF</button>
+            <button onclick="window.print()" style="padding:12px 24px; background:#0f172a; color:white; border:none; border-radius:12px; cursor:pointer; font-weight:800; text-transform:uppercase; font-size:12px;">Imprimir</button>
+          </div>
+          <div class="print-container" id="pdf-content">
+            <div class="header-print">
+              <h1 style="font-size:24px; font-weight:900; text-transform:uppercase; margin-bottom:4px;">Média para Rescisão</h1>
+              <p style="color:#64748b; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Cálculo baseado nos últimos 3 meses - Aminna</p>
+            </div>
+            ${printContents}
+          </div>
+          <script>
+            function downloadPDF() {
+              const element = document.getElementById('pdf-content');
+              const opt = {
+                margin:       10,
+                filename:     'media-rescisao-aminna.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+              };
+              html2pdf().set(opt).from(element).save();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    newWin.document.close();
   };
 
   const ProvisionPrintSheet = () => {
@@ -868,6 +973,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
           <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex items-center justify-center gap-1.5 bg-indigo-600 dark:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-indigo-700 transition-all active:scale-95">
             <Printer size={12} /> <span className="hidden sm:inline">Recibos</span>
           </button>
+          <button onClick={() => setRescisaoModalData({ providerId: 'all', type: 'all' })} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+            <Scissors size={12} className="text-rose-500" /> <span className="hidden sm:inline">Média Rescisão</span>
+          </button>
           <button onClick={() => setIsProvisionModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
             <FileSpreadsheet size={12} className="text-emerald-500" /> <span className="hidden sm:inline">Provisão</span>
           </button>
@@ -946,6 +1054,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                       </button>
                       <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
                         <FileCode size={16} />
+                      </button>
+                      <button onClick={() => setRescisaoModalData({ providerId: data.provider?.id || '', type: 'single' })} title="Cálculo de Média para Rescisão" className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg text-rose-600 dark:text-rose-400 transition-colors">
+                        <Scissors size={16} />
                       </button>
                     </div>
                   </td>
@@ -1044,6 +1155,57 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
               >
                 <Copy size={18} /> Copiar Detalhamento
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rescisaoModalData && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Média para Rescisão</h3>
+                <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mt-1">Cálculo baseado nos últimos 3 meses</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={handlePrintRescisao} className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity">
+                  <Printer size={14} /> Exportar PDF
+                </button>
+                <button onClick={() => setRescisaoModalData(null)} className="p-3 hover:bg-white rounded-2xl text-slate-400"><X size={20} /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6" id="rescisao-print-wrapper">
+              <div className="overflow-x-auto rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50 dark:bg-zinc-800 text-[9px] uppercase font-black">
+                    <tr>
+                      <th className="px-4 py-3">Profissional</th>
+                      <th className="px-4 py-3 text-right text-slate-500">Mês 1</th>
+                      <th className="px-4 py-3 text-right text-slate-500">Mês 2</th>
+                      <th className="px-4 py-3 text-right text-indigo-500">Mês 3</th>
+                      <th className="px-4 py-3 text-right text-rose-600">Média (Rescisão)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
+                    {rescisaoTableData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
+                        <td className="px-4 py-3 font-black text-xs uppercase">{row.provider?.name}</td>
+                        {row.months.map((m, i) => (
+                          <td key={i} className="px-4 py-3 text-right">
+                            <div className="text-[9px] text-slate-400 font-bold uppercase mb-0.5">{m.monthName}</div>
+                            <div className="font-black text-xs text-slate-600 dark:text-slate-300">R$ {m.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                          </td>
+                        ))}
+                        <td className="px-4 py-3 text-right font-black text-rose-600 text-sm">R$ {row.media.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                    {rescisaoTableData.length === 0 && (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500 font-bold text-xs uppercase">Nenhum dado encontrado</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
