@@ -332,7 +332,7 @@ const App: React.FC = () => {
         payrollRes,
         employeeLoansRes
       ] = await Promise.all([
-        Promise.resolve({ data: [] }), // stock_items
+        supabase.from('stock_items').select('*'), // stock_items
         Promise.resolve({ data: [] }), // usage_logs
         supabase.from('campaigns').select('*'), // campaigns
         Promise.resolve({ data: [] }), // pantry_items
@@ -344,8 +344,8 @@ const App: React.FC = () => {
         Promise.resolve({ data: [] }), // nfse_records
         fetchCustomers(),
         fetchAppointments(),
-        Promise.resolve([]), // fetchSales()
-        Promise.resolve([]), // fetchExpenses()
+        supabase.from('sales').select('*').then(res => res.data || []), // fetchSales
+        supabase.from('expenses').select('*').then(res => res.data || []), // fetchExpenses
         Promise.resolve({ data: [] }), // employees
         Promise.resolve({ data: [] }), // payroll
         Promise.resolve({ data: [] })  // employee_loans
