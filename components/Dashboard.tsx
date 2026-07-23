@@ -229,12 +229,26 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     }, [sales, timeView, dateRef, customRange, filterProvider, filterService, filterCampaign, filterProduct, filterPartner, filterChannel, customers]);
 
     const firstVisits = useMemo(() => {
-        const visits: Record<string, { date: string, revenue: number, servicesCount: number }> = {};
+        const visits: Record<string, { date: string, revenue: number, servicesCount: number, hasCoupon: boolean, firstDayApps: Appointment[] }> = {};
         
-        customers.forEach(c => {
-            const customerApps = appointments.filter(a => a.customerId === c.id && a.status === 'Concluído');
-            if (customerApps.length > 0) {
-                const sorted = [...customerApps].sort((a, b) => {
+        // 1. Group completed appointments by customer ID
+        const appsByCustomer: Record<string, Appointment[]> = {};
+        for (let i = 0; i < appointments.length; i++) {
+            const a = appointments[i];
+            if (a.status === 'Concluído') {
+                if (!appsByCustomer[a.customerId]) {
+                    appsByCustomer[a.customerId] = [];
+                }
+                appsByCustomer[a.customerId].push(a);
+            }
+        }
+        
+        for (let i = 0; i < customers.length; i++) {
+            const c = customers[i];
+            const customerApps = appsByCustomer[c.id];
+            
+            if (customerApps && customerApps.length > 0) {
+                const sorted = customerApps.sort((a, b) => {
                     if (a.date !== b.date) return a.date.localeCompare(b.date);
                     return (a.time || '').localeCompare(b.time || '');
                 });
@@ -245,7 +259,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 let servicesCount = 0;
                 let hasCoupon = false;
                 
-                sameDayApps.forEach(a => {
+                for (let j = 0; j < sameDayApps.length; j++) {
+                    const a = sameDayApps[j];
                     const mainSvc = services.find(s => s.id === a.serviceId);
                     const mainBooked = (a.bookedPrice ?? mainSvc?.price ?? 0) * (a.quantity || 1);
                     const extras = (a.additionalServices || []).reduce((sum, extra) => {
@@ -257,11 +272,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     servicesCount += 1 + (a.additionalServices || []).length;
                     
                     if (a.appliedCoupon) hasCoupon = true;
-                });
+                }
                 
-                visits[c.id] = { date: first.date, revenue, servicesCount, hasCoupon };
+                visits[c.id] = { date: first.date, revenue, servicesCount, hasCoupon, firstDayApps: sameDayApps };
             }
-        });
+        }
         return visits;
     }, [customers, appointments, services]);
 
@@ -412,8 +427,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             .filter(([_, v]) => isDateInPeriod(v.date))
             .map(([customerId, v]) => {
                 const customer = (customers || []).find(c => c.id === customerId);
-                // Find appointments for that specific first visit date
-                const firstDayApps = appointments.filter(a => a.customerId === customerId && a.status === 'Concluído' && a.date === v.date);
+                const firstDayApps = v.firstDayApps || [];
                 
                 // Get professional name (from the first appointment of the day)
                 const maria = (providers || []).find(m => m.name?.toLowerCase().includes('maria alice') || m.name?.toLowerCase() === 'maria');

@@ -3,20 +3,18 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabase';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
-import { CRM } from './components/CRM';
+
 import { Clients } from './components/Clients';
 import { Finance } from './components/Finance';
 import { Closures } from './components/Closures';
 import { Inventory } from './components/Inventory';
 import { Agenda } from './components/Agenda';
-import { DailyAppointments } from './components/DailyAppointments';
 import { Professionals } from './components/Professionals';
 import { Sales } from './components/Sales';
 import { ServicesManagement } from './components/ServicesManagement';
 import { Partnerships } from './components/Partnerships';
 import { SettingsPage } from './components/Settings';
 import { Copa } from './components/Copa';
-import { HRManagement } from './components/HRManagement';
 import { Marketing } from './components/Marketing';
 import { ReservationsManagement } from './components/ReservationsManagement';
 import { Login } from './components/Login';
@@ -313,47 +311,6 @@ const App: React.FC = () => {
         return results.flatMap(r => r.data || []);
       };
 
-      const fetchSales = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('sales')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', minDate);
-
-        if (countError || count === null) return [];
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('sales')
-            .select('*')
-            .gte('date', minDate)
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-            .order('date', { ascending: false })
-        );
-        const results = await Promise.all(promises);
-        return results.flatMap(r => r.data || []);
-      };
-
-      const fetchExpenses = async () => {
-        const pageSize = 1000;
-        const { count, error: countError } = await supabase
-          .from('expenses')
-          .select('*', { count: 'exact', head: true })
-          .gte('date', minDate);
-
-        if (countError || count === null) return [];
-        const pages = Math.ceil(count / pageSize);
-        const promises = Array.from({ length: pages }, (_, i) =>
-          supabase
-            .from('expenses')
-            .select('*')
-            .gte('date', minDate)
-            .range(i * pageSize, (i + 1) * pageSize - 1)
-            .order('date', { ascending: false })
-        );
-        const results = await Promise.all(promises);
-        return results.flatMap(r => r.data || []);
-      };
 
       // Carregar dados transacionais adicionais no background
       const [
@@ -375,23 +332,23 @@ const App: React.FC = () => {
         payrollRes,
         employeeLoansRes
       ] = await Promise.all([
-        supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true }),
-        supabase.from('usage_logs').select('*').gte('date', minDate),
-        supabase.from('campaigns').select('*'),
-        supabase.from('pantry_items').select('*'),
-        supabase.from('pantry_logs').select('*').gte('date', minDate),
+        Promise.resolve({ data: [] }), // stock_items
+        Promise.resolve({ data: [] }), // usage_logs
+        Promise.resolve({ data: [] }), // campaigns
+        Promise.resolve({ data: [] }), // pantry_items
+        Promise.resolve({ data: [] }), // pantry_logs
         supabase.from('leads').select('*'),
-        supabase.from('partners').select('*'),
-        supabase.from('partner_exchanges').select('*'),
-        supabase.from('suppliers').select('*'),
-        supabase.from('nfse_records').select('*').gte('created_at', minDate),
+        Promise.resolve({ data: [] }), // partners
+        Promise.resolve({ data: [] }), // partner_exchanges
+        Promise.resolve({ data: [] }), // suppliers
+        Promise.resolve({ data: [] }), // nfse_records
         fetchCustomers(),
         fetchAppointments(),
-        fetchSales(),
-        fetchExpenses(),
-        supabase.from('employees').select('*'),
-        supabase.from('payroll').select('*'),
-        supabase.from('employee_loans').select('*')
+        Promise.resolve([]), // fetchSales()
+        Promise.resolve([]), // fetchExpenses()
+        Promise.resolve({ data: [] }), // employees
+        Promise.resolve({ data: [] }), // payroll
+        Promise.resolve({ data: [] })  // employee_loans
       ]);
 
       // Mapeamento dos Estados Pesados
@@ -758,18 +715,7 @@ const App: React.FC = () => {
             partners={partners}
           />
         );
-      case ViewState.CRM:
-        return (
-          <CRM
-            customers={customers}
-            setCustomers={setCustomers}
-            leads={leads}
-            setLeads={setLeads}
-            providers={providers}
-            appointments={appointments}
-            services={services}
-          />
-        );
+
       case ViewState.PROFISSIONAIS:
         return <Professionals providers={providers} setProviders={setProviders} appointments={appointments} setAppointments={setAppointments} customers={customers} services={services} />;
       case ViewState.FINANCEIRO:
@@ -819,38 +765,7 @@ const App: React.FC = () => {
             }}
           />
         );
-      case ViewState.DAILY_APPOINTMENTS:
-        return (
-          <DailyAppointments
-            customers={customers}
-            setCustomers={setCustomers}
-            appointments={appointments}
-            setAppointments={setAppointments}
-            services={services}
-            campaigns={campaigns}
-            paymentSettings={paymentSettings}
-            providers={providers}
-            stock={stock}
-            nfseRecords={nfseRecords}
-            userProfile={simulatedProfile || userProfile}
-            isLoadingData={isLoadingData}
-            sales={sales}
-            partners={partners}
-            onNavigate={(view, payload) => {
-              if (view === ViewState.CLIENTES) {
-                if (typeof payload === 'string') {
-                  setSelectedCustomerId(payload);
-                } else if (payload && typeof payload === 'object' && payload.id) {
-                  setSelectedCustomerId(payload.id);
-                  if (payload.returnTo) {
-                    setReturnView(payload.returnTo);
-                  }
-                }
-              }
-              setCurrentView(view);
-            }}
-          />
-        );
+
       case ViewState.SERVICOS:
         return <ServicesManagement services={services} setServices={setServices} />;
       case ViewState.PARTNERSHIPS:
@@ -893,19 +808,7 @@ const App: React.FC = () => {
             providers={providers}
           />
         );
-      case ViewState.RECURSOS_HUMANOS:
-        return (
-          <HRManagement 
-            employees={employees}
-            onUpdateEmployees={setEmployees}
-            payroll={payroll}
-            onUpdatePayroll={setPayroll}
-            loans={employeeLoans}
-            onUpdateLoans={setEmployeeLoans}
-            expenses={expenses}
-            onUpdateExpenses={setExpenses}
-          />
-        );
+
       case ViewState.TRAFEGO_PAGO:
         return <Marketing appointments={appointments} customers={customers} services={services} providers={providers} partnerCampaigns={campaigns} partners={partners} />;
       case ViewState.SETTINGS:

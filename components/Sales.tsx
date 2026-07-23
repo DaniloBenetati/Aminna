@@ -113,8 +113,38 @@ interface CartItem {
 }
 
 export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, paymentSettings, customers, providers }) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (sales.length === 0) {
+            const fetchSales = async () => {
+                const minDate = new Date();
+                minDate.setMonth(minDate.getMonth() - 6);
+                const dateStr = minDate.toISOString().split('T')[0];
+                const { data } = await supabase.from('sales').select('*').gte('date', dateStr).order('date', { ascending: false });
+                if (data) {
+                    setSales(data.map((s: any) => ({
+                      id: s.id,
+                      customerId: s.customer_id,
+                      items: s.items || [],
+                      total: Number(s.total_amount || s.total_price || 0),
+                      totalAmount: Number(s.total_amount || s.total_price || 0),
+                      date: s.date,
+                      paymentMethod: s.payment_method,
+                      payments: s.payments || [],
+                      status: s.status,
+                      createdAt: s.created_at,
+                      isReconciled: s.is_reconciled,
+                      adjustmentAmount: Number(s.adjustment_amount || 0),
+                      adjustmentReason: s.adjustment_reason
+                    })));
+                }
+            };
+            fetchSales();
+        }
+    }, [sales.length, setSales]);
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     // --- DATE FILTER STATE ---
     // Default to 'day' view showing today

@@ -4,7 +4,6 @@ export enum ViewState {
   AGENDA = 'AGENDA',
   DAILY_APPOINTMENTS = 'DAILY_APPOINTMENTS',
   CLIENTES = 'CLIENTES',
-  CRM = 'CRM',
   FINANCEIRO = 'FINANCEIRO',
   FECHAMENTOS = 'FECHAMENTOS',
   ESTOQUE = 'ESTOQUE',
@@ -20,23 +19,7 @@ export enum ViewState {
   RESERVAS = 'RESERVAS'
 }
 
-export type LeadStatus = 'NOVO' | 'ATENDIMENTO' | 'QUALIFICADO' | 'PROPOSTA' | 'CONVERTIDO' | 'PERDIDO';
 
-export interface Lead {
-  id: string;
-  name: string;
-  phone: string;
-  source: string; // Alterado de união fixa para string genérica
-  status: LeadStatus;
-  createdAt: string;
-  updatedAt: string;
-  notes?: string;
-  lostReason?: string;
-  value?: number; // Valor estimado da oportunidade
-  serviceInterest?: string; // Serviço de interesse
-  temperature?: 'quente' | 'frio' | 'morno';
-  tags?: string[];
-}
 
 export interface CommissionHistoryItem {
   date: string;
@@ -628,153 +611,3 @@ export interface EmployeeLoan {
   schedule?: any[];
 }
 
-// --- CRM TYPES (Meta/WhatsApp Integration) ---
-
-export interface CRMFunnelStage {
-  id: string;
-  name: string;
-  color: string;
-  order: number;
-  active: boolean;
-}
-
-export interface CRMTag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-export interface CRMConversation {
-  id: string;
-  customerId?: string;
-  leadId?: string;
-  metaConversationId?: string;
-  platform: 'whatsapp' | 'instagram' | 'messenger';
-  statusId: string;
-  currentAttendantId?: string;
-  lastMessagePreview?: string;
-  lastMessageAt: string;
-  unreadCount: number;
-  metadata?: any;
-  createdAt: string;
-  updatedAt: string;
-  // Join data
-  customer?: Customer;
-  lead?: Lead;
-  status?: CRMFunnelStage;
-  tags?: CRMTag[];
-}
-
-export interface CRMMessage {
-  id: string;
-  conversationId: string;
-  metaMessageId?: string;
-  senderType: 'customer' | 'attendant' | 'system' | 'ai';
-  senderId?: string;
-  content: string;
-  messageType: 'text' | 'image' | 'audio' | 'video' | 'document' | 'template';
-  mediaUrl?: string;
-  status: 'sent' | 'delivered' | 'read' | 'failed';
-  metadata?: any;
-  createdAt: string;
-}
-
-export interface CRMAutomation {
-  id: string;
-  name: string;
-  triggerType: string;
-  conditions: any;
-  actions: any;
-  active: boolean;
-}
-
-export interface CatalogReservationItem {
-  id: string;
-  reservation_id: string;
-  product_id: string;
-  product_name: string;
-  quantity: number;
-  unit_price: number;
-  created_at: string;
-}
-
-export interface CatalogReservation {
-  id: string;
-  customer_name: string;
-  customer_phone: string;
-  status: 'Pendente' | 'Aprovada' | 'Rejeitada' | 'Concluída';
-  total_amount: number;
-  created_at: string;
-  updated_at: string;
-  items?: CatalogReservationItem[];
-}
-
-export interface ConsentForm {
-  id: string;
-  customerId: string;
-  appointmentId?: string;
-  dateTime: string;
-  procedures: string;
-  professionals: string;
-  anamneseData: {
-    allergies: boolean;
-    eyeSensitivity: boolean;
-    contactLenses: boolean;
-    nailSkinHealth: boolean;
-    healthConditions: boolean;
-    observations: string;
-  };
-  allowImageUse: boolean;
-  signatureData: string; // Base64
-  createdAt: string;
-}
-
-export interface MetaCampaign {
-  id: string;
-  name: string;
-  status: string;
-  objective: string;
-  daily_budget?: number;
-  lifetime_budget?: number;
-  spend: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  cpm: number;
-  conversions: number;
-  cpa: number;
-  roas: number;
-  frequency: number;
-  reach: number;
-  date_start: string;
-  results?: {
-    count: number;
-    name: string;
-  };
-  result_name?: string;
-  cost_per_result?: number;
-  crmRevenue?: number;
-  crmROI?: number;
-  crmCustomers?: number;
-}
-
-export interface AdSet {
-  id: string;
-  campaign_id: string;
-  campaign_name: string;
-  name: string;
-  targeting_desc: string;
-  status: string;
-  spend: number;
-  impressions: number;
-  clicks: number;
-  ctr: number;
-  cpc: number;
-  cpm: number;
-  conversions: number;
-  cpa: number;
-  roas: number;
-  frequency: number;
-  reach: number;
-}

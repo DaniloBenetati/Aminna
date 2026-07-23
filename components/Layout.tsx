@@ -105,9 +105,8 @@ export const Layout: React.FC<LayoutProps> = ({
   const menuItems = [
     { id: ViewState.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
     { id: ViewState.AGENDA, label: 'Agenda', icon: Calendar },
-    { id: ViewState.DAILY_APPOINTMENTS, label: 'Check-in', icon: Clock },
     { id: ViewState.CLIENTES, label: 'Clientes', icon: Contact },
-    { id: ViewState.CRM, label: 'CRM', icon: Users },
+
     { id: ViewState.COPA, label: 'Copa & Consumo', icon: Coffee },
     { id: ViewState.PARTNERSHIPS, label: 'Parcerias', icon: Handshake },
     { id: ViewState.SERVICOS, label: 'Serviços', icon: Sparkles },
@@ -116,7 +115,6 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: ViewState.FINANCEIRO, label: 'Financeiro', icon: BarChart3 },
     { id: ViewState.FECHAMENTOS, label: 'Fechamentos', icon: Wallet },
     { id: ViewState.ESTOQUE, label: 'Estoque', icon: Package },
-    { id: ViewState.RECURSOS_HUMANOS, label: 'Recursos Humanos', icon: Users },
     { id: ViewState.TRAFEGO_PAGO, label: 'Marketing', icon: Megaphone },
   ].filter(item => {
     if (!userProfile) return true;
@@ -133,15 +131,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
   // Define views that should take full width (no max-width 7xl)
   const isFluidView = [
-    ViewState.CRM,
+
     ViewState.AGENDA,
     ViewState.FINANCEIRO,
     ViewState.FECHAMENTOS,
     ViewState.ESTOQUE,
-    ViewState.DAILY_APPOINTMENTS,
     ViewState.DASHBOARD,
     ViewState.PARTNERSHIPS,
-    ViewState.RECURSOS_HUMANOS,
     ViewState.PROFISSIONAIS,
     ViewState.CLIENTES,
     ViewState.SERVICOS,

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Package, AlertTriangle, ShoppingBag, Plus, Minus, X, Check, DollarSign, History, TrendingUp, Edit2, Tag, User, ClipboardList, ArrowRight, FileText, Filter, Download, Printer, Sheet, FileJson, Search, Settings2, RefreshCcw, ArrowDownCircle, ArrowUpCircle, MessageCircle, Layers, Camera, Sparkles, Eraser, Loader2, CircleCheck, Trash2 } from 'lucide-react';
 import { StockItem, StockUsageLog, PriceHistoryItem, Provider } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
@@ -13,6 +13,35 @@ interface InventoryProps {
 
 export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers }) => {
     const [searchTerm, setSearchTerm] = useState('');
+
+    useEffect(() => {
+        if (stock.length === 0) {
+            const fetchStock = async () => {
+                const { data } = await supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true });
+                if (data) {
+                    setStock(data.map((s: any) => ({
+                      id: s.id,
+                      code: s.code,
+                      name: s.name,
+                      category: s.category,
+                      group: s.group,
+                      subGroup: s.sub_group,
+                      quantity: s.quantity,
+                      minQuantity: s.min_quantity,
+                      unit: s.unit,
+                      costPrice: s.cost_price,
+                      price: s.sale_price,
+                      imageUrl: s.image_url,
+                      imageUrls: s.image_urls || [],
+                      priceHistory: s.price_history || [],
+                      catalogOrder: s.catalog_order ?? 9999,
+                      usageHistory: []
+                    })));
+                }
+            };
+            fetchStock();
+        }
+    }, [stock.length, setStock]);
 
     // Modal States
     const [modalType, setModalType] = useState<'ENTRY' | 'EXIT' | 'HISTORY' | 'EDIT_PRICE' | 'NEW_PRODUCT' | 'EDIT_PRODUCT' | 'INVENTORY' | 'REPORT' | 'CHOICE' | 'BEST_SELLERS' | null>(null);

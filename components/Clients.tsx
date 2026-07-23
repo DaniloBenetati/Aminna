@@ -74,39 +74,64 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   }, [selectedCustomerId, customers]);
 
   const clientStats = useMemo(() => {
-    const totalSpent = customers.reduce((acc, c) => acc + (c.totalSpent || 0), 0);
+    let totalSpent = 0;
+    let vips = 0;
+    let churnRisk = 0;
+
+    for (let i = 0; i < customers.length; i++) {
+        const c = customers[i];
+        totalSpent += (c.totalSpent || 0);
+        if (c.isVip || c.status === 'VIP') vips++;
+        if (c.status === 'Risco de Churn') churnRisk++;
+    }
+    
     const avgSpent = customers.length > 0 ? totalSpent / customers.length : 0;
-    const vips = customers.filter(c => c.isVip || c.status === 'VIP').length;
-    const churnRisk = customers.filter(c => c.status === 'Risco de Churn').length;
     
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    const newThisMonth = customers.filter(c => {
-      // Find the first completed appointment for this customer
-      const customerApps = (appointments || []).filter(a => a.customerId === c.id && isCompleted(a.status));
-      if (customerApps.length === 0) {
-        // If no finished appointments, check registration date as fallback for leads
-        const regDate = new Date(c.registrationDate);
-        return regDate.getMonth() === currentMonth && regDate.getFullYear() === currentYear;
-      }
-      
-      // Sort to find the very first one
-      const firstApp = customerApps.reduce((min, a) => (a.date < min.date ? a : min), customerApps[0]);
-      const firstAppDate = new Date(firstApp.date);
-      
-      return firstAppDate.getMonth() === currentMonth && firstAppDate.getFullYear() === currentYear;
-    }).length;
+    // Optimize by creating a Map of the first completed appointment per customer (O(M) instead of O(N*M))
+    const firstApptByCustomer = new Map<string, Date>();
+    if (appointments) {
+        for (let i = 0; i < appointments.length; i++) {
+            const a = appointments[i];
+            if (isCompleted(a.status)) {
+                const date = new Date(a.date);
+                const existing = firstApptByCustomer.get(a.customerId);
+                if (!existing || date < existing) {
+                    firstApptByCustomer.set(a.customerId, date);
+                }
+            }
+        }
+    }
+
+    let newThisMonth = 0;
+    for (let i = 0; i < customers.length; i++) {
+        const c = customers[i];
+        const firstAppDate = firstApptByCustomer.get(c.id);
+        
+        if (firstAppDate) {
+            if (firstAppDate.getMonth() === currentMonth && firstAppDate.getFullYear() === currentYear) {
+                newThisMonth++;
+            }
+        } else {
+            const regDate = new Date(c.registrationDate);
+            if (!isNaN(regDate.getTime()) && regDate.getMonth() === currentMonth && regDate.getFullYear() === currentYear) {
+                newThisMonth++;
+            }
+        }
+    }
 
     return { avgSpent, vips, churnRisk, newThisMonth };
   }, [customers, appointments]);
 
   const filteredCustomers = useMemo(() => {
+    const searchLower = searchTerm.toLowerCase();
     return customers.filter(c => {
       const secondaryMatch = c.secondaryPhones?.some(p => p.includes(searchTerm));
       const matchesSearch = 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.name.toLowerCase().includes(searchLower) ||
         c.phone.includes(searchTerm) ||
         secondaryMatch;
       

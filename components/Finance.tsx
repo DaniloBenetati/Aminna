@@ -671,17 +671,77 @@ interface FinanceProps {
 export const Finance: React.FC<FinanceProps> = ({ services, appointments, setAppointments, sales, setSales, expenseCategories = [], setExpenseCategories, paymentSettings, commissionSettings, suppliers, setSuppliers, providers, customers, setCustomers, stock,
     expenses, setExpenses, campaigns = [], partners = [], financialConfigs = [], employees = [], payroll = []
 }) => {
-    const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('ACCOUNTS');
+    const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('CHARTS');
+
+    useEffect(() => {
+        const fetchMissing = async () => {
+            const minDate = new Date();
+            minDate.setMonth(minDate.getMonth() - 6);
+            const dateStr = minDate.toISOString().split('T')[0];
+
+            if (expenses.length === 0) {
+                const { data } = await supabase.from('expenses').select('*').gte('date', dateStr).order('date', { ascending: false });
+                if (data) {
+                    setExpenses(data.map((e: any) => ({
+                      id: e.id,
+                      description: e.description,
+                      category: e.category,
+                      subcategory: e.subcategory,
+                      dreClass: e.dre_class,
+                      amount: Number(e.amount) || 0,
+                      date: e.date,
+                      paymentMethod: e.payment_method,
+                      payments: e.payments || [],
+                      status: e.status,
+                      notes: e.notes,
+                      createdAt: e.created_at,
+                      supplierId: e.supplier_id,
+                      employeeId: e.employee_id,
+                      isReconciled: e.is_reconciled,
+                      recurrentGroupId: e.recurrent_group_id,
+                      recurrenceStatus: e.recurrence_status,
+                      installmentNumber: e.installment_number,
+                      totalInstallments: e.total_installments,
+                      adjustmentAmount: Number(e.adjustment_amount || 0),
+                      adjustmentReason: e.adjustment_reason,
+                      isPayroll: e.is_payroll,
+                      payrollId: e.payroll_id
+                    })));
+                }
+            }
+            if (sales.length === 0) {
+                const { data } = await supabase.from('sales').select('*').gte('date', dateStr).order('date', { ascending: false });
+                if (data) {
+                    setSales(data.map((s: any) => ({
+                      id: s.id,
+                      customerId: s.customer_id,
+                      items: s.items || [],
+                      total: Number(s.total_amount || s.total_price || 0),
+                      totalAmount: Number(s.total_amount || s.total_price || 0),
+                      date: s.date,
+                      paymentMethod: s.payment_method,
+                      payments: s.payments || [],
+                      status: s.status,
+                      createdAt: s.created_at,
+                      isReconciled: s.is_reconciled,
+                      adjustmentAmount: Number(s.adjustment_amount || 0),
+                      adjustmentReason: s.adjustment_reason
+                    })));
+                }
+            }
+        };
+        fetchMissing();
+    }, [expenses.length, sales.length, setExpenses, setSales]);
     const [accountsSubTab, setAccountsSubTab] = useState<'DETAILED' | 'PAYABLES' | 'DAILY' | 'SUPPLIERS' | 'CONCILIADO' | 'AUDIT'>('DAILY');
     const [supplierSubTab, setSupplierSubTab] = useState<'PROFISSIONAIS' | 'RH' | 'FORNECEDORES'>('PROFISSIONAIS');
     const [conciliadoFilter, setConciliadoFilter] = useState('');
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [conciliadoSplitFilter, setConciliadoSplitFilter] = useState<'ALL' | 'SPLIT' | 'NOT_SPLIT'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
-    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('day');
+    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('year');
     const [startDate, setStartDate] = useState(toLocalDateStr(new Date()));
     const [endDate, setEndDate] = useState(toLocalDateStr(new Date()));
-    const [chartsSubTab, setChartsSubTab] = useState<'GENERAL' | 'PREDICTIVE'>('GENERAL');
+    const [chartsSubTab, setChartsSubTab] = useState<'GENERAL' | 'PREDICTIVE'>('PREDICTIVE');
     const [predictiveTargetGrowth, setPredictiveTargetGrowth] = useState(20);
     const [filterProvider, setFilterProvider] = useState('all');
     const [filterService, setFilterService] = useState('all');
