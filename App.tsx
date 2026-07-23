@@ -334,12 +334,12 @@ const App: React.FC = () => {
       ] = await Promise.all([
         Promise.resolve({ data: [] }), // stock_items
         Promise.resolve({ data: [] }), // usage_logs
-        Promise.resolve({ data: [] }), // campaigns
+        supabase.from('campaigns').select('*'), // campaigns
         Promise.resolve({ data: [] }), // pantry_items
         Promise.resolve({ data: [] }), // pantry_logs
         supabase.from('leads').select('*'),
-        Promise.resolve({ data: [] }), // partners
-        Promise.resolve({ data: [] }), // partner_exchanges
+        supabase.from('partners').select('*'), // partners
+        supabase.from('partner_exchanges').select('*'), // partner_exchanges
         Promise.resolve({ data: [] }), // suppliers
         Promise.resolve({ data: [] }), // nfse_records
         fetchCustomers(),
