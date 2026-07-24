@@ -17,9 +17,14 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     useEffect(() => {
         if (stock.length === 0) {
             const fetchStock = async () => {
-                const { data } = await supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true });
-                if (data) {
-                    setStock(data.map((s: any) => ({
+                const [stockRes, logsRes] = await Promise.all([
+                    supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true }),
+                    supabase.from('usage_logs').select('*')
+                ]);
+                
+                if (stockRes.data) {
+                    const logs = logsRes.data || [];
+                    setStock(stockRes.data.map((s: any) => ({
                       id: s.id,
                       code: s.code,
                       name: s.name,
@@ -35,7 +40,16 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                       imageUrls: s.image_urls || [],
                       priceHistory: s.price_history || [],
                       catalogOrder: s.catalog_order ?? 9999,
-                      usageHistory: []
+                      usageHistory: logs
+                        .filter((l: any) => l.stock_item_id === s.id)
+                        .map((l: any) => ({
+                          id: l.id,
+                          date: l.date,
+                          quantity: l.quantity,
+                          type: l.type,
+                          providerId: l.provider_id,
+                          note: l.note
+                        }))
                     })));
                 }
             };

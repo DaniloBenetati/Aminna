@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '../services/supabase';
-import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info, X, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, Plus, Minus, Search, Trash2, ArrowRight, Package, Loader2, Info, X, ChevronLeft, ChevronRight, CheckCircle2, RefreshCcw } from 'lucide-react';
 import { StockItem } from '../types';
 import { sanitizeImageUrl } from '../services/utils';
 
@@ -31,45 +31,62 @@ export const PublicCatalog: React.FC = () => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchCatalog = async () => {
-            setIsLoading(true);
-            try {
-                // Anonymous fetch! Only brings active = true and quantity > 0 via RLS
-                const { data, error } = await supabase
-                    .from('stock_items')
-                    .select('*')
-                    .eq('active', true)
-                    .eq('category', 'Venda')
-                    .gt('quantity', 0)
-                    .order('catalog_order', { ascending: true });
-                
-                if (error) {
-                    console.error("Error fetching catalog:", error);
-                } else if (data) {
-                    // Map just exactly what is needed
-                    const mapped = data.map((s: any) => ({
-                        id: s.id,
-                        code: s.code,
-                        name: s.name,
-                        category: s.category,
-                        group: s.group,
-                        subGroup: s.sub_group,
-                        quantity: s.quantity,
-                        price: s.sale_price,
-                        imageUrl: s.image_url,
-                        imageUrls: s.image_urls || [],
-                    }));
-                    setProducts(mapped);
-                }
-            } catch (err) {
-                console.error("Fetch crashed:", err);
-            } finally {
-                setIsLoading(false);
+    const fetchCatalog = useCallback(async (showLoading = true) => {
+        if (showLoading) setIsLoading(true);
+        try {
+            // Anonymous fetch! Only brings active = true and quantity > 0 via RLS
+            // Added a random parameter (Cache Busting) to ensure browser ignores HTTP cache if any
+            const { data, error } = await supabase
+                .from('stock_items')
+                .select('*')
+                .eq('active', true)
+                .eq('category', 'Venda')
+                .gt('quantity', 0)
+                .order('catalog_order', { ascending: true });
+            
+            if (error) {
+                console.error("Error fetching catalog:", error);
+            } else if (data) {
+                const mapped = data.map((s: any) => ({
+                    id: s.id,
+                    code: s.code,
+                    name: s.name,
+                    category: s.category,
+                    group: s.group,
+                    subGroup: s.sub_group,
+                    quantity: s.quantity,
+                    price: s.sale_price,
+                    imageUrl: s.image_url,
+                    imageUrls: s.image_urls || [],
+                }));
+                setProducts(mapped);
             }
-        };
-        fetchCatalog();
+        } catch (err) {
+            console.error("Fetch crashed:", err);
+        } finally {
+            setIsLoading(false);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchCatalog();
+
+        // Realtime Subscription
+        const channel = supabase.channel('public_catalog_updates')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'stock_items' },
+                (payload) => {
+                    console.log('🔄 Catálogo Atualizado (Realtime):', payload);
+                    fetchCatalog(false); // Refetch sem mostrar a tela de loading gigante
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [fetchCatalog]);
 
 
 
@@ -232,7 +249,15 @@ export const PublicCatalog: React.FC = () => {
                     </span>
                 </div>
 
-                <div className="relative">
+                <div className="relative flex items-center gap-3">
+                    <button 
+                        onClick={() => fetchCatalog(true)}
+                        className="p-2 bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all"
+                        title="Atualizar Catálogo"
+                    >
+                        <RefreshCcw size={18} className={isLoading ? 'animate-spin' : ''} />
+                    </button>
+                    <div className="relative">
                     <button 
                         onClick={() => setIsCartOpen(true)}
                         className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-4 py-2 rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
@@ -248,6 +273,7 @@ export const PublicCatalog: React.FC = () => {
                             <span className="relative inline-flex rounded-full h-4 w-4 bg-rose-500 border border-white"></span>
                         </span>
                     )}
+                </div>
                 </div>
             </header>
 
