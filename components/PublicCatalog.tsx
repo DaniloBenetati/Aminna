@@ -56,7 +56,7 @@ export const PublicCatalog: React.FC = () => {
                     subGroup: s.sub_group,
                     quantity: s.quantity,
                     price: s.sale_price,
-                    imageUrl: s.image_url,
+                    imageUrl: s.image_url || (s.image_urls && s.image_urls.length > 0 ? s.image_urls[0] : ''),
                     imageUrls: s.image_urls || [],
                 }));
                 setProducts(mapped);

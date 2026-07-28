@@ -36,7 +36,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                       unit: s.unit,
                       costPrice: s.cost_price,
                       price: s.sale_price,
-                      imageUrl: s.image_url,
+                      imageUrl: s.image_url || (s.image_urls && s.image_urls.length > 0 ? s.image_urls[0] : ''),
                       imageUrls: s.image_urls || [],
                       priceHistory: s.price_history || [],
                       catalogOrder: s.catalog_order ?? 9999,
