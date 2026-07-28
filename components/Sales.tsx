@@ -50,7 +50,7 @@ function SortableCatalogCard({ product }: { product: StockItem }) {
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white dark:bg-zinc-800 rounded-3xl border-2 p-3 flex flex-col gap-3 relative overflow-hidden select-none ${
+            className={`bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 flex flex-col gap-2 relative overflow-hidden select-none ${
                 isDragging
                     ? 'shadow-2xl border-indigo-400 scale-105'
                     : 'border-dashed border-indigo-200 dark:border-indigo-800'
@@ -66,7 +66,7 @@ function SortableCatalogCard({ product }: { product: StockItem }) {
                 <GripVertical size={14} />
             </div>
 
-            <div className="aspect-square rounded-[1.5rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+            <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                 {product.imageUrl ? (
                     <img
                         src={sanitizeImageUrl(product.imageUrl)}
@@ -1752,10 +1752,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             setActiveImageIndex(0);
                                             setCurrentQuantity(1);
                                         }}
-                                        className="group bg-white dark:bg-zinc-800 rounded-3xl border-2 p-3 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-3 relative overflow-hidden"
+                                        className="group bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
                                         style={{ borderColor: '#D9D9D6' }}
                                     >
-                                        <div className="aspect-square rounded-[1.5rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                        <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                             {product.imageUrl ? (
                                                 <img 
                                                     src={sanitizeImageUrl(product.imageUrl)} 
