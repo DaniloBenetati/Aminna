@@ -277,7 +277,7 @@ export const PublicCatalog: React.FC = () => {
                 </div>
             </header>
 
-            <main className="max-w-screen-2xl mx-auto p-4 md:p-8">
+            <main className="max-w-7xl mx-auto p-4 md:p-8">
                 <div className="flex items-center gap-3 overflow-x-auto pb-4 mb-8 scrollbar-hide no-scrollbar">
                     {/* Botão de Busca Expansível */}
                     <div className={`flex items-center transition-all duration-500 ease-in-out ${isSearchOpen ? 'bg-white dark:bg-zinc-800 border-2 border-zinc-950 dark:border-white w-full sm:w-64' : 'w-10'} rounded-full p-1`}>
@@ -355,7 +355,7 @@ export const PublicCatalog: React.FC = () => {
                         <p className="text-xs font-medium text-slate-500">Tente ajustar seus filtros de busca para encontrar peças disponíveis.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                         {filteredCatalog.map(product => (
                             <button
                                 key={product.id}
