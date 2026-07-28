@@ -1781,18 +1781,18 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 </button>
                                             </div>
                                         </div>
-                                        <div className="px-1">
+                                        <div className="px-0.5 mt-1">
                                             {/* Truncated Name for Mobile/iPad (first word) */}
-                                            <p className="lg:hidden text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
+                                            <p className="lg:hidden text-[9px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
                                                 {product.name?.split(' ')[0]}
                                             </p>
                                             {/* Full Name for Desktop */}
-                                            <p className="hidden lg:block text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
+                                            <p className="hidden lg:block text-[9px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-indigo-600 transition-colors">
                                                 {product.name}
                                             </p>
-                                            <div className="flex justify-between items-end mt-2">
-                                                <p className="text-sm font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                                <p className={`text-[9px] font-black uppercase ${product.quantity <= 0 ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-lg' : 'text-slate-400'}`}>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <p className="text-[10px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
+                                                <p className={`text-[8px] font-black uppercase ${product.quantity <= 0 ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-lg' : 'text-slate-400'}`}>
                                                     {product.quantity <= 0 ? 'Esgotado' : `${product.quantity} un`}
                                                 </p>
                                             </div>

@@ -355,7 +355,7 @@ export const PublicCatalog: React.FC = () => {
                         <p className="text-xs font-medium text-slate-500">Tente ajustar seus filtros de busca para encontrar peças disponíveis.</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8 2xl:grid-cols-10 gap-2">
                         {filteredCatalog.map(product => (
                             <button
                                 key={product.id}
@@ -395,16 +395,16 @@ export const PublicCatalog: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div className="px-0.5">
-                                    <p className="lg:hidden text-[11px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-[#947c4c] transition-colors">
+                                <div className="px-0.5 mt-1">
+                                    <p className="lg:hidden text-[9px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-[#947c4c] transition-colors">
                                         {product.name?.split(' ')[0]}
                                     </p>
-                                    <p className="hidden lg:block text-xs font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-[#947c4c] transition-colors">
+                                    <p className="hidden lg:block text-[9px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-[#947c4c] transition-colors">
                                         {product.name}
                                     </p>
-                                    <div className="flex justify-between items-end mt-2">
-                                        <p className="text-sm font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                        <p className="text-[9px] font-black uppercase text-slate-400">
+                                    <div className="flex justify-between items-end mt-1">
+                                        <p className="text-[10px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
+                                        <p className="text-[8px] font-black uppercase text-slate-400">
                                             {product.quantity} un
                                         </p>
                                     </div>
