@@ -71,6 +71,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [priceNote, setPriceNote] = useState('');
     const [historyTab, setHistoryTab] = useState<'PRICE' | 'USAGE'>('USAGE');
     const [reportFilter, setReportFilter] = useState<'ALL' | 'EXIT' | 'ENTRY' | 'CORRECTION'>('ALL');
+    const [photoFilter, setPhotoFilter] = useState<'ALL' | 'WITH' | 'WITHOUT'>('ALL');
     const [isAddingNewGroup, setIsAddingNewGroup] = useState(false);
     const [isAddingNewSubGroup, setIsAddingNewSubGroup] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
@@ -132,12 +133,17 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     }, [providers, providerSearch]);
 
     const filteredStock = useMemo(() => {
-        return stock.filter(item =>
-            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.group && item.group.toLowerCase().includes(searchTerm.toLowerCase()))
-        );
-    }, [stock, searchTerm]);
+        return stock.filter(item => {
+            const matchesSearch = (
+                item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                item.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (item.group && item.group.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+            const hasPhoto = !!(item.imageUrl || (item.imageUrls && item.imageUrls.length > 0));
+            const matchesPhoto = photoFilter === 'ALL' || (photoFilter === 'WITH' && hasPhoto) || (photoFilter === 'WITHOUT' && !hasPhoto);
+            return matchesSearch && matchesPhoto;
+        });
+    }, [stock, searchTerm, photoFilter]);
 
     const bestSellersReport = useMemo(() => {
         return stock.map(item => {
@@ -921,8 +927,40 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 scrollbar-hide space-y-4 md:space-y-6 pb-24 md:pb-8">
                 {/* Desktop Table View */}
                 <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
-                    <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center">
-                        <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
+                    <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center flex-wrap gap-2">
+                        <div className="flex items-center gap-3">
+                            <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
+                            {/* Filtro de Foto */}
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-700 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setPhotoFilter('ALL')}
+                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${
+                                        photoFilter === 'ALL'
+                                            ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                                    }`}
+                                >Todos</button>
+                                <button
+                                    onClick={() => setPhotoFilter('WITH')}
+                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
+                                        photoFilter === 'WITH'
+                                            ? 'bg-emerald-500 text-white shadow-sm'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                                    }`}
+                                ><Camera size={10} /> Com Foto</button>
+                                <button
+                                    onClick={() => setPhotoFilter('WITHOUT')}
+                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
+                                        photoFilter === 'WITHOUT'
+                                            ? 'bg-rose-500 text-white shadow-sm'
+                                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                                    }`}
+                                ><Package size={10} /> Sem Foto</button>
+                            </div>
+                            {photoFilter !== 'ALL' && (
+                                <span className="text-[10px] font-black text-slate-400">{filteredStock.length} iten(s)</span>
+                            )}
+                        </div>
                         <div className="flex gap-2">
                             <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
                             <button onClick={() => { setModalType('BEST_SELLERS'); }} className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all flex items-center gap-1.5 shadow-sm"><TrendingUp size={14} /> Mais Vendidos</button>
