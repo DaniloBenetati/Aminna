@@ -363,10 +363,10 @@ export const PublicCatalog: React.FC = () => {
                                     setPreviewProduct(product);
                                     setActiveImageIndex(0);
                                 }}
-                                className="group bg-white dark:bg-zinc-800 rounded-2xl border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
+                                className="group bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
                                 style={{ borderColor: '#D9D9D6' }}
                             >
-                                <div className="aspect-square rounded-xl bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                     {product.imageUrl ? (
                                         <img 
                                             src={sanitizeImageUrl(product.imageUrl)} 
