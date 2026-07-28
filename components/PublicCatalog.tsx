@@ -363,10 +363,10 @@ export const PublicCatalog: React.FC = () => {
                                     setPreviewProduct(product);
                                     setActiveImageIndex(0);
                                 }}
-                                className="group bg-white dark:bg-zinc-800 rounded-3xl border-2 p-3 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-3 relative overflow-hidden"
+                                className="group bg-white dark:bg-zinc-800 rounded-[2rem] border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
                                 style={{ borderColor: '#D9D9D6' }}
                             >
-                                <div className="aspect-square rounded-[1.5rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                <div className="aspect-square rounded-[1.25rem] bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                     {product.imageUrl ? (
                                         <img 
                                             src={sanitizeImageUrl(product.imageUrl)} 
@@ -395,7 +395,7 @@ export const PublicCatalog: React.FC = () => {
                                         </div>
                                     )}
                                 </div>
-                                <div className="px-1">
+                                <div className="px-0.5">
                                     <p className="lg:hidden text-[11px] font-black text-slate-900 dark:text-white truncate uppercase leading-tight group-hover:text-[#947c4c] transition-colors">
                                         {product.name?.split(' ')[0]}
                                     </p>
