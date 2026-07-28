@@ -332,7 +332,7 @@ const App: React.FC = () => {
         payrollRes,
         employeeLoansRes
       ] = await Promise.all([
-        supabase.from('stock_items').select('*'), // stock_items
+        supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true }), // stock_items
         supabase.from('usage_logs').select('*'), // usage_logs
         supabase.from('campaigns').select('*'), // campaigns
         Promise.resolve({ data: [] }), // pantry_items
