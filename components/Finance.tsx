@@ -674,6 +674,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [activeTab, setActiveTab] = useState<'ACCOUNTS' | 'DRE' | 'CHARTS'>('CHARTS');
 
     useEffect(() => {
+        const handleFinanceTabChange = (e: Event) => {
+            const customEvent = e as CustomEvent<string>;
+            const tabId = customEvent.detail;
+            setActiveTab(tabId as any);
+            if (tabId === 'DRE') {
+                setTimeView('month');
+                setDateRef(new Date());
+            }
+            if (tabId === 'CHARTS') {
+                setTimeView('year');
+                setDateRef(new Date());
+            }
+        };
+        window.addEventListener('changeFinanceTab', handleFinanceTabChange);
+        return () => window.removeEventListener('changeFinanceTab', handleFinanceTabChange);
+    }, []);
+
+    useEffect(() => {
         const fetchMissing = async () => {
             const minDate = new Date();
             minDate.setMonth(minDate.getMonth() - 6);
@@ -738,7 +756,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
     const [conciliadoTypeFilter, setConciliadoTypeFilter] = useState<'ALL' | 'RECEITA' | 'DESPESA'>('ALL');
     const [conciliadoSplitFilter, setConciliadoSplitFilter] = useState<'ALL' | 'SPLIT' | 'NOT_SPLIT'>('ALL');
     const [conciliadoPage, setConciliadoPage] = useState(1);
-    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>('year');
+    const [timeView, setTimeView] = useState<'day' | 'month' | 'year' | 'custom'>(() => {
+        const saved = localStorage.getItem('aminna_finance_time_view');
+        return (saved as any) || 'month';
+    });
     const [startDate, setStartDate] = useState(toLocalDateStr(new Date()));
     const [endDate, setEndDate] = useState(toLocalDateStr(new Date()));
     const [chartsSubTab, setChartsSubTab] = useState<'GENERAL' | 'PREDICTIVE'>('PREDICTIVE');
@@ -1378,7 +1399,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
     // Date Navigation & View States
     const datePickerRef = useRef<HTMLInputElement>(null);
-    const [dateRef, setDateRef] = useState(new Date());
+    const [dateRef, setDateRef] = useState(() => {
+        const saved = localStorage.getItem('aminna_finance_date_ref');
+        if (saved) {
+            const d = new Date(saved);
+            if (!isNaN(d.getTime())) return d;
+        }
+        return new Date();
+    });
+
+    useEffect(() => {
+        localStorage.setItem('aminna_finance_time_view', timeView);
+        localStorage.setItem('aminna_finance_date_ref', dateRef.toISOString());
+    }, [timeView, dateRef]);
+
     const [selectedExpenseIds, setSelectedExpenseIds] = useState<string[]>([]);
     const [isBatchLinkModalOpen, setIsBatchLinkModalOpen] = useState(false);
 
@@ -3151,31 +3185,47 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             </div>
 
             <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
-                <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full xl:w-auto flex-nowrap">
-                    {[
-                        { id: 'ACCOUNTS', label: 'Contas', icon: FileText },
-                        { id: 'DRE', label: 'DRE', icon: CalcIcon },
-                        { id: 'CHARTS', label: 'Gráficos', icon: BarChart3 },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => {
-                                setActiveTab(tab.id as any);
-                                if (tab.id === 'DRE') {
-                                    setTimeView('month');
-                                    setDateRef(new Date());
-                                }
-                                if (tab.id === 'CHARTS') {
-                                    setTimeView('year');
-                                    setDateRef(new Date());
-                                }
-                            }}
-                            className={`flex-1 md:flex-none min-w-[80px] md:min-w-[100px] flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                        >
-                            <tab.icon size={13} className="md:size-[14px]" /> {tab.label}
-                        </button>
-                    ))}
-                </div>
+                {activeTab === 'ACCOUNTS' && (
+                    <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
+                        {[
+                            { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
+                            { id: 'CONCILIADO', label: 'Conciliados', icon: CircleCheck },
+                            { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
+                            { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
+                            { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
+                        ].map(st => (
+                            <button
+                                key={st.id}
+                                onClick={() => {
+                                    setAccountsSubTab(st.id as any);
+                                    if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
+                                }}
+                                className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            >
+                                <st.icon size={12} className="md:size-[13px]" /> {st.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                
+                {activeTab === 'CHARTS' && (
+                    <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
+                        {[
+                            { id: 'GENERAL', label: 'Dashboard Financeiro', icon: BarChart3 },
+                            { id: 'PREDICTIVE', label: 'Gráfico de Projeção', icon: BrainCircuit }
+                        ].map(st => (
+                            <button
+                                key={st.id}
+                                onClick={() => setChartsSubTab(st.id as any)}
+                                className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${chartsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                            >
+                                <st.icon size={12} className="md:size-[13px]" /> {st.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {activeTab === 'DRE' && <div />}
 
                 <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto items-stretch md:items-center">
 
@@ -3267,54 +3317,31 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-sm text-[10px] font-black uppercase outline-none focus:border-indigo-500" />
                         </div>
                     )}
+
+                    {activeTab === 'ACCOUNTS' && (
+                        <div className="hidden md:flex items-center gap-2 pl-2 md:pl-3 md:ml-1 md:border-l border-slate-200 dark:border-zinc-700">
+                            {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
+                                <button 
+                                    onClick={() => handleOpenModal()} 
+                                    className="group relative flex items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                                >
+                                    <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                                    Lançar Despesa
+                                </button>
+                            )}
+                            {accountsSubTab === 'CONCILIADO' && (
+                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-sm flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                    <RefreshCw size={12} /> Conciliação
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto scrollbar-hide">
                 {activeTab === 'ACCOUNTS' && (
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
-                        {/* ===== ACCOUNTS Sub-nav — always first ===== */}
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
-                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
-                                {[
-                                    { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
-                                    { id: 'CONCILIADO', label: 'Conciliados', icon: CircleCheck },
-                                    { id: 'PAYABLES', label: 'Contas a Pagar', icon: ArrowDownCircle },
-                                    { id: 'DAILY', label: 'Caixa Diário', icon: CalcIcon },
-                                    { id: 'SUPPLIERS', label: 'Fornecedores', icon: Users },
-                                    { id: 'AUDIT', label: 'Ajustes', icon: ShieldCheck },
-                                ].map(st => (
-                                    <button
-                                        key={st.id}
-                                        onClick={() => {
-                                            setAccountsSubTab(st.id as any);
-                                            if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
-                                        }}
-                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
-                                    >
-                                        <st.icon size={12} className="md:size-[13px]" /> {st.label}
-                                    </button>
-                                ))}
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
-                                    <button 
-                                        onClick={() => handleOpenModal()} 
-                                        className="hidden md:flex group relative items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
-                                    >
-                                        <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
-                                        Lançar Despesa
-                                    </button>
-                                )}
-                                {accountsSubTab === 'CONCILIADO' && (
-                                    <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-sm items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
-                                        <RefreshCw size={12} /> Conciliação
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
                         {/* Mobile centered buttons */}
                         {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
                             <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -4961,25 +4988,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     </div>
                 )}
                 {activeTab === 'CHARTS' && (
-                    <div className="space-y-6">
-                        {/* CHARTS Sub-tab header */}
-                        <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-700 w-fit">
-                            {[
-                                { id: 'GENERAL', label: 'Dashboard Financeiro', icon: BarChart3 },
-                                { id: 'PREDICTIVE', label: 'Gráfico de Projeção', icon: BrainCircuit }
-                            ].map(st => (
-                                <button
-                                    key={st.id}
-                                    onClick={() => setChartsSubTab(st.id as any)}
-                                    className={`px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${chartsSubTab === st.id ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                                >
-                                    <st.icon size={14} />
-                                    {st.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        {chartsSubTab === 'GENERAL' ? (
+                    <div className="space-y-6">                        {chartsSubTab === 'GENERAL' ? (
                             <FinanceCharts
                                 transactions={transactions}
                                 expenses={expenses}

@@ -1,5 +1,5 @@
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, LabelList, LineChart, Line } from 'recharts';
 import { Users, Calendar, AlertTriangle, DollarSign, TrendingUp, Award, Gift, Clock, ShoppingBag, Ticket, Filter, ChevronLeft, ChevronRight, X, CalendarRange, Package, Handshake, Wallet, Megaphone, BrainCircuit, Target, AlertCircle, BarChart2, Zap, PieChart, Sparkles, CircleCheck, Activity, MessageCircle, Copy, Heart } from 'lucide-react';
 import { ViewState, Customer, Appointment, Sale, StockItem, Service, Campaign, Provider, PaymentSetting } from '../types';
@@ -66,6 +66,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         start: new Date().toISOString().split('T')[0],
         end: new Date().toISOString().split('T')[0]
     });
+
+    useEffect(() => {
+        const handleTabChange = (e: Event) => {
+            const customEvent = e as CustomEvent<string>;
+            setDashboardTab(customEvent.detail as any);
+        };
+        window.addEventListener('changeDashboardTab', handleTabChange);
+        return () => window.removeEventListener('changeDashboardTab', handleTabChange);
+    }, []);
 
     const [filterProvider, setFilterProvider] = useState('all');
     const [filterService, setFilterService] = useState('all');
@@ -2226,25 +2235,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 </div>
             )}
 
-            {/* --- DASHBOARD TABS --- */}
-            <div className="flex gap-2 md:gap-6 border-b border-slate-200 dark:border-zinc-800 overflow-x-auto no-scrollbar scroll-smooth pb-px">
-                {[
-                    { id: 'geral', label: 'Visão Geral' },
-                    { id: 'ocupacao', label: 'Ocupação' },
-                    { id: 'profissionais', label: 'Profissionais' },
-                    { id: 'servicos', label: 'Serviços' },
-                    { id: 'clientes', label: 'Clientes' },
-
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setDashboardTab(tab.id as any)}
-                        className={`font-black uppercase tracking-widest text-[10px] md:text-xs pb-3 pt-1 border-b-[3px] transition-all whitespace-nowrap px-2 md:px-0 ${dashboardTab === tab.id ? 'border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-                    >
-                        {tab.label}
-                    </button>
-                ))}
-            </div>
+            {/* DASHBOARD TABS REMOVED - NOW IN SIDEBAR DRILL-DOWN */}
 
             {dashboardTab === 'geral' ? (
                 <div className="space-y-6">

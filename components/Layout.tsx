@@ -60,6 +60,42 @@ export const Layout: React.FC<LayoutProps> = ({
     localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
 
+  const [activeDashboardTab, setActiveDashboardTab] = useState('geral');
+  const [isDashboardSubmenuOpen, setIsDashboardSubmenuOpen] = useState(false);
+
+  const handleDashboardTabSelect = (tabId: string) => {
+    setActiveDashboardTab(tabId);
+    if (currentView !== ViewState.DASHBOARD) {
+      onNavigate(ViewState.DASHBOARD);
+    }
+    window.dispatchEvent(new CustomEvent('changeDashboardTab', { detail: tabId }));
+  };
+
+  const dashboardSubTabs = [
+    { id: 'geral', label: 'Visão Geral' },
+    { id: 'ocupacao', label: 'Ocupação' },
+    { id: 'profissionais', label: 'Profissionais' },
+    { id: 'servicos', label: 'Serviços' },
+    { id: 'clientes', label: 'Clientes' },
+  ];
+
+  const [activeFinanceTab, setActiveFinanceTab] = useState('CHARTS');
+  const [isFinanceSubmenuOpen, setIsFinanceSubmenuOpen] = useState(false);
+
+  const handleFinanceTabSelect = (tabId: string) => {
+    setActiveFinanceTab(tabId);
+    if (currentView !== ViewState.FINANCEIRO) {
+      onNavigate(ViewState.FINANCEIRO);
+    }
+    window.dispatchEvent(new CustomEvent('changeFinanceTab', { detail: tabId }));
+  };
+
+  const financeSubTabs = [
+    { id: 'CHARTS', label: 'Gráficos' },
+    { id: 'ACCOUNTS', label: 'Contas' },
+    { id: 'DRE', label: 'DRE' },
+  ];
+
   // App Custom Zoom Controls
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('appZoom');
@@ -179,25 +215,111 @@ export const Layout: React.FC<LayoutProps> = ({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
+            const isDashboard = item.id === ViewState.DASHBOARD;
+            const isFinance = item.id === ViewState.FINANCEIRO;
+            
             return (
-              <button
-                key={item.id}
-                onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-sm text-sm font-bold transition-all relative group ${isActive
-                  ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm border border-slate-200 dark:border-zinc-700'
-                  : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                  } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
-                title={isSidebarCollapsed ? item.label : ''}
-              >
-                <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
-                {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
+              <div key={item.id} className="relative group">
+                <button
+                  onClick={(e) => {
+                    if (isDashboard) {
+                      if (isActive) {
+                        setIsDashboardSubmenuOpen(!isDashboardSubmenuOpen);
+                      } else {
+                        onNavigate(item.id);
+                        setIsDashboardSubmenuOpen(true);
+                        handleDashboardTabSelect('geral');
+                      }
+                    } else if (isFinance) {
+                      if (isActive) {
+                        setIsFinanceSubmenuOpen(!isFinanceSubmenuOpen);
+                      } else {
+                        onNavigate(item.id);
+                        setIsFinanceSubmenuOpen(true);
+                        handleFinanceTabSelect('CHARTS');
+                      }
+                    } else {
+                      onNavigate(item.id);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-sm text-sm font-bold transition-all relative ${isActive
+                    ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm border border-slate-200 dark:border-zinc-700'
+                    : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                    } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+                  title={isSidebarCollapsed && !isDashboard ? item.label : ''}
+                >
+                  <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
+                  {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
 
-                {isSidebarCollapsed && (
-                  <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                    {item.label}
+                  {isSidebarCollapsed && !isDashboard && !isFinance && (
+                    <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                      {item.label}
+                    </div>
+                  )}
+
+                  {/* Float sub-menu for dashboard if collapsed */}
+                  {isSidebarCollapsed && isDashboard && (
+                    <div className="absolute left-full ml-2 top-0 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50 min-w-[150px] overflow-hidden">
+                       <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                       {dashboardSubTabs.map(sub => (
+                           <div 
+                             key={sub.id} 
+                             onClick={(e) => { e.stopPropagation(); handleDashboardTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                             className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors text-left ${activeDashboardTab === sub.id ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                           >
+                             {sub.label}
+                           </div>
+                       ))}
+                    </div>
+                  )}
+
+                  {/* Float sub-menu for finance if collapsed */}
+                  {isSidebarCollapsed && isFinance && (
+                    <div className="absolute left-full ml-2 top-0 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50 min-w-[150px] overflow-hidden">
+                       <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                       {financeSubTabs.map(sub => (
+                           <div 
+                             key={sub.id} 
+                             onClick={(e) => { e.stopPropagation(); handleFinanceTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                             className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors text-left ${activeFinanceTab === sub.id ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                           >
+                             {sub.label}
+                           </div>
+                       ))}
+                    </div>
+                  )}
+                </button>
+
+                {/* Inline sub-menu for dashboard if expanded */}
+                {!isSidebarCollapsed && isDashboard && isDashboardSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {dashboardSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleDashboardTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeDashboardTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
                   </div>
                 )}
-              </button>
+
+                {/* Inline sub-menu for finance if expanded */}
+                {!isSidebarCollapsed && isFinance && isFinanceSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {financeSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleFinanceTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeFinanceTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
