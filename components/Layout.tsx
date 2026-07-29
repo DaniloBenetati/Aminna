@@ -223,19 +223,27 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   onClick={(e) => {
                     if (isDashboard) {
-                      if (isActive) {
-                        setIsDashboardSubmenuOpen(!isDashboardSubmenuOpen);
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      if (isActive && !isSidebarCollapsed) {
+                        const opening = !isDashboardSubmenuOpen;
+                        setIsDashboardSubmenuOpen(opening);
+                        if (opening) setIsFinanceSubmenuOpen(false);
                       } else {
                         onNavigate(item.id);
                         setIsDashboardSubmenuOpen(true);
+                        setIsFinanceSubmenuOpen(false);
                         handleDashboardTabSelect('geral');
                       }
                     } else if (isFinance) {
-                      if (isActive) {
-                        setIsFinanceSubmenuOpen(!isFinanceSubmenuOpen);
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      if (isActive && !isSidebarCollapsed) {
+                        const opening = !isFinanceSubmenuOpen;
+                        setIsFinanceSubmenuOpen(opening);
+                        if (opening) setIsDashboardSubmenuOpen(false);
                       } else {
                         onNavigate(item.id);
                         setIsFinanceSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
                         handleFinanceTabSelect('CHARTS');
                       }
                     } else {
@@ -381,18 +389,78 @@ export const Layout: React.FC<LayoutProps> = ({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
+            const isDashboard = item.id === ViewState.DASHBOARD;
+            const isFinance = item.id === ViewState.FINANCEIRO;
+            
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all ${isActive
-                  ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
-                  : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
-                  }`}
-              >
-                <Icon size={20} />
-                {item.label}
-              </button>
+              <div key={item.id} className="relative">
+                <button
+                  onClick={(e) => {
+                    if (isDashboard) {
+                      if (isActive) {
+                        const opening = !isDashboardSubmenuOpen;
+                        setIsDashboardSubmenuOpen(opening);
+                        if (opening) setIsFinanceSubmenuOpen(false);
+                      } else {
+                        onNavigate(item.id);
+                        setIsDashboardSubmenuOpen(true);
+                        setIsFinanceSubmenuOpen(false);
+                        handleDashboardTabSelect('geral');
+                      }
+                    } else if (isFinance) {
+                      if (isActive) {
+                        const opening = !isFinanceSubmenuOpen;
+                        setIsFinanceSubmenuOpen(opening);
+                        if (opening) setIsDashboardSubmenuOpen(false);
+                      } else {
+                        onNavigate(item.id);
+                        setIsFinanceSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        handleFinanceTabSelect('CHARTS');
+                      }
+                    } else {
+                      handleNavigate(item.id);
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all ${isActive
+                    ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
+                    : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
+                    }`}
+                >
+                  <Icon size={20} />
+                  {item.label}
+                </button>
+                
+                {/* Inline sub-menu for dashboard on mobile */}
+                {isDashboard && isDashboardSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {dashboardSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleDashboardTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activeDashboardTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Inline sub-menu for finance on mobile */}
+                {isFinance && isFinanceSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {financeSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleFinanceTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activeFinanceTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
 
